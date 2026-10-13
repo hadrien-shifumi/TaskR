@@ -25,10 +25,10 @@
 
 ## 4. Projets
 
-- [ ] 4.1 Migration `projects` (workspace_id, name, description, archived_at)
-- [ ] 4.2 Actions CRUD projets : créer, renommer, archiver/désarchiver ; suppression refusée si issues
-- [ ] 4.3 UI : liste des projets + formulaire création/édition
-- [ ] 4.4 Tests : archivage réversible, suppression conditionnée
+- [x] 4.1 Migration `projects` (workspace_id, name, description, archived_at)
+- [x] 4.2 Actions CRUD projets : créer, renommer, archiver/désarchiver ; suppression refusée si issues
+- [x] 4.3 UI : liste des projets + formulaire création/édition
+- [x] 4.4 Tests : archivage réversible, suppression conditionnée *(test de suppression refusée couvert en 5.6, quand la table issues existera)*
 
 ## 5. Issues
 

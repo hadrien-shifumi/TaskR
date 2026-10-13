@@ -28,11 +28,22 @@ export default function AppLayout({ title, children }: AppLayoutProps) {
                 <div className="mx-auto flex h-14 max-w-6xl items-center gap-4 px-4">
                     <span className="text-lg font-semibold">Taskr</span>
                     <nav className="flex items-center gap-1 text-sm">
-                        <Button variant="ghost" size="sm" disabled>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => router.get(route('projects.index'))}
+                        >
                             Projects
                         </Button>
                         <Button variant="ghost" size="sm" disabled>
                             Issues
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => router.get(route('settings.statuses'))}
+                        >
+                            Statuses
                         </Button>
                     </nav>
                     <div className="ml-auto flex items-center gap-2">

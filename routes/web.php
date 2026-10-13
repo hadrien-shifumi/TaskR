@@ -5,6 +5,11 @@ use App\Actions\Auth\LogoutUser;
 use App\Actions\Auth\RegisterUser;
 use App\Actions\Auth\ShowLoginPage;
 use App\Actions\Auth\ShowRegistrationPage;
+use App\Actions\Projects\ArchiveProject;
+use App\Actions\Projects\CreateProject;
+use App\Actions\Projects\DeleteProject;
+use App\Actions\Projects\ShowProjectsPage;
+use App\Actions\Projects\UpdateProject;
 use App\Actions\Statuses\CreateStatus;
 use App\Actions\Statuses\DeleteStatus;
 use App\Actions\Statuses\ReorderStatuses;
@@ -39,4 +44,10 @@ Route::middleware(['auth', 'workspace'])->group(function (): void {
     Route::post('/statuses/reorder', ReorderStatuses::class)->name('statuses.reorder');
     Route::match(['put', 'patch'], '/statuses/{status}', UpdateStatus::class)->name('statuses.update');
     Route::delete('/statuses/{status}', DeleteStatus::class)->name('statuses.destroy');
+
+    Route::get('/projects', ShowProjectsPage::class)->name('projects.index');
+    Route::post('/projects', CreateProject::class)->name('projects.store');
+    Route::match(['put', 'patch'], '/projects/{project}', UpdateProject::class)->name('projects.update');
+    Route::post('/projects/{project}/archive', ArchiveProject::class)->name('projects.archive');
+    Route::delete('/projects/{project}', DeleteProject::class)->name('projects.destroy');
 });

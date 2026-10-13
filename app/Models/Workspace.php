@@ -48,6 +48,14 @@ class Workspace extends BaseModel
         return $this->hasMany(Invitation::class);
     }
 
+    /**
+     * @return HasMany<Project, $this>
+     */
+    public function projects(): HasMany
+    {
+        return $this->hasMany(Project::class);
+    }
+
     public function hasMember(User $user): bool
     {
         return $this->members()->where('users.id', $user->getKey())->exists();
