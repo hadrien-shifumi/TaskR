@@ -48,6 +48,6 @@
 
 ## 7. Vérification finale
 
-- [ ] 7.1 Passe complète de tests au vert (`php artisan test`), dont les tests d'isolation inter-tenants
-- [ ] 7.2 Revue du respect du pattern ADR : toute requête DB dans une Action, tout `Inertia::render` dans un Responder, aucune logique métier ailleurs
-- [ ] 7.3 Dogfood minimal : créer un workspace, 2 projets, une hiérarchie epic/story/task, commenter, filtrer
+- [x] 7.1 Passe complète de tests au vert (`php artisan test`), dont les tests d'isolation inter-tenants
+- [x] 7.2 Revue du respect du pattern ADR : toute requête DB dans une Action, tout `Inertia::render` dans un Responder, aucune logique métier ailleurs *(exceptions assumées : `ResolveCurrentWorkspace` résout le contexte de requête, `HandleInertiaRequests` lit les memberships pour les shared props — wiring, pas métier)*
+- [x] 7.3 Dogfood minimal : créer un workspace, 2 projets, une hiérarchie epic/story/task, commenter, filtrer *(couvert par `DogfoodTest`, parcours HTTP complet)*
