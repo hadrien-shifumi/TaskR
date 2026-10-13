@@ -35,7 +35,12 @@ return new class extends Migration
             $table->foreign('parent_id')->references('id')->on('issues')->nullOnDelete();
         });
 
-        DB::statement("ALTER TABLE issues ADD CONSTRAINT issues_priority_check CHECK (priority IN ('none', 'low', 'high', 'urgent'))");
+        // CHECK constraints are enforced at the DB level on PostgreSQL.
+        // SQLite (used in tests) does not support ALTER TABLE ADD CONSTRAINT,
+        // and the application-level validation already covers it.
+        if (DB::connection()->getDriverName() === 'pgsql') {
+            DB::statement("ALTER TABLE issues ADD CONSTRAINT issues_priority_check CHECK (priority IN ('none', 'low', 'high', 'urgent'))");
+        }
     }
 
     public function down(): void

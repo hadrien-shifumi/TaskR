@@ -6,8 +6,17 @@
         <meta name="csrf-token" content="{{ csrf_token() }}">
         <title>{{ config('app.name', 'Taskr') }}</title>
         <link rel="preconnect" href="https://fonts.bunny.net">
+        @if (Vite::isRunningHot())
+            <script type="module">
+                import RefreshRuntime from 'http://localhost:5173/@react-refresh'
+
+                RefreshRuntime.injectIntoGlobalHook(window)
+                window.$RefreshReg$ = () => {}
+                window.$RefreshSig$ = () => (type) => type
+            </script>
+        @endif
         @vite(['resources/css/app.css', 'resources/js/app.tsx'])
-        @ziggy
+        @routes
     </head>
     <body>
         @inertia

@@ -3,8 +3,8 @@
 namespace App\Responders\Statuses;
 
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
 use Inertia\Inertia;
+use Symfony\Component\HttpFoundation\Response;
 
 class StatusesPageResponder
 {

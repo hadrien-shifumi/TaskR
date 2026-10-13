@@ -10,9 +10,9 @@ use App\Responders\Issues\IssuesPageResponder;
 use App\Support\WorkspaceContext;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
 use Lorisleiva\Actions\Concerns\AsController;
 use Lorisleiva\Actions\Concerns\AsObject;
+use Symfony\Component\HttpFoundation\Response;
 
 class ShowIssuesPage
 {

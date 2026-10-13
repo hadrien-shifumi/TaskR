@@ -21,7 +21,12 @@ return new class extends Migration
             $table->unique(['workspace_id', 'name']);
         });
 
-        DB::statement("ALTER TABLE statuses ADD CONSTRAINT statuses_category_check CHECK (category IN ('backlog', 'in_progress', 'done', 'cancelled'))");
+        // CHECK constraints are enforced at the DB level on PostgreSQL.
+        // SQLite (used in tests) does not support ALTER TABLE ADD CONSTRAINT,
+        // and the application-level validation already covers it.
+        if (DB::connection()->getDriverName() === 'pgsql') {
+            DB::statement("ALTER TABLE statuses ADD CONSTRAINT statuses_category_check CHECK (category IN ('backlog', 'in_progress', 'done', 'cancelled'))");
+        }
     }
 
     public function down(): void

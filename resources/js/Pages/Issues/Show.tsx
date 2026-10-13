@@ -277,7 +277,7 @@ export default function Show() {
                         <p className="font-medium text-muted-foreground">Status</p>
                         <Select value={issue.status.id} onValueChange={(v) => v && move(v)}>
                             <SelectTrigger>
-                                <SelectValue />
+                                <SelectValue>{issue.status.name}</SelectValue>
                             </SelectTrigger>
                             <SelectContent>
                                 {statuses.map((s) => (
@@ -295,7 +295,7 @@ export default function Show() {
                             onValueChange={(v) => v && setParent(v)}
                         >
                             <SelectTrigger>
-                                <SelectValue placeholder="No parent" />
+                                <SelectValue>{issue.parent?.title ?? 'No parent'}</SelectValue>
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="none">No parent</SelectItem>

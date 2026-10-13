@@ -75,6 +75,12 @@ export default function Index() {
     });
     const labelForm = useForm({ name: '', color: '' });
 
+    const selectedProject = projects.find((p) => p.id === filters.project);
+    const selectedStatus = statuses.find((s) => s.id === filters.status);
+    const selectedLabel = labels.find((l) => l.id === filters.label);
+    const selectedMember = members.find((m) => m.id === filters.assignee);
+    const createStatusId = createForm.data.status_id || statuses[0]?.id || '';
+
     const setFilter = (key: string, value: string) => {
         const next = { ...filters, [key]: value === 'all' ? '' : value };
         router.get(route('issues.index'), next, { preserveState: true });
@@ -111,7 +117,7 @@ export default function Index() {
             <div className="mb-4 flex flex-wrap items-center gap-2">
                 <Select value={filters.project ?? 'all'} onValueChange={(v) => v && setFilter('project', v)}>
                     <SelectTrigger className="w-44">
-                        <SelectValue placeholder="Project" />
+                        <SelectValue>{selectedProject?.name ?? 'All projects'}</SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem value="all">All projects</SelectItem>
@@ -124,7 +130,7 @@ export default function Index() {
                 </Select>
                 <Select value={filters.status ?? 'all'} onValueChange={(v) => v && setFilter('status', v)}>
                     <SelectTrigger className="w-44">
-                        <SelectValue placeholder="Status" />
+                        <SelectValue>{selectedStatus?.name ?? 'All statuses'}</SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem value="all">All statuses</SelectItem>
@@ -137,7 +143,9 @@ export default function Index() {
                 </Select>
                 <Select value={filters.category ?? 'all'} onValueChange={(v) => v && setFilter('category', v)}>
                     <SelectTrigger className="w-44">
-                        <SelectValue placeholder="Category" />
+                        <SelectValue>
+                            {filters.category && filters.category !== 'all' ? filters.category : 'All categories'}
+                        </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem value="all">All categories</SelectItem>
@@ -150,7 +158,9 @@ export default function Index() {
                 </Select>
                 <Select value={filters.priority ?? 'all'} onValueChange={(v) => v && setFilter('priority', v)}>
                     <SelectTrigger className="w-36">
-                        <SelectValue placeholder="Priority" />
+                        <SelectValue>
+                            {filters.priority && filters.priority !== 'all' ? filters.priority : 'Any priority'}
+                        </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem value="all">Any priority</SelectItem>
@@ -163,7 +173,7 @@ export default function Index() {
                 </Select>
                 <Select value={filters.label ?? 'all'} onValueChange={(v) => v && setFilter('label', v)}>
                     <SelectTrigger className="w-36">
-                        <SelectValue placeholder="Label" />
+                        <SelectValue>{selectedLabel?.name ?? 'Any label'}</SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem value="all">Any label</SelectItem>
@@ -176,7 +186,7 @@ export default function Index() {
                 </Select>
                 <Select value={filters.assignee ?? 'all'} onValueChange={(v) => v && setFilter('assignee', v)}>
                     <SelectTrigger className="w-40">
-                        <SelectValue placeholder="Assignee" />
+                        <SelectValue>{selectedMember?.name ?? 'Any assignee'}</SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem value="all">Any assignee</SelectItem>
@@ -294,7 +304,9 @@ export default function Index() {
                                     }}
                                 >
                                     <SelectTrigger>
-                                        <SelectValue placeholder="Project" />
+                                        <SelectValue>
+                                            {projects.find((p) => p.id === createForm.data.project_id)?.name ?? 'Project'}
+                                        </SelectValue>
                                     </SelectTrigger>
                                     <SelectContent>
                                         {projects.map((p) => (
@@ -311,13 +323,15 @@ export default function Index() {
                             <div className="grid gap-2">
                                 <Label>Status</Label>
                                 <Select
-                                    value={createForm.data.status_id || statuses[0]?.id || ''}
+                                    value={createStatusId}
                                     onValueChange={(v) => {
                                         if (v) createForm.setData('status_id', v);
                                     }}
                                 >
                                     <SelectTrigger>
-                                        <SelectValue placeholder="Status" />
+                                        <SelectValue>
+                                            {statuses.find((s) => s.id === createStatusId)?.name ?? 'Status'}
+                                        </SelectValue>
                                     </SelectTrigger>
                                     <SelectContent>
                                         {statuses.map((s) => (

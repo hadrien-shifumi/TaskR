@@ -4,9 +4,9 @@ namespace App\Actions\System;
 
 use App\Responders\System\HomeResponder;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
 use Lorisleiva\Actions\Concerns\AsController;
 use Lorisleiva\Actions\Concerns\AsObject;
+use Symfony\Component\HttpFoundation\Response;
 
 class ShowHomeAction
 {

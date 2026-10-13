@@ -6,9 +6,9 @@ use App\Models\Workspace;
 use App\Responders\Statuses\StatusesPageResponder;
 use App\Support\WorkspaceContext;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
 use Lorisleiva\Actions\Concerns\AsController;
 use Lorisleiva\Actions\Concerns\AsObject;
+use Symfony\Component\HttpFoundation\Response;
 
 class ShowStatusesPage
 {

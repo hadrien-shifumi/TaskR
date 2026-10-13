@@ -4,9 +4,9 @@ namespace App\Actions\Auth;
 
 use App\Responders\Auth\RegisterPageResponder;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
 use Lorisleiva\Actions\Concerns\AsController;
 use Lorisleiva\Actions\Concerns\AsObject;
+use Symfony\Component\HttpFoundation\Response;
 
 class ShowRegistrationPage
 {
