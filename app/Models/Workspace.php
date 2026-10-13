@@ -33,6 +33,14 @@ class Workspace extends BaseModel
     }
 
     /**
+     * @return HasMany<Status, $this>
+     */
+    public function statuses(): HasMany
+    {
+        return $this->hasMany(Status::class)->orderBy('position');
+    }
+
+    /**
      * @return HasMany<Invitation, $this>
      */
     public function invitations(): HasMany

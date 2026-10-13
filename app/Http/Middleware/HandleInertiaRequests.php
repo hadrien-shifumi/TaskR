@@ -31,6 +31,9 @@ class HandleInertiaRequests
         $workspace = app(WorkspaceContext::class)->get();
 
         return [
+            'flash' => [
+                'status' => $request->session()->get('status'),
+            ],
             'auth' => [
                 'user' => $user ? [
                     'id' => $user->id,

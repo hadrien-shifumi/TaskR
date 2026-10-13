@@ -5,6 +5,11 @@ use App\Actions\Auth\LogoutUser;
 use App\Actions\Auth\RegisterUser;
 use App\Actions\Auth\ShowLoginPage;
 use App\Actions\Auth\ShowRegistrationPage;
+use App\Actions\Statuses\CreateStatus;
+use App\Actions\Statuses\DeleteStatus;
+use App\Actions\Statuses\ReorderStatuses;
+use App\Actions\Statuses\ShowStatusesPage;
+use App\Actions\Statuses\UpdateStatus;
 use App\Actions\System\ShowHomeAction;
 use App\Actions\Workspaces\AcceptInvitation;
 use App\Actions\Workspaces\InviteMember;
@@ -28,4 +33,10 @@ Route::middleware(['auth', 'workspace'])->group(function (): void {
     Route::post('/workspaces/{workspace}/invitations', InviteMember::class)->name('workspaces.invite');
 
     Route::get('/invitations/{invitation}/accept', AcceptInvitation::class)->name('invitations.accept');
+
+    Route::get('/settings/statuses', ShowStatusesPage::class)->name('settings.statuses');
+    Route::post('/statuses', CreateStatus::class)->name('statuses.store');
+    Route::post('/statuses/reorder', ReorderStatuses::class)->name('statuses.reorder');
+    Route::match(['put', 'patch'], '/statuses/{status}', UpdateStatus::class)->name('statuses.update');
+    Route::delete('/statuses/{status}', DeleteStatus::class)->name('statuses.destroy');
 });

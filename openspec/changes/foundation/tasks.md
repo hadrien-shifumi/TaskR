@@ -18,10 +18,10 @@
 
 ## 3. Statuts
 
-- [ ] 3.1 Migration `statuses` (workspace_id, name, category, position) + contrainte check sur category
-- [ ] 3.2 Actions CRUD statuts (owner only) : créer, renommer, réordonner, supprimer (refus si issues liées)
-- [ ] 3.3 Page de gestion des statuts dans les réglages du workspace
-- [ ] 3.4 Tests : catégories fixes exposées avec le statut, suppression protégée, permissions owner
+- [x] 3.1 Migration `statuses` (workspace_id, name, category, position) + contrainte check sur category
+- [x] 3.2 Actions CRUD statuts (owner only) : créer, renommer, réordonner, supprimer (refus si issues liées)
+- [x] 3.3 Page de gestion des statuts dans les réglages du workspace
+- [x] 3.4 Tests : catégories fixes exposées avec le statut, suppression protégée, permissions owner *(la suppression protégée par issues sera couverte en 5.6, quand la table issues existera)*
 
 ## 4. Projets
 
