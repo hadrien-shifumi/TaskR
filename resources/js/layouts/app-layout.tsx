@@ -35,7 +35,11 @@ export default function AppLayout({ title, children }: AppLayoutProps) {
                         >
                             Projects
                         </Button>
-                        <Button variant="ghost" size="sm" disabled>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => router.get(route('issues.index'))}
+                        >
                             Issues
                         </Button>
                         <Button

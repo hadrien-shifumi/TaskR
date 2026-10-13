@@ -3,11 +3,13 @@
 namespace App\Models;
 
 use App\Enums\WorkspaceRole;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\Pivot;
 
-class Membership extends Model
+class Membership extends Pivot
 {
+    protected $table = 'memberships';
+
     protected $fillable = ['user_id', 'workspace_id', 'role'];
 
     protected $casts = [

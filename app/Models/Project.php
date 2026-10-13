@@ -3,10 +3,10 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToWorkspace;
+use App\Models\Scopes\WorkspaceScope;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Project extends BaseModel
 {
@@ -17,6 +17,21 @@ class Project extends BaseModel
     protected $casts = [
         'archived_at' => 'datetime',
     ];
+
+    /**
+     * @return HasMany<Issue, $this>
+     */
+    public function issues(): HasMany
+    {
+        return $this->hasMany(Issue::class);
+    }
+
+    public function issuesCount(): int
+    {
+        return (int) $this->issues()
+            ->withoutGlobalScope(WorkspaceScope::class)
+            ->count();
+    }
 
     public function scopeActive(Builder $query): Builder
     {
@@ -31,18 +46,5 @@ class Project extends BaseModel
     public function isArchived(): bool
     {
         return $this->archived_at !== null;
-    }
-
-    /**
-     * Interim guard until the issues table lands (change task 5.1);
-     * will become a real relation count then.
-     */
-    public function issuesCount(): int
-    {
-        if (! Schema::hasTable('issues')) {
-            return 0;
-        }
-
-        return (int) DB::table('issues')->where('project_id', $this->id)->count();
     }
 }

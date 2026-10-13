@@ -4,9 +4,9 @@ namespace App\Models;
 
 use App\Enums\StatusCategory;
 use App\Models\Concerns\BelongsToWorkspace;
+use App\Models\Scopes\WorkspaceScope;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Status extends BaseModel
 {
@@ -19,15 +19,17 @@ class Status extends BaseModel
     ];
 
     /**
-     * Interim guard until the issues table lands (change task 5.1);
-     * will become a real relation count then.
+     * @return HasMany<Issue, $this>
      */
+    public function issues(): HasMany
+    {
+        return $this->hasMany(Issue::class);
+    }
+
     public function issuesCount(): int
     {
-        if (! Schema::hasTable('issues')) {
-            return 0;
-        }
-
-        return (int) DB::table('issues')->where('status_id', $this->id)->count();
+        return (int) $this->issues()
+            ->withoutGlobalScope(WorkspaceScope::class)
+            ->count();
     }
 }

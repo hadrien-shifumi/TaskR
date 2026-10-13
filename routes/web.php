@@ -5,6 +5,16 @@ use App\Actions\Auth\LogoutUser;
 use App\Actions\Auth\RegisterUser;
 use App\Actions\Auth\ShowLoginPage;
 use App\Actions\Auth\ShowRegistrationPage;
+use App\Actions\Issues\CreateIssue;
+use App\Actions\Issues\DeleteIssue;
+use App\Actions\Issues\MoveIssue;
+use App\Actions\Issues\SetAssignees;
+use App\Actions\Issues\SetIssueParent;
+use App\Actions\Issues\SetLabels;
+use App\Actions\Issues\ShowIssuePage;
+use App\Actions\Issues\ShowIssuesPage;
+use App\Actions\Issues\UpdateIssue;
+use App\Actions\Labels\CreateLabel;
 use App\Actions\Projects\ArchiveProject;
 use App\Actions\Projects\CreateProject;
 use App\Actions\Projects\DeleteProject;
@@ -50,4 +60,16 @@ Route::middleware(['auth', 'workspace'])->group(function (): void {
     Route::match(['put', 'patch'], '/projects/{project}', UpdateProject::class)->name('projects.update');
     Route::post('/projects/{project}/archive', ArchiveProject::class)->name('projects.archive');
     Route::delete('/projects/{project}', DeleteProject::class)->name('projects.destroy');
+
+    Route::get('/issues', ShowIssuesPage::class)->name('issues.index');
+    Route::post('/issues', CreateIssue::class)->name('issues.store');
+    Route::get('/issues/{issue}', ShowIssuePage::class)->name('issues.show');
+    Route::match(['put', 'patch'], '/issues/{issue}', UpdateIssue::class)->name('issues.update');
+    Route::delete('/issues/{issue}', DeleteIssue::class)->name('issues.destroy');
+    Route::post('/issues/{issue}/move', MoveIssue::class)->name('issues.move');
+    Route::post('/issues/{issue}/parent', SetIssueParent::class)->name('issues.parent');
+    Route::post('/issues/{issue}/assignees', SetAssignees::class)->name('issues.assignees');
+    Route::post('/issues/{issue}/labels', SetLabels::class)->name('issues.labels');
+
+    Route::post('/labels', CreateLabel::class)->name('labels.store');
 });
