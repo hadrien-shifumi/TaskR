@@ -9,12 +9,12 @@
 
 ## 2. Workspaces et membres
 
-- [ ] 2.1 Migrations : `workspaces`, `memberships` (user_id, workspace_id, role owner/member)
-- [ ] 2.2 Modèles + global scope multi-tenant (trait `BelongsToWorkspace`) et policy d'appartenance
-- [ ] 2.3 Auth (register/login Laravel standard) + création du premier workspace à l'inscription, avec les 4 statuts par défaut (observer/action `CreateWorkspace`)
-- [ ] 2.4 Invitations par email (token signé) : action d'invitation (owner only), page d'acceptation, ajout du membre
-- [ ] 2.5 Sélecteur de workspace actif (session) ; middleware qui résout le workspace courant sur toutes les routes
-- [ ] 2.6 Tests : isolation inter-workspaces (accès direct par ID refusé), rôles (member ne peut pas inviter)
+- [x] 2.1 Migrations : `workspaces`, `memberships` (user_id, workspace_id, role owner/member)
+- [x] 2.2 Modèles + global scope multi-tenant (trait `BelongsToWorkspace`) et policy d'appartenance
+- [x] 2.3 Auth (register/login Laravel standard) + création du premier workspace à l'inscription, avec les 4 statuts par défaut (observer/action `CreateWorkspace`)
+- [x] 2.4 Invitations par email (token signé) : action d'invitation (owner only), page d'acceptation, ajout du membre
+- [x] 2.5 Sélecteur de workspace actif (session) ; middleware qui résout le workspace courant sur toutes les routes
+- [x] 2.6 Tests : isolation inter-workspaces (accès direct par ID refusé), rôles (member ne peut pas inviter)
 
 ## 3. Statuts
 

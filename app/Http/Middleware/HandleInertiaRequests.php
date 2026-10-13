@@ -2,42 +2,59 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\User;
+use App\Models\Workspace;
+use App\Support\WorkspaceContext;
+use Closure;
 use Illuminate\Http\Request;
-use Inertia\Middleware;
+use Inertia\Inertia;
+use Symfony\Component\HttpFoundation\Response;
 
-class HandleInertiaRequests extends Middleware
+class HandleInertiaRequests
 {
     /**
-     * The root template that's loaded on the first page visit.
-     *
-     * @see https://inertiajs.com/server-side-setup#root-template
-     *
-     * @var string
+     * @param  Closure(Request): Response  $next
      */
-    protected $rootView = 'app';
-
-    /**
-     * Determines the current asset version.
-     *
-     * @see https://inertiajs.com/asset-versioning
-     */
-    public function version(Request $request): ?string
+    public function __invoke(Request $request, Closure $next): Response
     {
-        return parent::version($request);
+        Inertia::share($this->share($request));
+
+        return $next($request);
     }
 
-    /**
-     * Define the props that are shared by default.
-     *
-     * @see https://inertiajs.com/shared-data
-     *
-     * @return array<string, mixed>
-     */
     public function share(Request $request): array
     {
+        /** @var User|null $user */
+        $user = $request->user();
+
+        /** @var Workspace|null $workspace */
+        $workspace = app(WorkspaceContext::class)->get();
+
         return [
-            ...parent::share($request),
-            //
+            'auth' => [
+                'user' => $user ? [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                ] : null,
+            ],
+            'workspace' => $workspace ? [
+                'id' => $workspace->id,
+                'name' => $workspace->name,
+                'role' => $workspace->roleOf($user)?->value,
+            ] : null,
+            'workspaces' => $user
+                ? $user->memberships()
+                    ->with('workspace')
+                    ->get()
+                    ->map(fn ($membership) => [
+                        'id' => $membership->workspace->id,
+                        'name' => $membership->workspace->name,
+                        'role' => $membership->role->value,
+                    ])
+                    ->values()
+                    ->all()
+                : [],
         ];
     }
 }

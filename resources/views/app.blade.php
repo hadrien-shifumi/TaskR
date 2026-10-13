@@ -7,6 +7,7 @@
         <title>{{ config('app.name', 'Taskr') }}</title>
         <link rel="preconnect" href="https://fonts.bunny.net">
         @vite(['resources/css/app.css', 'resources/js/app.tsx'])
+        @ziggy
     </head>
     <body>
         @inertia
