@@ -81,6 +81,14 @@ class Issue extends BaseModel
     }
 
     /**
+     * @return HasMany<Comment, $this>
+     */
+    public function comments(): HasMany
+    {
+        return $this->hasMany(Comment::class);
+    }
+
+    /**
      * Walk up the ancestor chain; used for cycle detection.
      *
      * @return array<string, string>

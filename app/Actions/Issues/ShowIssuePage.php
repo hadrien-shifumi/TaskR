@@ -22,6 +22,7 @@ class ShowIssuePage
     public function handle(Workspace $workspace, Issue $issue): array
     {
         $issue->load(['project', 'status', 'labels', 'assignees']);
+        $issue->loadCount('comments');
 
         $parent = $issue->parent()
             ->with('status')
@@ -29,6 +30,11 @@ class ShowIssuePage
 
         $children = $issue->children()
             ->with(['status', 'assignees'])
+            ->orderBy('created_at')
+            ->get();
+
+        $comments = $issue->comments()
+            ->with('author')
             ->orderBy('created_at')
             ->get();
 
@@ -56,6 +62,13 @@ class ShowIssuePage
                     'assignees' => $child->assignees->map(fn ($user) => ['id' => $user->id, 'name' => $user->name])->values()->all(),
                 ])->values()->all(),
             ],
+            'comments' => $comments->map(fn ($comment) => [
+                'id' => $comment->id,
+                'body' => $comment->body,
+                'authorId' => $comment->author_id,
+                'authorName' => $comment->author?->name ?? 'Unknown',
+                'createdAt' => $comment->created_at?->toISOString(),
+            ])->values()->all(),
             'statuses' => $workspace->statuses()->get(['id', 'name', 'category']),
             'members' => $workspace->members()->orderBy('name')->get(['users.id', 'users.name']),
             'labels' => $workspace->labels()->orderBy('name')->get(['id', 'name', 'color']),

@@ -5,6 +5,9 @@ use App\Actions\Auth\LogoutUser;
 use App\Actions\Auth\RegisterUser;
 use App\Actions\Auth\ShowLoginPage;
 use App\Actions\Auth\ShowRegistrationPage;
+use App\Actions\Comments\AddComment;
+use App\Actions\Comments\DeleteComment;
+use App\Actions\Comments\UpdateComment;
 use App\Actions\Issues\CreateIssue;
 use App\Actions\Issues\DeleteIssue;
 use App\Actions\Issues\MoveIssue;
@@ -70,6 +73,12 @@ Route::middleware(['auth', 'workspace'])->group(function (): void {
     Route::post('/issues/{issue}/parent', SetIssueParent::class)->name('issues.parent');
     Route::post('/issues/{issue}/assignees', SetAssignees::class)->name('issues.assignees');
     Route::post('/issues/{issue}/labels', SetLabels::class)->name('issues.labels');
+
+    Route::post('/issues/{issue}/comments', AddComment::class)->name('comments.store');
+    Route::match(['put', 'patch'], '/issues/{issue}/comments/{comment}', UpdateComment::class)
+        ->scopeBindings()->name('comments.update');
+    Route::delete('/issues/{issue}/comments/{comment}', DeleteComment::class)
+        ->scopeBindings()->name('comments.destroy');
 
     Route::post('/labels', CreateLabel::class)->name('labels.store');
 });

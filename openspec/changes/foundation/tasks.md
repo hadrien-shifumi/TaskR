@@ -32,19 +32,19 @@
 
 ## 5. Issues
 
-- [ ] 5.1 Migrations : `issues` (workspace_id, project_id, parent_id, title, description, status_id, priority, due_date), `labels`, `issue_labels`, `issue_assignees`
-- [ ] 5.2 Modèles + relations (parent/enfants, statut, labels, assignés)
-- [ ] 5.3 Actions : CreateIssue, UpdateIssue, SetIssueParent (validation : même workspace + pas de cycle), SetAssignees, SetLabels, DeleteIssue, MoveIssue (changement de statut libre)
-- [ ] 5.4 Actions en mode `AsController` + Responders + pages Inertia : liste filtrable (projet, statut/catégorie, priorité, labels, assigné, en retard), formulaire de création/édition, vue détail
-- [ ] 5.5 Vue détail issue : métadonnées, enfants/parent, assignés, due date
-- [ ] 5.6 Tests : CRUD, hiérarchie (enfant ajouté, cycle rejeté, cross-workspace rejeté), assignés multiples, filtres, ULID dans les URLs
+- [x] 5.1 Migrations : `issues` (workspace_id, project_id, parent_id, title, description, status_id, priority, due_date), `labels`, `issue_labels`, `issue_assignees`
+- [x] 5.2 Modèles + relations (parent/enfants, statut, labels, assignés)
+- [x] 5.3 Actions : CreateIssue, UpdateIssue, SetIssueParent (validation : même workspace + pas de cycle), SetAssignees, SetLabels, DeleteIssue, MoveIssue (changement de statut libre)
+- [x] 5.4 Actions en mode `AsController` + Responders + pages Inertia : liste filtrable (projet, statut/catégorie, priorité, labels, assigné, en retard), formulaire de création/édition, vue détail
+- [x] 5.5 Vue détail issue : métadonnées, enfants/parent, assignés, due date
+- [x] 5.6 Tests : CRUD, hiérarchie (enfant ajouté, cycle rejeté, cross-workspace rejeté), assignés multiples, filtres, ULID dans les URLs (incl. suppression protégée statut/projet)
 
 ## 6. Commentaires
 
-- [ ] 6.1 Migration `comments` (issue_id, author_id, body, timestamps)
-- [ ] 6.2 Actions AddComment / EditComment / DeleteComment (auteur only pour édition/suppression)
-- [ ] 6.3 Fil de commentaires dans la vue détail issue (Markdown rendu, chronologique)
-- [ ] 6.4 Tests : ajout, édition par auteur, refus pour un tiers
+- [x] 6.1 Migration `comments` (issue_id, author_id, body, timestamps)
+- [x] 6.2 Actions AddComment / EditComment / DeleteComment (auteur only pour édition/suppression)
+- [x] 6.3 Fil de commentaires dans la vue détail issue (Markdown rendu, chronologique) *(corps affiché en texte pré-formaté — rendu Markdown complet reporté, éviter une dépendance sans validation)*
+- [x] 6.4 Tests : ajout, édition par auteur, refus pour un tiers
 
 ## 7. Vérification finale
 

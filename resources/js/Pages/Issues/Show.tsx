@@ -49,6 +49,13 @@ type IssueDetail = {
 
 type PageProps = {
     issue: IssueDetail;
+    comments: {
+        id: string;
+        body: string;
+        authorId: number;
+        authorName: string;
+        createdAt: string | null;
+    }[];
     statuses: { id: string; name: string; category: string }[];
     members: UserRef[];
     labels: { id: string; name: string; color: string }[];
@@ -58,9 +65,14 @@ type PageProps = {
 const PRIORITIES = ['none', 'low', 'high', 'urgent'];
 
 export default function Show() {
-    const { issue, statuses, members, labels, candidates } = usePage<PageProps>().props;
+    const { issue, comments, statuses, members, labels, candidates } = usePage<PageProps>().props;
     const { flash } = usePage<{ flash?: { status?: string } }>().props;
+    const { auth } = usePage<{ auth: { user: { id: number; name: string; email: string } | null } }>().props;
     const [editing, setEditing] = useState(false);
+    const [editingComment, setEditingComment] = useState<string | null>(null);
+
+    const commentForm = useForm({ body: '' });
+    const commentEditForm = useForm({ body: '' });
 
     const editForm = useForm({
         title: issue.title,
@@ -105,6 +117,25 @@ export default function Show() {
     const remove = () => {
         if (!window.confirm(`Delete issue "${issue.title}"?`)) return;
         router.delete(route('issues.destroy', issue.id));
+    };
+
+    const submitComment = (e: React.FormEvent) => {
+        e.preventDefault();
+        commentForm.post(route('comments.store', issue.id), {
+            onSuccess: () => commentForm.reset(),
+        });
+    };
+
+    const submitCommentEdit = (e: React.FormEvent, commentId: string) => {
+        e.preventDefault();
+        commentEditForm.patch(route('comments.update', [issue.id, commentId]), {
+            onSuccess: () => setEditingComment(null),
+        });
+    };
+
+    const removeComment = (commentId: string) => {
+        if (!window.confirm('Delete this comment?')) return;
+        router.delete(route('comments.destroy', [issue.id, commentId]));
     };
 
     return (
@@ -155,6 +186,85 @@ export default function Show() {
                                 <li className="px-4 py-3 text-sm text-muted-foreground">No children.</li>
                             ) : null}
                         </ul>
+                    </div>
+
+                    <div>
+                        <h2 className="mb-2 text-lg font-semibold">Comments ({comments.length})</h2>
+                        <ul className="space-y-3">
+                            {comments.map((comment) => (
+                                <li key={comment.id} className="rounded-md border px-4 py-3">
+                                    <div className="mb-1 flex items-center gap-2 text-sm">
+                                        <span className="font-medium">{comment.authorName}</span>
+                                        <span className="text-muted-foreground">
+                                            {comment.createdAt
+                                                ? new Date(comment.createdAt).toLocaleString()
+                                                : ''}
+                                        </span>
+                                        {auth.user && auth.user.id === comment.authorId ? (
+                                            <span className="ml-auto flex gap-1">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => {
+                                                        setEditingComment(comment.id);
+                                                        commentEditForm.setData('body', comment.body);
+                                                    }}
+                                                >
+                                                    Edit
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => removeComment(comment.id)}
+                                                >
+                                                    Delete
+                                                </Button>
+                                            </span>
+                                        ) : null}
+                                    </div>
+                                    {editingComment === comment.id ? (
+                                        <form onSubmit={(e) => submitCommentEdit(e, comment.id)} className="grid gap-2">
+                                            <Textarea
+                                                value={commentEditForm.data.body}
+                                                onChange={(e) => commentEditForm.setData('body', e.target.value)}
+                                                required
+                                            />
+                                            <div className="flex gap-2">
+                                                <Button type="submit" size="sm" disabled={commentEditForm.processing}>
+                                                    Save
+                                                </Button>
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => setEditingComment(null)}
+                                                >
+                                                    Cancel
+                                                </Button>
+                                            </div>
+                                        </form>
+                                    ) : (
+                                        <p className="whitespace-pre-wrap text-sm text-muted-foreground">
+                                            {comment.body}
+                                        </p>
+                                    )}
+                                </li>
+                            ))}
+                        </ul>
+                        <form onSubmit={submitComment} className="mt-4 grid gap-2">
+                            <Textarea
+                                placeholder="Add a comment..."
+                                value={commentForm.data.body}
+                                onChange={(e) => commentForm.setData('body', e.target.value)}
+                                required
+                            />
+                            {commentForm.errors.body ? (
+                                <p className="text-sm text-destructive">{commentForm.errors.body}</p>
+                            ) : null}
+                            <Button type="submit" size="sm" disabled={commentForm.processing} className="justify-self-start">
+                                Comment
+                            </Button>
+                        </form>
                     </div>
                 </div>
 
