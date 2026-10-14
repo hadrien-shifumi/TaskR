@@ -37,6 +37,9 @@ class StatusUsageTest extends TestCase
                 ->where('statuses.0.issuesCount', 2)
                 ->where('statuses.1.issuesCount', 1)
                 ->where('statuses.2.issuesCount', 0)
-                ->where('statuses.3.issuesCount', 0));
+                ->where('statuses.3.issuesCount', 0)
+                ->has('statuses.0.issueIds', 2)
+                ->has('statuses.1.issueIds', 1)
+                ->has('statuses.2.issueIds', 0));
     }
 }

@@ -4,9 +4,9 @@ import { Link, usePage } from '@inertiajs/react';
 import type { PageSharedProps } from '@/types';
 
 const SECTIONS = [
-    { name: 'settings.statuses', label: 'Statuses' },
-    { name: 'settings.members', label: 'Members' },
-    { name: 'settings.templates', label: 'Templates' },
+    { path: '/settings/statuses', name: 'settings.statuses', label: 'Statuses' },
+    { path: '/settings/members', name: 'settings.members', label: 'Members' },
+    { path: '/settings/templates', name: 'settings.templates', label: 'Templates' },
 ];
 
 interface SettingsShellProps {
@@ -23,9 +23,9 @@ interface SettingsShellProps {
  * read-only indicator members see instead of owner-only controls.
  */
 export function SettingsShell({ title, description, actions, children }: SettingsShellProps) {
-    const { workspace } = usePage<PageSharedProps>().props;
+    const { props, url } = usePage<PageSharedProps>();
+    const { workspace } = props;
     const isOwner = workspace?.role === 'owner';
-    const current = route().current();
 
     return (
         <div className="space-y-5">
@@ -37,9 +37,9 @@ export function SettingsShell({ title, description, actions, children }: Setting
                     <Link
                         key={section.name}
                         href={route(section.name)}
-                        aria-current={current === section.name ? 'page' : undefined}
+                        aria-current={url.startsWith(section.path) ? 'page' : undefined}
                         className={`-mb-px border-b-2 px-3.5 py-2.5 text-sm font-medium transition-colors ${
-                            current === section.name
+                            url.startsWith(section.path)
                                 ? 'border-foreground text-foreground'
                                 : 'border-transparent text-muted-foreground hover:text-foreground'
                         }`}

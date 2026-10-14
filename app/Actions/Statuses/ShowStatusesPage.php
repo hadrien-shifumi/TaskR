@@ -23,6 +23,7 @@ class ShowStatusesPage
         return [
             'statuses' => $workspace->statuses()
                 ->withCount('issues')
+                ->with(['issues:id,status_id'])
                 ->get()
                 ->map(fn ($status) => [
                     'id' => $status->id,
@@ -30,6 +31,7 @@ class ShowStatusesPage
                     'category' => $status->category->value,
                     'position' => $status->position,
                     'issuesCount' => $status->issues_count,
+                    'issueIds' => $status->issues->map(fn ($issue) => $issue->id)->values()->all(),
                 ])
                 ->values()
                 ->all(),
