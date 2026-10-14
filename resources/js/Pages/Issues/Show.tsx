@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label as LabelField } from '@/components/ui/label';
+import { MarkdownView } from '@/components/ui/markdown-editor';
 import {
     Select,
     SelectContent,
@@ -160,7 +161,7 @@ export default function Show() {
                     <div>
                         <h2 className="mb-2 text-lg font-semibold">Description</h2>
                         {issue.description ? (
-                            <p className="whitespace-pre-wrap text-sm text-muted-foreground">{issue.description}</p>
+                            <MarkdownView value={issue.description} className="text-sm text-muted-foreground" />
                         ) : (
                             <p className="text-sm italic text-muted-foreground">No description.</p>
                         )}

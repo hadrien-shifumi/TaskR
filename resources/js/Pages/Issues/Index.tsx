@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { MarkdownEditor } from '@/components/ui/markdown-editor';
 import {
     Select,
     SelectContent,
@@ -26,7 +27,6 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import { Textarea } from '@/components/ui/textarea';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 
@@ -268,7 +268,7 @@ export default function Index() {
             </Table>
 
             <Dialog open={creating} onOpenChange={setCreating}>
-                <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+                <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
                     <DialogHeader>
                         <DialogTitle>New issue</DialogTitle>
                         <DialogDescription>Title is the only required field.</DialogDescription>
@@ -287,11 +287,10 @@ export default function Index() {
                             ) : null}
                         </div>
                         <div className="grid gap-2">
-                            <Label htmlFor="issue-description">Description</Label>
-                            <Textarea
-                                id="issue-description"
+                            <Label>Description</Label>
+                            <MarkdownEditor
                                 value={createForm.data.description}
-                                onChange={(e) => createForm.setData('description', e.target.value)}
+                                onChange={(markdown) => createForm.setData('description', markdown)}
                             />
                         </div>
                         <div className="grid grid-cols-2 gap-4">
