@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
     DropdownMenuContent,
+    DropdownMenuGroup,
     DropdownMenuItem,
     DropdownMenuLabel,
     DropdownMenuSeparator,
@@ -21,9 +22,7 @@ interface BoardIssue {
     dueDate: string | null;
     overdue: boolean;
     assignees: { id: number; name: string }[];
-}
-
-interface BoardColumn {
+}interface BoardColumn {
     id: string;
     name: string;
     category: string;
@@ -43,6 +42,7 @@ function formatDue(date: string | null): string {
 
 export default function Board() {
     const { project, columns } = usePage<PageProps>().props;
+    const { flash } = usePage<{ flash?: { status?: string } }>().props;
     const [draggingId, setDraggingId] = useState<string | null>(null);
     const [overColumn, setOverColumn] = useState<string | null>(null);
     const [moveError, setMoveError] = useState<string | null>(null);
@@ -101,6 +101,10 @@ export default function Board() {
                     New issue
                 </Button>
             </div>
+
+            {flash?.status ? (
+                <p className="mb-4 rounded-lg border bg-muted/50 px-4 py-2.5 text-sm">{flash.status}</p>
+            ) : null}
 
             {moveError ? (
                 <p
@@ -165,36 +169,35 @@ export default function Board() {
                                     >
                                         {issue.title}
                                     </Link>
-                                    <div className="flex min-h-5.5 flex-wrap items-center gap-2">
+                                    <div
+                                        className="flex min-h-5.5 flex-wrap items-center gap-2"
+                                        onDragStart={(e) => e.stopPropagation()}
+                                    >
                                         <PriorityBadge priority={issue.priority} />
                                         <div className="ml-auto" />
                                         <DropdownMenu>
                                             <DropdownMenuTrigger
-                                                render={
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        aria-label={`Move "${issue.title}" to another status`}
-                                                        className="h-6 gap-1 px-1.5 text-[11px]"
-                                                    >
-                                                        <MoveRight className="size-3" />
-                                                        Move to
-                                                    </Button>
-                                                }
-                                            />
+                                                aria-label={`Move "${issue.title}" to another status`}
+                                                className="inline-flex h-6 cursor-pointer items-center gap-1 rounded-md px-1.5 font-mono text-[11px] text-muted-foreground outline-none hover:bg-accent hover:text-foreground"
+                                            >
+                                                <MoveRight className="size-3" />
+                                                Move to
+                                            </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
-                                                <DropdownMenuLabel>Move to</DropdownMenuLabel>
-                                                <DropdownMenuSeparator />
-                                                {columns
-                                                    .filter((candidate) => candidate.id !== column.id)
-                                                    .map((candidate) => (
-                                                        <DropdownMenuItem
-                                                            key={candidate.id}
-                                                            onClick={() => move(issue.id, candidate.id)}
-                                                        >
-                                                            {candidate.name}
-                                                        </DropdownMenuItem>
-                                                    ))}
+                                                <DropdownMenuGroup>
+                                                    <DropdownMenuLabel>Move to</DropdownMenuLabel>
+                                                    <DropdownMenuSeparator />
+                                                    {columns
+                                                        .filter((candidate) => candidate.id !== column.id)
+                                                        .map((candidate) => (
+                                                            <DropdownMenuItem
+                                                                key={candidate.id}
+                                                                onClick={() => move(issue.id, candidate.id)}
+                                                            >
+                                                                {candidate.name}
+                                                            </DropdownMenuItem>
+                                                        ))}
+                                                </DropdownMenuGroup>
                                             </DropdownMenuContent>
                                         </DropdownMenu>
                                         {issue.dueDate ? (

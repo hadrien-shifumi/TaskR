@@ -365,10 +365,12 @@ export default function Index() {
                                 id="issue-title"
                                 value={createForm.data.title}
                                 onChange={(e) => createForm.setData('title', e.target.value)}
-                                required
+                                aria-required="true"
                             />
                             {createForm.errors.title ? (
-                                <p className="text-sm text-destructive">{createForm.errors.title}</p>
+                                <p data-test="title-error" className="text-sm text-destructive">
+                                    {createForm.errors.title}
+                                </p>
                             ) : null}
                         </div>
                         <div className="grid gap-2">

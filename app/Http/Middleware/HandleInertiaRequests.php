@@ -31,6 +31,9 @@ class HandleInertiaRequests
         $workspace = app(WorkspaceContext::class)->get();
 
         return [
+            'errors' => fn () => $request->session()->get('errors')
+                ? $request->session()->get('errors')->getBag('default')->getMessages()
+                : (object) [],
             'flash' => [
                 'status' => $request->session()->get('status'),
             ],

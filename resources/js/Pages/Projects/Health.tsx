@@ -54,7 +54,7 @@ export default function Health() {
     ];
 
     return (
-        <AppLayout title={project.name}>
+        <AppLayout title={`Health — ${project.name}`}>
             <Head title={`Health — ${project.name}`} />
 
             <div className="mb-4 flex flex-wrap items-center gap-3">
@@ -91,15 +91,15 @@ export default function Health() {
                 <HealthBadge status={health.status} />
             </div>
 
-            <Card className="gap-4 py-5">
-                <CardHeader className="px-5">
-                    <CardDescription>Issues by status category</CardDescription>
-                </CardHeader>
-                <CardContent className="grid gap-4 px-5">
-                    {meters.map((meter) => (
-                        <div key={meter.key} className="flex items-center gap-2.5 font-mono text-xs text-muted-foreground tabular-nums">
-                            <span className="w-24 shrink-0">{meter.label}</span>
-                            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-secondary">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                {meters.map((meter) => (
+                    <Card key={meter.key} className="gap-2 py-5">
+                        <CardHeader className="px-5">
+                            <CardDescription>{meter.label}</CardDescription>
+                            <CardTitle className="font-mono text-2xl tabular-nums">{meter.value}</CardTitle>
+                        </CardHeader>
+                        <CardContent className="px-5">
+                            <div className="h-1.5 overflow-hidden rounded-full bg-secondary">
                                 <div
                                     className={`h-full rounded-full ${meter.fill}`}
                                     style={{
@@ -111,11 +111,10 @@ export default function Health() {
                                     }}
                                 />
                             </div>
-                            <span className="w-6 text-right">{meter.value}</span>
-                        </div>
-                    ))}
-                </CardContent>
-            </Card>
+                        </CardContent>
+                    </Card>
+                ))}
+            </div>
 
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
                 <Card className="gap-2 py-5">
