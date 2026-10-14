@@ -32,6 +32,13 @@ export default function AppLayout({ title, children }: AppLayoutProps) {
                         <Button
                             variant="ghost"
                             size="sm"
+                            onClick={() => router.get(route('home'))}
+                        >
+                            Home
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={() => router.get(route('projects.index'))}
                         >
                             Projects
@@ -48,21 +55,7 @@ export default function AppLayout({ title, children }: AppLayoutProps) {
                             size="sm"
                             onClick={() => router.get(route('settings.statuses'))}
                         >
-                            Statuses
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => router.get(route('settings.templates'))}
-                        >
-                            Templates
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => router.get(route('settings.tokens'))}
-                        >
-                            API tokens
+                            Settings
                         </Button>
                     </nav>
                     <div className="ml-auto flex items-center gap-2">

@@ -1,4 +1,5 @@
 import AppLayout from '@/layouts/app-layout';
+import { SettingsShell } from '@/components/settings-shell';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -125,23 +126,21 @@ export default function Templates() {
     };
 
     return (
-        <AppLayout title="Templates">
-            <Head title="Templates" />
+        <AppLayout title="Settings">
+            <SettingsShell
+                title="Issue templates"
+                description="Unique name per workspace · Markdown body · default priority and labels. Owner-only."
+                actions={
+                    <Button size="sm" onClick={() => setCreating(true)}>
+                        New template
+                    </Button>
+                }
+            >
+                <Head title="Templates" />
 
             {flash?.status ? (
                 <p className="mb-4 rounded-md border bg-muted/50 px-4 py-2 text-sm">{flash.status}</p>
             ) : null}
-
-            <div className="mb-4 flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">
-                    Non-blocking templates pre-fill new issues (description, priority, labels).
-                </p>
-                {isOwner ? (
-                    <Button size="sm" onClick={() => setCreating(true)}>
-                        New template
-                    </Button>
-                ) : null}
-            </div>
 
             <Table>
                 <TableHeader>
@@ -344,6 +343,7 @@ export default function Templates() {
                     </form>
                 </DialogContent>
             </Dialog>
+            </SettingsShell>
         </AppLayout>
     );
 }

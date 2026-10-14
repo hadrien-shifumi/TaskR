@@ -1,4 +1,5 @@
 import AppLayout from '@/layouts/app-layout';
+import { SettingsShell } from '@/components/settings-shell';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -45,18 +46,17 @@ export default function Tokens() {
     };
 
     return (
-        <AppLayout title="API tokens">
-            <Head title="API tokens" />
+        <AppLayout title="Settings">
+            <SettingsShell
+                title="API tokens"
+                description="Personal access tokens let AI agents use Taskr through the MCP server at /mcp."
+                memberReadOnly={false}
+            >
+                <Head title="API tokens" />
 
             {flash?.status ? (
                 <p className="mb-4 rounded-md border bg-muted/50 px-4 py-2 text-sm">{flash.status}</p>
             ) : null}
-
-            <div className="mb-4 flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">
-                    Personal access tokens let AI agents use Taskr through the MCP server at <code>/mcp</code>.
-                </p>
-            </div>
 
             <form onSubmit={submitCreate} className="mb-6 flex items-end gap-2">
                 <div className="grid gap-2">
@@ -123,6 +123,7 @@ export default function Tokens() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+            </SettingsShell>
         </AppLayout>
     );
 }

@@ -21,6 +21,17 @@ class IssueRedirectResponder
             ->with('status', 'Issue updated.');
     }
 
+    /**
+     * Moves come from either the issue page or the kanban board: stay in the
+     * caller's context so the calling screen reflects the new status.
+     */
+    public function moved(Issue $issue): RedirectResponse
+    {
+        return redirect()
+            ->back()
+            ->with('status', 'Issue moved.');
+    }
+
     public function deleted(): RedirectResponse
     {
         return redirect()

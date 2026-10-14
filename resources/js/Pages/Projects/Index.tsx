@@ -1,5 +1,5 @@
 import AppLayout from '@/layouts/app-layout';
-import { Badge } from '@/components/ui/badge';
+import { HealthBadge } from '@/components/issue-badges';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -13,15 +13,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Head, router, useForm, usePage } from '@inertiajs/react';
+import { Archive, TriangleAlert } from 'lucide-react';
 import { useState } from 'react';
 
 interface HealthData {
-    issuesByCategory: {
-        backlog: number;
-        in_progress: number;
-        done: number;
-        cancelled: number;
-    };
+    issuesByCategory: { backlog: number; in_progress: number; done: number; cancelled: number };
     totalIssues: number;
     completionPercentage: number | null;
     overdueIssues: number;
@@ -49,19 +45,6 @@ type PageProps = {
     };
 };
 
-function statusBadgeVariant(status: string | null): 'default' | 'secondary' | 'destructive' | 'outline' {
-    if (status === 'late') return 'destructive';
-    if (status === 'at-risk') return 'secondary';
-    return 'default';
-}
-
-function statusLabel(status: string | null): string {
-    if (status === 'ok') return 'On track';
-    if (status === 'at-risk') return 'At risk';
-    if (status === 'late') return 'Late';
-    return '';
-}
-
 function formatDate(date: string | null): string {
     if (!date) return '—';
     return new Date(date).toLocaleDateString(undefined, {
@@ -76,6 +59,8 @@ export default function Index() {
     const { flash } = usePage<{ flash?: { status?: string } }>().props;
     const [creating, setCreating] = useState(false);
     const [editing, setEditing] = useState<ProjectRow | null>(null);
+    const [deleting, setDeleting] = useState<ProjectRow | null>(null);
+    const [deleteRefusal, setDeleteRefusal] = useState<string | null>(null);
 
     const createForm = useForm({ name: '', description: '', target_date: '' });
     const editForm = useForm({ name: '', description: '', target_date: '' });
@@ -102,9 +87,24 @@ export default function Index() {
         router.post(route('projects.archive', project.id));
     };
 
-    const remove = (project: ProjectRow) => {
-        if (!window.confirm(`Delete project "${project.name}"?`)) return;
-        router.delete(route('projects.destroy', project.id));
+    /**
+     * Deletion is attempted as-is; the action refuses projects containing
+     * issues and the refusal surfaces here with the archive path offered.
+     */
+    const confirmDelete = () => {
+        if (!deleting) return;
+        router.delete(route('projects.destroy', deleting.id), {
+            onHttpException: () => {
+                setDeleteRefusal(
+                    `Deletion refused — "${deleting.name}" contains issues. Archive it instead: the project stays consultable.`,
+                );
+                return false;
+            },
+            onSuccess: () => {
+                setDeleting(null);
+                setDeleteRefusal(null);
+            },
+        });
     };
 
     return (
@@ -112,7 +112,7 @@ export default function Index() {
             <Head title="Projects" />
 
             {flash?.status ? (
-                <p className="mb-4 rounded-md border bg-muted/50 px-4 py-2 text-sm">{flash.status}</p>
+                <p className="mb-4 rounded-lg border bg-muted/50 px-4 py-2.5 text-sm">{flash.status}</p>
             ) : null}
 
             <div className="mb-4 flex items-center justify-between">
@@ -124,27 +124,31 @@ export default function Index() {
                 </Button>
             </div>
 
-            <ul className="divide-y rounded-md border">
+            <ul className="divide-y overflow-hidden rounded-xl border bg-card">
                 {projects.active.map((project) => (
                     <li key={project.id} className="flex items-center gap-4 px-4 py-3">
                         <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2">
+                            <div className="flex flex-wrap items-center gap-2">
                                 <p className="font-medium">{project.name}</p>
-                                {project.health?.status ? (
-                                    <Badge variant={statusBadgeVariant(project.health.status)}>
-                                        {statusLabel(project.health.status)}
-                                    </Badge>
+                                {project.health ? <HealthBadge status={project.health.status} /> : null}
+                                {project.health && project.health.overdueIssues > 0 ? (
+                                    <span className="font-mono text-xs text-destructive tabular-nums">
+                                        {project.health.overdueIssues} overdue
+                                    </span>
                                 ) : null}
                             </div>
                             {project.description ? (
                                 <p className="truncate text-sm text-muted-foreground">{project.description}</p>
                             ) : null}
-                            <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
-                                {project.targetDate ? (
-                                    <span>Target: {formatDate(project.targetDate)}</span>
-                                ) : null}
+                            <div className="mt-1.5 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                                <span className="font-mono tabular-nums">
+                                    {project.health?.totalIssues ?? 0} issues
+                                </span>
+                                {project.targetDate ? <span>target: {formatDate(project.targetDate)}</span> : null}
                                 {project.health && project.health.completionPercentage !== null ? (
-                                    <span>{project.health.completionPercentage}% complete</span>
+                                    <span className="font-mono tabular-nums">
+                                        {project.health.completionPercentage}% complete
+                                    </span>
                                 ) : null}
                             </div>
                         </div>
@@ -155,6 +159,13 @@ export default function Index() {
                                 onClick={() => router.get(route('projects.health', project.id))}
                             >
                                 Health
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => router.get(route('projects.board', project.id))}
+                            >
+                                Board
                             </Button>
                             <Button
                                 variant="ghost"
@@ -185,22 +196,37 @@ export default function Index() {
 
             {projects.archived.length > 0 ? (
                 <div className="mt-8">
-                    <h2 className="mb-2 text-sm font-semibold text-muted-foreground">Archived</h2>
-                    <ul className="divide-y rounded-md border">
+                    <h2 className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-muted-foreground">
+                        <Archive className="size-3.5" />
+                        Archived
+                    </h2>
+                    <ul className="divide-y overflow-hidden rounded-xl border bg-card">
                         {projects.archived.map((project) => (
                             <li key={project.id} className="flex items-center gap-4 px-4 py-3">
                                 <div className="min-w-0 flex-1">
                                     <p className="font-medium text-muted-foreground">{project.name}</p>
                                 </div>
-                                <Badge variant="outline">Archived</Badge>
-                                <div className="flex shrink-0 gap-1">
-                                    <Button variant="ghost" size="sm" onClick={() => toggleArchive(project)}>
-                                        Restore
-                                    </Button>
-                                    <Button variant="ghost" size="sm" onClick={() => remove(project)}>
-                                        Delete
-                                    </Button>
-                                </div>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => router.get(route('projects.board', project.id))}
+                                >
+                                    Board
+                                </Button>
+                                <Button variant="ghost" size="sm" onClick={() => toggleArchive(project)}>
+                                    Restore
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-destructive"
+                                    onClick={() => {
+                                        setDeleting(project);
+                                        setDeleteRefusal(null);
+                                    }}
+                                >
+                                    Delete
+                                </Button>
                             </li>
                         ))}
                     </ul>
@@ -306,6 +332,62 @@ export default function Index() {
                         </DialogFooter>
                     </form>
                 </DialogContent>
+            </Dialog>
+
+            <Dialog
+                open={deleting !== null}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setDeleting(null);
+                        setDeleteRefusal(null);
+                    }
+                }}
+            >
+                {deleting ? (
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Delete "{deleting.name}"?</DialogTitle>
+                            <DialogDescription>
+                                {deleting.health?.totalIssues
+                                    ? 'This project contains issues.'
+                                    : 'This cannot be undone.'}
+                            </DialogDescription>
+                        </DialogHeader>
+                        {deleteRefusal ? (
+                            <div className="grid gap-3">
+                                <p className="flex items-start gap-2.5 rounded-lg border border-destructive/35 bg-destructive/10 px-3.5 py-3 text-sm text-destructive">
+                                    <TriangleAlert className="mt-0.5 size-4 shrink-0" />
+                                    <span>{deleteRefusal}</span>
+                                </p>
+                                <Button
+                                    data-test="archive-instead"
+                                    variant="outline"
+                                    className="justify-start"
+                                    onClick={() => {
+                                        toggleArchive(deleting);
+                                        setDeleting(null);
+                                        setDeleteRefusal(null);
+                                    }}
+                                >
+                                    <Archive className="size-4" />
+                                    Archive "{deleting.name}" instead
+                                </Button>
+                            </div>
+                        ) : null}
+                        <DialogFooter>
+                            <Button variant="ghost" onClick={() => setDeleting(null)}>
+                                Cancel
+                            </Button>
+                            <Button
+                                variant="destructive"
+                                data-test="confirm-delete-project"
+                                onClick={() => confirmDelete()}
+                            >
+                                Delete
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                ) : null}
             </Dialog>
         </AppLayout>
     );

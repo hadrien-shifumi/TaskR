@@ -1,4 +1,5 @@
 import AppLayout from '@/layouts/app-layout';
+import { Avatar, PriorityBadge, StatusBadge } from '@/components/issue-badges';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -274,22 +275,41 @@ export default function Index() {
                             </TableCell>
                             <TableCell className="text-muted-foreground">{issue.project.name}</TableCell>
                             <TableCell>
-                                <Badge variant="outline">{issue.status.name}</Badge>
+                                <StatusBadge name={issue.status.name} category={issue.status.category} />
                             </TableCell>
-                            <TableCell className="text-muted-foreground">{issue.priority}</TableCell>
-                            <TableCell className="text-muted-foreground">
-                                {issue.assignees.map((a) => a.name).join(', ') || '—'}
+                            <TableCell>
+                                <PriorityBadge priority={issue.priority} />
+                            </TableCell>
+                            <TableCell>
+                                {issue.assignees.length > 0 ? (
+                                    <span className="flex">
+                                        {issue.assignees.map((assignee, index) => (
+                                            <span key={assignee.id} className={index > 0 ? '-ml-1.75' : ''}>
+                                                <Avatar name={assignee.name} />
+                                            </span>
+                                        ))}
+                                    </span>
+                                ) : (
+                                    <span className="text-muted-foreground">—</span>
+                                )}
                             </TableCell>
                             <TableCell>
                                 <div className="flex gap-1">
                                     {issue.labels.map((l) => (
-                                        <Badge key={l.id} variant="secondary">
+                                        <Badge key={l.id} variant="outline" className="rounded-full text-muted-foreground">
                                             {l.name}
                                         </Badge>
                                     ))}
+                                    {issue.labels.length === 0 ? (
+                                        <span className="text-muted-foreground">—</span>
+                                    ) : null}
                                 </div>
                             </TableCell>
-                            <TableCell className={issue.overdue ? 'font-medium text-destructive' : 'text-muted-foreground'}>
+                            <TableCell
+                                className={`font-mono text-xs tabular-nums ${
+                                    issue.overdue ? 'font-medium text-destructive' : 'text-muted-foreground'
+                                }`}
+                            >
                                 {issue.dueDate ? new Date(issue.dueDate).toLocaleDateString() : '—'}
                                 {issue.overdue ? ' (overdue)' : ''}
                             </TableCell>
@@ -345,10 +365,12 @@ export default function Index() {
                                 id="issue-title"
                                 value={createForm.data.title}
                                 onChange={(e) => createForm.setData('title', e.target.value)}
-                                required
+                                aria-required="true"
                             />
                             {createForm.errors.title ? (
-                                <p className="text-sm text-destructive">{createForm.errors.title}</p>
+                                <p data-test="title-error" className="text-sm text-destructive">
+                                    {createForm.errors.title}
+                                </p>
                             ) : null}
                         </div>
                         <div className="grid gap-2">
