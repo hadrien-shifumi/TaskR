@@ -25,11 +25,13 @@ class Issue extends BaseModel
         'status_id',
         'priority',
         'due_date',
+        'estimated_hours',
     ];
 
     protected $casts = [
         'priority' => Priority::class,
         'due_date' => 'date',
+        'estimated_hours' => 'decimal:2',
     ];
 
     /**
@@ -86,6 +88,39 @@ class Issue extends BaseModel
     public function comments(): HasMany
     {
         return $this->hasMany(Comment::class);
+    }
+
+    /**
+     * @return HasMany<TimeEntry, $this>
+     */
+    public function timeEntries(): HasMany
+    {
+        return $this->hasMany(TimeEntry::class);
+    }
+
+    /**
+     * Total hours logged across all time entries for this issue.
+     */
+    public function getLoggedHoursAttribute(): float
+    {
+        if ($this->relationLoaded('timeEntries')) {
+            return (float) $this->timeEntries->sum('hours');
+        }
+
+        return (float) $this->timeEntries()->sum('hours');
+    }
+
+    /**
+     * Remaining hours: estimate minus logged. Null when no estimate is set.
+     * May be negative (overconsumption).
+     */
+    public function getRemainingHoursAttribute(): ?float
+    {
+        if ($this->estimated_hours === null) {
+            return null;
+        }
+
+        return (float) $this->estimated_hours - $this->logged_hours;
     }
 
     /**

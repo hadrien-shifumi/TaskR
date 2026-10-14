@@ -21,7 +21,7 @@ class ShowIssuePage
      */
     public function handle(Workspace $workspace, Issue $issue): array
     {
-        $issue->load(['project', 'status', 'labels', 'assignees']);
+        $issue->load(['project', 'status', 'labels', 'assignees', 'timeEntries.author']);
         $issue->loadCount('comments');
 
         $parent = $issue->parent()
@@ -38,6 +38,11 @@ class ShowIssuePage
             ->orderBy('created_at')
             ->get();
 
+        $timeEntries = $issue->timeEntries
+            ->sortByDesc('worked_at')
+            ->sortByDesc('created_at')
+            ->values();
+
         return [
             'issue' => [
                 'id' => $issue->id,
@@ -48,6 +53,9 @@ class ShowIssuePage
                 'priority' => $issue->priority->value,
                 'dueDate' => $issue->due_date?->toISOString(),
                 'overdue' => $issue->isOverdue(),
+                'estimatedHours' => $issue->estimated_hours !== null ? (float) $issue->estimated_hours : null,
+                'loggedHours' => $issue->logged_hours,
+                'remainingHours' => $issue->remaining_hours,
                 'assignees' => $issue->assignees->map(fn ($user) => ['id' => $user->id, 'name' => $user->name])->values()->all(),
                 'labels' => $issue->labels->map(fn ($label) => ['id' => $label->id, 'name' => $label->name, 'color' => $label->color])->values()->all(),
                 'parent' => $parent ? [
@@ -68,6 +76,14 @@ class ShowIssuePage
                 'authorId' => $comment->author_id,
                 'authorName' => $comment->author?->name ?? 'Unknown',
                 'createdAt' => $comment->created_at?->toISOString(),
+            ])->values()->all(),
+            'timeEntries' => $timeEntries->map(fn ($entry) => [
+                'id' => $entry->id,
+                'authorId' => $entry->author_id,
+                'authorName' => $entry->author?->name ?? 'Unknown',
+                'workedAt' => $entry->worked_at?->toISOString(),
+                'hours' => (float) $entry->hours,
+                'note' => $entry->note,
             ])->values()->all(),
             'statuses' => $workspace->statuses()->get(['id', 'name', 'category']),
             'members' => $workspace->members()->orderBy('name')->get(['users.id', 'users.name']),

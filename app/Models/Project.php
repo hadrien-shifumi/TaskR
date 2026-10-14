@@ -12,10 +12,11 @@ class Project extends BaseModel
 {
     use BelongsToWorkspace, HasFactory;
 
-    protected $fillable = ['workspace_id', 'name', 'description', 'archived_at'];
+    protected $fillable = ['workspace_id', 'name', 'description', 'target_date', 'archived_at'];
 
     protected $casts = [
         'archived_at' => 'datetime',
+        'target_date' => 'date',
     ];
 
     /**

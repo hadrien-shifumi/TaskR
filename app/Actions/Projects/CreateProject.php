@@ -31,17 +31,19 @@ class CreateProject
                 Rule::unique('projects', 'name')->where('workspace_id', $this->currentWorkspace()?->id),
             ],
             'description' => ['nullable', 'string', 'max:5000'],
+            'target_date' => ['nullable', 'date'],
         ];
     }
 
     /**
-     * @param  array{name: string, description?: string|null}  $data
+     * @param  array{name: string, description?: string|null, target_date?: string|null}  $data
      */
     public function handle(Workspace $workspace, array $data): Project
     {
         return Project::create([
             'name' => $data['name'],
             'description' => $data['description'] ?? null,
+            'target_date' => $data['target_date'] ?? null,
         ]);
     }
 

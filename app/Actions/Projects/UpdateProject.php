@@ -37,17 +37,19 @@ class UpdateProject
         return [
             'name' => ['required', 'string', 'max:255', $unique],
             'description' => ['nullable', 'string', 'max:5000'],
+            'target_date' => ['nullable', 'date'],
         ];
     }
 
     /**
-     * @param  array{name: string, description?: string|null}  $data
+     * @param  array{name: string, description?: string|null, target_date?: string|null}  $data
      */
     public function handle(Project $project, array $data): Project
     {
         $project->update([
             'name' => $data['name'],
             'description' => $data['description'] ?? null,
+            'target_date' => $data['target_date'] ?? null,
         ]);
 
         return $project->refresh();

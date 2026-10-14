@@ -2,8 +2,10 @@
 
 namespace App\Actions\Projects;
 
+use App\Models\Project;
 use App\Models\Workspace;
 use App\Responders\Projects\ProjectsPageResponder;
+use App\Support\ProjectHealth;
 use App\Support\WorkspaceContext;
 use Illuminate\Http\Request;
 use Lorisleiva\Actions\Concerns\AsController;
@@ -15,8 +17,10 @@ class ShowProjectsPage
     use AsController;
     use AsObject;
 
+    public function __construct(private GetProjectHealth $getProjectHealth) {}
+
     /**
-     * @return array{projects: array<array-key, array<string, mixed>>}
+     * @return array{projects: array{active: array<array-key, array<string, mixed>>, archived: array<array-key, array<string, mixed>>}}
      */
     public function handle(Workspace $workspace): array
     {
@@ -24,10 +28,16 @@ class ShowProjectsPage
             ->orderBy('name')
             ->get();
 
+        $healthByProject = $this->getProjectHealth->handleForProjects($projects->all());
+
         return [
             'projects' => [
-                'active' => $projects->reject->isArchived()->map(fn ($project) => $this->present($project))->values()->all(),
-                'archived' => $projects->filter->isArchived()->map(fn ($project) => $this->present($project))->values()->all(),
+                'active' => $projects->reject->isArchived()
+                    ->map(fn (Project $project) => $this->present($project, $healthByProject[$project->id] ?? null))
+                    ->values()->all(),
+                'archived' => $projects->filter->isArchived()
+                    ->map(fn (Project $project) => $this->present($project, $healthByProject[$project->id] ?? null))
+                    ->values()->all(),
             ],
         ];
     }
@@ -42,13 +52,15 @@ class ShowProjectsPage
     /**
      * @return array<string, mixed>
      */
-    private function present($project): array
+    private function present(Project $project, ?ProjectHealth $health): array
     {
         return [
             'id' => $project->id,
             'name' => $project->name,
             'description' => $project->description,
+            'targetDate' => $project->target_date?->toDateString(),
             'archivedAt' => $project->archived_at?->toISOString(),
+            'health' => $health?->toArray(),
         ];
     }
 }

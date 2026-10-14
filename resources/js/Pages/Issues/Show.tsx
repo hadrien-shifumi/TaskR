@@ -37,6 +37,9 @@ type IssueDetail = {
     priority: string;
     dueDate: string | null;
     overdue: boolean;
+    estimatedHours: number | null;
+    loggedHours: number;
+    remainingHours: number | null;
     assignees: UserRef[];
     labels: { id: string; name: string; color: string }[];
     parent: { id: string; title: string; statusName: string | null } | null;
@@ -48,6 +51,15 @@ type IssueDetail = {
     }[];
 };
 
+type TimeEntry = {
+    id: string;
+    authorId: number;
+    authorName: string;
+    workedAt: string | null;
+    hours: number;
+    note: string | null;
+};
+
 type PageProps = {
     issue: IssueDetail;
     comments: {
@@ -57,6 +69,7 @@ type PageProps = {
         authorName: string;
         createdAt: string | null;
     }[];
+    timeEntries: TimeEntry[];
     statuses: { id: string; name: string; category: string }[];
     members: UserRef[];
     labels: { id: string; name: string; color: string }[];
@@ -66,14 +79,32 @@ type PageProps = {
 const PRIORITIES = ['none', 'low', 'high', 'urgent'];
 
 export default function Show() {
-    const { issue, comments, statuses, members, labels, candidates } = usePage<PageProps>().props;
+    const { issue, comments, timeEntries, statuses, members, labels, candidates } = usePage<PageProps>().props;
     const { flash } = usePage<{ flash?: { status?: string } }>().props;
     const { auth } = usePage<{ auth: { user: { id: number; name: string; email: string } | null } }>().props;
     const [editing, setEditing] = useState(false);
     const [editingComment, setEditingComment] = useState<string | null>(null);
+    const [editingEstimate, setEditingEstimate] = useState(false);
+    const [editingTimeEntry, setEditingTimeEntry] = useState<string | null>(null);
 
     const commentForm = useForm({ body: '' });
     const commentEditForm = useForm({ body: '' });
+
+    const estimateForm = useForm<{ estimated_hours: string }>({
+        estimated_hours: issue.estimatedHours !== null ? String(issue.estimatedHours) : '',
+    });
+
+    const timeEntryForm = useForm({
+        hours: '',
+        worked_at: new Date().toISOString().slice(0, 10),
+        note: '',
+    });
+
+    const timeEntryEditForm = useForm({
+        hours: '',
+        worked_at: '',
+        note: '',
+    });
 
     const editForm = useForm({
         title: issue.title,
@@ -137,6 +168,37 @@ export default function Show() {
     const removeComment = (commentId: string) => {
         if (!window.confirm('Delete this comment?')) return;
         router.delete(route('comments.destroy', [issue.id, commentId]));
+    };
+
+    const submitEstimate = (e: React.FormEvent) => {
+        e.preventDefault();
+        estimateForm.post(route('issues.estimate', issue.id), {
+            onSuccess: () => setEditingEstimate(false),
+        });
+    };
+
+    const submitTimeEntry = (e: React.FormEvent) => {
+        e.preventDefault();
+        timeEntryForm.post(route('issues.time-entries.store', issue.id), {
+            onSuccess: () => timeEntryForm.reset('hours', 'note'),
+        });
+    };
+
+    const submitTimeEntryEdit = (e: React.FormEvent, entryId: string) => {
+        e.preventDefault();
+        timeEntryEditForm.patch(route('issues.time-entries.update', [issue.id, entryId]), {
+            onSuccess: () => setEditingTimeEntry(null),
+        });
+    };
+
+    const removeTimeEntry = (entryId: string) => {
+        if (!window.confirm('Delete this time entry?')) return;
+        router.delete(route('issues.time-entries.destroy', [issue.id, entryId]));
+    };
+
+    const formatHours = (hours: number | null): string => {
+        if (hours === null) return '—';
+        return `${hours}h`;
     };
 
     return (
@@ -267,6 +329,137 @@ export default function Show() {
                             </Button>
                         </form>
                     </div>
+
+                    <div>
+                        <div className="mb-2 flex items-center justify-between">
+                            <h2 className="text-lg font-semibold">Time</h2>
+                            <p className="text-sm text-muted-foreground">
+                                {formatHours(issue.loggedHours)}
+                                {issue.estimatedHours !== null ? ` / ${formatHours(issue.estimatedHours)}` : ''}
+                                {issue.remainingHours !== null ? (
+                                    <span className={issue.remainingHours < 0 ? 'text-destructive' : ''}>
+                                        {' '}({formatHours(issue.remainingHours)} left)
+                                    </span>
+                                ) : null}
+                            </p>
+                        </div>
+                        <ul className="space-y-3">
+                            {timeEntries.map((entry) => (
+                                <li key={entry.id} className="rounded-md border px-4 py-3">
+                                    <div className="mb-1 flex items-center gap-2 text-sm">
+                                        <span className="font-medium">{entry.authorName}</span>
+                                        <span className="text-muted-foreground">
+                                            {entry.workedAt ? new Date(entry.workedAt).toLocaleDateString() : ''}
+                                        </span>
+                                        <span className="font-medium">{entry.hours}h</span>
+                                        {auth.user && auth.user.id === entry.authorId ? (
+                                            <span className="ml-auto flex gap-1">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => {
+                                                        setEditingTimeEntry(entry.id);
+                                                        timeEntryEditForm.setData({
+                                                            hours: String(entry.hours),
+                                                            worked_at: entry.workedAt ? entry.workedAt.slice(0, 10) : '',
+                                                            note: entry.note ?? '',
+                                                        });
+                                                    }}
+                                                >
+                                                    Edit
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => removeTimeEntry(entry.id)}
+                                                >
+                                                    Delete
+                                                </Button>
+                                            </span>
+                                        ) : null}
+                                    </div>
+                                    {editingTimeEntry === entry.id ? (
+                                        <form onSubmit={(e) => submitTimeEntryEdit(e, entry.id)} className="grid gap-2">
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <Input
+                                                    type="number"
+                                                    step="0.25"
+                                                    min="0.01"
+                                                    placeholder="Hours"
+                                                    value={timeEntryEditForm.data.hours}
+                                                    onChange={(e) => timeEntryEditForm.setData('hours', e.target.value)}
+                                                    required
+                                                />
+                                                <Input
+                                                    type="date"
+                                                    value={timeEntryEditForm.data.worked_at}
+                                                    onChange={(e) => timeEntryEditForm.setData('worked_at', e.target.value)}
+                                                />
+                                            </div>
+                                            <Textarea
+                                                placeholder="Note (optional)"
+                                                value={timeEntryEditForm.data.note}
+                                                onChange={(e) => timeEntryEditForm.setData('note', e.target.value)}
+                                            />
+                                            <div className="flex gap-2">
+                                                <Button type="submit" size="sm" disabled={timeEntryEditForm.processing}>
+                                                    Save
+                                                </Button>
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => setEditingTimeEntry(null)}
+                                                >
+                                                    Cancel
+                                                </Button>
+                                            </div>
+                                        </form>
+                                    ) : (
+                                        <>
+                                            {entry.note ? (
+                                                <p className="whitespace-pre-wrap text-sm text-muted-foreground">
+                                                    {entry.note}
+                                                </p>
+                                            ) : null}
+                                        </>
+                                    )}
+                                </li>
+                            ))}
+                            {timeEntries.length === 0 ? (
+                                <li className="px-4 py-3 text-sm text-muted-foreground">No time logged yet.</li>
+                            ) : null}
+                        </ul>
+                        <form onSubmit={submitTimeEntry} className="mt-4 grid gap-2">
+                            <div className="grid grid-cols-2 gap-2">
+                                <Input
+                                    type="number"
+                                    step="0.25"
+                                    min="0.01"
+                                    placeholder="Hours"
+                                    value={timeEntryForm.data.hours}
+                                    onChange={(e) => timeEntryForm.setData('hours', e.target.value)}
+                                    required
+                                />
+                                <Input
+                                    type="date"
+                                    value={timeEntryForm.data.worked_at}
+                                    onChange={(e) => timeEntryForm.setData('worked_at', e.target.value)}
+                                />
+                            </div>
+                            <Textarea
+                                placeholder="Note (optional)"
+                                value={timeEntryForm.data.note}
+                                onChange={(e) => timeEntryForm.setData('note', e.target.value)}
+                            />
+                            {timeEntryForm.errors.hours ? (
+                                <p className="text-sm text-destructive">{timeEntryForm.errors.hours}</p>
+                            ) : null}
+                            <Button type="submit" size="sm" disabled={timeEntryForm.processing} className="justify-self-start">
+                                Log time
+                            </Button>
+                        </form>
+                    </div>
                 </div>
 
                 <aside className="space-y-4 text-sm">
@@ -318,6 +511,32 @@ export default function Show() {
                             {issue.dueDate ? new Date(issue.dueDate).toLocaleDateString() : '—'}
                             {issue.overdue ? ' (overdue)' : ''}
                         </p>
+                    </div>
+                    <div className="space-y-1">
+                        <p className="font-medium text-muted-foreground">Estimate</p>
+                        <div className="flex items-center gap-2">
+                            <p>{formatHours(issue.estimatedHours)}</p>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                    setEditingEstimate(true);
+                                    estimateForm.setData('estimated_hours', issue.estimatedHours !== null ? String(issue.estimatedHours) : '');
+                                }}
+                            >
+                                Edit
+                            </Button>
+                        </div>
+                        {issue.loggedHours > 0 ? (
+                            <p className="text-xs text-muted-foreground">
+                                {issue.loggedHours}h logged
+                                {issue.remainingHours !== null ? (
+                                    <span className={issue.remainingHours < 0 ? 'text-destructive' : ''}>
+                                        {' '}· {formatHours(issue.remainingHours)} left
+                                    </span>
+                                ) : null}
+                            </p>
+                        ) : null}
                     </div>
                     <div className="space-y-1">
                         <p className="font-medium text-muted-foreground">Assignees</p>
@@ -433,6 +652,42 @@ export default function Show() {
                         </div>
                         <DialogFooter>
                             <Button type="submit" disabled={editForm.processing}>
+                                Save
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog
+                open={editingEstimate}
+                onOpenChange={(open) => {
+                    if (!open) setEditingEstimate(false);
+                }}
+            >
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Edit estimate</DialogTitle>
+                        <DialogDescription>Set the estimated hours for this issue. Leave empty to remove the estimate.</DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={submitEstimate} className="grid gap-4">
+                        <div className="grid gap-2">
+                            <LabelField htmlFor="edit-estimate">Estimated hours</LabelField>
+                            <Input
+                                id="edit-estimate"
+                                type="number"
+                                step="0.25"
+                                min="0"
+                                placeholder="e.g. 8"
+                                value={estimateForm.data.estimated_hours}
+                                onChange={(e) => estimateForm.setData('estimated_hours', e.target.value)}
+                            />
+                            {estimateForm.errors.estimated_hours ? (
+                                <p className="text-sm text-destructive">{estimateForm.errors.estimated_hours}</p>
+                            ) : null}
+                        </div>
+                        <DialogFooter>
+                            <Button type="submit" disabled={estimateForm.processing}>
                                 Save
                             </Button>
                         </DialogFooter>

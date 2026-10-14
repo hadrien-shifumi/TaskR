@@ -15,11 +15,31 @@ import { Textarea } from '@/components/ui/textarea';
 import { Head, router, useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 
+interface HealthData {
+    issuesByCategory: {
+        backlog: number;
+        in_progress: number;
+        done: number;
+        cancelled: number;
+    };
+    totalIssues: number;
+    completionPercentage: number | null;
+    overdueIssues: number;
+    estimatedHours: number;
+    loggedHours: number;
+    consumptionRatio: number | null;
+    expectedPercentage: number | null;
+    status: string | null;
+    targetDate: string | null;
+}
+
 interface ProjectRow {
     id: string;
     name: string;
     description: string | null;
+    targetDate: string | null;
     archivedAt: string | null;
+    health: HealthData | null;
 }
 
 type PageProps = {
@@ -29,14 +49,36 @@ type PageProps = {
     };
 };
 
+function statusBadgeVariant(status: string | null): 'default' | 'secondary' | 'destructive' | 'outline' {
+    if (status === 'late') return 'destructive';
+    if (status === 'at-risk') return 'secondary';
+    return 'default';
+}
+
+function statusLabel(status: string | null): string {
+    if (status === 'ok') return 'On track';
+    if (status === 'at-risk') return 'At risk';
+    if (status === 'late') return 'Late';
+    return '';
+}
+
+function formatDate(date: string | null): string {
+    if (!date) return '—';
+    return new Date(date).toLocaleDateString(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+    });
+}
+
 export default function Index() {
     const { projects } = usePage<PageProps>().props;
     const { flash } = usePage<{ flash?: { status?: string } }>().props;
     const [creating, setCreating] = useState(false);
     const [editing, setEditing] = useState<ProjectRow | null>(null);
 
-    const createForm = useForm({ name: '', description: '' });
-    const editForm = useForm({ name: '', description: '' });
+    const createForm = useForm({ name: '', description: '', target_date: '' });
+    const editForm = useForm({ name: '', description: '', target_date: '' });
 
     const submitCreate = (e: React.FormEvent) => {
         e.preventDefault();
@@ -86,18 +128,44 @@ export default function Index() {
                 {projects.active.map((project) => (
                     <li key={project.id} className="flex items-center gap-4 px-4 py-3">
                         <div className="min-w-0 flex-1">
-                            <p className="font-medium">{project.name}</p>
+                            <div className="flex items-center gap-2">
+                                <p className="font-medium">{project.name}</p>
+                                {project.health?.status ? (
+                                    <Badge variant={statusBadgeVariant(project.health.status)}>
+                                        {statusLabel(project.health.status)}
+                                    </Badge>
+                                ) : null}
+                            </div>
                             {project.description ? (
                                 <p className="truncate text-sm text-muted-foreground">{project.description}</p>
                             ) : null}
+                            <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
+                                {project.targetDate ? (
+                                    <span>Target: {formatDate(project.targetDate)}</span>
+                                ) : null}
+                                {project.health && project.health.completionPercentage !== null ? (
+                                    <span>{project.health.completionPercentage}% complete</span>
+                                ) : null}
+                            </div>
                         </div>
                         <div className="flex shrink-0 gap-1">
                             <Button
                                 variant="ghost"
                                 size="sm"
+                                onClick={() => router.get(route('projects.health', project.id))}
+                            >
+                                Health
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                size="sm"
                                 onClick={() => {
                                     setEditing(project);
-                                    editForm.setData({ name: project.name, description: project.description ?? '' });
+                                    editForm.setData({
+                                        name: project.name,
+                                        description: project.description ?? '',
+                                        target_date: project.targetDate ?? '',
+                                    });
                                 }}
                             >
                                 Edit
@@ -166,6 +234,18 @@ export default function Index() {
                                 onChange={(e) => createForm.setData('description', e.target.value)}
                             />
                         </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="new-target-date">Target date</Label>
+                            <Input
+                                id="new-target-date"
+                                type="date"
+                                value={createForm.data.target_date}
+                                onChange={(e) => createForm.setData('target_date', e.target.value)}
+                            />
+                            {createForm.errors.target_date ? (
+                                <p className="text-sm text-destructive">{createForm.errors.target_date}</p>
+                            ) : null}
+                        </div>
                         <DialogFooter>
                             <Button type="submit" disabled={createForm.processing}>
                                 Create
@@ -206,6 +286,18 @@ export default function Index() {
                                 value={editForm.data.description}
                                 onChange={(e) => editForm.setData('description', e.target.value)}
                             />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="edit-target-date">Target date</Label>
+                            <Input
+                                id="edit-target-date"
+                                type="date"
+                                value={editForm.data.target_date}
+                                onChange={(e) => editForm.setData('target_date', e.target.value)}
+                            />
+                            {editForm.errors.target_date ? (
+                                <p className="text-sm text-destructive">{editForm.errors.target_date}</p>
+                            ) : null}
                         </div>
                         <DialogFooter>
                             <Button type="submit" disabled={editForm.processing}>

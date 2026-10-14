@@ -21,6 +21,7 @@ use App\Actions\Labels\CreateLabel;
 use App\Actions\Projects\ArchiveProject;
 use App\Actions\Projects\CreateProject;
 use App\Actions\Projects\DeleteProject;
+use App\Actions\Projects\GetProjectHealth;
 use App\Actions\Projects\ShowProjectsPage;
 use App\Actions\Projects\UpdateProject;
 use App\Actions\Statuses\CreateStatus;
@@ -29,6 +30,10 @@ use App\Actions\Statuses\ReorderStatuses;
 use App\Actions\Statuses\ShowStatusesPage;
 use App\Actions\Statuses\UpdateStatus;
 use App\Actions\System\ShowHomeAction;
+use App\Actions\TimeTracking\CreateTimeEntry;
+use App\Actions\TimeTracking\DeleteTimeEntry;
+use App\Actions\TimeTracking\SetIssueEstimate;
+use App\Actions\TimeTracking\UpdateTimeEntry;
 use App\Actions\Workspaces\AcceptInvitation;
 use App\Actions\Workspaces\InviteMember;
 use App\Actions\Workspaces\SwitchWorkspace;
@@ -60,6 +65,7 @@ Route::middleware(['auth', 'workspace'])->group(function (): void {
 
     Route::get('/projects', ShowProjectsPage::class)->name('projects.index');
     Route::post('/projects', CreateProject::class)->name('projects.store');
+    Route::get('/projects/{project}/health', GetProjectHealth::class)->name('projects.health');
     Route::match(['put', 'patch'], '/projects/{project}', UpdateProject::class)->name('projects.update');
     Route::post('/projects/{project}/archive', ArchiveProject::class)->name('projects.archive');
     Route::delete('/projects/{project}', DeleteProject::class)->name('projects.destroy');
@@ -79,6 +85,13 @@ Route::middleware(['auth', 'workspace'])->group(function (): void {
         ->scopeBindings()->name('comments.update');
     Route::delete('/issues/{issue}/comments/{comment}', DeleteComment::class)
         ->scopeBindings()->name('comments.destroy');
+
+    Route::post('/issues/{issue}/estimate', SetIssueEstimate::class)->name('issues.estimate');
+    Route::post('/issues/{issue}/time-entries', CreateTimeEntry::class)->name('issues.time-entries.store');
+    Route::match(['put', 'patch'], '/issues/{issue}/time-entries/{timeEntry}', UpdateTimeEntry::class)
+        ->scopeBindings()->name('issues.time-entries.update');
+    Route::delete('/issues/{issue}/time-entries/{timeEntry}', DeleteTimeEntry::class)
+        ->scopeBindings()->name('issues.time-entries.destroy');
 
     Route::post('/labels', CreateLabel::class)->name('labels.store');
 });
