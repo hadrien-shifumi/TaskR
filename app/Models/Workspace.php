@@ -72,6 +72,14 @@ class Workspace extends BaseModel
         return $this->hasMany(Issue::class);
     }
 
+    /**
+     * @return HasMany<IssueTemplate, $this>
+     */
+    public function issueTemplates(): HasMany
+    {
+        return $this->hasMany(IssueTemplate::class)->orderBy('name');
+    }
+
     public function hasMember(User $user): bool
     {
         return $this->members()->where('users.id', $user->getKey())->exists();

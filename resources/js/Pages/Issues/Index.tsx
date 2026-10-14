@@ -47,6 +47,14 @@ interface IssueRow {
     labels: { id: string; name: string; color: string }[];
 }
 
+interface TemplateOption {
+    id: string;
+    name: string;
+    description: string | null;
+    priority: string | null;
+    labels: { id: string; name: string }[];
+}
+
 type PageProps = {
     issues: IssueRow[];
     filters: Record<string, string>;
@@ -54,13 +62,14 @@ type PageProps = {
     statuses: { id: string; name: string; category: string }[];
     labels: { id: string; name: string; color: string }[];
     members: UserRef[];
+    templates: TemplateOption[];
 };
 
 const PRIORITIES = ['none', 'low', 'high', 'urgent'];
 const CATEGORIES = ['backlog', 'in_progress', 'done', 'cancelled'];
 
 export default function Index() {
-    const { issues, filters, projects, statuses, labels, members } = usePage<PageProps>().props;
+    const { issues, filters, projects, statuses, labels, members, templates } = usePage<PageProps>().props;
     const { flash } = usePage<{ flash?: { status?: string } }>().props;
     const [creating, setCreating] = useState(false);
     const [creatingLabel, setCreatingLabel] = useState(false);
@@ -72,6 +81,8 @@ export default function Index() {
         status_id: '',
         priority: 'none',
         due_date: '',
+        template: '',
+        label_ids: [] as string[],
     });
     const labelForm = useForm({ name: '', color: '' });
 
@@ -104,6 +115,33 @@ export default function Index() {
                 labelForm.reset();
             },
         });
+    };
+
+    /**
+     * Client-side pre-fill: the template defaults fill description, priority
+     * and labels so the user sees and edits them before submitting. The
+     * selected template is sent along; the server-side merge then becomes a
+     * no-op because every key is explicitly provided.
+     */
+    const applyTemplate = (templateId: string) => {
+        const template = templates.find((t) => t.id === templateId);
+
+        createForm.setData('template', template ? template.id : '');
+        createForm.setData({
+            description: template?.description ?? '',
+            priority: template?.priority ?? 'none',
+            label_ids: template ? template.labels.map((l) => l.id) : [],
+        });
+    };
+
+    const toggleIssueLabel = (labelId: string) => {
+        const current = createForm.data.label_ids;
+        createForm.setData(
+            'label_ids',
+            current.includes(labelId)
+                ? current.filter((id) => id !== labelId)
+                : [...current, labelId],
+        );
     };
 
     return (
@@ -274,6 +312,33 @@ export default function Index() {
                         <DialogDescription>Title is the only required field.</DialogDescription>
                     </DialogHeader>
                     <form onSubmit={submitCreate} className="grid gap-4">
+                        {templates.length > 0 ? (
+                            <div className="grid gap-2">
+                                <Label>Template</Label>
+                                <Select
+                                    value={createForm.data.template || 'none'}
+                                    onValueChange={applyTemplate}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue>
+                                            {templates.find((t) => t.id === createForm.data.template)?.name ??
+                                                'No template'}
+                                        </SelectValue>
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="none">No template</SelectItem>
+                                        {templates.map((t) => (
+                                            <SelectItem key={t.id} value={t.id}>
+                                                {t.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <p className="text-sm text-muted-foreground">
+                                    Pre-fills description, priority and labels — everything stays editable.
+                                </p>
+                            </div>
+                        ) : null}
                         <div className="grid gap-2">
                             <Label htmlFor="issue-title">Title</Label>
                             <Input
@@ -371,6 +436,26 @@ export default function Index() {
                                     value={createForm.data.due_date}
                                     onChange={(e) => createForm.setData('due_date', e.target.value)}
                                 />
+                            </div>
+                        </div>
+                        <div className="grid gap-2">
+                            <Label>Labels</Label>
+                            <div className="flex flex-wrap gap-1.5">
+                                {labels.map((label) => {
+                                    const selected = createForm.data.label_ids.includes(label.id);
+                                    return (
+                                        <Button
+                                            key={label.id}
+                                            type="button"
+                                            variant={selected ? 'default' : 'outline'}
+                                            size="sm"
+                                            aria-pressed={selected}
+                                            onClick={() => toggleIssueLabel(label.id)}
+                                        >
+                                            {label.name}
+                                        </Button>
+                                    );
+                                })}
                             </div>
                         </div>
                         <DialogFooter>

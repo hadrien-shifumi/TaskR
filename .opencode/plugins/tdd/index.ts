@@ -2,8 +2,10 @@
 //
 // After every edit/write on a test file (*Test.php under tests/), runs that
 // file. After every edit/write on source (app/, routes/, database/, config/,
-// resources/js, resources/views) or on tests/ support files, runs the full
-// suite. Appends the verdict to the tool result the model sees.
+// resources/js, resources/views) or on tests/ support files, runs the Unit +
+// Feature suites only — the Browser suite (E2E) is too slow for the dev loop
+// and belongs to the final gate (`composer test:e2e`), matching the composer
+// `test` / `test:e2e` scripts. Appends the verdict to the tool result.
 //
 // Informational only: it never blocks an edit. The TDD skill defines the
 // workflow; this plugin supplies the feedback loop that makes it real.
@@ -34,9 +36,13 @@ const TEST_FILE = /(^|\/)tests\/.*Test\.php$/
 const TEST_DIR = /(^|\/)tests\//
 const SOURCE_FILE = /(^|\/)(app|routes|database|config|resources\/js|resources\/views)\//
 
+// Dev-loop scope: Unit + Feature. E2E (Browser) is excluded from every
+// automatic run — it is the final gate, not the feedback loop.
+const DEV_SUITES = "Unit,Feature"
+
 let projectRoot: string | null = null
 let chain: Promise<unknown> = Promise.resolve()
-let lastSuiteStatus: "green" | "red" | "unknown" = "unknown"
+let lastDevSuiteStatus: "green" | "red" | "unknown" = "unknown"
 
 function findRoot(start: string): string | null {
   let dir = path.dirname(start)
@@ -176,22 +182,23 @@ async function guard(tool: string, args: Record<string, unknown> | undefined, re
       lines.push(...v.failures.map((f) => `   ✗ ${f}`))
       lines.push("Expected while the behavior does not exist yet — write the minimal implementation that turns this green.")
     }
-    if (lastSuiteStatus === "red" && v.state !== "green") {
-      lines.push("⚠️ the full suite was RED at its last run — fix the code rather than adjusting the test, unless the test itself is wrong.")
+    if (lastDevSuiteStatus === "red" && v.state !== "green") {
+      lines.push("⚠️ the Unit+Feature suites were RED at their last run — fix the code rather than adjusting the test, unless the test itself is wrong.")
     }
   } else {
-    const { code, out } = await phpunit(root, [])
+    const { code, out } = await phpunit(root, ["--testsuite", DEV_SUITES])
     const v = summarize(code, out)
     if (v.state === "green") {
-      lastSuiteStatus = "green"
-      lines.push(`🟢 full suite GREEN (${v.summary})`)
+      lastDevSuiteStatus = "green"
+      lines.push(`🟢 Unit+Feature GREEN (${v.summary})`)
+      lines.push("Browser (E2E) excluded from the dev loop — run `composer test:e2e` once at the final gate.")
     } else if (v.state === "red") {
-      lastSuiteStatus = "red"
-      lines.push(`🔴 full suite RED — ${v.summary}`)
+      lastDevSuiteStatus = "red"
+      lines.push(`🔴 Unit+Feature RED — ${v.summary}`)
       lines.push(...v.failures.map((f) => `   ✗ ${f}`))
       lines.push("The task is not done while this is red.")
     } else if (v.state === "error") {
-      lines.push(`⛔ full suite cannot run: ${v.summary}`)
+      lines.push(`⛔ Unit+Feature cannot run: ${v.summary}`)
     } else {
       lines.push(`⚪ ${v.summary}`)
     }

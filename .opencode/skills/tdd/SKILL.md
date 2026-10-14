@@ -1,6 +1,6 @@
 ---
 name: TDD
-description: Mandatory test-first workflow for taskr — derive the test plan from the specs, prove red before implementing, finish only when the full suite is green. Use for every feature, bug fix, or behavior change, backend or frontend.
+description: Mandatory test-first workflow for taskr — derive the test plan from the specs, prove red before implementing, finish only when Unit+Feature are green and the Browser (E2E) suite passes at the final gate. Use for every feature, bug fix, or behavior change, backend or frontend.
 ---
 
 # TDD — Red → Green → Refactor
@@ -12,7 +12,7 @@ Every behavior change goes through this loop, no exception. The `tdd-guard` plug
 1. Tests are derived from the spec, never from the implementation you are about to write.
 2. Red comes first: a test that passes the moment it is written proves nothing.
 3. When a test fails, fix the code. Edit the test only when the test itself is wrong — and say so explicitly.
-4. Done means: full suite green, observed in the latest tdd-guard status or a fresh run.
+4. Done means: Unit+Feature green, observed in the latest tdd-guard status or a fresh run, **and** the Browser (E2E) suite green at the final gate.
 
 ## Loop
 
@@ -42,7 +42,8 @@ Before writing any code:
 
 ### 5. Final gate
 
-- The last tdd-guard status on a source edit must be `🟢 full suite GREEN`. If it is red, the task is not done. Never report success on an unverified suite.
+- The last tdd-guard status on a source edit must be `🟢 Unit+Feature GREEN`. If it is red, the task is not done. Never report success on an unverified suite.
+- Then, once development is complete, run the E2E gate: `composer test:e2e` (builds the frontend, runs the Browser suite). Both gates must be green before reporting done. If E2E fails, fix the code — not the E2E test — unless the test itself is wrong.
 
 ## Bug fixes
 
@@ -51,5 +52,5 @@ Reproduce first: write the failing test that captures the bug, watch it go 🔴,
 ## Reading tdd-guard output
 
 - Test-file edit (`tests/**/*Test.php`) → runs that file only.
-- Source edit (`app/`, `routes/`, `database/`, `config/`, `resources/js`, `resources/views/`) or tests support file → runs the full suite (~2 s).
-- `⚠️ the full suite was RED` on a test edit → you are editing tests while the suite is red: justify it, or fix the code instead.
+- Source edit (`app/`, `routes/`, `database/`, `config/`, `resources/js`, `resources/views/`) or tests support file → runs the Unit+Feature suites (~2 s). The Browser suite (E2E) is never run by tdd-guard on source edits — too slow for the loop; it only runs at the final gate via `composer test:e2e`.
+- `⚠️ the Unit+Feature suites were RED` on a test edit → you are editing tests while the dev suites are red: justify it, or fix the code instead.

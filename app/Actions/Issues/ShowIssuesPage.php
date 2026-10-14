@@ -5,6 +5,7 @@ namespace App\Actions\Issues;
 use App\Enums\Priority;
 use App\Enums\StatusCategory;
 use App\Models\Issue;
+use App\Models\IssueTemplate;
 use App\Models\Workspace;
 use App\Responders\Issues\IssuesPageResponder;
 use App\Support\WorkspaceContext;
@@ -59,6 +60,17 @@ class ShowIssuesPage
 
         $data['labels'] = $workspace->labels()->orderBy('name')->get(['id', 'name', 'color']);
         $data['members'] = $workspace->members()->orderBy('name')->get(['users.id', 'users.name']);
+        $data['templates'] = $workspace->issueTemplates()
+            ->with('labels')
+            ->get()
+            ->map(fn (IssueTemplate $template) => [
+                'id' => $template->id,
+                'name' => $template->name,
+                'description' => $template->description,
+                'priority' => $template->priority?->value,
+                'labels' => $template->labels->map(fn ($label) => ['id' => $label->id, 'name' => $label->name])->values()->all(),
+            ])
+            ->all();
 
         return $responder->toResponse($request, $data);
     }

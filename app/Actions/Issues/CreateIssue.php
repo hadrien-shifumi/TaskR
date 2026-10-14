@@ -4,6 +4,7 @@ namespace App\Actions\Issues;
 
 use App\Enums\Priority;
 use App\Models\Issue;
+use App\Models\IssueTemplate;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Responders\Issues\IssueRedirectResponder;
@@ -39,6 +40,7 @@ class CreateIssue
             'assignees.*' => [Rule::exists('memberships', 'user_id')->where('workspace_id', $workspace?->id)],
             'label_ids' => ['nullable', 'array'],
             'label_ids.*' => ['ulid', Rule::exists('labels', 'id')->where('workspace_id', $workspace?->id)],
+            'template' => ['nullable', 'ulid'],
         ];
     }
 
@@ -47,6 +49,8 @@ class CreateIssue
      */
     public function handle(Workspace $workspace, array $data): Issue
     {
+        $data = $this->applyTemplateDefaults($workspace, $data);
+
         $issue = Issue::create([
             'project_id' => $data['project_id'],
             'title' => $data['title'],
@@ -79,6 +83,42 @@ class CreateIssue
         $user = request()->user();
 
         return $user instanceof User && app(WorkspaceContext::class)->isMember($user);
+    }
+
+    /**
+     * Non-blocking template pre-fill: for description, priority and labels, an
+     * absent key falls back to the template default; any explicitly provided
+     * key (even empty) wins — so a client-side pre-fill makes this a no-op and
+     * double application is impossible. The template never fills title,
+     * status, due date, parent or assignees: those are contextual values.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function applyTemplateDefaults(Workspace $workspace, array $data): array
+    {
+        if (empty($data['template'])) {
+            return $data;
+        }
+
+        /** @var IssueTemplate $template */
+        $template = $workspace->issueTemplates()->findOrFail($data['template']);
+
+        if (! array_key_exists('description', $data)) {
+            $data['description'] = $template->description;
+        }
+
+        if (! array_key_exists('priority', $data)) {
+            $data['priority'] = $template->priority?->value;
+        }
+
+        if (! array_key_exists('label_ids', $data)) {
+            // Labels referenced by the template but since deleted are silently
+            // ignored: the pivot join only returns labels that still exist.
+            $data['label_ids'] = $template->labels()->pluck('labels.id')->all();
+        }
+
+        return $data;
     }
 
     protected function currentWorkspace(): ?Workspace

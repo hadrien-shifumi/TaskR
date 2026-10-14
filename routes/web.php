@@ -30,6 +30,10 @@ use App\Actions\Statuses\ReorderStatuses;
 use App\Actions\Statuses\ShowStatusesPage;
 use App\Actions\Statuses\UpdateStatus;
 use App\Actions\System\ShowHomeAction;
+use App\Actions\Templates\CreateIssueTemplate;
+use App\Actions\Templates\DeleteIssueTemplate;
+use App\Actions\Templates\ShowTemplatesPage;
+use App\Actions\Templates\UpdateIssueTemplate;
 use App\Actions\TimeTracking\CreateTimeEntry;
 use App\Actions\TimeTracking\DeleteTimeEntry;
 use App\Actions\TimeTracking\SetIssueEstimate;
@@ -62,6 +66,11 @@ Route::middleware(['auth', 'workspace'])->group(function (): void {
     Route::post('/statuses/reorder', ReorderStatuses::class)->name('statuses.reorder');
     Route::match(['put', 'patch'], '/statuses/{status}', UpdateStatus::class)->name('statuses.update');
     Route::delete('/statuses/{status}', DeleteStatus::class)->name('statuses.destroy');
+
+    Route::get('/settings/templates', ShowTemplatesPage::class)->name('settings.templates');
+    Route::post('/templates', CreateIssueTemplate::class)->name('templates.store');
+    Route::match(['put', 'patch'], '/templates/{template}', UpdateIssueTemplate::class)->name('templates.update');
+    Route::delete('/templates/{template}', DeleteIssueTemplate::class)->name('templates.destroy');
 
     Route::get('/projects', ShowProjectsPage::class)->name('projects.index');
     Route::post('/projects', CreateProject::class)->name('projects.store');
