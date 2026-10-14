@@ -22,12 +22,14 @@ class ShowStatusesPage
     {
         return [
             'statuses' => $workspace->statuses()
+                ->withCount('issues')
                 ->get()
                 ->map(fn ($status) => [
                     'id' => $status->id,
                     'name' => $status->name,
                     'category' => $status->category->value,
                     'position' => $status->position,
+                    'issuesCount' => $status->issues_count,
                 ])
                 ->values()
                 ->all(),

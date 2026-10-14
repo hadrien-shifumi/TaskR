@@ -48,6 +48,6 @@ class MoveIssue
     {
         $issue = $this->handle($issue, $request->validated('status_id'));
 
-        return $responder->updated($issue);
+        return $responder->moved($issue);
     }
 }
