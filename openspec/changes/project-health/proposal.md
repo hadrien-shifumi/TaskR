@@ -1,3 +1,5 @@
+> **Ordre d'implémentation conseillé : 2/4** — après `time-tracking`, son prérequis fort (estimations + time entries). `templates` est indépendante et peut être intercalée avant.
+
 ## Why
 
 Les managers Taskr n'ont aujourd'hui aucun moyen simple de suivre la tenue d'un projet : savoir s'il progresse bien, s'il est en retard ou s'il risque de prendre du retard exige de parcourir les issues une par une. Le besoin est du pilotage par convention — pas des sprints, pas de workflow custom : des indicateurs calculés à partir des données déjà saisies.

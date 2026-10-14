@@ -1,3 +1,5 @@
+> **Ordre d'implémentation conseillé : 4/4** — en dernier : ouvre le socle d'actions aux agents une fois celui-ci complet et stabilisé, et permet d'enregistrer d'emblée les outils time-tracking. Prérequis soft : `time-tracking`. À anticiper : approbation des dépendances `laravel/mcp` et `laravel/sanctum`.
+
 ## Why
 
 Taskr est conçu pour être piloté par des agents IA autant que par des humains — c'est la raison d'être du produit : automatiser le CRUD des tickets sans passer par l'UI web. La change `foundation` a posé le socle exactement pour ça : pattern ADR où chaque opération métier est une action `AsObject` réutilisable, et scoping multi-tenant inaliénable. Cette change ouvre ce socle aux agents via un serveur MCP : chaque outil MCP s'appuie sur une action existante, sans aucune logique métier dupliquée.

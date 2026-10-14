@@ -1,3 +1,5 @@
+> **Ordre d'implémentation conseillé : 1/4** — autonome, à implémenter en premier. Prérequis fort de `project-health` (rollups d'heures) et prérequis soft de `mcp-access` (outils `log_time` / `list_time_entries`).
+
 ## Why
 
 Taskr permet aujourd'hui de décrire et suivre le statut des issues, mais pas le temps : ni le temps passé, ni une estimation grossière. Les membres qui travaillent sur une issue n'ont aucun moyen de reporter leurs heures, et personne ne peut voir si une issue est en surconsommation. C'est la brique manquante pour que la vue détail d'une issue reflète l'effort réel, et le prérequis des rollups projet (reportés à la change `project-health`).

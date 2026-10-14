@@ -1,3 +1,5 @@
+> **Ordre d'implémentation conseillé : 3/4** — indépendante des autres changes, donc implémentable à tout moment. Placée ici car elle étend `CreateIssue` avant son exposition MCP par `mcp-access`.
+
 ## Why
 
 Dans Taskr, la création d'issues est entièrement libre : chaque membre rédige à sa manière, et des tickets de même nature (bug, tâche de développement, analyse fonctionnelle) finissent avec des formes hétérogènes — informations manquantes, structure différente. Les gabarits (templates) permettent de standardiser la forme des issues par nature de ticket : un bug doit toujours se ressembler, une tâche de développement également.
