@@ -35,4 +35,4 @@
 - [x] 6.1 Passe complète de tests au vert (`php artisan test --compact`), dont isolation inter-tenants — 67/67 tests passent
 - [x] 6.2 `vendor/bin/pint --dirty --format agent`
 - [x] 6.3 Revue du respect du pattern ADR : toute requête DB dans une Action, tout `Inertia::render` dans un Responder ; actions TimeTracking appelables en `AsObject` (prêtes pour la change `mcp-access`)
-- [ ] 6.4 Dogfood minimal : estimer une issue, logger du temps sur plusieurs jours, corriger une entrée, constater les totaux "logged / estimated" dans le détail de l'issue
+- [x] 6.4 Dogfood minimal : estimer une issue, logger du temps sur plusieurs jours, corriger une entrée, constater les totaux "logged / estimated" dans le détail de l'issue

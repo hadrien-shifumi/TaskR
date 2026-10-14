@@ -1,8 +1,11 @@
 <?php
 
+use App\Actions\Auth\CreateApiToken;
 use App\Actions\Auth\LoginUser;
 use App\Actions\Auth\LogoutUser;
 use App\Actions\Auth\RegisterUser;
+use App\Actions\Auth\RevokeApiToken;
+use App\Actions\Auth\ShowApiTokensPage;
 use App\Actions\Auth\ShowLoginPage;
 use App\Actions\Auth\ShowRegistrationPage;
 use App\Actions\Comments\AddComment;
@@ -60,6 +63,10 @@ Route::middleware(['auth', 'workspace'])->group(function (): void {
     Route::post('/workspaces/{workspace}/invitations', InviteMember::class)->name('workspaces.invite');
 
     Route::get('/invitations/{invitation}/accept', AcceptInvitation::class)->name('invitations.accept');
+
+    Route::get('/settings/tokens', ShowApiTokensPage::class)->name('settings.tokens');
+    Route::post('/tokens', CreateApiToken::class)->name('tokens.store');
+    Route::delete('/tokens/{token}', RevokeApiToken::class)->name('tokens.destroy');
 
     Route::get('/settings/statuses', ShowStatusesPage::class)->name('settings.statuses');
     Route::post('/statuses', CreateStatus::class)->name('statuses.store');

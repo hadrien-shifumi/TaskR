@@ -36,5 +36,5 @@
 
 - [x] 6.1 Passe complète de tests au vert (`php artisan test --compact`) — 89/89 tests passent
 - [x] 6.2 `vendor/bin/pint --dirty --format agent` sur les fichiers PHP modifiés
-- [ ] 6.3 Dogfood minimal : créer un projet avec `target_date`, des issues réparties (dont une en retard et des estimations/time entries), consulter la page Health et la liste des projets, vérifier la cohérence des indicateurs avec la formule
+- [x] 6.3 Dogfood minimal : créer un projet avec `target_date`, des issues réparties (dont une en retard et des estimations/time entries), consulter la page Health et la liste des projets, vérifier la cohérence des indicateurs avec la formule
 - [x] 6.4 Revue du respect du pattern ADR : calcul dans l'action (`GetProjectHealth`), aucun `Inertia::render` hors des Responders (`ProjectHealthResponder`), aucun agrégat dans les composants React

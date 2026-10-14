@@ -18,14 +18,28 @@ class UpdateProject
     use AsController;
     use AsObject;
 
+    protected ?Project $projectForRules = null;
+
     public function authorize(): bool
     {
         return $this->currentUserIsMember();
     }
 
+    /**
+     * Sets the project whose name must be ignored by the uniqueness rule,
+     * for callers that validate programmatically (MCP layer) instead of
+     * through the HTTP route binding.
+     */
+    public function forProject(Project $project): static
+    {
+        $this->projectForRules = $project;
+
+        return $this;
+    }
+
     public function rules(): array
     {
-        $project = request()->route('project');
+        $project = $this->projectForRules ?? request()->route('project');
 
         $unique = Rule::unique('projects', 'name')
             ->where('workspace_id', $this->currentWorkspace()?->id);

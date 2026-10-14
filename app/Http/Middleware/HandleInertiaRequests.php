@@ -33,6 +33,9 @@ class HandleInertiaRequests
         return [
             'flash' => [
                 'status' => $request->session()->get('status'),
+                // Security-sensitive one-shot value: consumed on first render,
+                // never exposed again.
+                'newToken' => $request->session()->pull('newToken'),
             ],
             'auth' => [
                 'user' => $user ? [

@@ -57,6 +57,13 @@ export default function AppLayout({ title, children }: AppLayoutProps) {
                         >
                             Templates
                         </Button>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => router.get(route('settings.tokens'))}
+                        >
+                            API tokens
+                        </Button>
                     </nav>
                     <div className="ml-auto flex items-center gap-2">
                         <DropdownMenu>
