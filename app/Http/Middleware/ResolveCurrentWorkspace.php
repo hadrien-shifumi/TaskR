@@ -17,6 +17,11 @@ class ResolveCurrentWorkspace
         $user = $request->user();
 
         if ($user === null) {
+            // The context singleton survives across requests in long-lived
+            // containers (tests, Octane): a guest request must never expose
+            // a workspace left over from a previous request.
+            $this->context->set(null);
+
             return $next($request);
         }
 

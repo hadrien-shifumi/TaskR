@@ -268,6 +268,7 @@ export default function Show() {
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"
+                                                    data-test="comment-edit"
                                                     onClick={() => {
                                                         setEditingComment(comment.id);
                                                         commentEditForm.setData('body', comment.body);
@@ -278,6 +279,7 @@ export default function Show() {
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"
+                                                    data-test="comment-delete"
                                                     onClick={() => removeComment(comment.id)}
                                                 >
                                                     Delete
@@ -288,12 +290,13 @@ export default function Show() {
                                     {editingComment === comment.id ? (
                                         <form onSubmit={(e) => submitCommentEdit(e, comment.id)} className="grid gap-2">
                                             <Textarea
+                                                data-test="comment-edit-body"
                                                 value={commentEditForm.data.body}
                                                 onChange={(e) => commentEditForm.setData('body', e.target.value)}
                                                 required
                                             />
                                             <div className="flex gap-2">
-                                                <Button type="submit" size="sm" disabled={commentEditForm.processing}>
+                                                <Button type="submit" size="sm" data-test="comment-edit-save" disabled={commentEditForm.processing}>
                                                     Save
                                                 </Button>
                                                 <Button
@@ -324,7 +327,7 @@ export default function Show() {
                             {commentForm.errors.body ? (
                                 <p className="text-sm text-destructive">{commentForm.errors.body}</p>
                             ) : null}
-                            <Button type="submit" size="sm" disabled={commentForm.processing} className="justify-self-start">
+                            <Button type="submit" size="sm" data-test="comment-submit" disabled={commentForm.processing} className="justify-self-start">
                                 Comment
                             </Button>
                         </form>
@@ -357,6 +360,7 @@ export default function Show() {
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"
+                                                    data-test="entry-edit"
                                                     onClick={() => {
                                                         setEditingTimeEntry(entry.id);
                                                         timeEntryEditForm.setData({
@@ -371,6 +375,7 @@ export default function Show() {
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"
+                                                    data-test="entry-delete"
                                                     onClick={() => removeTimeEntry(entry.id)}
                                                 >
                                                     Delete
@@ -383,26 +388,29 @@ export default function Show() {
                                             <div className="grid grid-cols-2 gap-2">
                                                 <Input
                                                     type="number"
-                                                    step="0.25"
+                                                    step="any"
                                                     min="0.01"
                                                     placeholder="Hours"
+                                                    data-test="entry-edit-hours"
                                                     value={timeEntryEditForm.data.hours}
                                                     onChange={(e) => timeEntryEditForm.setData('hours', e.target.value)}
                                                     required
                                                 />
                                                 <Input
                                                     type="date"
+                                                    data-test="entry-edit-worked-at"
                                                     value={timeEntryEditForm.data.worked_at}
                                                     onChange={(e) => timeEntryEditForm.setData('worked_at', e.target.value)}
                                                 />
                                             </div>
                                             <Textarea
                                                 placeholder="Note (optional)"
+                                                data-test="entry-edit-note"
                                                 value={timeEntryEditForm.data.note}
                                                 onChange={(e) => timeEntryEditForm.setData('note', e.target.value)}
                                             />
                                             <div className="flex gap-2">
-                                                <Button type="submit" size="sm" disabled={timeEntryEditForm.processing}>
+                                                <Button type="submit" size="sm" data-test="entry-edit-save" disabled={timeEntryEditForm.processing}>
                                                     Save
                                                 </Button>
                                                 <Button
@@ -434,7 +442,7 @@ export default function Show() {
                             <div className="grid grid-cols-2 gap-2">
                                 <Input
                                     type="number"
-                                    step="0.25"
+                                    step="any"
                                     min="0.01"
                                     placeholder="Hours"
                                     value={timeEntryForm.data.hours}
@@ -455,7 +463,7 @@ export default function Show() {
                             {timeEntryForm.errors.hours ? (
                                 <p className="text-sm text-destructive">{timeEntryForm.errors.hours}</p>
                             ) : null}
-                            <Button type="submit" size="sm" disabled={timeEntryForm.processing} className="justify-self-start">
+                            <Button type="submit" size="sm" data-test="entry-submit" disabled={timeEntryForm.processing} className="justify-self-start">
                                 Log time
                             </Button>
                         </form>
@@ -470,7 +478,7 @@ export default function Show() {
                     <div className="space-y-1">
                         <p className="font-medium text-muted-foreground">Status</p>
                         <Select value={issue.status.id} onValueChange={(v) => v && move(v)}>
-                            <SelectTrigger>
+                            <SelectTrigger data-test="status-select">
                                 <SelectValue>{issue.status.name}</SelectValue>
                             </SelectTrigger>
                             <SelectContent>
@@ -676,7 +684,7 @@ export default function Show() {
                             <Input
                                 id="edit-estimate"
                                 type="number"
-                                step="0.25"
+                                step="any"
                                 min="0"
                                 placeholder="e.g. 8"
                                 value={estimateForm.data.estimated_hours}

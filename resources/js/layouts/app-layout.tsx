@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
     DropdownMenuContent,
+    DropdownMenuGroup,
     DropdownMenuItem,
     DropdownMenuLabel,
     DropdownMenuSeparator,
@@ -56,15 +57,17 @@ export default function AppLayout({ title, children }: AppLayoutProps) {
                                 {workspace ? workspace.name : 'No workspace'}
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                                <DropdownMenuLabel>Workspaces</DropdownMenuLabel>
-                                {workspaces.map((ws) => (
-                                    <DropdownMenuItem
-                                        key={ws.id}
-                                        onSelect={() => router.post(route('workspaces.switch', ws.id))}
-                                    >
-                                        {ws.name}
-                                    </DropdownMenuItem>
-                                ))}
+                                <DropdownMenuGroup>
+                                    <DropdownMenuLabel>Workspaces</DropdownMenuLabel>
+                                    {workspaces.map((ws) => (
+                                        <DropdownMenuItem
+                                            key={ws.id}
+                                            onClick={() => router.post(route('workspaces.switch', ws.id))}
+                                        >
+                                            {ws.name}
+                                        </DropdownMenuItem>
+                                    ))}
+                                </DropdownMenuGroup>
                             </DropdownMenuContent>
                         </DropdownMenu>
                         {auth.user ? (
@@ -72,7 +75,7 @@ export default function AppLayout({ title, children }: AppLayoutProps) {
                                 <DropdownMenuTrigger className={triggerButtonClass}>{auth.user.name}</DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
                                     <DropdownMenuSeparator />
-                                    <DropdownMenuItem onSelect={() => router.post(route('logout'))}>
+                                    <DropdownMenuItem onClick={() => router.post(route('logout'))}>
                                         Log out
                                     </DropdownMenuItem>
                                 </DropdownMenuContent>
