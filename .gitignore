@@ -21,6 +21,8 @@
 /storage/*.key
 /storage/pail
 /vendor
+/tests/Browser/Screenshots
+/tests/Browser/Traces
 _ide_helper.php
 Homestead.json
 Homestead.yaml

@@ -21,7 +21,9 @@
         "laravel/pint": "^1.27",
         "mockery/mockery": "^1.6",
         "nunomaduro/collision": "^8.6",
-        "phpunit/phpunit": "^12.5.12"
+        "pestphp/pest": "^4.0",
+        "pestphp/pest-plugin-browser": "^4.0",
+        "pestphp/pest-plugin-laravel": "^4.0"
     },
     "autoload": {
         "psr-4": {
@@ -50,7 +52,13 @@
         ],
         "test": [
             "@php artisan config:clear --ansi @no_additional_args",
-            "@php artisan test"
+            "@php vendor/bin/pest --testsuite=Unit,Feature"
+        ],
+        "test:e2e": [
+            "Composer\\Config::disableProcessTimeout",
+            "npm run build",
+            "@php artisan config:clear --ansi @no_additional_args",
+            "@php vendor/bin/pest --testsuite=Browser"
         ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
