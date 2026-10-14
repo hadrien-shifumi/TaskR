@@ -1,4 +1,5 @@
 import AppLayout from '@/layouts/app-layout';
+import { Avatar, PriorityBadge, StatusBadge } from '@/components/issue-badges';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -86,6 +87,7 @@ export default function Show() {
     const [editingComment, setEditingComment] = useState<string | null>(null);
     const [editingEstimate, setEditingEstimate] = useState(false);
     const [editingTimeEntry, setEditingTimeEntry] = useState<string | null>(null);
+    const [parentError, setParentError] = useState<string | null>(null);
 
     const commentForm = useForm({ body: '' });
     const commentEditForm = useForm({ body: '' });
@@ -124,10 +126,28 @@ export default function Show() {
         router.post(route('issues.move', issue.id), { status_id: statusId });
     };
 
+    /**
+     * The cycle rule lives in the action; the UI only surfaces its refusal
+     * at the selector that triggered it (ADR-5).
+     */
     const setParent = (parentId: string) => {
-        router.post(route('issues.parent', issue.id), {
-            parent_id: parentId === 'none' ? null : parentId,
-        });
+        setParentError(null);
+        router.post(
+            route('issues.parent', issue.id),
+            {
+                parent_id: parentId === 'none' ? null : parentId,
+            },
+            {
+                onHttpException: (response) => {
+                    setParentError(
+                        response.status === 422
+                            ? 'This parent would create a cycle in the hierarchy.'
+                            : 'The parent could not be set.',
+                    );
+                    return false;
+                },
+            },
+        );
     };
 
     const toggleAssignee = (userId: string) => {
@@ -211,6 +231,10 @@ export default function Show() {
 
             <div className="grid gap-8 lg:grid-cols-[1fr_280px]">
                 <div className="min-w-0 space-y-6">
+                    <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                        <p className="font-mono text-xs text-muted-foreground tabular-nums select-all">{issue.id}</p>
+                    </div>
+
                     {issue.parent ? (
                         <p className="text-sm text-muted-foreground">
                             Parent:{' '}
@@ -316,8 +340,7 @@ export default function Show() {
                                     )}
                                 </li>
                             ))}
-                        </ul>
-                        <form onSubmit={submitComment} className="mt-4 grid gap-2">
+                        </ul>                        <form onSubmit={submitComment} className="mt-4 grid gap-2">
                             <Textarea
                                 placeholder="Add a comment..."
                                 value={commentForm.data.body}
@@ -489,6 +512,7 @@ export default function Show() {
                                 ))}
                             </SelectContent>
                         </Select>
+                        <StatusBadge name={issue.status.name} category={issue.status.category} />
                     </div>
                     <div className="space-y-1">
                         <p className="font-medium text-muted-foreground">Parent</p>
@@ -508,14 +532,23 @@ export default function Show() {
                                 ))}
                             </SelectContent>
                         </Select>
+                        {parentError ? (
+                            <p role="alert" className="text-xs text-destructive">
+                                {parentError}
+                            </p>
+                        ) : null}
                     </div>
                     <div className="space-y-1">
                         <p className="font-medium text-muted-foreground">Priority</p>
-                        <p>{issue.priority}</p>
+                        <PriorityBadge priority={issue.priority} />
                     </div>
                     <div className="space-y-1">
                         <p className="font-medium text-muted-foreground">Due date</p>
-                        <p className={issue.overdue ? 'font-medium text-destructive' : ''}>
+                        <p
+                            className={`font-mono text-sm tabular-nums ${
+                                issue.overdue ? 'font-medium text-destructive' : ''
+                            }`}
+                        >
                             {issue.dueDate ? new Date(issue.dueDate).toLocaleDateString() : '—'}
                             {issue.overdue ? ' (overdue)' : ''}
                         </p>
