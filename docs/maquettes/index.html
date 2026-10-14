@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Maquettes · Taskr</title>
+  <link rel="stylesheet" href="assets/app.css" />
+  <style>
+    body { background: var(--bg); }
+    .ov-top { border-bottom: 1px solid var(--border); background: color-mix(in oklch, var(--bg) 88%, transparent); position: sticky; top: 0; z-index: 10; backdrop-filter: blur(10px); }
+    .ov-top .inner { max-width: 1160px; margin: 0 auto; padding: 14px 28px; display: flex; align-items: center; gap: 10px; }
+    .ov-headline { font-size: clamp(30px, 4vw, 44px); letter-spacing: -0.03em; line-height: 1.05; }
+    .ov-kicker { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); margin-bottom: 14px; }
+    .swatch-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+  </style>
+</head>
+<body>
+  <header class="ov-top" data-od-id="ov-topnav">
+    <div class="inner">
+      <span class="brand-mark">T</span>
+      <span class="brand-name" style="font-family: var(--font-display); font-weight: 650; font-size: 17px;">Taskr</span>
+      <span class="meta" style="margin-left: 10px;">maquettes haute fidélité — workspace Studio Nova</span>
+    </div>
+  </header>
+
+  <main data-od-id="overview">
+    <section class="ov-hero" data-od-id="ov-hero">
+      <p class="ov-kicker">8 écrans · modern minimal · ShadCN-ready</p>
+      <h1 class="ov-headline">Taskr — tracker de tickets minimaliste, piloté par le workspace.</h1>
+      <p class="muted" style="max-width: 64ch; margin-top: 14px; font-size: 16px;">
+        Pas de sprints, pas de types d'issue, pas de workflow configurable : les statuts vivent au niveau workspace,
+        la santé des projets est calculée, et tout est pensé pour être piloté par des humains ou des agents IA.
+        Chaque maquette ci-dessous est interactive : dialogues, filtres, onglets, glisser-déposer.
+      </p>
+    </section>
+
+    <section class="ov-grid" data-od-id="ov-screens">
+      <a class="card ov-card" href="screens/login.html">
+        <span class="meta">01 · auth</span>
+        <h3>Connexion / Inscription / Invitation</h3>
+        <p class="muted" style="font-size: 13px;">Guest layout centré. L'inscription crée le premier workspace avec les 4 statuts par défaut ; l'invité rejoint en tant que member.</p>
+      </a>
+      <a class="card ov-card" href="screens/home.html">
+        <span class="meta">02 · home</span>
+        <h3>Home — dashboard</h3>
+        <p class="muted" style="font-size: 13px;">Indicateurs du workspace, santé des projets, mes issues. Création d'issue minimale : un titre suffit.</p>
+      </a>
+      <a class="card ov-card" href="screens/projects.html">
+        <span class="meta">03 · projects</span>
+        <h3>Projets — liste</h3>
+        <p class="muted" style="font-size: 13px;">Badge de projection + % terminé par projet. Archivés consultables ; suppression refusée si le projet contient des issues.</p>
+      </a>
+      <a class="card ov-card" href="screens/project-health.html">
+        <span class="meta">04 · project</span>
+        <h3>Projet — Health</h3>
+        <p class="muted" style="font-size: 13px;">Répartition par catégorie, retards, heures logguées / estimées, projection réalisé vs attendu à date.</p>
+      </a>
+      <a class="card ov-card" href="screens/issues.html">
+        <span class="meta">05 · issues</span>
+        <h3>Issues — liste</h3>
+        <p class="muted" style="font-size: 13px;">Tous projets confondus, filtres fonctionnels (recherche, en cours, retard, urgentes, les miennes), création via dialog.</p>
+      </a>
+      <a class="card ov-card" href="screens/issue-detail.html">
+        <span class="meta">06 · issue</span>
+        <h3>Issue — détail</h3>
+        <p class="muted" style="font-size: 13px;">Statut libre, assignés multiples, labels à la volée, parent/enfants (erreur de cycle), temps, commentaires auteur-seuls.</p>
+      </a>
+      <a class="card ov-card" href="screens/settings.html">
+        <span class="meta">07 · settings</span>
+        <h3>Settings — Statuts, Membres, Gabarits, Tokens</h3>
+        <p class="muted" style="font-size: 13px;">Réordonnancement par glisser-déposer, suppression protégée avec migration, bascule de rôle owner / member (lecture seule).</p>
+      </a>
+      <a class="card ov-card" href="screens/settings.html">
+        <span class="meta">08 · à venir</span>
+        <h3>Gabarits d'issues &amp; API tokens</h3>
+        <p class="muted" style="font-size: 13px;">Onglets planifiés : gabarits qui pré-remplissent sans contraindre, tokens pilotables par agents IA (valeur visible une seule fois).</p>
+      </a>
+    </section>
+
+    <section style="max-width: 1160px; margin: 0 auto; padding: 0 28px 64px;" data-od-id="ov-language">
+      <h2 style="font-size: 18px; margin-bottom: 16px;">Langage visuel</h2>
+      <div class="card card-pad" style="display: flex; flex-direction: column; gap: 18px;">
+        <div>
+          <p class="meta" style="margin-bottom: 8px;">Catégories sémantiques de statut — la couleur vit sur la catégorie, jamais sur le nom libre</p>
+          <div class="swatch-grid">
+            <span class="badge badge-cat-backlog"><span class="dot"></span>backlog</span>
+            <span class="badge badge-cat-in_progress"><span class="dot"></span>in progress</span>
+            <span class="badge badge-cat-done"><span class="dot"></span>done</span>
+            <span class="badge badge-cat-cancelled"><span class="dot"></span>cancelled</span>
+          </div>
+        </div>
+        <div>
+          <p class="meta" style="margin-bottom: 8px;">Priorités — 4 niveaux fixes</p>
+          <div class="swatch-grid">
+            <span class="badge badge-prio-none">none</span>
+            <span class="badge badge-prio-low">low</span>
+            <span class="badge badge-prio-high">high</span>
+            <span class="badge badge-prio-urgent">urgent</span>
+          </div>
+        </div>
+        <div>
+          <p class="meta" style="margin-bottom: 8px;">Projections de santé — calculées, jamais saisies</p>
+          <div class="swatch-grid">
+            <span class="badge badge-ontrack"><span class="dot"></span>On track</span>
+            <span class="badge badge-atrisk"><span class="dot"></span>At risk</span>
+            <span class="badge badge-late"><span class="dot"></span>Late</span>
+            <span class="badge badge-neutral">Pas de projection</span>
+          </div>
+        </div>
+        <hr class="rule" />
+        <p class="muted" style="font-size: 13px; max-width: 74ch;">
+          Fondations modern minimal (Linear / Vercel) : neutres oklch, hairlines, ombres réservées aux dialogs et menus,
+          numériques en mono tabulaire, identifiants opaques (ULID) affichés en mono. Les composants se mappent
+          un-à-un sur ShadCN/ui — button, card, badge, dialog, table, tabs, select — avec les tokens Tailwind v4
+          (muted, destructive, etc.).
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <script src="assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Home · Studio Nova · Taskr</title>
+  <link rel="stylesheet" href="../assets/app.css" />
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" data-od-id="sidebar">
+      <div class="sidebar-brand">
+        <span class="brand-mark">T</span><span class="brand-name">Taskr</span>
+      </div>
+      <div class="menu-wrap">
+        <button class="ws-switch" data-menu-trigger aria-haspopup="menu" aria-label="Changer de workspace">
+          <span class="ws-dot">SN</span>
+          <span class="ws-name">Studio Nova</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <div class="menu" role="menu">
+          <p class="menu-label">Vos workspaces</p>
+          <a role="menuitem" aria-current="true">Studio Nova</a>
+          <a role="menuitem">Atelier Kairos</a>
+          <div class="sep"></div>
+          <button role="menuitem">Créer un workspace…</button>
+        </div>
+      </div>
+      <p class="sidebar-label">Workspace</p>
+      <a class="nav-item" href="home.html" aria-current="page">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg><span>Home</span>
+      </a>
+      <a class="nav-item" href="projects.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg><span>Projects</span>
+      </a>
+      <a class="nav-item" href="issues.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="6" r="2.5"/><path d="M10.5 6H21M10.5 12H21M10.5 18H21"/><circle cx="6" cy="12" r="2.5"/><circle cx="6" cy="18" r="2.5"/></svg><span>Issues</span>
+      </a>
+      <a class="nav-item" href="settings.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h10M18 7h2M4 12h4M12 12h8M4 17h13M20 17h0"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="19" cy="17" r="2"/></svg><span>Settings</span>
+      </a>
+      <div class="sidebar-foot">
+        <div class="row">
+          <span class="avatar">CR</span>
+          <div style="min-width: 0;">
+            <p style="font-size: 13px; font-weight: 500;">Camille Riva</p>
+            <p class="meta" style="font-size: 11px;">owner</p>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <div class="app-main">
+      <header class="pagebar" data-od-id="pagebar-home">
+        <span class="pagebar-title">Home</span>
+        <span class="meta hide-sm">Vue d'ensemble du workspace Studio Nova</span>
+        <span class="spacer"></span>
+        <button class="btn btn-outline btn-sm" data-dialog-open="dlg-new-issue">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg>
+          Nouvelle issue
+        </button>
+      </header>
+
+      <main class="pagebody" data-od-id="home-dashboard">
+        <!-- Indicateurs workspace -->
+        <section class="grid-stats" style="margin-bottom: 24px;" data-od-id="home-stats">
+          <div class="card card-pad">
+            <p class="meta" style="margin-bottom: 8px;">Issues ouvertes</p>
+            <p class="mono" style="font-size: 28px; font-weight: 600; letter-spacing: -0.02em;">23</p>
+            <p class="meta" style="font-size: 12px;">sur 61 au total</p>
+          </div>
+          <div class="card card-pad">
+            <p class="meta" style="margin-bottom: 8px;">Issues en retard</p>
+            <p class="mono" style="font-size: 28px; font-weight: 600; letter-spacing: -0.02em; color: var(--destructive);">4</p>
+            <p class="meta" style="font-size: 12px;">due date dépassée, hors done / cancelled</p>
+          </div>
+          <div class="card card-pad">
+            <p class="meta" style="margin-bottom: 8px;">Heures logguées</p>
+            <p class="mono" style="font-size: 28px; font-weight: 600; letter-spacing: -0.02em;">86,5<span style="font-size: 15px; color: var(--muted);"> h</span></p>
+            <p class="meta" style="font-size: 12px;">cette semaine, tous projets</p>
+          </div>
+          <div class="card card-pad">
+            <p class="meta" style="margin-bottom: 8px;">Projets actifs</p>
+            <p class="mono" style="font-size: 28px; font-weight: 600; letter-spacing: -0.02em;">4</p>
+            <p class="meta" style="font-size: 12px;">+ 1 projet archivé consultable</p>
+          </div>
+        </section>
+
+        <!-- Projets à surveiller -->
+        <section style="margin-bottom: 24px;" data-od-id="home-projects">
+          <div class="row-between" style="margin-bottom: 12px;">
+            <h2>Santé des projets</h2>
+            <a class="btn btn-ghost btn-sm" href="projects.html">Tous les projets</a>
+          </div>
+          <div class="grid-2">
+            <a class="card card-pad" href="project-health.html" style="display: flex; flex-direction: column; gap: 10px;">
+              <div class="row-between">
+                <h3>Intégration paiements Stripe</h3>
+                <span class="badge badge-late"><span class="dot"></span>Late</span>
+              </div>
+              <div class="progress"><span class="fill-done" style="width: 71%;"></span></div>
+              <div class="row-between meta"><span>71 % terminé</span><span class="mono">cible : 30 sept. 2026</span></div>
+            </a>
+            <a class="card card-pad" href="project-health.html" style="display: flex; flex-direction: column; gap: 10px;">
+              <div class="row-between">
+                <h3>App mobile iOS</h3>
+                <span class="badge badge-atrisk"><span class="dot"></span>At risk</span>
+              </div>
+              <div class="progress"><span class="fill-done" style="width: 38%;"></span></div>
+              <div class="row-between meta"><span>38 % terminé</span><span class="mono">cible : 15 nov. 2026</span></div>
+            </a>
+            <a class="card card-pad" href="project-health.html" style="display: flex; flex-direction: column; gap: 10px;">
+              <div class="row-between">
+                <h3>Refonte site vitrine</h3>
+                <span class="badge badge-ontrack"><span class="dot"></span>On track</span>
+              </div>
+              <div class="progress"><span class="fill-done" style="width: 64%;"></span></div>
+              <div class="row-between meta"><span>64 % terminé</span><span class="mono">cible : 31 oct. 2026</span></div>
+            </a>
+            <a class="card card-pad" href="project-health.html" style="display: flex; flex-direction: column; gap: 10px;">
+              <div class="row-between">
+                <h3>Migration infra</h3>
+                <span class="badge badge-neutral">Pas de projection</span>
+              </div>
+              <div class="progress"><span class="fill-done" style="width: 12%;"></span></div>
+              <div class="row-between meta"><span>12 % terminé</span><span class="mono">sans date cible</span></div>
+            </a>
+          </div>
+        </section>
+
+        <!-- Mes issues -->
+        <section class="card" data-od-id="home-my-issues">
+          <div class="card-head">
+            <h3>Mes issues</h3><span class="spacer"></span>
+            <a class="btn btn-ghost btn-sm" href="issues.html">Voir toutes les issues</a>
+          </div>
+          <table class="data-table">
+            <thead>
+              <tr><th>Titre</th><th>Projet</th><th>Statut</th><th>Priorité</th><th>Due date</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><a class="rowlink" href="issue-detail.html">Webhooks : retry avec backoff exponentiel</a></td>
+                <td class="muted">Intégration Stripe</td>
+                <td><span class="badge badge-cat-in_progress"><span class="dot"></span>In Progress</span></td>
+                <td><span class="badge badge-prio-urgent">urgent</span></td>
+                <td class="mono due-overdue">14 oct. 2026</td>
+              </tr>
+              <tr>
+                <td><a class="rowlink" href="issue-detail.html">Crash au lancement sur iOS 17.4</a></td>
+                <td class="muted">App mobile iOS</td>
+                <td><span class="badge badge-cat-in_progress"><span class="dot"></span>En revue</span></td>
+                <td><span class="badge badge-prio-high">high</span></td>
+                <td class="mono">22 oct. 2026</td>
+              </tr>
+              <tr>
+                <td><a class="rowlink" href="issue-detail.html">Design système : tokens de couleur en oklch</a></td>
+                <td class="muted">Refonte site vitrine</td>
+                <td><span class="badge badge-cat-done"><span class="dot"></span>Done</span></td>
+                <td><span class="badge badge-prio-low">low</span></td>
+                <td class="mono">—</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <!-- Dialog : création rapide d'issue (titre seul suffit) -->
+  <div class="dialog-overlay" id="dlg-new-issue" role="dialog" aria-modal="true" aria-label="Créer une issue">
+    <div class="dialog">
+      <div class="dialog-head">
+        <div>
+          <h2>Nouvelle issue</h2>
+          <p>Un titre suffit — statut et priorité par défaut sont appliqués.</p>
+        </div>
+      </div>
+      <form class="dialog-body" data-validate id="dlg-new-issue-form">
+        <label class="field">Titre <span style="color: var(--destructive);">*</span>
+          <input class="input" placeholder="Décrire la tâche en une phrase" data-required />
+          <span class="error-msg">Le titre est requis.</span>
+        </label>
+        <label class="field">Projet
+          <select class="select">
+            <option>Intégration paiements Stripe</option>
+            <option>App mobile iOS</option>
+            <option>Refonte site vitrine</option>
+            <option>Migration infra</option>
+          </select>
+        </label>
+        <p class="meta" style="font-size: 12px;">Tous les autres champs (description, labels, assignés, due date) restent optionnels et modifiables après création.</p>
+      </form>
+      <div class="dialog-foot">
+        <button class="btn btn-ghost" data-dialog-close>Annuler</button>
+        <button class="btn btn-primary" type="submit" form="dlg-new-issue-form">Créer l'issue</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../assets/app.js"></script>
+</body>
+</html>

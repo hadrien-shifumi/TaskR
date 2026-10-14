@@ -1,0 +1,442 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Kanban · Intégration paiements Stripe · Taskr</title>
+  <link rel="stylesheet" href="../assets/app.css" />
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" data-od-id="sidebar">
+      <div class="sidebar-brand">
+        <span class="brand-mark">T</span><span class="brand-name">Taskr</span>
+      </div>
+      <div class="menu-wrap">
+        <button class="ws-switch" data-menu-trigger aria-haspopup="menu" aria-label="Changer de workspace">
+          <span class="ws-dot">SN</span>
+          <span class="ws-name">Studio Nova</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <div class="menu" role="menu">
+          <p class="menu-label">Vos workspaces</p>
+          <a role="menuitem" aria-current="true">Studio Nova</a>
+          <a role="menuitem">Atelier Kairos</a>
+          <div class="sep"></div>
+          <button role="menuitem">Créer un workspace…</button>
+        </div>
+      </div>
+      <p class="sidebar-label">Workspace</p>
+      <a class="nav-item" href="home.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg><span>Home</span>
+      </a>
+      <a class="nav-item" href="projects.html" aria-current="page">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg><span>Projects</span>
+      </a>
+      <a class="nav-item" href="issues.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="6" r="2.5"/><path d="M10.5 6H21M10.5 12H21M10.5 18H21"/><circle cx="6" cy="12" r="2.5"/><circle cx="6" cy="18" r="2.5"/></svg><span>Issues</span>
+      </a>
+      <a class="nav-item" href="settings.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h10M18 7h2M4 12h4M12 12h8M4 17h13M20 17h0"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="19" cy="17" r="2"/></svg><span>Settings</span>
+      </a>
+      <div class="sidebar-foot">
+        <div class="row">
+          <span class="avatar">CR</span>
+          <div style="min-width: 0;">
+            <p style="font-size: 13px; font-weight: 500;">Camille Riva</p>
+            <p class="meta" style="font-size: 11px;">owner</p>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <div class="app-main">
+      <header class="pagebar" data-od-id="pagebar-project-board">
+        <a class="btn btn-ghost btn-icon" href="projects.html" aria-label="Retour aux projets">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 6l-6 6 6 6"/></svg>
+        </a>
+        <div style="min-width: 0;">
+          <div class="row" style="gap: 10px; flex-wrap: wrap;">
+            <span class="pagebar-title">Intégration paiements Stripe</span>
+            <span class="badge badge-late"><span class="dot"></span>Late</span>
+          </div>
+        </div>
+        <span class="spacer"></span>
+        <span class="meta mono hide-sm">18 issues · cible : 30 sept. 2026 · dépassée</span>
+        <nav class="seg" aria-label="Vues du projet">
+          <a href="project-health.html">Santé</a>
+          <a href="project-board.html" aria-current="page">Kanban</a>
+        </nav>
+        <div class="menu-wrap">
+          <button class="btn btn-ghost btn-icon" data-menu-trigger aria-label="Actions du projet">
+            <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>
+          </button>
+          <div class="menu">
+            <button>Modifier…</button>
+            <button>Archiver…</button>
+            <div class="sep"></div>
+            <button class="danger" aria-disabled="true" style="opacity: 0.5;">Supprimer… (18 issues)</button>
+          </div>
+        </div>
+        <button class="btn btn-primary btn-sm" data-dialog-open="dlg-new-issue" data-autofocus>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg>
+          Nouvelle issue
+        </button>
+      </header>
+
+      <main class="pagebody" data-od-id="project-board" data-kanban>
+        <p class="meta" style="margin-bottom: 16px;">Les colonnes reprennent les statuts du workspace dans leur ordre. Glissez une carte pour changer son statut : le changement est toujours libre, aucune transition n'est imposée.</p>
+
+        <div class="board">
+          <!-- Backlog -->
+          <section class="board-col" data-od-id="col-backlog" data-status-name="Backlog" data-status-cat="backlog">
+            <div class="board-col-head">
+              <strong class="board-col-title">Backlog</strong>
+              <span class="badge badge-cat-backlog"><span class="dot"></span>backlog</span>
+              <span class="board-count" data-col-count>2</span>
+              <span class="spacer"></span>
+              <button class="btn btn-ghost btn-icon" data-dialog-open="dlg-new-issue" aria-label="Ajouter une issue dans Backlog">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg>
+              </button>
+            </div>
+            <div class="board-cards">
+              <article class="kcard" data-od-id="kcard-reconcile">
+                <a class="kcard-title" href="issue-detail.html">Reconcilier les paiements échoués du 28 sept.</a>
+                <div class="kcard-foot">
+                  <span class="badge badge-cat-backlog" data-status-badge><span class="dot"></span>Backlog</span>
+                  <span class="badge badge-prio-high">high</span>
+                  <span class="spacer"></span>
+                  <span class="due due-overdue">30 sept.</span>
+                  <span class="avatar-stack"><span class="avatar sm" title="Léa Fontaine">LF</span></span>
+                </div>
+              </article>
+              <article class="kcard" data-od-id="kcard-refunds">
+                <a class="kcard-title" href="issue-detail.html">Idempotence des remboursements partiels</a>
+                <div class="kcard-foot">
+                  <span class="badge badge-cat-backlog" data-status-badge><span class="dot"></span>Backlog</span>
+                  <span class="badge badge-prio-high">high</span>
+                  <span class="spacer"></span>
+                  <span class="due">5 nov.</span>
+                  <span class="avatar-stack"><span class="avatar sm" title="Jonas Weber">JW</span></span>
+                </div>
+              </article>
+            </div>
+          </section>
+
+          <!-- À affiner -->
+          <section class="board-col" data-od-id="col-a-affiner" data-status-name="À affiner" data-status-cat="backlog">
+            <div class="board-col-head">
+              <strong class="board-col-title">À affiner</strong>
+              <span class="badge badge-cat-backlog"><span class="dot"></span>backlog</span>
+              <span class="board-count" data-col-count>0</span>
+              <span class="spacer"></span>
+              <button class="btn btn-ghost btn-icon" data-dialog-open="dlg-new-issue" aria-label="Ajouter une issue dans À affiner">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg>
+              </button>
+            </div>
+            <div class="board-cards">
+              <div class="board-empty">Aucune issue — glissez une carte ici</div>
+            </div>
+          </section>
+
+          <!-- In Progress -->
+          <section class="board-col" data-od-id="col-in-progress" data-status-name="In Progress" data-status-cat="in_progress">
+            <div class="board-col-head">
+              <strong class="board-col-title">In Progress</strong>
+              <span class="badge badge-cat-in_progress"><span class="dot"></span>in progress</span>
+              <span class="board-count" data-col-count>2</span>
+              <span class="spacer"></span>
+              <button class="btn btn-ghost btn-icon" data-dialog-open="dlg-new-issue" aria-label="Ajouter une issue dans In Progress">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg>
+              </button>
+            </div>
+            <div class="board-cards">
+              <article class="kcard" data-od-id="kcard-webhooks">
+                <a class="kcard-title" href="issue-detail.html">Webhooks : retry avec backoff exponentiel</a>
+                <div class="kcard-foot">
+                  <span class="badge badge-cat-in_progress" data-status-badge><span class="dot"></span>In Progress</span>
+                  <span class="badge badge-prio-urgent">urgent</span>
+                  <span class="spacer"></span>
+                  <span class="due due-overdue">14 oct.</span>
+                  <span class="avatar-stack"><span class="avatar sm" title="Camille Riva">CR</span><span class="avatar sm" title="Théo Marchand">TM</span></span>
+                </div>
+              </article>
+              <article class="kcard" data-od-id="kcard-usage">
+                <a class="kcard-title" href="issue-detail.html">Facturation d'usage : consolidation mensuelle</a>
+                <div class="kcard-foot">
+                  <span class="badge badge-cat-in_progress" data-status-badge><span class="dot"></span>In Progress</span>
+                  <span class="badge badge-prio-low">low</span>
+                  <span class="spacer"></span>
+                  <span class="due">24 oct.</span>
+                  <span class="avatar-stack"><span class="avatar sm" title="Léa Fontaine">LF</span></span>
+                </div>
+              </article>
+            </div>
+          </section>
+
+          <!-- En revue -->
+          <section class="board-col" data-od-id="col-en-revue" data-status-name="En revue" data-status-cat="in_progress">
+            <div class="board-col-head">
+              <strong class="board-col-title">En revue</strong>
+              <span class="badge badge-cat-in_progress"><span class="dot"></span>in progress</span>
+              <span class="board-count" data-col-count>1</span>
+              <span class="spacer"></span>
+              <button class="btn btn-ghost btn-icon" data-dialog-open="dlg-new-issue" aria-label="Ajouter une issue dans En revue">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg>
+              </button>
+            </div>
+            <div class="board-cards">
+              <article class="kcard" data-od-id="kcard-hmac">
+                <a class="kcard-title" href="issue-detail.html">Sécuriser les webhooks signés (HMAC)</a>
+                <div class="kcard-foot">
+                  <span class="badge badge-cat-in_progress" data-status-badge><span class="dot"></span>En revue</span>
+                  <span class="badge badge-prio-high">high</span>
+                  <span class="spacer"></span>
+                  <span class="due">16 oct.</span>
+                  <span class="avatar-stack"><span class="avatar sm" title="Théo Marchand">TM</span></span>
+                </div>
+              </article>
+            </div>
+          </section>
+
+          <!-- Done -->
+          <section class="board-col" data-od-id="col-done" data-status-name="Done" data-status-cat="done">
+            <div class="board-col-head">
+              <strong class="board-col-title">Done</strong>
+              <span class="badge badge-cat-done"><span class="dot"></span>done</span>
+              <span class="board-count" data-col-count>12</span>
+              <span class="spacer"></span>
+              <button class="btn btn-ghost btn-icon" data-dialog-open="dlg-new-issue" aria-label="Ajouter une issue dans Done">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg>
+              </button>
+            </div>
+            <div class="board-cards">
+              <article class="kcard" data-od-id="kcard-email-dup">
+                <a class="kcard-title" href="issue-detail.html">Duplicata d'email de confirmation (commande #142)</a>
+                <div class="kcard-foot">
+                  <span class="badge badge-cat-done" data-status-badge><span class="dot"></span>Done</span>
+                  <span class="badge badge-prio-none">none</span>
+                  <span class="spacer"></span>
+                  <span class="avatar-stack"><span class="avatar sm" title="Jonas Weber">JW</span></span>
+                </div>
+              </article>
+              <article class="kcard" data-od-id="kcard-billing">
+                <a class="kcard-title" href="issue-detail.html">Connecter Stripe Billing au nouveau PSP</a>
+                <div class="kcard-foot">
+                  <span class="badge badge-cat-done" data-status-badge><span class="dot"></span>Done</span>
+                  <span class="badge badge-prio-none">none</span>
+                  <span class="spacer"></span>
+                  <span class="avatar-stack"><span class="avatar sm" title="Camille Riva">CR</span></span>
+                </div>
+              </article>
+              <article class="kcard" data-od-id="kcard-keys">
+                <a class="kcard-title" href="issue-detail.html">Migration des clés API en rotation</a>
+                <div class="kcard-foot">
+                  <span class="badge badge-cat-done" data-status-badge><span class="dot"></span>Done</span>
+                  <span class="badge badge-prio-low">low</span>
+                  <span class="spacer"></span>
+                  <span class="avatar-stack"><span class="avatar sm" title="Théo Marchand">TM</span></span>
+                </div>
+              </article>
+              <article class="kcard" data-od-id="kcard-nrt">
+                <a class="kcard-title" href="issue-detail.html">Tests de non-régression paiements</a>
+                <div class="kcard-foot">
+                  <span class="badge badge-cat-done" data-status-badge><span class="dot"></span>Done</span>
+                  <span class="badge badge-prio-low">low</span>
+                  <span class="spacer"></span>
+                  <span class="avatar-stack"><span class="avatar sm" title="Léa Fontaine">LF</span></span>
+                </div>
+              </article>
+              <article class="kcard" data-od-id="kcard-admin-refunds">
+                <a class="kcard-title" href="issue-detail.html">Page admin : liste des remboursements</a>
+                <div class="kcard-foot">
+                  <span class="badge badge-cat-done" data-status-badge><span class="dot"></span>Done</span>
+                  <span class="badge badge-prio-none">none</span>
+                  <span class="spacer"></span>
+                  <span class="avatar-stack"><span class="avatar sm" title="Jonas Weber">JW</span></span>
+                </div>
+              </article>
+              <article class="kcard" data-od-id="kcard-export">
+                <a class="kcard-title" href="issue-detail.html">Export comptable CSV mensuel</a>
+                <div class="kcard-foot">
+                  <span class="badge badge-cat-done" data-status-badge><span class="dot"></span>Done</span>
+                  <span class="badge badge-prio-none">none</span>
+                  <span class="spacer"></span>
+                  <span class="avatar-stack"><span class="avatar sm" title="Camille Riva">CR</span></span>
+                </div>
+              </article>
+              <article class="kcard" data-od-id="kcard-disputes">
+                <a class="kcard-title" href="issue-detail.html">Litiges : notification interne</a>
+                <div class="kcard-foot">
+                  <span class="badge badge-cat-done" data-status-badge><span class="dot"></span>Done</span>
+                  <span class="badge badge-prio-low">low</span>
+                  <span class="spacer"></span>
+                  <span class="avatar-stack"><span class="avatar sm" title="Léa Fontaine">LF</span></span>
+                </div>
+              </article>
+              <article class="kcard" data-od-id="kcard-sandbox">
+                <a class="kcard-title" href="issue-detail.html">Sandbox : fixtures de test</a>
+                <div class="kcard-foot">
+                  <span class="badge badge-cat-done" data-status-badge><span class="dot"></span>Done</span>
+                  <span class="badge badge-prio-none">none</span>
+                  <span class="spacer"></span>
+                  <span class="avatar-stack"><span class="avatar sm" title="Théo Marchand">TM</span></span>
+                </div>
+              </article>
+              <article class="kcard" data-od-id="kcard-checkout">
+                <a class="kcard-title" href="issue-detail.html">checkout.session.completed : réception stable</a>
+                <div class="kcard-foot">
+                  <span class="badge badge-cat-done" data-status-badge><span class="dot"></span>Done</span>
+                  <span class="badge badge-prio-none">none</span>
+                  <span class="spacer"></span>
+                  <span class="avatar-stack"><span class="avatar sm" title="Jonas Weber">JW</span></span>
+                </div>
+              </article>
+              <article class="kcard" data-od-id="kcard-fx">
+                <a class="kcard-title" href="issue-detail.html">Taux de change : cache 24 h</a>
+                <div class="kcard-foot">
+                  <span class="badge badge-cat-done" data-status-badge><span class="dot"></span>Done</span>
+                  <span class="badge badge-prio-none">none</span>
+                  <span class="spacer"></span>
+                  <span class="avatar-stack"><span class="avatar sm" title="Camille Riva">CR</span></span>
+                </div>
+              </article>
+              <article class="kcard" data-od-id="kcard-queue">
+                <a class="kcard-title" href="issue-detail.html">Webhooks : file d'attente persistante</a>
+                <div class="kcard-foot">
+                  <span class="badge badge-cat-done" data-status-badge><span class="dot"></span>Done</span>
+                  <span class="badge badge-prio-high">high</span>
+                  <span class="spacer"></span>
+                  <span class="avatar-stack"><span class="avatar sm" title="Théo Marchand">TM</span></span>
+                </div>
+              </article>
+              <article class="kcard" data-od-id="kcard-prorata">
+                <a class="kcard-title" href="issue-detail.html">Abonnements : prorata au changement de plan</a>
+                <div class="kcard-foot">
+                  <span class="badge badge-cat-done" data-status-badge><span class="dot"></span>Done</span>
+                  <span class="badge badge-prio-none">none</span>
+                  <span class="spacer"></span>
+                  <span class="avatar-stack"><span class="avatar sm" title="Camille Riva">CR</span></span>
+                </div>
+              </article>
+            </div>
+          </section>
+
+          <!-- Cancelled -->
+          <section class="board-col" data-od-id="col-cancelled" data-status-name="Cancelled" data-status-cat="cancelled">
+            <div class="board-col-head">
+              <strong class="board-col-title">Cancelled</strong>
+              <span class="badge badge-cat-cancelled"><span class="dot"></span>cancelled</span>
+              <span class="board-count" data-col-count>1</span>
+              <span class="spacer"></span>
+              <button class="btn btn-ghost btn-icon" data-dialog-open="dlg-new-issue" aria-label="Ajouter une issue dans Cancelled">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg>
+              </button>
+            </div>
+            <div class="board-cards">
+              <article class="kcard" data-od-id="kcard-legacy">
+                <a class="kcard-title muted" href="issue-detail.html" style="text-decoration: line-through; font-weight: 400;">Tunnel de paiement legacy : refonte complémentaire</a>
+                <div class="kcard-foot">
+                  <span class="badge badge-cat-cancelled" data-status-badge><span class="dot"></span>Cancelled</span>
+                  <span class="badge badge-prio-none">none</span>
+                  <span class="spacer"></span>
+                  <span class="avatar-stack"><span class="avatar sm" title="Léa Fontaine">LF</span></span>
+                </div>
+              </article>
+            </div>
+          </section>
+        </div>
+
+        <p class="meta" style="margin-top: 8px;">L'ordre des cartes dans une colonne n'est pas un identifiant : les issues restent repérées par leur ULID opaque.</p>
+      </main>
+    </div>
+  </div>
+
+  <!-- Dialog : création d'issue -->
+  <div class="dialog-overlay" id="dlg-new-issue" role="dialog" aria-modal="true" aria-label="Créer une issue">
+    <div class="dialog dialog-lg">
+      <div class="dialog-head">
+        <div>
+          <h2>Nouvelle issue</h2>
+          <p>Seul le titre est requis — tout le reste est optionnel.</p>
+        </div>
+        <span class="spacer"></span>
+        <button class="btn btn-ghost btn-icon" data-dialog-close aria-label="Fermer">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+      <form class="dialog-body" data-validate id="form-new-issue">
+        <label class="field">Titre <span style="color: var(--destructive);">*</span>
+          <input class="input" placeholder="Décrire la tâche en une phrase" data-required />
+          <span class="error-msg">Le titre est requis.</span>
+        </label>
+        <div class="grid-2">
+          <label class="field">Projet
+            <select class="select">
+              <option selected>Intégration paiements Stripe</option>
+              <option>App mobile iOS</option>
+              <option>Refonte site vitrine</option>
+              <option>Migration infra</option>
+            </select>
+          </label>
+          <label class="field">Gabarit
+            <select class="select">
+              <option>Aucun gabarit</option>
+              <option>Rapport de bug</option>
+              <option>Tâche d'intégration</option>
+            </select>
+            <span class="hint">Pré-remplit sans contraindre — aucun lien persistant.</span>
+          </label>
+        </div>
+        <label class="field">Description <span class="hint" style="display: inline;">(Markdown)</span>
+          <textarea class="textarea" placeholder="Contexte, critères d'acceptation…"></textarea>
+        </label>
+        <div class="grid-2">
+          <label class="field">Statut
+            <select class="select">
+              <option>Backlog · catégorie backlog</option>
+              <option>À affiner · catégorie backlog</option>
+              <option>In Progress · catégorie in progress</option>
+              <option>En revue · catégorie in progress</option>
+              <option>Done · catégorie done</option>
+              <option>Cancelled · catégorie cancelled</option>
+            </select>
+          </label>
+          <label class="field">Priorité
+            <select class="select">
+              <option>none</option>
+              <option>low</option>
+              <option>high</option>
+              <option>urgent</option>
+            </select>
+          </label>
+        </div>
+        <div class="grid-2">
+          <label class="field">Labels
+            <input class="input" placeholder="api, paiement…" />
+            <span class="hint">Libres — créés à la volée, sans référentiel.</span>
+          </label>
+          <label class="field">Assignés
+            <input class="input" placeholder="Rechercher un membre…" />
+            <span class="hint">Plusieurs assignés possibles.</span>
+          </label>
+        </div>
+        <div class="grid-2">
+          <label class="field">Due date
+            <input class="input" type="date" />
+          </label>
+          <label class="field">Estimation (heures)
+            <input class="input" type="number" step="0.5" min="0" placeholder="Ex. 6,5" />
+          </label>
+        </div>
+      </form>
+      <div class="dialog-foot">
+        <button class="btn btn-ghost" data-dialog-close>Annuler</button>
+        <button class="btn btn-primary" type="submit" form="form-new-issue" data-autofocus>Créer l'issue</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../assets/app.js"></script>
+</body>
+</html>

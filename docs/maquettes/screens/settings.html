@@ -1,0 +1,506 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Settings · Studio Nova · Taskr</title>
+  <link rel="stylesheet" href="../assets/app.css" />
+  <style>
+    .settings-head { display: flex; align-items: center; gap: 14px; margin-bottom: 20px; flex-wrap: wrap; }
+    .role-sim {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-size: 12.5px; color: var(--muted);
+      border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 5px 10px; background: var(--surface);
+    }
+    .status-count { margin-left: auto; font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+    .token-value {
+      font-family: var(--font-mono); font-size: 12.5px;
+      background: var(--fg-soft); border: 1px dashed var(--border);
+      border-radius: var(--radius); padding: 10px 12px; word-break: break-all;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" data-od-id="sidebar">
+      <div class="sidebar-brand">
+        <span class="brand-mark">T</span><span class="brand-name">Taskr</span>
+      </div>
+      <div class="menu-wrap">
+        <button class="ws-switch" data-menu-trigger aria-haspopup="menu" aria-label="Changer de workspace">
+          <span class="ws-dot">SN</span>
+          <span class="ws-name">Studio Nova</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <div class="menu" role="menu">
+          <p class="menu-label">Vos workspaces</p>
+          <a role="menuitem" aria-current="true">Studio Nova</a>
+          <a role="menuitem">Atelier Kairos</a>
+          <div class="sep"></div>
+          <button role="menuitem">Créer un workspace…</button>
+        </div>
+      </div>
+      <p class="sidebar-label">Workspace</p>
+      <a class="nav-item" href="home.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg><span>Home</span>
+      </a>
+      <a class="nav-item" href="projects.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg><span>Projects</span>
+      </a>
+      <a class="nav-item" href="issues.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="6" r="2.5"/><path d="M10.5 6H21M10.5 12H21M10.5 18H21"/><circle cx="6" cy="12" r="2.5"/><circle cx="6" cy="18" r="2.5"/></svg><span>Issues</span>
+      </a>
+      <a class="nav-item" href="settings.html" aria-current="page">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h10M18 7h2M4 12h4M12 12h8M4 17h13M20 17h0"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="19" cy="17" r="2"/></svg><span>Settings</span>
+      </a>
+      <div class="sidebar-foot">
+        <div class="row">
+          <span class="avatar">CR</span>
+          <div style="min-width: 0;">
+            <p style="font-size: 13px; font-weight: 500;">Camille Riva</p>
+            <p class="meta" style="font-size: 11px;">owner</p>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <div class="app-main">
+      <header class="pagebar" data-od-id="pagebar-settings">
+        <span class="pagebar-title">Settings</span>
+        <span class="meta hide-sm">Studio Nova</span>
+      </header>
+
+      <main class="pagebody narrow" data-od-id="settings">
+        <div class="tabs" role="tablist" aria-label="Sections des réglages" style="margin-bottom: 20px;">
+          <button role="tab" aria-selected="true" data-tab="statuses">Statuts</button>
+          <button role="tab" aria-selected="false" data-tab="members">Membres</button>
+          <button role="tab" aria-selected="false" data-tab="templates">Gabarits d'issues</button>
+          <button role="tab" aria-selected="false" data-tab="tokens">API tokens</button>
+        </div>
+
+        <!-- ═══════════ Statuts ═══════════ -->
+        <section class="tab-panel" data-panel="statuses" id="panel-statuses">
+          <div class="settings-head">
+            <div>
+              <h2 style="font-size: 18px;">Statuts du workspace</h2>
+              <p class="meta" style="margin-top: 2px;">Définis une fois pour tous les projets. L'ordre ci-dessous s'applique partout dans l'UI.</p>
+            </div>
+            <span style="flex: 1;"></span>
+            <span class="role-sim" title="Prototype : montre l'état lecture seule d'un member">
+              <span class="meta" style="font-size: 12px;">Rôle simulé : <strong id="role-label">owner</strong></span>
+              <button class="switch" id="role-switch" role="switch" aria-checked="false" aria-label="Simuler le rôle member"></button>
+            </span>
+            <button class="btn btn-primary btn-sm" data-owner-action data-dialog-open="dlg-new-status">Nouveau statut</button>
+          </div>
+
+          <div class="banner banner-info" id="readonly-banner" hidden style="margin-bottom: 16px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/></svg>
+            <div class="grow">Les membres voient les statuts en lecture seule. La création, le renommage, la réorganisation et la suppression sont réservées aux <strong>owners</strong>.</div>
+          </div>
+
+          <div class="drag-list" data-drag>
+            <div class="drag-row">
+              <span class="drag-handle" aria-label="Réordonner"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.3"/><circle cx="15" cy="6" r="1.3"/><circle cx="9" cy="12" r="1.3"/><circle cx="15" cy="12" r="1.3"/><circle cx="9" cy="18" r="1.3"/><circle cx="15" cy="18" r="1.3"/></svg></span>
+              <strong style="font-size: 14px;">Backlog</strong>
+              <span class="badge badge-cat-backlog"><span class="dot"></span>backlog</span>
+              <span class="status-count">12 issues</span>
+              <div class="menu-wrap" data-owner-action>
+                <button class="btn btn-ghost btn-icon" data-menu-trigger aria-label="Actions du statut">
+                  <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>
+                </button>
+                <div class="menu">
+                  <button>Renommer…</button>
+                  <div class="sep"></div>
+                  <button class="danger" data-dialog-open="dlg-delete-status">Supprimer…</button>
+                </div>
+              </div>
+            </div>
+            <div class="drag-row">
+              <span class="drag-handle" aria-label="Réordonner"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.3"/><circle cx="15" cy="6" r="1.3"/><circle cx="9" cy="12" r="1.3"/><circle cx="15" cy="12" r="1.3"/><circle cx="9" cy="18" r="1.3"/><circle cx="15" cy="18" r="1.3"/></svg></span>
+              <strong style="font-size: 14px;">À affiner</strong>
+              <span class="badge badge-cat-backlog"><span class="dot"></span>backlog</span>
+              <span class="status-count">3 issues</span>
+              <div class="menu-wrap" data-owner-action>
+                <button class="btn btn-ghost btn-icon" data-menu-trigger aria-label="Actions du statut">
+                  <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>
+                </button>
+                <div class="menu">
+                  <button>Renommer…</button>
+                  <div class="sep"></div>
+                  <button class="danger" data-dialog-open="dlg-delete-status">Supprimer…</button>
+                </div>
+              </div>
+            </div>
+            <div class="drag-row">
+              <span class="drag-handle" aria-label="Réordonner"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.3"/><circle cx="15" cy="6" r="1.3"/><circle cx="9" cy="12" r="1.3"/><circle cx="15" cy="12" r="1.3"/><circle cx="9" cy="18" r="1.3"/><circle cx="15" cy="18" r="1.3"/></svg></span>
+              <strong style="font-size: 14px;">In Progress</strong>
+              <span class="badge badge-cat-in_progress"><span class="dot"></span>in progress</span>
+              <span class="status-count">5 issues</span>
+              <div class="menu-wrap" data-owner-action>
+                <button class="btn btn-ghost btn-icon" data-menu-trigger aria-label="Actions du statut">
+                  <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>
+                </button>
+                <div class="menu">
+                  <button>Renommer…</button>
+                  <div class="sep"></div>
+                  <button class="danger" data-dialog-open="dlg-delete-status">Supprimer…</button>
+                </div>
+              </div>
+            </div>
+            <div class="drag-row">
+              <span class="drag-handle" aria-label="Réordonner"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.3"/><circle cx="15" cy="6" r="1.3"/><circle cx="9" cy="12" r="1.3"/><circle cx="15" cy="12" r="1.3"/><circle cx="9" cy="18" r="1.3"/><circle cx="15" cy="18" r="1.3"/></svg></span>
+              <strong style="font-size: 14px;">En revue</strong>
+              <span class="badge badge-cat-in_progress"><span class="dot"></span>in progress</span>
+              <span class="status-count">2 issues</span>
+              <div class="menu-wrap" data-owner-action>
+                <button class="btn btn-ghost btn-icon" data-menu-trigger aria-label="Actions du statut">
+                  <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>
+                </button>
+                <div class="menu">
+                  <button>Renommer…</button>
+                  <div class="sep"></div>
+                  <button class="danger" data-dialog-open="dlg-delete-status">Supprimer…</button>
+                </div>
+              </div>
+            </div>
+            <div class="drag-row">
+              <span class="drag-handle" aria-label="Réordonner"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.3"/><circle cx="15" cy="6" r="1.3"/><circle cx="9" cy="12" r="1.3"/><circle cx="15" cy="12" r="1.3"/><circle cx="9" cy="18" r="1.3"/><circle cx="15" cy="18" r="1.3"/></svg></span>
+              <strong style="font-size: 14px;">Done</strong>
+              <span class="badge badge-cat-done"><span class="dot"></span>done</span>
+              <span class="status-count">21 issues</span>
+              <div class="menu-wrap" data-owner-action>
+                <button class="btn btn-ghost btn-icon" data-menu-trigger aria-label="Actions du statut">
+                  <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>
+                </button>
+                <div class="menu">
+                  <button>Renommer…</button>
+                  <div class="sep"></div>
+                  <button class="danger" data-dialog-open="dlg-delete-status">Supprimer…</button>
+                </div>
+              </div>
+            </div>
+            <div class="drag-row">
+              <span class="drag-handle" aria-label="Réordonner"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.3"/><circle cx="15" cy="6" r="1.3"/><circle cx="9" cy="12" r="1.3"/><circle cx="15" cy="12" r="1.3"/><circle cx="9" cy="18" r="1.3"/><circle cx="15" cy="18" r="1.3"/></svg></span>
+              <strong style="font-size: 14px;">Cancelled</strong>
+              <span class="badge badge-cat-cancelled"><span class="dot"></span>cancelled</span>
+              <span class="status-count">4 issues</span>
+              <div class="menu-wrap" data-owner-action>
+                <button class="btn btn-ghost btn-icon" data-menu-trigger aria-label="Actions du statut">
+                  <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>
+                </button>
+                <div class="menu">
+                  <button>Renommer…</button>
+                  <div class="sep"></div>
+                  <button class="danger" data-dialog-open="dlg-delete-status">Supprimer…</button>
+                </div>
+              </div>
+            </div>
+            <div class="drag-row" style="border-style: dashed;">
+              <span class="drag-handle" aria-label="Réordonner"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.3"/><circle cx="15" cy="6" r="1.3"/><circle cx="9" cy="12" r="1.3"/><circle cx="15" cy="12" r="1.3"/><circle cx="9" cy="18" r="1.3"/><circle cx="15" cy="18" r="1.3"/></svg></span>
+              <strong style="font-size: 14px;">Urgences</strong>
+              <span class="badge badge-cat-backlog"><span class="dot"></span>backlog</span>
+              <span class="status-count">0 issue</span>
+              <div class="menu-wrap" data-owner-action>
+                <button class="btn btn-ghost btn-icon" data-menu-trigger aria-label="Actions du statut">
+                  <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>
+                </button>
+                <div class="menu">
+                  <button>Renommer…</button>
+                  <div class="sep"></div>
+                  <button class="danger" data-dialog-open="dlg-delete-status-free">Supprimer…</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <p class="meta" style="margin-top: 14px;">Le nom est libre ; la catégorie sémantique — visible à côté — porte la couleur et le sens (4 catégories fixes : backlog, in progress, done, cancelled).</p>
+        </section>
+
+        <!-- ═══════════ Membres ═══════════ -->
+        <section class="tab-panel" data-panel="members" hidden id="panel-members">
+          <div class="settings-head">
+            <div>
+              <h2 style="font-size: 18px;">Membres du workspace</h2>
+              <p class="meta" style="margin-top: 2px;">Deux rôles seulement : owner et member. Pas de permissions granulaires.</p>
+            </div>
+            <span style="flex: 1;"></span>
+            <button class="btn btn-primary btn-sm" data-dialog-open="dlg-invite">Inviter</button>
+          </div>
+          <div class="card">
+            <table class="data-table">
+              <thead><tr><th>Membre</th><th>Rôle</th><th>Statut</th><th></th></tr></thead>
+              <tbody>
+                <tr>
+                  <td><div class="row"><span class="avatar">CR</span><div><p style="font-weight: 500;">Camille Riva</p><p class="meta" style="font-size: 12px;">camille@studionova.fr</p></div></div></td>
+                  <td><span class="badge badge-neutral">owner</span></td>
+                  <td><span class="meta">Membre depuis janv. 2026</span></td>
+                  <td></td>
+                </tr>
+                <tr>
+                  <td><div class="row"><span class="avatar gray">TM</span><div><p style="font-weight: 500;">Théo Marchand</p><p class="meta" style="font-size: 12px;">theo@studionova.fr</p></div></div></td>
+                  <td><span class="badge badge-neutral">member</span></td>
+                  <td><span class="meta">Membre depuis févr. 2026</span></td>
+                  <td><div class="menu-wrap"><button class="btn btn-ghost btn-icon" data-menu-trigger aria-label="Actions du membre"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></button><div class="menu"><button class="danger">Retirer du workspace…</button></div></div></td>
+                </tr>
+                <tr>
+                  <td><div class="row"><span class="avatar gray">NB</span><div><p style="font-weight: 500;">Nadia Belkacem</p><p class="meta" style="font-size: 12px;">nadia@studionova.fr</p></div></div></td>
+                  <td><span class="badge badge-neutral">member</span></td>
+                  <td><span class="meta">Membre depuis mars 2026</span></td>
+                  <td><div class="menu-wrap"><button class="btn btn-ghost btn-icon" data-menu-trigger aria-label="Actions du membre"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></button><div class="menu"><button class="danger">Retirer du workspace…</button></div></div></td>
+                </tr>
+                <tr>
+                  <td><div class="row"><span class="avatar gray">JW</span><div><p style="font-weight: 500;">Jonas Weber</p><p class="meta" style="font-size: 12px;">jonas@atelierkairos.fr</p></div></div></td>
+                  <td><span class="badge badge-neutral">member</span></td>
+                  <td><span class="badge badge-ontrack"><span class="dot"></span>Invitation envoyée</span></td>
+                  <td><div class="menu-wrap"><button class="btn btn-ghost btn-icon" data-menu-trigger aria-label="Actions du membre"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></button><div class="menu"><button>Renvoyer l'invitation</button><div class="sep"></div><button class="danger">Annuler l'invitation…</button></div></div></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="meta" style="margin-top: 12px;">Les invitations sont réservées aux owners. L'invité rejoint le workspace avec le rôle <strong>member</strong>.</p>
+        </section>
+
+        <!-- ═══════════ Gabarits ═══════════ -->
+        <section class="tab-panel" data-panel="templates" hidden id="panel-templates">
+          <div class="settings-head">
+            <div>
+              <h2 style="font-size: 18px;">Gabarits d'issues</h2>
+              <p class="meta" style="margin-top: 2px;">Nom unique par workspace · corps Markdown · priorité et labels par défaut. Réservé aux owners.</p>
+            </div>
+            <span style="flex: 1;"></span>
+            <span class="badge badge-neutral">à venir</span>
+            <button class="btn btn-primary btn-sm" data-dialog-open="dlg-new-template">Nouveau gabarit</button>
+          </div>
+          <div class="card">
+            <table class="data-table">
+              <thead><tr><th>Gabarit</th><th>Priorité par défaut</th><th>Labels</th><th></th></tr></thead>
+              <tbody>
+                <tr>
+                  <td><p class="col-title">Rapport de bug</p><span class="sub" style="color: var(--muted); font-size: 12px; display: block;">Contexte, étapes de reproduction, résultat attendu/obtenu.</span></td>
+                  <td><span class="badge badge-prio-high">high</span></td>
+                  <td><span class="tag">bug</span> <span class="tag">repro</span></td>
+                  <td><div class="menu-wrap"><button class="btn btn-ghost btn-icon" data-menu-trigger aria-label="Actions du gabarit"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></button><div class="menu"><button>Modifier…</button><div class="sep"></div><button class="danger">Supprimer…</button></div></div></td>
+                </tr>
+                <tr>
+                  <td><p class="col-title">Tâche d'intégration</p><span class="sub" style="color: var(--muted); font-size: 12px; display: block;">Checklist : contrat API, migration, tests E2E, rollout.</span></td>
+                  <td><span class="badge badge-prio-none">none</span></td>
+                  <td><span class="tag">api</span></td>
+                  <td><div class="menu-wrap"><button class="btn btn-ghost btn-icon" data-menu-trigger aria-label="Actions du gabarit"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></button><div class="menu"><button>Modifier…</button><div class="sep"></div><button class="danger">Supprimer…</button></div></div></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="meta" style="margin-top: 12px;">Un gabarit <strong>pré-remplit sans contraindre</strong> : aucun lien persistant entre une issue et son gabarit d'origine.</p>
+        </section>
+
+        <!-- ═══════════ Tokens API ═══════════ -->
+        <section class="tab-panel" data-panel="tokens" hidden id="panel-tokens">
+          <div class="settings-head">
+            <div>
+              <h2 style="font-size: 18px;">API tokens</h2>
+              <p class="meta" style="margin-top: 2px;">Piloter le workspace depuis des agents IA (MCP) ou des scripts.</p>
+            </div>
+            <span style="flex: 1;"></span>
+            <span class="badge badge-neutral">à venir</span>
+            <button class="btn btn-primary btn-sm" data-dialog-open="dlg-new-token">Créer un token</button>
+          </div>
+
+          <div class="banner banner-warning" style="margin-bottom: 16px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l10 18H2z"/><path d="M12 10v4M12 17v.01"/></svg>
+            <div class="grow">La valeur d'un token n'est affichée <strong>qu'une seule fois</strong>, à la création. Elle n'est plus récupérable ensuite.</div>
+          </div>
+
+          <div class="card card-pad" style="margin-bottom: 16px;" data-od-id="token-created">
+            <p class="meta" style="margin-bottom: 8px;">Token créé à l'instant — <strong style="color: var(--fg);">copiez-le maintenant</strong></p>
+            <div class="token-value">taskr_wk_01J8XQ4Z3TN8RM2P5V7A9BCEFH</div>
+            <div class="row" style="margin-top: 10px;">
+              <button class="btn btn-outline btn-sm">Copier</button>
+              <button class="btn btn-ghost btn-sm">J'ai copié mon token</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <table class="data-table">
+              <thead><tr><th>Nom</th><th>Créé le</th><th>Dernière utilisation</th><th></th></tr></thead>
+              <tbody>
+                <tr>
+                  <td style="font-weight: 500;">Agent Claude — MCP</td>
+                  <td class="mono">12 oct. 2026</td>
+                  <td class="mono">il y a 2 h</td>
+                  <td><button class="btn btn-ghost btn-sm" style="color: var(--destructive);">Révoquer</button></td>
+                </tr>
+                <tr>
+                  <td style="font-weight: 500;">Script export hebdo</td>
+                  <td class="mono">28 sept. 2026</td>
+                  <td class="mono">8 oct. 2026</td>
+                  <td><button class="btn btn-ghost btn-sm" style="color: var(--destructive);">Révoquer</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <!-- Dialog : nouveau statut -->
+  <div class="dialog-overlay" id="dlg-new-status" role="dialog" aria-modal="true" aria-label="Créer un statut">
+    <div class="dialog">
+      <div class="dialog-head">
+        <div>
+          <h2>Nouveau statut</h2>
+          <p>Nom libre, catégorie parmi les 4 sémantiques.</p>
+        </div>
+      </div>
+      <form class="dialog-body" data-validate id="form-new-status">
+        <label class="field">Nom <span style="color: var(--destructive);">*</span>
+          <input class="input" placeholder="Ex. En recette" data-required />
+          <span class="error-msg">Le nom est requis.</span>
+        </label>
+        <label class="field">Catégorie
+          <select class="select">
+            <option>backlog</option>
+            <option>in progress</option>
+            <option>done</option>
+            <option>cancelled</option>
+          </select>
+          <span class="hint">La catégorie fixe la couleur du badge partout dans l'UI.</span>
+        </label>
+      </form>
+      <div class="dialog-foot">
+        <button class="btn btn-ghost" data-dialog-close>Annuler</button>
+        <button class="btn btn-primary" type="submit" form="form-new-status" data-autofocus>Créer le statut</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dialog : suppression protégée avec migration -->
+  <div class="dialog-overlay" id="dlg-delete-status" role="dialog" aria-modal="true" aria-label="Supprimer le statut">
+    <div class="dialog">
+      <div class="dialog-head">
+        <div>
+          <h2>« En revue » est utilisé par 2 issues</h2>
+          <p>La suppression est refusée tant que des issues utilisent ce statut.</p>
+        </div>
+      </div>
+      <div class="dialog-body">
+        <div class="banner banner-danger">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l10 18H2z"/><path d="M12 10v4M12 17v.01"/></svg>
+          <div class="grow">Migrez d'abord ces 2 issues vers un autre statut, puis supprimez « En revue ».</div>
+        </div>
+        <label class="field">Migrer les issues vers
+          <select class="select">
+            <option>Backlog</option>
+            <option>In Progress</option>
+            <option>Done</option>
+          </select>
+        </label>
+      </div>
+      <div class="dialog-foot">
+        <button class="btn btn-ghost" data-dialog-close>Annuler</button>
+        <button class="btn btn-outline btn-destructive" data-dialog-close data-autofocus>Migrer puis supprimer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dialog : suppression libre (0 issues) -->
+  <div class="dialog-overlay" id="dlg-delete-status-free" role="dialog" aria-modal="true" aria-label="Supprimer le statut sans issues">
+    <div class="dialog">
+      <div class="dialog-head">
+        <div>
+          <h2>Supprimer « Urgences » ?</h2>
+          <p>Aucune issue n'utilise ce statut.</p>
+        </div>
+      </div>
+      <div class="dialog-foot" style="padding-top: 16px;">
+        <button class="btn btn-ghost" data-dialog-close>Annuler</button>
+        <button class="btn btn-destructive" data-dialog-close data-autofocus>Supprimer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dialog : invitation -->
+  <div class="dialog-overlay" id="dlg-invite" role="dialog" aria-modal="true" aria-label="Inviter un membre">
+    <div class="dialog">
+      <div class="dialog-head">
+        <div>
+          <h2>Inviter un membre</h2>
+          <p>Le rôle est toujours <strong>member</strong> — deux rôles seulement.</p>
+        </div>
+      </div>
+      <form class="dialog-body" data-validate id="form-invite">
+        <label class="field">Email <span style="color: var(--destructive);">*</span>
+          <input class="input" type="email" placeholder="prenom@exemple.fr" data-required />
+          <span class="error-msg">L'email est requis.</span>
+        </label>
+      </form>
+      <div class="dialog-foot">
+        <button class="btn btn-ghost" data-dialog-close>Annuler</button>
+        <button class="btn btn-primary" type="submit" form="form-invite" data-autofocus>Envoyer l'invitation</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dialog : nouveau gabarit -->
+  <div class="dialog-overlay" id="dlg-new-template" role="dialog" aria-modal="true" aria-label="Créer un gabarit">
+    <div class="dialog">
+      <div class="dialog-head">
+        <div>
+          <h2>Nouveau gabarit d'issue</h2>
+          <p>Nom unique par workspace · pré-remplit la création d'issue.</p>
+        </div>
+      </div>
+      <form class="dialog-body" data-validate id="form-new-template">
+        <label class="field">Nom <span style="color: var(--destructive);">*</span>
+          <input class="input" placeholder="Ex. Rapport de bug" data-required />
+          <span class="error-msg">Le nom est requis et doit être unique dans le workspace.</span>
+        </label>
+        <div class="grid-2">
+          <label class="field">Priorité par défaut
+            <select class="select"><option>none</option><option>low</option><option selected>high</option><option>urgent</option></select>
+          </label>
+          <label class="field">Labels par défaut
+            <input class="input" placeholder="bug, repro…" />
+          </label>
+        </div>
+        <label class="field">Corps (Markdown)
+          <textarea class="textarea" placeholder="## Contexte&#10;&#10;## Reproduction&#10;1. …&#10;&#10;## Attendu / Obtenu">## Contexte
+
+## Reproduction
+1.
+
+## Attendu / Obtenu</textarea>
+        </label>
+      </form>
+      <div class="dialog-foot">
+        <button class="btn btn-ghost" data-dialog-close>Annuler</button>
+        <button class="btn btn-primary" type="submit" form="form-new-template" data-autofocus>Créer le gabarit</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dialog : nouveau token -->
+  <div class="dialog-overlay" id="dlg-new-token" role="dialog" aria-modal="true" aria-label="Créer un token">
+    <div class="dialog">
+      <div class="dialog-head">
+        <div>
+          <h2>Créer un token API</h2>
+          <p>La valeur ne sera affichée qu'une seule fois.</p>
+        </div>
+      </div>
+      <form class="dialog-body" data-validate id="form-new-token">
+        <label class="field">Nom <span style="color: var(--destructive);">*</span>
+          <input class="input" placeholder="Ex. Agent agentique — MCP" data-required />
+          <span class="error-msg">Le nom est requis.</span>
+        </label>
+      </form>
+      <div class="dialog-foot">
+        <button class="btn btn-ghost" data-dialog-close>Annuler</button>
+        <button class="btn btn-primary" type="submit" form="form-new-token" data-autofocus>Créer le token</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../assets/app.js"></script>
+</body>
+</html>

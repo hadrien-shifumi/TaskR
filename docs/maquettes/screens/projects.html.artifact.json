@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "kind": "html",
+  "title": "screens/projects.html",
+  "entry": "screens/projects.html",
+  "renderer": "html",
+  "status": "complete",
+  "exports": [
+    "html",
+    "pdf",
+    "zip"
+  ],
+  "createdAt": "2026-10-14T14:39:56.019Z",
+  "updatedAt": "2026-10-14T14:39:56.019Z",
+  "metadata": {
+    "inferred": true,
+    "reconciled": true
+  }
+}

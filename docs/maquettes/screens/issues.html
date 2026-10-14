@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Issues · Studio Nova · Taskr</title>
+  <link rel="stylesheet" href="../assets/app.css" />
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" data-od-id="sidebar">
+      <div class="sidebar-brand">
+        <span class="brand-mark">T</span><span class="brand-name">Taskr</span>
+      </div>
+      <div class="menu-wrap">
+        <button class="ws-switch" data-menu-trigger aria-haspopup="menu" aria-label="Changer de workspace">
+          <span class="ws-dot">SN</span>
+          <span class="ws-name">Studio Nova</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <div class="menu" role="menu">
+          <p class="menu-label">Vos workspaces</p>
+          <a role="menuitem" aria-current="true">Studio Nova</a>
+          <a role="menuitem">Atelier Kairos</a>
+          <div class="sep"></div>
+          <button role="menuitem">Créer un workspace…</button>
+        </div>
+      </div>
+      <p class="sidebar-label">Workspace</p>
+      <a class="nav-item" href="home.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg><span>Home</span>
+      </a>
+      <a class="nav-item" href="projects.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg><span>Projects</span>
+      </a>
+      <a class="nav-item" href="issues.html" aria-current="page">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="6" r="2.5"/><path d="M10.5 6H21M10.5 12H21M10.5 18H21"/><circle cx="6" cy="12" r="2.5"/><circle cx="6" cy="18" r="2.5"/></svg><span>Issues</span>
+      </a>
+      <a class="nav-item" href="settings.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h10M18 7h2M4 12h4M12 12h8M4 17h13M20 17h0"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="19" cy="17" r="2"/></svg><span>Settings</span>
+      </a>
+      <div class="sidebar-foot">
+        <div class="row">
+          <span class="avatar">CR</span>
+          <div style="min-width: 0;">
+            <p style="font-size: 13px; font-weight: 500;">Camille Riva</p>
+            <p class="meta" style="font-size: 11px;">owner</p>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <div class="app-main">
+      <header class="pagebar" data-od-id="pagebar-issues">
+        <span class="pagebar-title">Issues</span>
+        <span class="meta hide-sm">Tous projets du workspace</span>
+        <span class="spacer"></span>
+        <button class="btn btn-primary btn-sm" data-dialog-open="dlg-new-issue">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg>
+          Nouvelle issue
+        </button>
+      </header>
+
+      <main class="pagebody" data-od-id="issues-list" data-filter-scope>
+        <!-- Filtres -->
+        <div class="filterbar" data-filter-bar style="margin-bottom: 14px;">
+          <div class="filter-search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+            <input class="input filter-search-input" type="search" placeholder="Rechercher un titre…" data-filter-search />
+          </div>
+          <button class="filterchip" data-filter-key="inprogress">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="7" cy="7" r="2.5"/><path d="M11.5 7H20M11.5 17H20"/><circle cx="7" cy="17" r="2.5"/></svg>
+            En cours
+          </button>
+          <button class="filterchip" data-filter-key="done">Done</button>
+          <button class="filterchip" data-filter-key="overdue">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+            En retard
+          </button>
+          <button class="filterchip" data-filter-key="urgent">Urgentes</button>
+          <button class="filterchip" data-filter-key="mine">
+            <span class="avatar sm">CR</span>
+            Les miennes
+          </button>
+          <button class="filterchip" data-filter-key="stripe">Projet : Stripe</button>
+          <span class="meta mono" data-filter-count style="margin-left: auto;"></span>
+        </div>
+
+        <div class="card" style="overflow: hidden;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th style="width: 30%;">Titre</th>
+                <th>Statut</th>
+                <th>Priorité</th>
+                <th class="hide-sm">Labels</th>
+                <th>Assignés</th>
+                <th>Due date</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr data-filter-row data-filter-inprogress="true" data-filter-urgent="true" data-filter-mine="true" data-filter-stripe="true" data-filter-overdue="true">
+                <td><a class="rowlink col-title" href="issue-detail.html">Webhooks : retry avec backoff exponentiel</a><span class="sub mono">01J8XQ4 · Intégration paiements Stripe</span></td>
+                <td><span class="badge badge-cat-in_progress"><span class="dot"></span>In Progress</span></td>
+                <td><span class="badge badge-prio-urgent">urgent</span></td>
+                <td class="hide-sm"><span class="tag">api</span> <span class="tag">paiement</span></td>
+                <td><span class="avatar-stack"><span class="avatar sm" title="Camille Riva">CR</span><span class="avatar sm" title="Théo Marchand">TM</span></span></td>
+                <td class="mono due-overdue">14 oct. 2026</td>
+              </tr>
+              <tr data-filter-row data-filter-overdue="true" data-filter-stripe="true">
+                <td><a class="rowlink col-title" href="issue-detail.html">Reconcilier les paiements échoués du 28 sept.</a><span class="sub mono">01J8RM2 · Intégration paiements Stripe</span></td>
+                <td><span class="badge badge-cat-backlog"><span class="dot"></span>Backlog</span></td>
+                <td><span class="badge badge-prio-high">high</span></td>
+                <td class="hide-sm"><span class="tag">paiement</span></td>
+                <td><span class="avatar-stack"><span class="avatar sm" title="Léa Fontaine">LF</span></span></td>
+                <td class="mono due-overdue">30 sept. 2026</td>
+              </tr>
+              <tr data-filter-row data-filter-inprogress="true">
+                <td><a class="rowlink col-title" href="issue-detail.html">Crash au lancement sur iOS 17.4</a><span class="sub mono">01J8VP0 · App mobile iOS</span></td>
+                <td><span class="badge badge-cat-in_progress"><span class="dot"></span>En revue</span></td>
+                <td><span class="badge badge-prio-high">high</span></td>
+                <td class="hide-sm"><span class="tag">crash</span> <span class="tag">ios</span></td>
+                <td><span class="avatar-stack"><span class="avatar sm" title="Nadia Belkacem">NB</span></span></td>
+                <td class="mono">22 oct. 2026</td>
+              </tr>
+              <tr data-filter-row data-filter-inprogress="true">
+                <td><a class="rowlink col-title" href="issue-detail.html">Écran suivi de commande en temps réel</a><span class="sub mono">01J8WN7 · App mobile iOS</span></td>
+                <td><span class="badge badge-cat-in_progress"><span class="dot"></span>In Progress</span></td>
+                <td><span class="badge badge-prio-none">none</span></td>
+                <td class="hide-sm"><span class="tag">design</span></td>
+                <td><span class="avatar-stack"><span class="avatar sm" title="Théo Marchand">TM</span></span></td>
+                <td class="mono">8 nov. 2026</td>
+              </tr>
+              <tr data-filter-row data-filter-done="true" data-filter-mine="true">
+                <td><a class="rowlink col-title" href="issue-detail.html">Design système : tokens de couleur en oklch</a><span class="sub mono">01J8KH3 · Refonte site vitrine</span></td>
+                <td><span class="badge badge-cat-done"><span class="dot"></span>Done</span></td>
+                <td><span class="badge badge-prio-low">low</span></td>
+                <td class="hide-sm"><span class="tag">design</span></td>
+                <td><span class="avatar-stack"><span class="avatar sm" title="Camille Riva">CR</span></span></td>
+                <td class="mono muted">—</td>
+              </tr>
+              <tr data-filter-row data-filter-inprogress="true">
+                <td><a class="rowlink col-title" href="issue-detail.html">Page tarifs : comparatif clair par plan</a><span class="sub mono">01J8LP9 · Refonte site vitrine</span></td>
+                <td><span class="badge badge-cat-in_progress"><span class="dot"></span>In Progress</span></td>
+                <td><span class="badge badge-prio-low">low</span></td>
+                <td class="hide-sm"><span class="tag">seo</span></td>
+                <td><span class="avatar-stack"><span class="avatar sm" title="Léa Fontaine">LF</span></span></td>
+                <td class="mono">29 oct. 2026</td>
+              </tr>
+              <tr data-filter-row data-filter-done="true" data-filter-stripe="true">
+                <td><a class="rowlink col-title" href="issue-detail.html">Duplicata d'email de confirmation (commande #142)</a><span class="sub mono">01J8GB4 · Intégration paiements Stripe</span></td>
+                <td><span class="badge badge-cat-done"><span class="dot"></span>Done</span></td>
+                <td><span class="badge badge-prio-none">none</span></td>
+                <td class="hide-sm"><span class="tag">api</span></td>
+                <td><span class="avatar-stack"><span class="avatar sm" title="Jonas Weber">JW</span></span></td>
+                <td class="mono muted">—</td>
+              </tr>
+              <tr data-filter-row>
+                <td><a class="rowlink col-title" href="issue-detail.html">Basculer l'API sur la région eu-west-3</a><span class="sub mono">01J8FT1 · Migration infra</span></td>
+                <td><span class="badge badge-cat-backlog"><span class="dot"></span>Backlog</span></td>
+                <td><span class="badge badge-prio-high">high</span></td>
+                <td class="hide-sm"><span class="tag">infra</span></td>
+                <td><span class="avatar-stack"><span class="avatar sm" title="Théo Marchand">TM</span></span></td>
+                <td class="mono">5 nov. 2026</td>
+              </tr>
+              <tr data-filter-row>
+                <td><a class="rowlink col-title" href="issue-detail.html">Rédiger la doc d'onboarding MCP</a><span class="sub mono">01J8EZ6 · Migration infra</span></td>
+                <td><span class="badge badge-cat-backlog"><span class="dot"></span>À affiner</span></td>
+                <td><span class="badge badge-prio-none">none</span></td>
+                <td class="hide-sm"><span class="tag">docs</span> <span class="tag">mcp</span></td>
+                <td><span class="meta" style="font-size: 12px;">Non assignée</span></td>
+                <td class="mono muted">—</td>
+              </tr>
+              <tr data-filter-row>
+                <td><span class="col-title muted" style="text-decoration: line-through; font-weight: 400;">Refonte du module legacy</span><span class="sub mono">01J8CQ8 · Refonte site vitrine</span></td>
+                <td><span class="badge badge-cat-cancelled"><span class="dot"></span>Cancelled</span></td>
+                <td><span class="badge badge-prio-none">none</span></td>
+                <td class="hide-sm"><span class="tag">legacy</span></td>
+                <td><span class="meta" style="font-size: 12px;">Non assignée</span></td>
+                <td class="mono muted">—</td>
+              </tr>
+            </tbody>
+          </table>
+          <div data-filter-empty hidden style="padding: 40px 20px; text-align: center;">
+            <p style="font-weight: 500;">Aucune issue ne correspond à ces filtres</p>
+            <p class="meta" style="margin-top: 4px;">Désactivez une pastille de filtre ou videz la recherche.</p>
+          </div>
+        </div>
+        <p class="meta" style="margin-top: 12px;">Les identifiants sont opaques (ULID) : pas de numérotation séquentielle, l'ordre d'affichage n'est pas un identifiant.</p>
+      </main>
+    </div>
+  </div>
+
+  <!-- Dialog : création d'issue -->
+  <div class="dialog-overlay" id="dlg-new-issue" role="dialog" aria-modal="true" aria-label="Créer une issue">
+    <div class="dialog dialog-lg">
+      <div class="dialog-head">
+        <div>
+          <h2>Nouvelle issue</h2>
+          <p>Seul le titre est requis — tout le reste est optionnel.</p>
+        </div>
+        <span class="spacer"></span>
+        <button class="btn btn-ghost btn-icon" data-dialog-close aria-label="Fermer">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+      <form class="dialog-body" data-validate id="form-new-issue">
+        <label class="field">Titre <span style="color: var(--destructive);">*</span>
+          <input class="input" placeholder="Décrire la tâche en une phrase" data-required />
+          <span class="error-msg">Le titre est requis.</span>
+        </label>
+        <div class="grid-2">
+          <label class="field">Projet
+            <select class="select">
+              <option>Intégration paiements Stripe</option>
+              <option>App mobile iOS</option>
+              <option>Refonte site vitrine</option>
+              <option>Migration infra</option>
+            </select>
+          </label>
+          <label class="field">Gabarit
+            <select class="select">
+              <option>Aucun gabarit</option>
+              <option>Rapport de bug</option>
+              <option>Tâche d'intégration</option>
+            </select>
+            <span class="hint">Pré-remplit sans contraindre — aucun lien persistant.</span>
+          </label>
+        </div>
+        <label class="field">Description <span class="hint" style="display: inline;">(Markdown)</span>
+          <textarea class="textarea" placeholder="Contexte, critères d'acceptation…"></textarea>
+        </label>
+        <div class="grid-2">
+          <label class="field">Statut
+            <select class="select">
+              <option>Backlog · catégorie backlog</option>
+              <option>In Progress · catégorie in progress</option>
+              <option>Done · catégorie done</option>
+              <option>Cancelled · catégorie cancelled</option>
+            </select>
+          </label>
+          <label class="field">Priorité
+            <select class="select">
+              <option>none</option>
+              <option>low</option>
+              <option>high</option>
+              <option>urgent</option>
+            </select>
+          </label>
+        </div>
+        <div class="grid-2">
+          <label class="field">Labels
+            <input class="input" placeholder="api, paiement…" />
+            <span class="hint">Libres — créés à la volée, sans référentiel.</span>
+          </label>
+          <label class="field">Assignés
+            <input class="input" placeholder="Rechercher un membre…" />
+            <span class="hint">Plusieurs assignés possibles.</span>
+          </label>
+        </div>
+        <div class="grid-2">
+          <label class="field">Due date
+            <input class="input" type="date" />
+          </label>
+          <label class="field">Estimation (heures)
+            <input class="input" type="number" step="0.5" min="0" placeholder="Ex. 6,5" />
+          </label>
+        </div>
+      </form>
+      <div class="dialog-foot">
+        <button class="btn btn-ghost" data-dialog-close>Annuler</button>
+        <button class="btn btn-primary" type="submit" form="form-new-issue" data-autofocus>Créer l'issue</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Connexion · Taskr</title>
+  <link rel="stylesheet" href="../assets/app.css" />
+  <style>
+    .auth-tabs { display: flex; gap: 2px; border: 1px solid var(--border); border-radius: var(--radius); padding: 3px; background: var(--fg-soft); margin-bottom: 18px; }
+    .auth-tabs button { flex: 1; height: 30px; border-radius: 6px; font-size: 13px; font-weight: 500; color: var(--muted); }
+    .auth-tabs button[aria-selected="true"] { background: var(--surface); color: var(--fg); box-shadow: var(--shadow-sm); }
+    .auth-panel[hidden] { display: none; }
+    .footnote { text-align: center; font-size: 12.5px; color: var(--muted); margin-top: 16px; }
+  </style>
+</head>
+<body>
+  <main class="guest" data-od-id="auth">
+    <div class="guest-card">
+      <div class="guest-brand">
+        <span class="brand-mark">T</span><span class="brand-name">Taskr</span>
+      </div>
+
+      <div class="card card-pad" style="padding: 24px;">
+        <div class="auth-tabs" role="tablist" aria-label="Mode d'accès">
+          <button role="tab" aria-selected="true" data-auth-tab="login">Connexion</button>
+          <button role="tab" aria-selected="false" data-auth-tab="signup">Inscription</button>
+          <button role="tab" aria-selected="false" data-auth-tab="invite">Invitation</button>
+        </div>
+
+        <!-- Connexion -->
+        <section class="auth-panel" data-auth-panel="login" data-od-id="auth-login">
+          <h1 style="font-size: 19px; margin-bottom: 4px;">Bon retour</h1>
+          <p class="meta" style="margin-bottom: 18px;">Connectez-vous pour retrouver vos workspaces.</p>
+          <form class="stack" data-validate>
+            <label class="field">Email
+              <input class="input" type="email" placeholder="camille@studionova.fr" required data-required />
+            </label>
+            <label class="field">Mot de passe
+              <input class="input" type="password" placeholder="••••••••" required data-required />
+            </label>
+            <button class="btn btn-primary btn-lg" type="submit" style="width: 100%; margin-top: 4px;">Se connecter</button>
+          </form>
+        </section>
+
+        <!-- Inscription -->
+        <section class="auth-panel" data-auth-panel="signup" hidden data-od-id="auth-signup">
+          <h1 style="font-size: 19px; margin-bottom: 4px;">Créer un compte</h1>
+          <p class="meta" style="margin-bottom: 18px;">Votre premier workspace est créé automatiquement.</p>
+          <form class="stack" data-validate>
+            <label class="field">Nom complet
+              <input class="input" placeholder="Camille Riva" required data-required />
+            </label>
+            <label class="field">Email
+              <input class="input" type="email" placeholder="camille@studionova.fr" required data-required />
+            </label>
+            <label class="field">Mot de passe
+              <input class="input" type="password" placeholder="8 caractères minimum" required data-required />
+            </label>
+            <label class="field">Nom du workspace
+              <input class="input" placeholder="Studio Nova" />
+              <span class="hint">Créé avec les 4 statuts par défaut : Backlog, In Progress, Done, Cancelled.</span>
+            </label>
+            <button class="btn btn-primary btn-lg" type="submit" style="width: 100%; margin-top: 4px;">Créer mon compte</button>
+          </form>
+        </section>
+
+        <!-- Acceptation d'invitation -->
+        <section class="auth-panel" data-auth-panel="invite" hidden data-od-id="auth-invite">
+          <h1 style="font-size: 19px; margin-bottom: 4px;">Rejoindre Studio Nova</h1>
+          <p class="meta" style="margin-bottom: 18px;">Camille Riva vous invite à rejoindre le workspace <strong style="color: var(--fg);">Studio Nova</strong> en tant que <span class="badge badge-neutral">member</span>.</p>
+          <div class="banner banner-info" style="margin-bottom: 16px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 8v.01M12 11v5"/></svg>
+            <div class="grow">Vous rejoignez le workspace avec le rôle <strong>member</strong> : accès aux projets, issues, commentaires et saisie de temps. La gestion des statuts et des membres reste réservée aux owners.</div>
+          </div>
+          <form class="stack" data-validate>
+            <label class="field">Email de l'invitation
+              <input class="input" type="email" value="nadia@atelierkairos.fr" readonly style="color: var(--muted);" />
+            </label>
+            <div class="row">
+              <button class="btn btn-primary btn-lg" type="submit" style="flex: 1;">Accepter l'invitation</button>
+            </div>
+            <button class="btn btn-ghost" type="button" style="width: 100%;">Décliner</button>
+          </form>
+        </section>
+      </div>
+
+      <p class="footnote">Prototype de maquette — Taskr · authentification</p>
+    </div>
+  </main>
+
+  <script src="../assets/app.js"></script>
+  <script>
+    (function () {
+      var tabs = document.querySelectorAll('[data-auth-tab]');
+      tabs.forEach(function (tab) {
+        tab.addEventListener('click', function () {
+          tabs.forEach(function (t) { t.setAttribute('aria-selected', t === tab ? 'true' : 'false'); });
+          document.querySelectorAll('[data-auth-panel]').forEach(function (p) {
+            p.hidden = p.getAttribute('data-auth-panel') !== tab.getAttribute('data-auth-tab');
+          });
+        });
+      });
+    })();
+  </script>
+</body>
+</html>
