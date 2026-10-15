@@ -26,6 +26,7 @@ class Issue extends BaseModel
         'priority',
         'due_date',
         'estimated_hours',
+        'created_by',
     ];
 
     protected $casts = [
@@ -64,6 +65,14 @@ class Issue extends BaseModel
     public function children(): HasMany
     {
         return $this->hasMany(Issue::class, 'parent_id');
+    }
+
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 
     /**

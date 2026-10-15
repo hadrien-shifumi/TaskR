@@ -48,8 +48,11 @@ use App\Actions\TimeTracking\DeleteTimeEntry;
 use App\Actions\TimeTracking\SetIssueEstimate;
 use App\Actions\TimeTracking\UpdateTimeEntry;
 use App\Actions\Workspaces\AcceptInvitation;
+use App\Actions\Workspaces\CancelInvitation;
+use App\Actions\Workspaces\CreateWorkspace;
 use App\Actions\Workspaces\InviteMember;
 use App\Actions\Workspaces\RemoveMember;
+use App\Actions\Workspaces\ResendInvitation;
 use App\Actions\Workspaces\ShowMembersPage;
 use App\Actions\Workspaces\SwitchWorkspace;
 use Illuminate\Support\Facades\Route;
@@ -63,15 +66,20 @@ Route::middleware('guest')->group(function (): void {
 
 Route::post('/logout', LogoutUser::class)->middleware('auth')->name('logout');
 
+// Acceptance is reachable by guests: the action renders the invitation landing
+// page for them and performs the membership only for authenticated users.
+Route::get('/invitations/{invitation}/accept', AcceptInvitation::class)->name('invitations.accept');
+
 Route::middleware(['auth', 'workspace'])->group(function (): void {
     Route::get('/', ShowHomeAction::class)->name('home');
 
     Route::post('/workspaces/{workspace}/switch', SwitchWorkspace::class)->name('workspaces.switch');
+    Route::post('/workspaces', CreateWorkspace::class)->name('workspaces.store');
 
     Route::post('/workspaces/{workspace}/invitations', InviteMember::class)->name('workspaces.invite');
+    Route::post('/workspaces/{workspace}/invitations/{invitation}/resend', ResendInvitation::class)->name('workspaces.invitations.resend');
+    Route::delete('/workspaces/{workspace}/invitations/{invitation}', CancelInvitation::class)->name('workspaces.invitations.destroy');
     Route::delete('/workspaces/{workspace}/members/{user}', RemoveMember::class)->name('workspaces.members.destroy');
-
-    Route::get('/invitations/{invitation}/accept', AcceptInvitation::class)->name('invitations.accept');
 
     Route::get('/settings/tokens', ShowApiTokensPage::class)->name('settings.tokens');
     Route::post('/tokens', CreateApiToken::class)->name('tokens.store');

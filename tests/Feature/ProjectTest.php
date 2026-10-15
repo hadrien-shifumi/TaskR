@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Actions\Issues\CreateIssue;
 use App\Actions\Projects\CreateProject;
 use App\Actions\Workspaces\CreateWorkspace;
 use App\Models\Membership;
@@ -90,6 +91,30 @@ class ProjectTest extends TestCase
                     ->component('Projects/Index')
                     ->where('projects.active.0.id', $active->id)
                     ->where('projects.archived.0.id', $archived->id)
+            );
+    }
+
+    public function test_projects_page_provides_archive_date_and_issue_count_for_archived_projects(): void
+    {
+        $owner = User::factory()->create();
+        $workspace = CreateWorkspace::run($owner, ['name' => 'WS']);
+
+        app(WorkspaceContext::class)->set($workspace);
+        $project = CreateProject::run($workspace, ['name' => 'Sprint zéro']);
+        $project->update(['archived_at' => now()->subDay()]);
+        CreateIssue::run($workspace, ['project_id' => $project->id, 'title' => 'Tâche 1']);
+        CreateIssue::run($workspace, ['project_id' => $project->id, 'title' => 'Tâche 2']);
+
+        // The archived dialog shows "N issues · archived on <date>" per row.
+        $this->actingAs($owner)
+            ->get('/projects')
+            ->assertOk()
+            ->assertInertia(
+                fn (AssertableInertia $page) => $page
+                    ->component('Projects/Index')
+                    ->where('projects.archived.0.id', $project->id)
+                    ->where('projects.archived.0.archivedAt', $project->fresh()->archived_at->toISOString())
+                    ->where('projects.archived.0.health.totalIssues', 2)
             );
     }
 

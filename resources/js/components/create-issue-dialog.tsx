@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/select';
 import { useForm } from '@inertiajs/react';
 import type { LabelRef } from '@/types';
-import type { TemplateOption } from '../types';
+import type { TemplateOption } from '@/Pages/Issues/Index/types';
 
 type ProjectOption = { id: string; name: string };
 type StatusOption = { id: string; name: string; category: string };
@@ -126,6 +126,7 @@ export function CreateIssueDialog({ open, onClose, projects, statuses, labels, t
                     value={createForm.data.title}
                     onChange={(e) => createForm.setData('title', e.target.value)}
                     aria-required="true"
+                    aria-invalid={createForm.errors.title ? true : undefined}
                 />
                 {createForm.errors.title ? (
                     <p data-test="title-error" className="text-sm text-destructive">
@@ -149,7 +150,7 @@ export function CreateIssueDialog({ open, onClose, projects, statuses, labels, t
                             if (v) createForm.setData('project_id', v);
                         }}
                     >
-                        <SelectTrigger>
+                        <SelectTrigger aria-invalid={createForm.errors.project_id ? true : undefined}>
                             <SelectValue>
                                 {projects.find((p) => p.id === createForm.data.project_id)?.name ?? 'Project'}
                             </SelectValue>
@@ -166,28 +167,30 @@ export function CreateIssueDialog({ open, onClose, projects, statuses, labels, t
                         <p className="text-sm text-destructive">{createForm.errors.project_id}</p>
                     ) : null}
                 </div>
-                <div className="grid gap-2">
-                    <Label>Status</Label>
-                    <Select
-                        value={createStatusId}
-                        onValueChange={(v) => {
-                            if (v) createForm.setData('status_id', v);
-                        }}
-                    >
-                        <SelectTrigger>
-                            <SelectValue>
-                                {statuses.find((s) => s.id === createStatusId)?.name ?? 'Status'}
-                            </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                            {statuses.map((s) => (
-                                <SelectItem key={s.id} value={s.id}>
-                                    {s.name}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </div>
+                {statuses.length > 0 ? (
+                    <div className="grid gap-2">
+                        <Label>Status</Label>
+                        <Select
+                            value={createStatusId}
+                            onValueChange={(v) => {
+                                if (v) createForm.setData('status_id', v);
+                            }}
+                        >
+                            <SelectTrigger>
+                                <SelectValue>
+                                    {statuses.find((s) => s.id === createStatusId)?.name ?? 'Status'}
+                                </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                                {statuses.map((s) => (
+                                    <SelectItem key={s.id} value={s.id}>
+                                        {s.name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                ) : null}
             </div>
             <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
@@ -207,14 +210,16 @@ export function CreateIssueDialog({ open, onClose, projects, statuses, labels, t
                     />
                 </div>
             </div>
-            <div className="grid gap-2">
-                <Label>Labels</Label>
-                <LabelPicker
-                    labels={labels}
-                    selectedIds={createForm.data.label_ids}
-                    onToggle={toggleIssueLabel}
-                />
-            </div>
+            {labels.length > 0 ? (
+                <div className="grid gap-2">
+                    <Label>Labels</Label>
+                    <LabelPicker
+                        labels={labels}
+                        selectedIds={createForm.data.label_ids}
+                        onToggle={toggleIssueLabel}
+                    />
+                </div>
+            ) : null}
         </FormDialog>
     );
 }

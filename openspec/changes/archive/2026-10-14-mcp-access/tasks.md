@@ -51,5 +51,5 @@
 
 - [x] 9.1 Passe complète de tests au vert (`php artisan test`), dont les tests d'isolation inter-tenants existants et les nouveaux tests MCP
 - [x] 9.2 `vendor/bin/pint --dirty --format agent` au propre
-- [ ] 9.3 Dogfood agent minimal : avec un vrai client MCP (ex. Claude Desktop/Cursor) et un token réel — `list_workspaces` → `create_project` → `create_issue` hiérarchisée → `add_comment` → `list_issues` filtrée
+- [x] 9.3 Dogfood agent minimal : avec un vrai client MCP (ex. Claude Desktop/Cursor) et un token réel — `list_workspaces` → `create_project` → `create_issue` hiérarchisée → `add_comment` → `list_issues` filtrée
 - [x] 9.4 Revue du respect du pattern ADR : toute requête DB dans une Action, aucun `Inertia::render` hors Responder, aucune logique métier dans `app/Mcp/`

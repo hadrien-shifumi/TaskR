@@ -7,12 +7,23 @@ use App\Enums\WorkspaceRole;
 use App\Models\Status;
 use App\Models\User;
 use App\Models\Workspace;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Lorisleiva\Actions\Concerns\AsController;
 use Lorisleiva\Actions\Concerns\AsObject;
 
 class CreateWorkspace
 {
+    use AsController;
     use AsObject;
+
+    public function rules(): array
+    {
+        return [
+            'name' => ['required', 'string', 'max:255'],
+        ];
+    }
 
     /**
      * @param  array{name: string}  $data
@@ -31,6 +42,24 @@ class CreateWorkspace
 
             return $workspace;
         });
+    }
+
+    /**
+     * Web entry point (workspace switcher menu): creates the workspace,
+     * makes it the active one and lands on the dashboard.
+     */
+    public function asController(Request $request): RedirectResponse
+    {
+        $user = $request->user();
+        abort_unless($user instanceof User, 401);
+
+        $workspace = $this->handle($user, $request->all());
+
+        session(['workspace_id' => $workspace->id]);
+
+        return redirect()
+            ->route('home')
+            ->with('status', "Workspace \"{$workspace->name}\" created.");
     }
 
     private function createDefaultStatuses(Workspace $workspace): void

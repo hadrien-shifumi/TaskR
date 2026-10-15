@@ -41,6 +41,7 @@ export function CreateLabelDialog({ open, onClose }: CreateLabelDialogProps) {
                     value={labelForm.data.name}
                     onChange={(e) => labelForm.setData('name', e.target.value)}
                     required
+                    aria-invalid={labelForm.errors.name ? true : undefined}
                 />
                 {labelForm.errors.name ? (
                     <p className="text-sm text-destructive">{labelForm.errors.name}</p>

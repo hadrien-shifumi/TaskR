@@ -1,3 +1,4 @@
+import { Banner } from '@/components/banner';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -8,13 +9,13 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { router } from '@inertiajs/react';
-import { Archive, TriangleAlert } from 'lucide-react';
+import { Archive } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import type { ProjectRow } from '../types';
+import type { ProjectRef } from '@/types';
 
 type DeleteProjectDialogProps = {
     /** Project being deleted, or null when the dialog is closed. */
-    project: ProjectRow | null;
+    project: (ProjectRef & { health?: { totalIssues: number } | null }) | null;
     onClose: () => void;
 };
 
@@ -63,10 +64,7 @@ export function DeleteProjectDialog({ project, onClose }: DeleteProjectDialogPro
                     </DialogHeader>
                     {deleteRefusal ? (
                         <div className="grid gap-3">
-                            <p className="flex items-start gap-2.5 rounded-lg border border-destructive/35 bg-destructive/10 px-3.5 py-3 text-sm text-destructive">
-                                <TriangleAlert className="mt-0.5 size-4 shrink-0" />
-                                <span>{deleteRefusal}</span>
-                            </p>
+                            <Banner variant="danger">{deleteRefusal}</Banner>
                             <Button
                                 data-test="archive-instead"
                                 variant="outline"

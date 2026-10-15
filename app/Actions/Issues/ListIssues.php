@@ -17,14 +17,18 @@ class ListIssues
      * Filterable list across every project of the workspace, presented as
      * plain arrays. Shared by the issues page and the MCP layer.
      *
-     * @param  array<string, string|null>  $filters  project|status|category|priority|label|assignee|overdue
-     * @return array{issues: array<int, array<string, mixed>>, total: int}
+     * @param  array<string, string|null>  $filters  project|status|category|priority|label|assignee|overdue|q
+     * @return array{issues: array<int, array<string, mixed>>, total: int, totalUnfiltered: int}
      */
     public function handle(Workspace $workspace, array $filters = [], ?int $limit = null, int $offset = 0): array
     {
         $query = Issue::query()
             ->with(['project', 'status', 'labels', 'assignees'])
             ->orderByDesc('created_at');
+
+        // Workspace-wide count, before any filter: the issues page shows it
+        // next to the filtered count ("visible / total").
+        $totalUnfiltered = (clone $query)->toBase()->count();
 
         $this->applyFilters($query, $filters);
 
@@ -43,6 +47,7 @@ class ListIssues
         return [
             'issues' => $issues,
             'total' => $total,
+            'totalUnfiltered' => $totalUnfiltered,
         ];
     }
 
@@ -51,6 +56,10 @@ class ListIssues
      */
     private function applyFilters(Builder $query, array $filters): void
     {
+        if (! empty($filters['q'])) {
+            $query->where('title', 'like', '%'.$filters['q'].'%');
+        }
+
         if (! empty($filters['project'])) {
             $query->where('project_id', $filters['project']);
         }

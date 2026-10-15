@@ -30,6 +30,7 @@ class ShowApiTokensPage
                     'id' => $token->id,
                     'name' => $token->name,
                     'createdAt' => $token->created_at->toISOString(),
+                    'lastUsedAt' => $token->last_used_at?->toISOString(),
                 ])
                 ->values()
                 ->all(),

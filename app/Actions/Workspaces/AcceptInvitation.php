@@ -9,8 +9,10 @@ use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
+use Inertia\Inertia;
 use Lorisleiva\Actions\Concerns\AsController;
 use Lorisleiva\Actions\Concerns\AsObject;
+use Symfony\Component\HttpFoundation\Response;
 
 class AcceptInvitation
 {
@@ -40,10 +42,33 @@ class AcceptInvitation
         });
     }
 
-    public function asController(Invitation $invitation): RedirectResponse
+    public function asController(Invitation $invitation): RedirectResponse|Response
     {
         $user = request()->user();
-        abort_unless($user instanceof User, 401);
+
+        if (! $invitation->isUsable()) {
+            abort(410, 'This invitation is no longer valid.');
+        }
+
+        // Guests cannot accept yet: they get the invitation landing page and
+        // are sent through login with the acceptance URL as the return target.
+        if (! $user instanceof User) {
+            $workspace = $invitation->workspace;
+            $owner = $workspace->memberships()
+                ->where('role', WorkspaceRole::Owner->value)
+                ->first()
+                ?->user;
+
+            return Inertia::render('Auth/AcceptInvitation', [
+                'invitation' => [
+                    'workspaceName' => $workspace->name,
+                    'inviterName' => $owner?->name ?? $workspace->name,
+                    'email' => $invitation->email,
+                    'role' => WorkspaceRole::Member->value,
+                    'acceptUrl' => "/invitations/{$invitation->token}/accept",
+                ],
+            ])->toResponse(request());
+        }
 
         $workspace = $this->handle($invitation, $user);
 

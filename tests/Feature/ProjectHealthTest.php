@@ -170,9 +170,10 @@ class ProjectHealthTest extends TestCase
             now()->subDay()->toDateString(),
         );
 
+        // Every issue is done: the passed target date does not make it late.
         $this->createIssue($project, $statuses, 'done', 'Done 1');
         $this->createIssue($project, $statuses, 'done', 'Done 2');
-        $this->createIssue($project, $statuses, 'cancelled', 'Cancelled 1');
+        $this->createIssue($project, $statuses, 'done', 'Done 3');
 
         $health = GetProjectHealth::run($project);
 
@@ -241,7 +242,8 @@ class ProjectHealthTest extends TestCase
     {
         [$owner, $workspace, $project, $statuses] = $this->setupProjectWithStatuses();
 
-        // 3 backlog, 2 in_progress, 4 done, 1 cancelled = 10 issues, 50% complete.
+        // 3 backlog, 2 in_progress, 4 done, 1 cancelled = 10 issues.
+        // Completion counts done only over the total: 4/10 = 40%.
         for ($i = 0; $i < 3; $i++) {
             $this->createIssue($project, $statuses, 'backlog', "Backlog {$i}");
         }
@@ -260,7 +262,53 @@ class ProjectHealthTest extends TestCase
         $this->assertSame(4, $health->issuesByCategory['done']);
         $this->assertSame(1, $health->issuesByCategory['cancelled']);
         $this->assertSame(10, $health->totalIssues);
-        $this->assertSame(50.0, $health->completionPercentage);
+        $this->assertSame(40.0, $health->completionPercentage);
+    }
+
+    public function test_completion_percentage_counts_done_issues_only_over_the_total(): void
+    {
+        [$owner, $workspace, $project, $statuses] = $this->setupProjectWithStatuses();
+
+        // Maquette scenario (project-health): "12 done + 1 cancelled sur 17"
+        // issues → 71 %. Cancelled issues count in the total but not as done:
+        // 12/17 = 70.6%.
+        for ($i = 0; $i < 12; $i++) {
+            $this->createIssue($project, $statuses, 'done', "Done {$i}");
+        }
+        $this->createIssue($project, $statuses, 'cancelled', 'Cancelled 1');
+        for ($i = 0; $i < 4; $i++) {
+            $this->createIssue($project, $statuses, 'backlog', "Todo {$i}");
+        }
+
+        $health = GetProjectHealth::run($project);
+
+        $this->assertSame(17, $health->totalIssues);
+        $this->assertSame(12, $health->issuesByCategory['done']);
+        $this->assertSame(1, $health->issuesByCategory['cancelled']);
+        $this->assertSame(70.6, $health->completionPercentage);
+    }
+
+    public function test_cancelled_issues_do_not_count_as_done_for_the_projection(): void
+    {
+        [$owner, $workspace, $project, $statuses] = $this->setupProjectWithStatuses();
+
+        $project = $this->setProjectDates(
+            $project,
+            now()->subDays(30)->toDateTimeString(),
+            now()->subDay()->toDateString(),
+        );
+
+        // 2 done + 1 cancelled of 3: cancelled counts in the total but not
+        // as done, so the project is not complete and the passed target
+        // date makes it late.
+        $this->createIssue($project, $statuses, 'done', 'Done 1');
+        $this->createIssue($project, $statuses, 'done', 'Done 2');
+        $this->createIssue($project, $statuses, 'cancelled', 'Cancelled 1');
+
+        $health = GetProjectHealth::run($project);
+
+        $this->assertSame(66.7, $health->completionPercentage);
+        $this->assertSame('late', $health->status);
     }
 
     public function test_overdue_issues_are_counted(): void
@@ -365,6 +413,26 @@ class ProjectHealthTest extends TestCase
                 ->has('health')
                 ->where('health.totalIssues', 1)
                 ->where('health.issuesByCategory.backlog', 1));
+    }
+
+    public function test_health_page_lists_the_late_issues_of_the_project(): void
+    {
+        [$owner, $workspace, $project, $statuses] = $this->setupProjectWithStatuses();
+
+        $overdueOpen = $this->createIssue($project, $statuses, 'in_progress', 'Late open issue', now()->subDays(2)->toDateString());
+        $this->createIssue($project, $statuses, 'done', 'Late but done', now()->subDays(2)->toDateString());
+        $this->createIssue($project, $statuses, 'backlog', 'On time issue', now()->addDays(5)->toDateString());
+
+        $this->actingAs($owner)
+            ->get(route('projects.health', $project->id))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->has('lateIssues', 1)
+                ->where('lateIssues.0.id', $overdueOpen->id)
+                ->where('lateIssues.0.title', 'Late open issue')
+                ->where('lateIssues.0.statusName', 'In Progress')
+                ->where('lateIssues.0.statusCategory', 'in_progress')
+                ->where('lateIssues.0.dueDate', now()->subDays(2)->toDateString()));
     }
 
     public function test_cross_workspace_access_is_denied(): void

@@ -62,7 +62,7 @@ export function StatusFormDialog({ open, status, onClose }: StatusFormDialogProp
                 if (!o) onClose();
             }}
             title={status ? 'Edit status' : 'New status'}
-            description={status ? 'Rename or change category.' : 'Add a status to this workspace.'}
+            description={status ? 'Rename or change category.' : 'Free-form name, one of the 4 semantic categories.'}
             submitLabel={status ? 'Save' : 'Create'}
             processing={form.processing}
             onSubmit={submit}
@@ -74,6 +74,7 @@ export function StatusFormDialog({ open, status, onClose }: StatusFormDialogProp
                     value={form.data.name}
                     onChange={(e) => form.setData('name', e.target.value)}
                     required
+                    aria-invalid={form.errors.name ? true : undefined}
                 />
                 {form.errors.name ? (
                     <p className="text-sm text-destructive">{form.errors.name}</p>
@@ -98,6 +99,9 @@ export function StatusFormDialog({ open, status, onClose }: StatusFormDialogProp
                         ))}
                     </SelectContent>
                 </Select>
+                <p className="text-xs text-muted-foreground">
+                    The category sets the badge color across the UI.
+                </p>
             </div>
         </FormDialog>
     );

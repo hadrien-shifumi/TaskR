@@ -101,6 +101,19 @@ class IssueTest extends TestCase
                 ->where('issue.children.0.id', $child->id));
     }
 
+    public function test_show_page_exposes_the_creation_date(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspace();
+
+        $issue = CreateIssue::run($workspace, ['project_id' => $project->id, 'title' => 'Dated']);
+
+        $this->actingAs($owner)
+            ->get("/issues/{$issue->id}")
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('issue.createdAt', $issue->created_at->toISOString()));
+    }
+
     public function test_cycle_is_rejected(): void
     {
         [$owner, $workspace, $project] = $this->setupWorkspace();
@@ -198,6 +211,38 @@ class IssueTest extends TestCase
                 ->where('issues.0.overdue', true));
     }
 
+    public function test_list_filters_by_title_search(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspace();
+
+        CreateIssue::run($workspace, ['project_id' => $project->id, 'title' => 'Webhook retry']);
+        CreateIssue::run($workspace, ['project_id' => $project->id, 'title' => 'Login page fix']);
+
+        $this->actingAs($owner)
+            ->get('/issues?q=webhook')
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->has('issues', 1)
+                ->where('issues.0.title', 'Webhook retry')
+                ->where('filters.q', 'webhook'));
+    }
+
+    public function test_list_exposes_the_unfiltered_total_alongside_the_filtered_one(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspace();
+
+        CreateIssue::run($workspace, ['project_id' => $project->id, 'title' => 'Webhook retry']);
+        CreateIssue::run($workspace, ['project_id' => $project->id, 'title' => 'Login page fix']);
+        CreateIssue::run($workspace, ['project_id' => $project->id, 'title' => 'Other task']);
+
+        $this->actingAs($owner)
+            ->get('/issues?q=webhook')
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('total', 1)
+                ->where('totalUnfiltered', 3));
+    }
+
     public function test_issue_urls_use_ulids(): void
     {
         [$owner, $workspace, $project] = $this->setupWorkspace();
@@ -209,6 +254,39 @@ class IssueTest extends TestCase
         $this->actingAs($owner)
             ->get("/issues/{$issue->id}")
             ->assertOk();
+    }
+
+    public function test_web_created_issue_records_and_exposes_the_creator(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspace();
+
+        $this->actingAs($owner)
+            ->post('/issues', ['project_id' => $project->id, 'title' => 'Avec créateur'])
+            ->assertRedirect();
+
+        $issue = $workspace->issues()->where('title', 'Avec créateur')->firstOrFail();
+        $this->assertSame($owner->id, $issue->created_by);
+
+        $this->actingAs($owner)
+            ->get("/issues/{$issue->id}")
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('issue.creatorName', $owner->name));
+    }
+
+    public function test_issue_created_without_user_has_no_creator(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspace();
+
+        $issue = CreateIssue::run($workspace, ['project_id' => $project->id, 'title' => 'Sans créateur']);
+
+        $this->assertNull($issue->created_by);
+
+        $this->actingAs($owner)
+            ->get("/issues/{$issue->id}")
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('issue.creatorName', null));
     }
 
     public function test_cross_workspace_access_is_refused(): void

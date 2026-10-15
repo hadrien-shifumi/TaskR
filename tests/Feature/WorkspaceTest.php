@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Actions\Workspaces\CreateWorkspace;
 use App\Models\Status;
 use App\Models\User;
+use App\Models\Workspace;
 use App\Support\WorkspaceContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -96,5 +97,41 @@ class WorkspaceTest extends TestCase
         $this->actingAs($owner)
             ->post("/workspaces/{$other->id}/switch")
             ->assertForbidden();
+    }
+
+    public function test_authenticated_user_can_create_a_workspace(): void
+    {
+        $owner = User::factory()->create();
+        CreateWorkspace::run($owner, ['name' => 'Mine']);
+
+        $response = $this->actingAs($owner)->post('/workspaces', ['name' => 'New workspace']);
+
+        $workspace = Workspace::where('name', 'New workspace')->firstOrFail();
+        $response->assertRedirect(route('home'));
+        $response->assertSessionHas('workspace_id', $workspace->id);
+
+        $this->assertDatabaseHas('memberships', [
+            'user_id' => $owner->id,
+            'workspace_id' => $workspace->id,
+            'role' => 'owner',
+        ]);
+        $this->assertSame(4, Status::withoutWorkspaceScope()->where('workspace_id', $workspace->id)->count());
+    }
+
+    public function test_workspace_creation_requires_a_name(): void
+    {
+        $owner = User::factory()->create();
+        CreateWorkspace::run($owner, ['name' => 'Mine']);
+
+        $this->actingAs($owner)
+            ->post('/workspaces', ['name' => ''])
+            ->assertSessionHasErrors('name');
+
+        $this->assertSame(1, Workspace::count());
+    }
+
+    public function test_guest_cannot_create_a_workspace(): void
+    {
+        $this->post('/workspaces', ['name' => 'Nope'])->assertRedirect('/login');
     }
 }

@@ -19,7 +19,7 @@ class ShowIssuesPage
     /**
      * Filterable list across every project of the workspace.
      *
-     * @param  array<string, string|null>  $filters  project|status|category|priority|label|assignee|overdue
+     * @param  array<string, string|null>  $filters  project|status|category|priority|label|assignee|overdue|q
      * @return array<string, mixed>
      */
     public function handle(Workspace $workspace, array $filters = []): array
@@ -44,6 +44,7 @@ class ShowIssuesPage
             'label' => $request->query('label'),
             'assignee' => $request->query('assignee'),
             'overdue' => $request->query('overdue'),
+            'q' => $request->query('q'),
         ]);
 
         $data['labels'] = $workspace->labels()->orderBy('name')->get(['id', 'name', 'color']);

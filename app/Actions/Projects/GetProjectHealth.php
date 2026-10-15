@@ -77,6 +77,22 @@ class GetProjectHealth
                 'createdAt' => $project->created_at?->toISOString(),
             ],
             'health' => $health->toArray(),
+            'lateIssues' => $project->issues()
+                ->join('statuses', 'statuses.id', '=', 'issues.status_id')
+                ->whereNotNull('issues.due_date')
+                ->where('issues.due_date', '<', now()->toDateString())
+                ->whereNotIn('statuses.category', [StatusCategory::Done->value, StatusCategory::Cancelled->value])
+                ->orderBy('issues.due_date')
+                ->get(['issues.id', 'issues.title', 'issues.priority', 'issues.due_date', 'statuses.name as statusName', 'statuses.category as statusCategory'])
+                ->map(fn ($issue) => [
+                    'id' => $issue->id,
+                    'title' => $issue->title,
+                    'priority' => $issue->priority instanceof \BackedEnum ? $issue->priority->value : (string) $issue->priority,
+                    'dueDate' => $issue->due_date?->toDateString(),
+                    'statusName' => $issue->statusName,
+                    'statusCategory' => $issue->statusCategory instanceof \BackedEnum ? $issue->statusCategory->value : (string) $issue->statusCategory,
+                ])
+                ->all(),
         ]);
     }
 
@@ -181,10 +197,11 @@ class GetProjectHealth
     private function buildHealth(Project $project, array $aggregates): ProjectHealth
     {
         $totalIssues = $aggregates['total_issues'];
-        $doneAndCancelled = $aggregates['done'] + $aggregates['cancelled'];
 
+        // Maquette rule (project-health): "12 done + 1 cancelled sur 17" →
+        // 71 %. Cancelled issues count in the total but never as done.
         $completionPercentage = $totalIssues > 0
-            ? round($doneAndCancelled / $totalIssues * 100, 1)
+            ? round($aggregates['done'] / $totalIssues * 100, 1)
             : null;
 
         $estimatedHours = $aggregates['estimated_hours'];

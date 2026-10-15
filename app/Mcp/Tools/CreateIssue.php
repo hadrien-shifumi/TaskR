@@ -39,6 +39,7 @@ class CreateIssue extends AgentTool
 
         $action = app(CreateIssueAction::class);
         $data = $request->validate($action->rules());
+        $data['created_by'] ??= $request->user()?->getKey();
 
         return Response::structured([
             'issue' => $this->presentIssue($action->handle($workspace, $data)),

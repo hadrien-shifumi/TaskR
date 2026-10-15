@@ -52,7 +52,7 @@ Invariants repris de `SetIssueParent` à l'identique :
 
 **Décision** : la migration crée la colonne d'embedding selon le driver :
 
-- **pgsql** : `ALTER TABLE knowledge_pages ADD COLUMN embedding vector(1536)` (via `DB::statement`, Blueprint n'ayant pas ce type) + index `ivfflat (embedding vector_cosine_ops)`. Dimension fixée à 1536 (`text-embedding-3-small` par défaut) — constante documentée, un changement de modèle/dimensions est une migration future.
+- **pgsql** : `ALTER TABLE knowledge_pages ADD COLUMN embedding vector(1024)` (via `DB::statement`, Blueprint n'ayant pas ce type) + index `ivfflat (embedding vector_cosine_ops)`. Dimension fixée à 1024 (`mistral-embed` par défaut) — constante documentée, un changement de modèle/dimensions est une migration future.
 - **sqlite** (dev/tests) : colonne `embedding` de type `text` contenant le vecteur en JSON.
 
 Pas de package `pgvector/pgvector-laravel` : la requête de recherche pgsql utilise directement l'opérateur cosinus (`embedding <=> $query::vector`) dans une expression `orderByRaw` — trois lignes de SQL containées, contre une dépendance à maintenir.
@@ -104,8 +104,8 @@ Le contrat (entrée → résultats rankés avec score) est stable : une future r
 - [Prod requiert l'extension Postgres `pgvector`] → documenté dans le plan de déploiement ; en son absence, la recherche échoue explicitement mais écriture/navigation fonctionnent (vecteurs stockés, non requêtables) — même dégradation que l'absence de config embeddings.
 - [Chemin pgsql de la recherche peu testé en CI (suite sur SQLite)] → le cosinus PHP et le SQL pgvector partagent le même contrat ; tests unitaires dédiés au SQL pgvector via grammar assertion, et `knowledge:reembed` + recherche manuels à valider en staging.
 - [Endpoint d'embeddings down] → job retenté avec backoff, écritures jamais bloquées ; fenêtre d'invisibilité en recherche limitée aux pages modifiées pendant la panne.
-- [Changement de modèle/dimensions d'embeddings] → vecteurs incompatibles silencieusement : mitigé par le job idempotent + `knowledge:reembed` ; dimension 1536 documentée comme constante.
-- [Coût/latence d'un appel d'embedding par recherche] → un seul appel par requête (page-level), cacheable plus tard si nécessaire ; coût marginal (text-embedding-3-small).
+- [Changement de modèle/dimensions d'embeddings] → vecteurs incompatibles silencieusement : mitigé par le job idempotent + `knowledge:reembed` ; dimension 1024 documentée comme constante.
+- [Coût/latence d'un appel d'embedding par recherche] → un seul appel par requête (page-level), cacheable plus tard si nécessaire ; coût marginal (mistral-embed).
 - [Agent qui réécrit mal la connaissance] → dernier éditeur enregistré (traçabilité) ; l'historique de révisions est l'answer v2 si le besoin apparaît.
 - [Pages très longues diluant le signal sémantique] → assumé en v1 (embedding page-level) ; le chunking est un upgrade interne au pipeline (ADR-5) sans changement de contrat.
 

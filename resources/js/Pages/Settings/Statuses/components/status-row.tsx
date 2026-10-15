@@ -1,11 +1,18 @@
 import { StatusBadge } from '@/components/issue-badges';
-import { Button } from '@/components/ui/button';
-import { GripVertical } from 'lucide-react';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuGroup,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { GripVertical, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import type { StatusRow } from '../types';
 
 type StatusRowItemProps = {
     status: StatusRow;
-    total: number;
     isOwner: boolean;
     dragging: boolean;
     over: boolean;
@@ -13,7 +20,6 @@ type StatusRowItemProps = {
     onDragEnd: () => void;
     onDragOver: (e: React.DragEvent) => void;
     onDrop: (e: React.DragEvent) => void;
-    onMove: (delta: number) => void;
     onEdit: () => void;
     onDelete: () => void;
 };
@@ -21,7 +27,6 @@ type StatusRowItemProps = {
 /** One draggable status entry of the reorderable list. */
 export function StatusRowItem({
     status,
-    total,
     isOwner,
     dragging,
     over,
@@ -29,7 +34,6 @@ export function StatusRowItem({
     onDragEnd,
     onDragOver,
     onDrop,
-    onMove,
     onEdit,
     onDelete,
 }: StatusRowItemProps) {
@@ -42,8 +46,8 @@ export function StatusRowItem({
             onDragOver={onDragOver}
             onDrop={onDrop}
             className={`flex items-center gap-3 rounded-lg border bg-card px-3.5 py-3 shadow-xs ${
-                over && !dragging ? 'border-primary ring-2 ring-ring' : ''
-            } ${dragging ? 'opacity-40' : ''}`}
+                status.issuesCount === 0 ? 'border-dashed' : ''
+            } ${over && !dragging ? 'border-primary ring-2 ring-ring' : ''} ${dragging ? 'opacity-40' : ''}`}
         >
             {isOwner ? (
                 <span aria-label="Reorder" className="cursor-grab text-muted-foreground">
@@ -51,35 +55,33 @@ export function StatusRowItem({
                 </span>
             ) : null}
             <strong className="text-sm">{status.name}</strong>
-            <StatusBadge name={status.category} category={status.category} />
+            <StatusBadge name={status.category.replace('_', ' ')} category={status.category} />
             <span className="ml-auto font-mono text-xs text-muted-foreground tabular-nums">
                 {status.issuesCount} {status.issuesCount === 1 ? 'issue' : 'issues'}
             </span>
             {isOwner ? (
-                <div className="flex gap-1">
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        disabled={status.position === 0}
-                        onClick={() => onMove(-1)}
+                <DropdownMenu>
+                    <DropdownMenuTrigger
+                        aria-label={`Actions for ${status.name}`}
+                        className="grid size-6.5 place-items-center rounded-md text-muted-foreground outline-none hover:bg-accent hover:text-foreground"
                     >
-                        Up
-                    </Button>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        disabled={status.position === total - 1}
-                        onClick={() => onMove(1)}
-                    >
-                        Down
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={onEdit}>
-                        Edit
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={onDelete}>
-                        Delete
-                    </Button>
-                </div>
+                        <MoreHorizontal className="size-4" aria-hidden />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuGroup>
+                            <DropdownMenuLabel>{status.name}</DropdownMenuLabel>
+                            <DropdownMenuItem onClick={onEdit}>
+                                <Pencil aria-hidden />
+                                Rename…
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem variant="destructive" onClick={onDelete}>
+                                <Trash2 aria-hidden />
+                                Delete…
+                            </DropdownMenuItem>
+                        </DropdownMenuGroup>
+                    </DropdownMenuContent>
+                </DropdownMenu>
             ) : null}
         </div>
     );

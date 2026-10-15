@@ -1,3 +1,4 @@
+import { Banner } from '@/components/banner';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import {
@@ -16,7 +17,6 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { router } from '@inertiajs/react';
-import { TriangleAlert } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import type { StatusRow } from '../types';
 
@@ -125,13 +125,10 @@ export function DeleteStatusDialog({ status, statuses, onClose }: DeleteStatusDi
 
                     {migrateIds.length > 0 ? (
                         <div className="grid gap-3.5">
-                            <p className="flex items-start gap-2.5 rounded-lg border border-destructive/35 bg-destructive/10 px-3.5 py-3 text-sm text-destructive">
-                                <TriangleAlert className="mt-0.5 size-4 shrink-0" />
-                                <span>
-                                    Move {migrateIds.length === 1 ? 'this issue' : `these ${migrateIds.length} issues`} to
-                                    another status first, then delete “{status.name}”.
-                                </span>
-                            </p>
+                            <Banner variant="danger">
+                                Move {migrateIds.length === 1 ? 'this issue' : `these ${migrateIds.length} issues`} to
+                                another status first, then delete “{status.name}”.
+                            </Banner>
                             <div className="grid gap-2">
                                 <Label>Move the issues to</Label>
                                 <Select
@@ -167,9 +164,13 @@ export function DeleteStatusDialog({ status, statuses, onClose }: DeleteStatusDi
                             Cancel
                         </Button>
                         <Button
-                            variant="outline"
+                            variant={migrateIds.length > 0 ? 'outline' : 'destructive'}
                             data-test="confirm-delete-status"
-                            className="border-destructive/35 text-destructive hover:bg-destructive/10"
+                            className={
+                                migrateIds.length > 0
+                                    ? 'border-destructive/35 text-destructive hover:bg-destructive/10'
+                                    : undefined
+                            }
                             disabled={migrating}
                             onClick={() => confirmDelete()}
                         >

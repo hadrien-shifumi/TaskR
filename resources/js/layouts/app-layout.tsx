@@ -1,5 +1,8 @@
-import type { ReactNode } from 'react';
-import { Button } from '@/components/ui/button';
+import { useState, type FormEvent, type ReactNode } from "react";
+import { FormDialog } from "@/components/form-dialog";
+import { initials } from "@/components/issue-badges";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -8,101 +11,287 @@ import {
     DropdownMenuLabel,
     DropdownMenuSeparator,
     DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Head, router, usePage } from '@inertiajs/react';
-import type { PageSharedProps } from '@/types';
+} from "@/components/ui/dropdown-menu";
+import { Link, router, useForm, usePage } from "@inertiajs/react";
+import {
+    BookOpen,
+    ChevronDown,
+    Folder,
+    Home,
+    ListChecks,
+    LogOut,
+    Plus,
+    SlidersHorizontal,
+} from "lucide-react";
+import type { PageSharedProps } from "@/types";
 
 interface AppLayoutProps {
-    title?: string;
+    /** Pagebar title — a string, or a node when badges sit next to it. */
+    title?: ReactNode;
+    /** Muted sentence rendered next to the pagebar title. */
+    subtitle?: string;
+    /** Content rendered before the title (back buttons, view switchers). */
+    leading?: ReactNode;
+    /** Page-level controls rendered at the right end of the pagebar. */
+    actions?: ReactNode;
+    /** Constrains the page body to the narrow reading width (settings). */
+    narrow?: boolean;
     children: ReactNode;
 }
 
-const triggerButtonClass =
-    'inline-flex h-8 items-center justify-center gap-1.5 rounded-md border bg-background px-3 text-sm font-medium hover:bg-accent hover:text-accent-foreground';
+const NAV_ITEMS = [
+    { label: "Home", route: "home", prefix: "/", icon: Home },
+    {
+        label: "Projects",
+        route: "projects.index",
+        prefix: "/projects",
+        icon: Folder,
+    },
+    {
+        label: "Issues",
+        route: "issues.index",
+        prefix: "/issues",
+        icon: ListChecks,
+    },
+    {
+        label: "Knowledge",
+        route: "knowledge.index",
+        prefix: "/knowledge",
+        icon: BookOpen,
+    },
+    {
+        label: "Settings",
+        route: "settings.statuses",
+        prefix: "/settings",
+        icon: SlidersHorizontal,
+    },
+];
 
-export default function AppLayout({ title, children }: AppLayoutProps) {
+/** Maquette shell: fixed sidebar (brand, workspace switcher, nav, user) +
+ * sticky pagebar (title, subtitle, actions) above the page body. */
+export default function AppLayout({
+    title,
+    subtitle,
+    leading,
+    actions,
+    narrow,
+    children,
+}: AppLayoutProps) {
     const { auth, workspace, workspaces } = usePage<PageSharedProps>().props;
+    const { url } = usePage();
+
+    const isActive = (prefix: string) =>
+        prefix === "/" ? url === "/" : url.startsWith(prefix);
+
+    const [creatingWorkspace, setCreatingWorkspace] = useState(false);
+    const workspaceForm = useForm({ name: "" });
+
+    const submitWorkspace = (event: FormEvent) => {
+        event.preventDefault();
+        workspaceForm.post(route("workspaces.store"), {
+            onSuccess: () => {
+                setCreatingWorkspace(false);
+                workspaceForm.reset();
+            },
+        });
+    };
 
     return (
-        <div className="min-h-screen bg-background">
-            <header className="border-b">
-                <div className="mx-auto flex h-14 max-w-6xl items-center gap-4 px-4">
-                    <span className="text-lg font-semibold">Taskr</span>
-                    <nav className="flex items-center gap-1 text-sm">
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => router.get(route('home'))}
-                        >
-                            Home
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => router.get(route('projects.index'))}
-                        >
-                            Projects
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => router.get(route('issues.index'))}
-                        >
-                            Issues
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => router.get(route('knowledge.index'))}
-                        >
-                            Knowledge
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => router.get(route('settings.statuses'))}
-                        >
-                            Settings
-                        </Button>
-                    </nav>
-                    <div className="ml-auto flex items-center gap-2">
+        <div className="grid min-h-dvh grid-cols-1 bg-background lg:grid-cols-[232px_1fr]">
+            <aside className="flex gap-1 overflow-x-auto border-b bg-sidebar px-3.5 py-2.5 text-sidebar-foreground max-lg:items-center lg:sticky lg:top-0 lg:h-dvh lg:flex-col lg:gap-1 lg:overflow-y-auto lg:border-b-0 lg:border-r lg:px-3 lg:py-0">
+                <div className="flex items-center gap-2.5 px-2 pt-4 pb-3.5 max-lg:p-0">
+                    <span className="grid size-6.5 shrink-0 place-items-center rounded-[7px] bg-primary text-sm font-bold text-primary-foreground">
+                        T
+                    </span>
+                    <span className="text-[15px] font-semibold tracking-tight">
+                        Taskr
+                    </span>
+                </div>
+
+                {workspace ? (
+                    <>
                         <DropdownMenu>
-                            <DropdownMenuTrigger className={triggerButtonClass}>
-                                {workspace ? workspace.name : 'No workspace'}
+                            <DropdownMenuTrigger
+                                aria-label="Switch workspace"
+                                className="flex w-full items-center gap-2 rounded-lg border bg-card px-2.5 py-2 text-left shadow-xs transition-colors hover:bg-accent max-lg:w-auto max-lg:shrink-0"
+                            >
+                                <span className="grid size-5.5 shrink-0 place-items-center rounded-md bg-primary/25 text-[11px] font-bold text-primary">
+                                    {initials(workspace.name)}
+                                </span>
+                                <span className="min-w-0 flex-1 truncate text-[13px] font-medium">
+                                    {workspace.name}
+                                </span>
+                                <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" />
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
+                            <DropdownMenuContent align="start" className="w-56">
                                 <DropdownMenuGroup>
-                                    <DropdownMenuLabel>Workspaces</DropdownMenuLabel>
+                                    <DropdownMenuLabel>
+                                        Your workspaces
+                                    </DropdownMenuLabel>
                                     {workspaces.map((ws) => (
                                         <DropdownMenuItem
                                             key={ws.id}
-                                            onClick={() => router.post(route('workspaces.switch', ws.id))}
+                                            onClick={() =>
+                                                router.post(
+                                                    route(
+                                                        "workspaces.switch",
+                                                        ws.id,
+                                                    ),
+                                                )
+                                            }
                                         >
                                             {ws.name}
+                                            {ws.id === workspace.id ? (
+                                                <span
+                                                    aria-hidden
+                                                    className="ml-auto text-primary"
+                                                >
+                                                    •
+                                                </span>
+                                            ) : null}
                                         </DropdownMenuItem>
                                     ))}
                                 </DropdownMenuGroup>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                    onClick={() => setCreatingWorkspace(true)}
+                                >
+                                    <Plus aria-hidden />
+                                    Create workspace…
+                                </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
-                        {auth.user ? (
-                            <DropdownMenu>
-                                <DropdownMenuTrigger className={triggerButtonClass}>{auth.user.name}</DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem onClick={() => router.post(route('logout'))}>
+                        <FormDialog
+                            open={creatingWorkspace}
+                            onOpenChange={setCreatingWorkspace}
+                            title="Create workspace"
+                            description="Your new workspace starts with the 4 default statuses: Backlog, In Progress, Done, Cancelled."
+                            submitLabel="Create workspace"
+                            processing={workspaceForm.processing}
+                            onSubmit={submitWorkspace}
+                        >
+                            <div className="grid gap-2">
+                                <Label htmlFor="new-workspace-name">Name</Label>
+                                <Input
+                                    id="new-workspace-name"
+                                    name="name"
+                                    placeholder="Studio Nova"
+                                    autoFocus
+                                    value={workspaceForm.data.name}
+                                    onChange={(event) =>
+                                        workspaceForm.setData(
+                                            "name",
+                                            event.target.value,
+                                        )
+                                    }
+                                    aria-invalid={workspaceForm.errors.name ? true : undefined}
+                                />
+                                {workspaceForm.errors.name ? (
+                                    <p className="text-sm text-destructive">
+                                        {workspaceForm.errors.name}
+                                    </p>
+                                ) : null}
+                            </div>
+                        </FormDialog>
+                    </>
+                ) : null}
+
+                <p className="px-2 pt-3.5 pb-1 font-mono text-[12px] tracking-[0.08em] uppercase text-muted-foreground max-lg:hidden">
+                    Workspace
+                </p>
+
+                <nav
+                    className="flex items-start gap-1.5 max-lg:flex-none lg:flex-col"
+                    aria-label="Main"
+                >
+                    {NAV_ITEMS.map((item) => {
+                        const Icon = item.icon;
+                        return (
+                            <Link
+                                key={item.label}
+                                href={route(item.route)}
+                                aria-current={
+                                    isActive(item.prefix) ? "page" : undefined
+                                }
+                                className="flex items-center gap-2.5 rounded-lg px-2.5 py-1.75 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground aria-[current=page]:bg-secondary aria-[current=page]:font-medium aria-[current=page]:text-foreground max-lg:px-2.5 max-lg:py-2"
+                            >
+                                <Icon className="size-4 shrink-0" aria-hidden />
+                                <span className="max-lg:hidden">
+                                    {item.label}
+                                </span>
+                            </Link>
+                        );
+                    })}
+                </nav>
+
+                {auth.user ? (
+                    <div className="mt-auto px-2 pt-3 pb-3.5 max-lg:ml-auto max-lg:p-0 lg:border-t">
+                        <DropdownMenu>
+                            <DropdownMenuTrigger
+                                aria-label="Account menu"
+                                className="flex w-full items-center gap-2.5 rounded-lg py-1 text-left max-lg:w-auto max-lg:px-1"
+                            >
+                                <span className="grid size-6.5 shrink-0 place-items-center rounded-full border border-primary/25 bg-primary/20 text-[10px] font-semibold tracking-wide text-primary">
+                                    {initials(auth.user.name)}
+                                </span>
+                                <span className="min-w-0 max-lg:hidden">
+                                    <span className="block truncate text-[13px] font-medium">
+                                        {auth.user.name}
+                                    </span>
+                                    <span className="block text-[11px] text-muted-foreground">
+                                        {workspace?.role ?? "member"}
+                                    </span>
+                                </span>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent
+                                align="start"
+                                side="top"
+                                className="w-48"
+                            >
+                                <DropdownMenuGroup>
+                                    <DropdownMenuLabel>
+                                        {auth.user.email}
+                                    </DropdownMenuLabel>
+                                    <DropdownMenuItem
+                                        onClick={() =>
+                                            router.post(route("logout"))
+                                        }
+                                    >
+                                        <LogOut aria-hidden />
                                         Log out
                                     </DropdownMenuItem>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
-                        ) : null}
+                                </DropdownMenuGroup>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     </div>
-                </div>
-            </header>
-            <main className="mx-auto max-w-6xl px-4 py-8">
-                {title ? <Head title={title} /> : null}
-                {title ? <h1 className="mb-6 text-2xl font-semibold">{title}</h1> : null}
-                {children}
-            </main>
+                ) : null}
+            </aside>
+
+            <div className="flex min-w-0 flex-col">
+                {title || actions || leading ? (
+                    <header className="sticky top-0 z-20 flex flex-wrap items-center gap-4 border-b bg-background/88 px-4 py-3.5 backdrop-blur lg:px-7">
+                        {leading}
+                        {title ? (
+                            <h1 className="flex flex-wrap items-center gap-2.5 text-[17px] leading-tight font-semibold tracking-tight">
+                                {title}
+                            </h1>
+                        ) : null}
+                        {subtitle ? (
+                            <span className="hidden text-sm text-muted-foreground sm:inline">
+                                {subtitle}
+                            </span>
+                        ) : null}
+                        <span className="flex-1" />
+                        {actions}
+                    </header>
+                ) : null}
+
+                <main
+                    className={`mx-auto w-full px-4 py-7 lg:px-7 ${narrow ? "max-w-[820px]" : "max-w-[1280px]"}`}
+                >
+                    {children}
+                </main>
+            </div>
         </div>
     );
 }

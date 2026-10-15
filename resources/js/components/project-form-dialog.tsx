@@ -4,12 +4,12 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useForm } from '@inertiajs/react';
 import { useEffect } from 'react';
-import type { ProjectRow } from '../types';
+import type { ProjectRef } from '@/types';
 
 type ProjectFormDialogProps = {
     open: boolean;
     /** Project being edited, or null in create mode. */
-    project: ProjectRow | null;
+    project: ProjectRef | null;
     onClose: () => void;
 };
 
@@ -65,6 +65,7 @@ export function ProjectFormDialog({ open, project, onClose }: ProjectFormDialogP
                     value={form.data.name}
                     onChange={(e) => form.setData('name', e.target.value)}
                     required
+                    aria-invalid={form.errors.name ? true : undefined}
                 />
                 {form.errors.name ? (
                     <p className="text-sm text-destructive">{form.errors.name}</p>
@@ -85,6 +86,7 @@ export function ProjectFormDialog({ open, project, onClose }: ProjectFormDialogP
                     type="date"
                     value={form.data.target_date}
                     onChange={(e) => form.setData('target_date', e.target.value)}
+                    aria-invalid={form.errors.target_date ? true : undefined}
                 />
                 {form.errors.target_date ? (
                     <p className="text-sm text-destructive">{form.errors.target_date}</p>
