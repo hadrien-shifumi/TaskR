@@ -6,10 +6,13 @@ use App\Mcp\Resources\ProjectIssues;
 use App\Mcp\Tools\AddComment;
 use App\Mcp\Tools\ArchiveProject;
 use App\Mcp\Tools\CreateIssue;
+use App\Mcp\Tools\CreateKnowledge;
 use App\Mcp\Tools\CreateProject;
 use App\Mcp\Tools\DeleteIssue;
+use App\Mcp\Tools\GetKnowledge;
 use App\Mcp\Tools\ListComments;
 use App\Mcp\Tools\ListIssues;
+use App\Mcp\Tools\ListKnowledge;
 use App\Mcp\Tools\ListLabels;
 use App\Mcp\Tools\ListProjects;
 use App\Mcp\Tools\ListStatuses;
@@ -17,10 +20,12 @@ use App\Mcp\Tools\ListTimeEntries;
 use App\Mcp\Tools\ListWorkspaces;
 use App\Mcp\Tools\LogTime;
 use App\Mcp\Tools\MoveIssue;
+use App\Mcp\Tools\SearchKnowledge;
 use App\Mcp\Tools\SetAssignees;
 use App\Mcp\Tools\SetIssueParent;
 use App\Mcp\Tools\SetLabels;
 use App\Mcp\Tools\UpdateIssue;
+use App\Mcp\Tools\UpdateKnowledge;
 use App\Mcp\Tools\UpdateProject;
 use Laravel\Mcp\Server;
 use Laravel\Mcp\Server\Attributes\Instructions;
@@ -60,6 +65,11 @@ class TaskrServer extends Server
         ListLabels::class,
         LogTime::class,
         ListTimeEntries::class,
+        ListKnowledge::class,
+        GetKnowledge::class,
+        SearchKnowledge::class,
+        CreateKnowledge::class,
+        UpdateKnowledge::class,
     ];
 
     /**

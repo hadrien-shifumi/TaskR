@@ -20,6 +20,11 @@ use App\Actions\Issues\SetLabels;
 use App\Actions\Issues\ShowIssuePage;
 use App\Actions\Issues\ShowIssuesPage;
 use App\Actions\Issues\UpdateIssue;
+use App\Actions\Knowledge\CreateKnowledgePage;
+use App\Actions\Knowledge\DeleteKnowledgePage;
+use App\Actions\Knowledge\SearchKnowledge;
+use App\Actions\Knowledge\ShowKnowledgePage;
+use App\Actions\Knowledge\UpdateKnowledgePage;
 use App\Actions\Labels\CreateLabel;
 use App\Actions\Projects\ArchiveProject;
 use App\Actions\Projects\CreateProject;
@@ -116,4 +121,11 @@ Route::middleware(['auth', 'workspace'])->group(function (): void {
         ->scopeBindings()->name('issues.time-entries.destroy');
 
     Route::post('/labels', CreateLabel::class)->name('labels.store');
+
+    Route::get('/knowledge', ShowKnowledgePage::class)->name('knowledge.index');
+    Route::get('/knowledge/search', SearchKnowledge::class)->name('knowledge.search');
+    Route::post('/knowledge', CreateKnowledgePage::class)->name('knowledge.store');
+    Route::get('/knowledge/{page}', ShowKnowledgePage::class)->name('knowledge.show');
+    Route::match(['put', 'patch'], '/knowledge/{page}', UpdateKnowledgePage::class)->name('knowledge.update');
+    Route::delete('/knowledge/{page}', DeleteKnowledgePage::class)->name('knowledge.destroy');
 });
