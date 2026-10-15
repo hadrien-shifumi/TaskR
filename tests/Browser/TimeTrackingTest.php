@@ -16,8 +16,10 @@ it('logs, edits and deletes time entries from the UI with updated totals', funct
 
     $page = visit('/issues/'.$issue->id);
 
-    // Scenario "Logging d'une demi-journée" (time-tracking): hours + note.
-    $page->fill('input[placeholder="Hours"]', '1.5')
+    // Scenario "Logging d'une demi-journée" (time-tracking): hours + note,
+    // through the "Log time" dialog of the maquette (no inline form).
+    $page->click('@log-time')
+        ->fill('input[placeholder="Hours"]', '1.5')
         ->fill('textarea[placeholder="Note (optional)"]', 'setup CI')
         ->click('@entry-submit');
 
