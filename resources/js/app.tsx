@@ -1,7 +1,7 @@
 import { createInertiaApp } from '@inertiajs/react';
 import { createRoot } from 'react-dom/client';
 
-const pages = import.meta.glob('./Pages/**/*.tsx');
+const pages = import.meta.glob(['./Pages/**/*.tsx', '!./Pages/**/components/**/*.tsx']);
 
 createInertiaApp({
     title: (title) => `${title} - Taskr`,

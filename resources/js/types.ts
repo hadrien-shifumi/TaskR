@@ -16,3 +16,16 @@ export interface PageSharedProps {
     workspace: WorkspaceSummary | null;
     workspaces: WorkspaceSummary[];
 }
+
+/** Minimal user reference embedded in issue payloads. */
+export interface UserRef {
+    id: string;
+    name: string;
+}
+
+/** Minimal label reference embedded in issue payloads. */
+export interface LabelRef {
+    id: string;
+    name: string;
+    color: string;
+}

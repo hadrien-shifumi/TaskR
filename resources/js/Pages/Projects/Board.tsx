@@ -1,5 +1,6 @@
 import AppLayout from '@/layouts/app-layout';
-import { Avatar, PriorityBadge } from '@/components/issue-badges';
+import { AvatarStack, PriorityBadge } from '@/components/issue-badges';
+import { FlashBanner } from '@/components/flash-banner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -42,7 +43,6 @@ function formatDue(date: string | null): string {
 
 export default function Board() {
     const { project, columns } = usePage<PageProps>().props;
-    const { flash } = usePage<{ flash?: { status?: string } }>().props;
     const [draggingId, setDraggingId] = useState<string | null>(null);
     const [overColumn, setOverColumn] = useState<string | null>(null);
     const [moveError, setMoveError] = useState<string | null>(null);
@@ -102,9 +102,7 @@ export default function Board() {
                 </Button>
             </div>
 
-            {flash?.status ? (
-                <p className="mb-4 rounded-lg border bg-muted/50 px-4 py-2.5 text-sm">{flash.status}</p>
-            ) : null}
+            <FlashBanner />
 
             {moveError ? (
                 <p
@@ -210,14 +208,7 @@ export default function Board() {
                                             </span>
                                         ) : null}
                                         <span className="flex">
-                                            {issue.assignees.map((assignee, index) => (
-                                                <span
-                                                    key={assignee.id}
-                                                    className={index > 0 ? '-ml-1.75' : ''}
-                                                >
-                                                    <Avatar name={assignee.name} />
-                                                </span>
-                                            ))}
+                                            <AvatarStack people={issue.assignees} />
                                         </span>
                                     </div>
                                 </article>

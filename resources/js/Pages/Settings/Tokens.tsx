@@ -1,4 +1,5 @@
 import AppLayout from '@/layouts/app-layout';
+import { FlashBanner } from '@/components/flash-banner';
 import { SettingsShell } from '@/components/settings-shell';
 import { Button } from '@/components/ui/button';
 import {
@@ -54,9 +55,7 @@ export default function Tokens() {
             >
                 <Head title="API tokens" />
 
-            {flash?.status ? (
-                <p className="mb-4 rounded-md border bg-muted/50 px-4 py-2 text-sm">{flash.status}</p>
-            ) : null}
+            <FlashBanner />
 
             <form onSubmit={submitCreate} className="mb-6 flex items-end gap-2">
                 <div className="grid gap-2">
