@@ -6,17 +6,18 @@ use App\Actions\Workspaces\ResolveAgentWorkspace;
 use App\Models\Issue;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Support\EmbeddingsNotConfigured;
 use App\Support\WorkspaceContext;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Illuminate\Http\Exceptions\HttpException;
 use Illuminate\Validation\ValidationException;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Support\ValidationMessages;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 /**
  * Shared execution envelope for every agent tool: a single error handler
@@ -45,6 +46,12 @@ abstract class AgentTool extends Tool
         } catch (ModelNotFoundException) {
             return Response::make(Response::error('The requested resource was not found in this workspace.'))
                 ->withStructuredContent(['error' => 'not_found']);
+        } catch (EmbeddingsNotConfigured $exception) {
+            return Response::make(Response::error($exception->getMessage()))
+                ->withStructuredContent([
+                    'error' => 'embeddings_not_configured',
+                    'message' => $exception->getMessage(),
+                ]);
         } catch (HttpException $exception) {
             return Response::make(Response::error($exception->getMessage()))
                 ->withStructuredContent([

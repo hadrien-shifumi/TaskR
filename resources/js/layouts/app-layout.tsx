@@ -53,6 +53,13 @@ export default function AppLayout({ title, children }: AppLayoutProps) {
                         <Button
                             variant="ghost"
                             size="sm"
+                            onClick={() => router.get(route('knowledge.index'))}
+                        >
+                            Knowledge
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={() => router.get(route('settings.statuses'))}
                         >
                             Settings

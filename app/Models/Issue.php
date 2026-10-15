@@ -5,7 +5,7 @@ namespace App\Models;
 use App\Enums\Priority;
 use App\Enums\StatusCategory;
 use App\Models\Concerns\BelongsToWorkspace;
-use App\Models\Scopes\WorkspaceScope;
+use App\Models\Concerns\HasAncestorChain;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Issue extends BaseModel
 {
-    use BelongsToWorkspace, HasFactory;
+    use BelongsToWorkspace, HasAncestorChain, HasFactory;
 
     protected $fillable = [
         'workspace_id',
@@ -121,30 +121,6 @@ class Issue extends BaseModel
         }
 
         return (float) $this->estimated_hours - $this->logged_hours;
-    }
-
-    /**
-     * Walk up the ancestor chain; used for cycle detection.
-     *
-     * @return array<string, string>
-     */
-    public function ancestorIds(): array
-    {
-        $ids = [];
-        $current = $this;
-
-        while ($current->parent_id !== null) {
-            if (in_array($current->parent_id, $ids, true)) {
-                break;
-            }
-
-            $ids[] = $current->parent_id;
-            $current = $current->parent()
-                ->withoutGlobalScope(WorkspaceScope::class)
-                ->firstOrFail();
-        }
-
-        return $ids;
     }
 
     public function isOverdue(): bool
