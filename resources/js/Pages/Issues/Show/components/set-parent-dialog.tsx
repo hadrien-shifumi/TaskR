@@ -1,3 +1,4 @@
+import { Banner } from '@/components/banner';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -16,7 +17,6 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { router } from '@inertiajs/react';
-import { TriangleAlert } from 'lucide-react';
 import { useState } from 'react';
 import type { IssueDetail } from '../types';
 
@@ -113,16 +113,9 @@ function SetParentForm({
                     </Select>
                 </div>
                 {cycleError ? (
-                    <p
-                        role="alert"
-                        data-test="cycle-error"
-                        className="flex items-start gap-2.5 rounded-lg border border-destructive/35 bg-destructive/10 px-3.5 py-3 text-sm text-destructive"
-                    >
-                        <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
-                        <span>
-                            <strong>Attachment refused:</strong> {cycleError}
-                        </span>
-                    </p>
+                    <Banner variant="danger" role="alert" data-test="cycle-error">
+                        <strong>Attachment refused:</strong> {cycleError}
+                    </Banner>
                 ) : null}
                 <DialogFooter>
                     <Button type="button" variant="ghost" onClick={onClose}>

@@ -1,5 +1,6 @@
 import AppLayout from '@/layouts/app-layout';
 import { HealthBadge, PriorityBadge, StatusBadge } from '@/components/issue-badges';
+import { Progress } from '@/components/progress';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -145,12 +146,10 @@ export default function Home() {
                                     <h3 className="font-semibold">{project.name}</h3>
                                     <HealthBadge status={project.health.status} />
                                 </div>
-                                <div className="h-1.5 overflow-hidden rounded-full bg-secondary">
-                                    <div
-                                        className="h-full rounded-full bg-success"
-                                        style={{ width: `${project.health.completionPercentage ?? 0}%` }}
-                                    />
-                                </div>
+                                <Progress
+                                    value={project.health.completionPercentage ?? 0}
+                                    color="success"
+                                />
                                 <div className="flex items-center justify-between text-sm text-muted-foreground">
                                     <span>{project.health.completionPercentage ?? 0}% complete</span>
                                     <span className="font-mono text-xs tabular-nums">

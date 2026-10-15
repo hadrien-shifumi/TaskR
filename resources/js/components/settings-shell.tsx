@@ -1,3 +1,4 @@
+import { Banner } from '@/components/banner';
 import { Lock } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Link, usePage } from '@inertiajs/react';
@@ -73,13 +74,10 @@ export function SettingsShell({ title, description, actions, memberReadOnly = tr
             </div>
 
             {readOnly ? (
-                <p className="flex items-start gap-2.5 rounded-lg border border-info/30 bg-info/10 px-3.5 py-3 text-sm">
-                    <Lock className="mt-0.5 size-4 shrink-0 text-info" />
-                    <span>
-                        Members see settings read-only. Managing statuses, members and templates is
-                        reserved for workspace <strong>owners</strong>.
-                    </span>
-                </p>
+                <Banner variant="info" icon={Lock}>
+                    Members see settings read-only. Managing statuses, members and templates is
+                    reserved for workspace <strong>owners</strong>.
+                </Banner>
             ) : null}
 
             {children}

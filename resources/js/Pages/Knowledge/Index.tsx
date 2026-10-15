@@ -1,4 +1,5 @@
 import AppLayout from '@/layouts/app-layout';
+import { Banner } from '@/components/banner';
 import { FlashBanner } from '@/components/flash-banner';
 import { FormDialog } from '@/components/form-dialog';
 import { Badge } from '@/components/ui/badge';
@@ -22,7 +23,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
-import { BookOpen, Pencil, Plus, Search, Trash2, TriangleAlert } from 'lucide-react';
+import { BookOpen, Pencil, Plus, Search, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import type { PageSharedProps } from '@/types';
 
@@ -253,13 +254,10 @@ export default function KnowledgeIndex() {
             </form>
 
             {searchUnavailable ? (
-                <p className="mb-4 flex items-start gap-2.5 rounded-lg border border-warning/35 bg-warning/10 px-3.5 py-3 text-sm">
-                    <TriangleAlert className="mt-0.5 size-4 shrink-0 text-warning" />
-                    <span>
-                        Semantic search is not configured for this workspace. Pages stay readable — ask an admin
-                        to set KNOWLEDGE_EMBEDDINGS_BASE_URL and KNOWLEDGE_EMBEDDINGS_API_KEY.
-                    </span>
-                </p>
+                <Banner variant="warning" className="mb-4">
+                    Semantic search is not configured for this workspace. Pages stay readable — ask an admin
+                    to set KNOWLEDGE_EMBEDDINGS_BASE_URL and KNOWLEDGE_EMBEDDINGS_API_KEY.
+                </Banner>
             ) : null}
 
             <div className="grid items-start gap-6 lg:grid-cols-[16rem_1fr]">

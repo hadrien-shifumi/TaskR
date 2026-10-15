@@ -1,3 +1,4 @@
+import { Banner } from '@/components/banner';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -8,7 +9,6 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { router } from '@inertiajs/react';
-import { TriangleAlert } from 'lucide-react';
 import type { IssueDetail } from '../types';
 import { formatHours } from './format';
 
@@ -65,20 +65,17 @@ function CascadeBanner({ issue, commentsCount }: { issue: IssueDetail; commentsC
     if (commentsCount > 0) lost.push(`${commentsCount} ${commentsCount === 1 ? 'comment' : 'comments'}`);
 
     return (
-        <p className="flex items-start gap-2.5 rounded-lg border border-destructive/35 bg-destructive/10 px-3.5 py-3 text-sm text-destructive">
-            <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
-            <span>
-                {lost.length > 0 ? (
-                    <>Deletion also removes {lost.join(' and ')}.</>
-                ) : (
-                    <>This cannot be undone.</>
-                )}
-                {issue.children.length > 0
-                    ? ` ${issue.children.length} child ${
-                          issue.children.length === 1 ? 'issue becomes a root issue' : 'issues become root issues'
-                      }.`
-                    : ''}
-            </span>
-        </p>
+        <Banner variant="danger">
+            {lost.length > 0 ? (
+                <>Deletion also removes {lost.join(' and ')}.</>
+            ) : (
+                <>This cannot be undone.</>
+            )}
+            {issue.children.length > 0
+                ? ` ${issue.children.length} child ${
+                      issue.children.length === 1 ? 'issue becomes a root issue' : 'issues become root issues'
+                  }.`
+                : ''}
+        </Banner>
     );
 }

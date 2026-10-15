@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Info } from 'lucide-react';
+import { Banner } from '@/components/banner';
 import { Head, router, usePage } from '@inertiajs/react';
 
 type PageProps = {
@@ -37,13 +37,10 @@ export default function AcceptInvitation() {
                         .
                     </p>
 
-                    <p className="mb-4 flex items-start gap-2.5 rounded-md border border-info/30 bg-info/10 px-3.5 py-3 text-[13px]">
-                        <Info className="mt-0.5 size-4 shrink-0 text-info" aria-hidden />
-                        <span>
-                            As a <strong>member</strong> you get access to the projects, issues, comments and time
-                            logging of the workspace. Managing statuses and members stays reserved for owners.
-                        </span>
-                    </p>
+                    <Banner variant="info" className="mb-4 rounded-md text-[13px]">
+                        As a <strong>member</strong> you get access to the projects, issues, comments and time
+                        logging of the workspace. Managing statuses and members stays reserved for owners.
+                    </Banner>
 
                     <form className="grid gap-3" onSubmit={(e) => { e.preventDefault(); }}>
                         <div className="grid gap-1.5">

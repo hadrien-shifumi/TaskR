@@ -1,4 +1,5 @@
 import { HealthBadge } from '@/components/issue-badges';
+import { Progress } from '@/components/progress';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -52,12 +53,7 @@ export function ProjectTableRow({ project, onEdit, onArchive, onDelete }: Projec
             <TableCell>{project.health ? <HealthBadge status={project.health.status} /> : null}</TableCell>
             <TableCell>
                 <span className="flex items-center gap-2">
-                    <span className="h-1.5 w-17.5 overflow-hidden rounded-full bg-secondary">
-                        <span
-                            className="block h-full rounded-full bg-success"
-                            style={{ width: `${completion ?? 0}%` }}
-                        />
-                    </span>
+                    <Progress value={completion ?? 0} color="success" className="w-17.5" />
                     <span className="font-mono text-xs text-muted-foreground tabular-nums">
                         {completion !== null ? `${completion}%` : '—'}
                     </span>

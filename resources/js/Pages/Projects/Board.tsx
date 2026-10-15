@@ -1,6 +1,7 @@
 import { ProjectMenu } from '@/components/project-menu';
 import { ProjectViewSwitcher } from '@/components/project-view-switcher';
 import { AvatarStack, HealthBadge, PriorityBadge, StatusBadge } from '@/components/issue-badges';
+import { Banner } from '@/components/banner';
 import { FlashBanner } from '@/components/flash-banner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -167,12 +168,9 @@ export default function Board() {
             <FlashBanner />
 
             {moveError ? (
-                <p
-                    role="alert"
-                    className="mb-4 rounded-lg border border-destructive/35 bg-destructive/10 px-4 py-2.5 text-sm text-destructive"
-                >
+                <Banner variant="danger" role="alert" icon={null} className="mb-4 px-4 py-2.5">
                     {moveError}
-                </p>
+                </Banner>
             ) : null}
 
             <div className="grid grid-flow-col auto-cols-[minmax(264px,1fr)] items-start gap-3.5 overflow-x-auto pb-3">

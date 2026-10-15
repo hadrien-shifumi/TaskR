@@ -1,4 +1,5 @@
 import AppLayout from '@/layouts/app-layout';
+import { Banner } from '@/components/banner';
 import { FlashBanner } from '@/components/flash-banner';
 import { SettingsShell } from '@/components/settings-shell';
 import { Button } from '@/components/ui/button';
@@ -21,7 +22,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { Head, router, useForm, usePage } from '@inertiajs/react';
-import { Check, Copy, TriangleAlert } from 'lucide-react';
+import { Check, Copy } from 'lucide-react';
 import { useState } from 'react';
 import type { PageSharedProps } from '@/types';
 
@@ -91,13 +92,10 @@ export default function Tokens() {
 
             <FlashBanner />
 
-            <p className="mb-4 flex items-start gap-2.5 rounded-lg border border-warning/35 bg-warning/10 px-3.5 py-3 text-sm">
-                <TriangleAlert className="mt-0.5 size-4 shrink-0 text-warning" />
-                <span>
-                    A token's value is shown <strong>only once</strong>, at creation. It cannot be retrieved
-                    afterwards.
-                </span>
-            </p>
+            <Banner variant="warning" className="mb-4">
+                A token's value is shown <strong>only once</strong>, at creation. It cannot be retrieved
+                afterwards.
+            </Banner>
 
             {flash?.newToken ? (
                 <div className="mb-4 rounded-xl border bg-card p-5" data-test="token-created-card">

@@ -1,6 +1,7 @@
 import { ProjectMenu } from '@/components/project-menu';
 import { ProjectViewSwitcher } from '@/components/project-view-switcher';
 import { HealthBadge, PriorityBadge, StatusBadge } from '@/components/issue-badges';
+import { Progress, type ProgressColor } from '@/components/progress';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -69,15 +70,15 @@ export default function Health() {
     const targetPassed =
         project.targetDate !== null && project.targetDate < new Date().toISOString().slice(0, 10);
 
-    const meters = [
-        { key: 'done', label: 'done', value: health.issuesByCategory.done, fill: 'bg-success' },
-        { key: 'in_progress', label: 'in progress', value: health.issuesByCategory.in_progress, fill: 'bg-info' },
-        { key: 'backlog', label: 'backlog', value: health.issuesByCategory.backlog, fill: 'bg-muted-foreground' },
+    const meters: { key: string; label: string; value: number; color: ProgressColor }[] = [
+        { key: 'done', label: 'done', value: health.issuesByCategory.done, color: 'success' },
+        { key: 'in_progress', label: 'in progress', value: health.issuesByCategory.in_progress, color: 'info' },
+        { key: 'backlog', label: 'backlog', value: health.issuesByCategory.backlog, color: 'muted' },
         {
             key: 'cancelled',
             label: 'cancelled',
             value: health.issuesByCategory.cancelled,
-            fill: 'bg-muted-foreground/50',
+            color: 'muted-soft',
         },
     ];
 
@@ -198,18 +199,15 @@ export default function Health() {
                                     <span className="w-23 flex-none">
                                         <StatusBadge name={meter.label} category={meter.key} />
                                     </span>
-                                    <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-secondary">
-                                        <span
-                                            className={`block h-full rounded-full ${meter.fill}`}
-                                            style={{
-                                                width: `${
-                                                    health.totalIssues > 0
-                                                        ? Math.round((meter.value / health.totalIssues) * 100)
-                                                        : 0
-                                                }%`,
-                                            }}
-                                        />
-                                    </span>
+                                    <Progress
+                                        value={
+                                            health.totalIssues > 0
+                                                ? Math.round((meter.value / health.totalIssues) * 100)
+                                                : 0
+                                        }
+                                        color={meter.color}
+                                        className="flex-1"
+                                    />
                                     <span className="w-9 text-right font-mono text-xs tabular-nums">
                                         {meter.value}
                                     </span>
@@ -280,12 +278,7 @@ export default function Health() {
                                 <span className="text-muted-foreground">Done to date</span>
                                 <span className="font-mono font-semibold tabular-nums">{completion ?? 0}%</span>
                             </div>
-                            <span className="block h-1.5 overflow-hidden rounded-full bg-secondary">
-                                <span
-                                    className="block h-full rounded-full bg-success"
-                                    style={{ width: `${completion ?? 0}%` }}
-                                />
-                            </span>
+                            <Progress value={completion ?? 0} color="success" />
                         </div>
                         <div data-test="projection-expected">
                             <div className="mb-1.5 flex items-center justify-between text-sm">
@@ -294,14 +287,10 @@ export default function Health() {
                                     {expected !== null ? `${expected}%` : '—'}
                                 </span>
                             </div>
-                            <span className="block h-1.5 overflow-hidden rounded-full bg-secondary">
-                                <span
-                                    className={`block h-full rounded-full ${
-                                        health.status === 'late' ? 'bg-destructive' : 'bg-muted-foreground'
-                                    }`}
-                                    style={{ width: `${expected ?? 0}%` }}
-                                />
-                            </span>
+                            <Progress
+                                value={expected ?? 0}
+                                color={health.status === 'late' ? 'destructive' : 'muted'}
+                            />
                         </div>
                         <hr className="border-border" />
                         <p className="text-[12.5px] text-muted-foreground">
