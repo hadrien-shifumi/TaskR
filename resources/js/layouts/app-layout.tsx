@@ -1,8 +1,8 @@
-import { useState, type FormEvent, type ReactNode } from 'react';
-import { FormDialog } from '@/components/form-dialog';
-import { initials } from '@/components/issue-badges';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { useState, type FormEvent, type ReactNode } from "react";
+import { FormDialog } from "@/components/form-dialog";
+import { initials } from "@/components/issue-badges";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -11,10 +11,19 @@ import {
     DropdownMenuLabel,
     DropdownMenuSeparator,
     DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Link, router, useForm, usePage } from '@inertiajs/react';
-import { BookOpen, ChevronDown, Folder, Home, ListChecks, LogOut, Plus, SlidersHorizontal } from 'lucide-react';
-import type { PageSharedProps } from '@/types';
+} from "@/components/ui/dropdown-menu";
+import { Link, router, useForm, usePage } from "@inertiajs/react";
+import {
+    BookOpen,
+    ChevronDown,
+    Folder,
+    Home,
+    ListChecks,
+    LogOut,
+    Plus,
+    SlidersHorizontal,
+} from "lucide-react";
+import type { PageSharedProps } from "@/types";
 
 interface AppLayoutProps {
     /** Pagebar title — a string, or a node when badges sit next to it. */
@@ -31,27 +40,55 @@ interface AppLayoutProps {
 }
 
 const NAV_ITEMS = [
-    { label: 'Home', route: 'home', prefix: '/', icon: Home },
-    { label: 'Projects', route: 'projects.index', prefix: '/projects', icon: Folder },
-    { label: 'Issues', route: 'issues.index', prefix: '/issues', icon: ListChecks },
-    { label: 'Knowledge', route: 'knowledge.index', prefix: '/knowledge', icon: BookOpen },
-    { label: 'Settings', route: 'settings.statuses', prefix: '/settings', icon: SlidersHorizontal },
+    { label: "Home", route: "home", prefix: "/", icon: Home },
+    {
+        label: "Projects",
+        route: "projects.index",
+        prefix: "/projects",
+        icon: Folder,
+    },
+    {
+        label: "Issues",
+        route: "issues.index",
+        prefix: "/issues",
+        icon: ListChecks,
+    },
+    {
+        label: "Knowledge",
+        route: "knowledge.index",
+        prefix: "/knowledge",
+        icon: BookOpen,
+    },
+    {
+        label: "Settings",
+        route: "settings.statuses",
+        prefix: "/settings",
+        icon: SlidersHorizontal,
+    },
 ];
 
 /** Maquette shell: fixed sidebar (brand, workspace switcher, nav, user) +
  * sticky pagebar (title, subtitle, actions) above the page body. */
-export default function AppLayout({ title, subtitle, leading, actions, narrow, children }: AppLayoutProps) {
+export default function AppLayout({
+    title,
+    subtitle,
+    leading,
+    actions,
+    narrow,
+    children,
+}: AppLayoutProps) {
     const { auth, workspace, workspaces } = usePage<PageSharedProps>().props;
     const { url } = usePage();
 
-    const isActive = (prefix: string) => (prefix === '/' ? url === '/' : url.startsWith(prefix));
+    const isActive = (prefix: string) =>
+        prefix === "/" ? url === "/" : url.startsWith(prefix);
 
     const [creatingWorkspace, setCreatingWorkspace] = useState(false);
-    const workspaceForm = useForm({ name: '' });
+    const workspaceForm = useForm({ name: "" });
 
     const submitWorkspace = (event: FormEvent) => {
         event.preventDefault();
-        workspaceForm.post(route('workspaces.store'), {
+        workspaceForm.post(route("workspaces.store"), {
             onSuccess: () => {
                 setCreatingWorkspace(false);
                 workspaceForm.reset();
@@ -66,7 +103,9 @@ export default function AppLayout({ title, subtitle, leading, actions, narrow, c
                     <span className="grid size-6.5 shrink-0 place-items-center rounded-[7px] bg-primary text-sm font-bold text-primary-foreground">
                         T
                     </span>
-                    <span className="text-[15px] font-semibold tracking-tight">Taskr</span>
+                    <span className="text-[15px] font-semibold tracking-tight">
+                        Taskr
+                    </span>
                 </div>
 
                 {workspace ? (
@@ -86,15 +125,27 @@ export default function AppLayout({ title, subtitle, leading, actions, narrow, c
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="start" className="w-56">
                                 <DropdownMenuGroup>
-                                    <DropdownMenuLabel>Your workspaces</DropdownMenuLabel>
+                                    <DropdownMenuLabel>
+                                        Your workspaces
+                                    </DropdownMenuLabel>
                                     {workspaces.map((ws) => (
                                         <DropdownMenuItem
                                             key={ws.id}
-                                            onClick={() => router.post(route('workspaces.switch', ws.id))}
+                                            onClick={() =>
+                                                router.post(
+                                                    route(
+                                                        "workspaces.switch",
+                                                        ws.id,
+                                                    ),
+                                                )
+                                            }
                                         >
                                             {ws.name}
                                             {ws.id === workspace.id ? (
-                                                <span aria-hidden className="ml-auto text-primary">
+                                                <span
+                                                    aria-hidden
+                                                    className="ml-auto text-primary"
+                                                >
                                                     •
                                                 </span>
                                             ) : null}
@@ -102,7 +153,9 @@ export default function AppLayout({ title, subtitle, leading, actions, narrow, c
                                     ))}
                                 </DropdownMenuGroup>
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem onClick={() => setCreatingWorkspace(true)}>
+                                <DropdownMenuItem
+                                    onClick={() => setCreatingWorkspace(true)}
+                                >
                                     <Plus aria-hidden />
                                     Create workspace…
                                 </DropdownMenuItem>
@@ -125,32 +178,46 @@ export default function AppLayout({ title, subtitle, leading, actions, narrow, c
                                     placeholder="Studio Nova"
                                     autoFocus
                                     value={workspaceForm.data.name}
-                                    onChange={(event) => workspaceForm.setData('name', event.target.value)}
+                                    onChange={(event) =>
+                                        workspaceForm.setData(
+                                            "name",
+                                            event.target.value,
+                                        )
+                                    }
                                 />
                                 {workspaceForm.errors.name ? (
-                                    <p className="text-sm text-destructive">{workspaceForm.errors.name}</p>
+                                    <p className="text-sm text-destructive">
+                                        {workspaceForm.errors.name}
+                                    </p>
                                 ) : null}
                             </div>
                         </FormDialog>
                     </>
                 ) : null}
 
-                <p className="px-2 pt-3.5 pb-1 font-mono text-[10px] tracking-[0.08em] uppercase text-muted-foreground max-lg:hidden">
+                <p className="px-2 pt-3.5 pb-1 font-mono text-[12px] tracking-[0.08em] uppercase text-muted-foreground max-lg:hidden">
                     Workspace
                 </p>
 
-                <nav className="flex items-center gap-1.5 max-lg:flex-none lg:flex-col" aria-label="Main">
+                <nav
+                    className="flex items-start gap-1.5 max-lg:flex-none lg:flex-col"
+                    aria-label="Main"
+                >
                     {NAV_ITEMS.map((item) => {
                         const Icon = item.icon;
                         return (
                             <Link
                                 key={item.label}
                                 href={route(item.route)}
-                                aria-current={isActive(item.prefix) ? 'page' : undefined}
+                                aria-current={
+                                    isActive(item.prefix) ? "page" : undefined
+                                }
                                 className="flex items-center gap-2.5 rounded-lg px-2.5 py-1.75 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground aria-[current=page]:bg-secondary aria-[current=page]:font-medium aria-[current=page]:text-foreground max-lg:px-2.5 max-lg:py-2"
                             >
                                 <Icon className="size-4 shrink-0" aria-hidden />
-                                <span className="max-lg:hidden">{item.label}</span>
+                                <span className="max-lg:hidden">
+                                    {item.label}
+                                </span>
                             </Link>
                         );
                     })}
@@ -171,14 +238,24 @@ export default function AppLayout({ title, subtitle, leading, actions, narrow, c
                                         {auth.user.name}
                                     </span>
                                     <span className="block text-[11px] text-muted-foreground">
-                                        {workspace?.role ?? 'member'}
+                                        {workspace?.role ?? "member"}
                                     </span>
                                 </span>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="start" side="top" className="w-48">
+                            <DropdownMenuContent
+                                align="start"
+                                side="top"
+                                className="w-48"
+                            >
                                 <DropdownMenuGroup>
-                                    <DropdownMenuLabel>{auth.user.email}</DropdownMenuLabel>
-                                    <DropdownMenuItem onClick={() => router.post(route('logout'))}>
+                                    <DropdownMenuLabel>
+                                        {auth.user.email}
+                                    </DropdownMenuLabel>
+                                    <DropdownMenuItem
+                                        onClick={() =>
+                                            router.post(route("logout"))
+                                        }
+                                    >
                                         <LogOut aria-hidden />
                                         Log out
                                     </DropdownMenuItem>
@@ -199,7 +276,9 @@ export default function AppLayout({ title, subtitle, leading, actions, narrow, c
                             </h1>
                         ) : null}
                         {subtitle ? (
-                            <span className="hidden text-sm text-muted-foreground sm:inline">{subtitle}</span>
+                            <span className="hidden text-sm text-muted-foreground sm:inline">
+                                {subtitle}
+                            </span>
                         ) : null}
                         <span className="flex-1" />
                         {actions}
@@ -207,7 +286,7 @@ export default function AppLayout({ title, subtitle, leading, actions, narrow, c
                 ) : null}
 
                 <main
-                    className={`mx-auto w-full px-4 py-7 lg:px-7 ${narrow ? 'max-w-[820px]' : 'max-w-[1160px]'}`}
+                    className={`mx-auto w-full px-4 py-7 lg:px-7 ${narrow ? "max-w-[820px]" : "max-w-[1280px]"}`}
                 >
                     {children}
                 </main>

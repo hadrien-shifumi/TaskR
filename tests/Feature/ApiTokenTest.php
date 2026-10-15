@@ -28,6 +28,29 @@ class ApiTokenTest extends TestCase
                 ->where('tokens.0.name', 'Agent Claude'));
     }
 
+    public function test_tokens_page_exposes_the_last_used_at(): void
+    {
+        $user = User::factory()->create();
+        CreateWorkspace::run($user, ['name' => 'WS']);
+        CreateApiToken::run($user, ['name' => 'Agent Claude']);
+        CreateApiToken::run($user, ['name' => 'Script hebdo']);
+
+        $used = $user->tokens()->where('name', 'Agent Claude')->firstOrFail();
+        $used->forceFill([
+            'created_at' => now()->subMinute(),
+            'last_used_at' => now()->subHour(),
+        ])->save();
+
+        $this->actingAs($user)
+            ->get(route('settings.tokens'))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('tokens.0.name', 'Script hebdo')
+                ->where('tokens.0.lastUsedAt', null)
+                ->where('tokens.1.name', 'Agent Claude')
+                ->where('tokens.1.lastUsedAt', $used->last_used_at->toISOString()));
+    }
+
     public function test_created_token_value_is_shown_once_and_never_stored_in_clear(): void
     {
         $user = User::factory()->create();
