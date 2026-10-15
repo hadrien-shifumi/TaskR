@@ -43,8 +43,9 @@ function setupBrowserWorkspace(bool $withProject = false): array
 
 /**
  * Browser fixture seeding a project for the project-health scenarios:
- * 3 backlog, 2 in progress (one overdue), 4 done, 1 cancelled → 50% complete;
- * 10h estimated, 8h logged → 80% consumption; target date passed → late.
+ * 3 backlog, 2 in progress (one overdue), 4 done, 1 cancelled → 40% complete
+ * (done only over the total); 10h estimated, 8h logged → 80% consumption;
+ * target date passed → late.
  */
 function seedProjectWithHealth(Workspace $workspace, User $owner): Project
 {

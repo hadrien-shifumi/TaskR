@@ -30,8 +30,9 @@ type PageProps = {
     lateIssues: LateIssue[];
 };
 
+/** Hours render with at most one decimal: 8 → "8", 142.5 → "142.5". */
 function formatHours(hours: number): string {
-    return `${hours.toFixed(1)}h`;
+    return hours.toFixed(1).replace(/\.0$/, '');
 }
 
 function formatDate(date: string | null): string {
@@ -54,8 +55,19 @@ export default function Health() {
 
     const saveTargetDate = (event: React.FormEvent) => {
         event.preventDefault();
-        targetForm.patch(route('projects.update', project.id));
+        // Health is always computed at read time: saving the new target date
+        // recalculates the projection, and the fresh page lands back here.
+        targetForm.patch(route('projects.update', project.id), {
+            onSuccess: () => router.get(route('projects.health', project.id)),
+        });
     };
+
+    // The maquette shows whole percentages (71 %, 94 %): round at display time.
+    const completion = health.completionPercentage !== null ? Math.round(health.completionPercentage) : null;
+    const expected = health.expectedPercentage !== null ? Math.round(health.expectedPercentage) : null;
+    const paceGap = completion !== null && expected !== null ? expected - completion : null;
+    const targetPassed =
+        project.targetDate !== null && project.targetDate < new Date().toISOString().slice(0, 10);
 
     const meters = [
         { key: 'done', label: 'done', value: health.issuesByCategory.done, fill: 'bg-success' },
@@ -73,7 +85,8 @@ export default function Health() {
         {
             key: 'stat-completed',
             label: 'Completed',
-            value: health.completionPercentage !== null ? `${health.completionPercentage}%` : '—',
+            value: completion !== null ? String(completion) : '—',
+            suffix: completion !== null ? ' %' : '',
             hint: `${health.issuesByCategory.done} done + ${health.issuesByCategory.cancelled} cancelled of ${health.totalIssues} issues`,
         },
         {
@@ -86,10 +99,11 @@ export default function Health() {
         {
             key: 'stat-hours',
             label: 'Hours',
-            value: `${formatHours(health.loggedHours)} / ${formatHours(health.estimatedHours)}`,
+            value: formatHours(health.loggedHours),
+            suffix: ` / ${formatHours(health.estimatedHours)} h`,
             hint:
                 health.consumptionRatio !== null
-                    ? `${health.consumptionRatio}% of estimated hours consumed`
+                    ? `logged / estimated · ${Math.round(health.consumptionRatio)}% consumed`
                     : 'No estimates set',
         },
     ];
@@ -114,6 +128,15 @@ export default function Health() {
             }
             actions={
                 <>
+                    {project.targetDate !== null ? (
+                        <span
+                            data-test="pagebar-meta"
+                            className="hidden font-mono text-xs text-muted-foreground tabular-nums sm:inline"
+                        >
+                            target: {formatDate(project.targetDate)}
+                            {targetPassed ? ' · overdue' : ''}
+                        </span>
+                    ) : null}
                     <ProjectViewSwitcher projectId={project.id} active="health" />
                     <ProjectMenu project={project} issuesCount={health.totalIssues} />
                 </>
@@ -121,9 +144,10 @@ export default function Health() {
         >
             <Head title={`Health — ${project.name}`} />
 
-            {project.description ? (
-                <p className="mb-5 max-w-[62ch] text-[15px] text-muted-foreground">{project.description}</p>
-            ) : null}
+            <p className="mb-5 max-w-[62ch] text-[15px] text-muted-foreground">
+                {project.description ? `${project.description} ` : null}
+                All indicators below are calculated from the issues — nothing is entered by hand.
+            </p>
 
             <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
                 {statCards.map((card) => (
@@ -136,6 +160,9 @@ export default function Health() {
                                 }`}
                             >
                                 {card.value}
+                                {card.suffix ? (
+                                    <span className="text-[15px] text-muted-foreground">{card.suffix}</span>
+                                ) : null}
                             </p>
                             <p className="text-xs text-muted-foreground">{card.hint}</p>
                         </CardContent>
@@ -148,8 +175,8 @@ export default function Health() {
                             <HealthBadge status={health.status} />
                         </div>
                         <p className="text-xs text-muted-foreground">
-                            {health.expectedPercentage !== null
-                                ? `${health.completionPercentage ?? 0}% done · ${health.expectedPercentage}% expected at this date`
+                            {expected !== null
+                                ? `${completion ?? 0}% done · ${expected}% expected at this date`
                                 : 'No target date — no projection'}
                         </p>
                     </CardContent>
@@ -248,25 +275,23 @@ export default function Health() {
                 <Card className="py-5">
                     <CardContent className="grid gap-3.5 px-5">
                         <h2 className="text-base font-semibold">Projection</h2>
-                        <div>
+                        <div data-test="projection-done">
                             <div className="mb-1.5 flex items-center justify-between text-sm">
                                 <span className="text-muted-foreground">Done to date</span>
-                                <span className="font-mono font-semibold tabular-nums">
-                                    {health.completionPercentage ?? 0}%
-                                </span>
+                                <span className="font-mono font-semibold tabular-nums">{completion ?? 0}%</span>
                             </div>
                             <span className="block h-1.5 overflow-hidden rounded-full bg-secondary">
                                 <span
                                     className="block h-full rounded-full bg-success"
-                                    style={{ width: `${health.completionPercentage ?? 0}%` }}
+                                    style={{ width: `${completion ?? 0}%` }}
                                 />
                             </span>
                         </div>
-                        <div>
+                        <div data-test="projection-expected">
                             <div className="mb-1.5 flex items-center justify-between text-sm">
                                 <span className="text-muted-foreground">Expected to date</span>
                                 <span className="font-mono font-semibold tabular-nums">
-                                    {health.expectedPercentage !== null ? `${health.expectedPercentage}%` : '—'}
+                                    {expected !== null ? `${expected}%` : '—'}
                                 </span>
                             </div>
                             <span className="block h-1.5 overflow-hidden rounded-full bg-secondary">
@@ -274,21 +299,33 @@ export default function Health() {
                                     className={`block h-full rounded-full ${
                                         health.status === 'late' ? 'bg-destructive' : 'bg-muted-foreground'
                                     }`}
-                                    style={{ width: `${health.expectedPercentage ?? 0}%` }}
+                                    style={{ width: `${expected ?? 0}%` }}
                                 />
                             </span>
                         </div>
                         <hr className="border-border" />
                         <p className="text-[12.5px] text-muted-foreground">
-                            {health.targetDate
-                                ? `Target date ${formatDate(health.targetDate)}. Moving the target date or closing issues recalculates the projection immediately.`
-                                : 'Set a target date to activate the projection: expected pace is derived from the project start and the target.'}
+                            {health.targetDate === null ? (
+                                'Set a target date to activate the projection: the expected pace is derived from the project start and the target.'
+                            ) : health.status === 'late' && paceGap !== null ? (
+                                <>
+                                    {`The target date of ${formatDate(health.targetDate)} is past with a ${paceGap}-point gap on the expected pace: the projection is `}
+                                    <strong className="text-destructive">Late</strong>
+                                    {'. Moving the target date or closing the remaining issues recalculates the projection immediately.'}
+                                </>
+                            ) : (
+                                <>
+                                    Target date {formatDate(health.targetDate)}. Moving the target date or closing
+                                    the remaining issues recalculates the projection immediately.
+                                </>
+                            )}
                         </p>
                         <form className="grid gap-2" onSubmit={saveTargetDate}>
                             <label className="grid gap-1.5 text-sm" htmlFor="target-date">
                                 <span className="text-muted-foreground">Target date</span>
                                 <Input
                                     id="target-date"
+                                    data-test="target-date-input"
                                     type="date"
                                     value={targetForm.data.target_date}
                                     onChange={(e) => targetForm.setData('target_date', e.target.value)}
@@ -297,8 +334,14 @@ export default function Health() {
                             {targetForm.errors.target_date ? (
                                 <p className="text-sm text-destructive">{targetForm.errors.target_date}</p>
                             ) : null}
-                            <Button type="submit" variant="outline" size="sm" disabled={targetForm.processing}>
-                                Save target date
+                            <Button
+                                type="submit"
+                                variant="outline"
+                                size="sm"
+                                data-test="recalculate-projection"
+                                disabled={targetForm.processing}
+                            >
+                                Recalculate projection
                             </Button>
                         </form>
                     </CardContent>

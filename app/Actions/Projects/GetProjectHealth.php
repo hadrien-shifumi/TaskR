@@ -197,10 +197,11 @@ class GetProjectHealth
     private function buildHealth(Project $project, array $aggregates): ProjectHealth
     {
         $totalIssues = $aggregates['total_issues'];
-        $doneAndCancelled = $aggregates['done'] + $aggregates['cancelled'];
 
+        // Maquette rule (project-health): "12 done + 1 cancelled sur 17" →
+        // 71 %. Cancelled issues count in the total but never as done.
         $completionPercentage = $totalIssues > 0
-            ? round($doneAndCancelled / $totalIssues * 100, 1)
+            ? round($aggregates['done'] / $totalIssues * 100, 1)
             : null;
 
         $estimatedHours = $aggregates['estimated_hours'];
