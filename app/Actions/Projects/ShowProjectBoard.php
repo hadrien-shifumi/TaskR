@@ -3,6 +3,7 @@
 namespace App\Actions\Projects;
 
 use App\Models\Issue;
+use App\Models\IssueTemplate;
 use App\Models\Project;
 use App\Models\User;
 use App\Responders\Projects\ProjectBoardResponder;
@@ -29,7 +30,7 @@ class ShowProjectBoard
      * (in workspace order, even when empty), each carrying its issues.
      * With $parentsOnly, subtasks are hidden for a macro view of the project.
      *
-     * @return array{project: array<string, mixed>, health: array<string, mixed>, columns: array<int, array<string, mixed>>, parentsOnly: bool}
+     * @return array{project: array<string, mixed>, health: array<string, mixed>, columns: array<int, array<string, mixed>>, parentsOnly: bool, labels: array<int, mixed>, members: array<int, mixed>, templates: array<int, mixed>}
      */
     public function handle(Project $project, bool $parentsOnly = false): array
     {
@@ -54,6 +55,20 @@ class ShowProjectBoard
             // Health feeds the pagebar badge and the projection meta.
             'health' => GetProjectHealth::run($project)->toArray(),
             'parentsOnly' => $parentsOnly,
+            // Creation options for the board's full issue dialog (mirrors ShowIssuesPage).
+            'labels' => $workspace->labels()->orderBy('name')->get(['id', 'name', 'color']),
+            'members' => $workspace->members()->orderBy('name')->get(['users.id', 'users.name']),
+            'templates' => $workspace->issueTemplates()
+                ->with('labels')
+                ->get()
+                ->map(fn (IssueTemplate $template) => [
+                    'id' => $template->id,
+                    'name' => $template->name,
+                    'description' => $template->description,
+                    'priority' => $template->priority?->value,
+                    'labels' => $template->labels->map(fn ($label) => ['id' => $label->id, 'name' => $label->name])->values()->all(),
+                ])
+                ->all(),
             'columns' => $workspace->statuses()
                 ->get()
                 ->map(fn ($status) => [

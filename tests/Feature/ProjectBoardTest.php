@@ -307,4 +307,18 @@ class ProjectBoardTest extends TestCase
             'status_id' => $statuses['done']->id,
         ]);
     }
+
+    public function test_board_payload_includes_issue_creation_options(): void
+    {
+        [$owner, $workspace, $project, $statuses] = $this->setupProjectWithStatuses();
+
+        $this->actingAs($owner)
+            ->get(route('projects.board', $project->id))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->has('labels', 0)
+                ->has('members', 1)
+                ->where('members.0.id', $owner->id)
+                ->has('templates', 0));
+    }
 }
