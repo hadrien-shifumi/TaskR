@@ -1,4 +1,5 @@
 import GuestLayout from '@/layouts/guest-layout';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -24,19 +25,19 @@ export default function AcceptInvitation() {
     return (
         <GuestLayout>
             <Head title={`Join ${invitation.workspaceName}`} />
-            <Card className="w-full max-w-sm">
-                <CardContent className="px-6 py-6">
+            <Card className="w-full py-6">
+                <CardContent className="px-6">
                     <h1 className="text-[19px] font-semibold tracking-tight">Join {invitation.workspaceName}</h1>
                     <p className="mt-1 mb-4.5 text-sm text-muted-foreground">
                         {invitation.inviterName} invites you to join{' '}
                         <strong className="font-medium text-foreground">{invitation.workspaceName}</strong> as a{' '}
-                        <span className="inline-flex items-center rounded-full bg-secondary px-2 py-0.5 font-mono text-xs text-muted-foreground">
+                        <Badge variant="secondary" className="rounded-full bg-secondary text-muted-foreground">
                             {invitation.role}
-                        </span>
+                        </Badge>
                         .
                     </p>
 
-                    <p className="mb-4.5 flex items-start gap-2.5 rounded-lg border border-info/30 bg-info/10 px-3.5 py-3 text-[13px]">
+                    <p className="mb-4 flex items-start gap-2.5 rounded-md border border-info/30 bg-info/10 px-3.5 py-3 text-[13px]">
                         <Info className="mt-0.5 size-4 shrink-0 text-info" aria-hidden />
                         <span>
                             As a <strong>member</strong> you get access to the projects, issues, comments and time
@@ -44,8 +45,8 @@ export default function AcceptInvitation() {
                         </span>
                     </p>
 
-                    <form className="grid gap-4" onSubmit={(e) => { e.preventDefault(); }}>
-                        <div className="grid gap-2">
+                    <form className="grid gap-3" onSubmit={(e) => { e.preventDefault(); }}>
+                        <div className="grid gap-1.5">
                             <Label htmlFor="invitation-email">Invitation email</Label>
                             <Input
                                 id="invitation-email"
