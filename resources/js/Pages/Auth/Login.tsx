@@ -3,12 +3,18 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, useForm, usePage } from '@inertiajs/react';
 
 export default function Login() {
+    // Guest pages (invitations…) hand their return target over as a query
+    // parameter; the login POST forwards it so the responder can send the
+    // user back where they came from (same-app paths only, guarded server-side).
+    const redirect = new URLSearchParams(usePage().url.split('?')[1] ?? '').get('redirect') ?? '';
+
     const { data, setData, post, processing, errors } = useForm({
         email: '',
         password: '',
+        redirect,
     });
 
     const submit = (event: React.FormEvent) => {
