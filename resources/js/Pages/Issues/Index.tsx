@@ -23,6 +23,7 @@ import type { IssueRow, TemplateOption } from './Index/types';
 type PageProps = {
     issues: IssueRow[];
     total: number;
+    totalUnfiltered: number;
     filters: Record<string, string>;
     projects: { id: string; name: string }[];
     statuses: { id: string; name: string; category: string }[];
@@ -32,7 +33,8 @@ type PageProps = {
 };
 
 export default function Index() {
-    const { issues, total, filters, projects, statuses, labels, templates } = usePage<PageProps>().props;
+    const { issues, total, totalUnfiltered, filters, projects, statuses, labels, templates } =
+        usePage<PageProps>().props;
     const { auth } = usePage<PageSharedProps>().props;
     const [creating, setCreating] = useState(false);
     const [creatingLabel, setCreatingLabel] = useState(false);
@@ -93,7 +95,7 @@ export default function Index() {
                 searchPlaceholder="Search a title…"
                 searchAriaLabel="Search issues by title"
                 visible={issues.length}
-                total={total}
+                total={totalUnfiltered}
             >
                 <FilterChip
                     testId="filter-chip-in-progress"

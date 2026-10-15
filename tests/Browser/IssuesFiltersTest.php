@@ -93,7 +93,7 @@ it('filters the list with cumulative chips and a visible/total counter', functio
     $page->assertSee('Webhook retry with backoff');
     $page->assertSee('Crash on launch with iOS 17.4');
     $page->assertDontSee('Design color tokens');
-    $page->assertSeeIn('@filter-count', '2 / 2');
+    $page->assertSeeIn('@filter-count', '2 / 5');
 
     // Chips cumulate (AND): in progress AND overdue keeps the webhook issue.
     $page->click('@filter-chip-overdue');
@@ -101,7 +101,7 @@ it('filters the list with cumulative chips and a visible/total counter', functio
     $page->assertQueryStringHas('overdue', '1');
     $page->assertCount(ISSUE_ROWS, 1);
     $page->assertDontSee('Crash on launch with iOS 17.4');
-    $page->assertSeeIn('@filter-count', '1 / 1');
+    $page->assertSeeIn('@filter-count', '1 / 5');
 
     // Toggling a chip off removes its URL param and widens the list again.
     $page->click('@filter-chip-in-progress');

@@ -227,6 +227,22 @@ class IssueTest extends TestCase
                 ->where('filters.q', 'webhook'));
     }
 
+    public function test_list_exposes_the_unfiltered_total_alongside_the_filtered_one(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspace();
+
+        CreateIssue::run($workspace, ['project_id' => $project->id, 'title' => 'Webhook retry']);
+        CreateIssue::run($workspace, ['project_id' => $project->id, 'title' => 'Login page fix']);
+        CreateIssue::run($workspace, ['project_id' => $project->id, 'title' => 'Other task']);
+
+        $this->actingAs($owner)
+            ->get('/issues?q=webhook')
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('total', 1)
+                ->where('totalUnfiltered', 3));
+    }
+
     public function test_issue_urls_use_ulids(): void
     {
         [$owner, $workspace, $project] = $this->setupWorkspace();

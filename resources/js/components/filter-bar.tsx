@@ -10,7 +10,7 @@ type FilterBarProps = {
     searchAriaLabel: string;
     /** Rows currently displayed… */
     visible: number;
-    /** …out of the total matching the current query. */
+    /** …out of the workspace total (unfiltered). */
     total: number;
     /** Filter chips, rendered between the search field and the counter. */
     children?: ReactNode;
