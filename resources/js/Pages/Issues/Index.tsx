@@ -1,22 +1,21 @@
 import { CreateIssueDialog } from '@/components/create-issue-dialog';
+import { FilterBar } from '@/components/filter-bar';
+import { FilterChip } from '@/components/filter-chip';
 import { FlashBanner } from '@/components/flash-banner';
-import { FilterSelect } from '@/components/filter-select';
+import { Avatar } from '@/components/issue-badges';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
     Table,
     TableBody,
-    TableCell,
     TableHead,
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
 import { Head, router, usePage } from '@inertiajs/react';
-import { Search } from 'lucide-react';
+import { Clock, ListTodo } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { PRIORITIES } from '@/components/priority-select';
-import type { LabelRef, UserRef } from '@/types';
+import type { LabelRef, PageSharedProps, UserRef } from '@/types';
 import { CreateLabelDialog } from './Index/components/create-label-dialog';
 import { IssueTableRow } from './Index/components/issue-row';
 import type { IssueRow, TemplateOption } from './Index/types';
@@ -32,16 +31,28 @@ type PageProps = {
     templates: TemplateOption[];
 };
 
-const CATEGORIES = ['backlog', 'in_progress', 'done', 'cancelled'];
-
 export default function Index() {
-    const { issues, total, filters, projects, statuses, labels, members, templates } = usePage<PageProps>().props;
+    const { issues, total, filters, projects, statuses, labels, templates } = usePage<PageProps>().props;
+    const { auth } = usePage<PageSharedProps>().props;
     const [creating, setCreating] = useState(false);
     const [creatingLabel, setCreatingLabel] = useState(false);
     const [search, setSearch] = useState(filters.q ?? '');
 
+    /** Sets one URL filter; an empty value removes the param so filtered
+     *  URLs stay clean and shareable. */
     const setFilter = (key: string, value: string) => {
-        router.get(route('issues.index'), { ...filters, [key]: value }, { preserveState: true });
+        const next: Record<string, string> = { ...filters };
+        if (value === '') {
+            delete next[key];
+        } else {
+            next[key] = value;
+        }
+        router.get(route('issues.index'), next, { preserveState: true });
+    };
+
+    /** Chip toggle: the filter is active when the URL param equals the chip value. */
+    const toggleFilter = (key: string, value: string) => () => {
+        setFilter(key, filters[key] === value ? '' : value);
     };
 
     // Debounced title search: the query param follows the input with a beat.
@@ -53,6 +64,9 @@ export default function Index() {
         }, 300);
         return () => clearTimeout(timer);
     }, [search]);
+
+    const myId = auth.user ? String(auth.user.id) : '';
+    const hasActiveFilters = Object.keys(filters).length > 0;
 
     return (
         <AppLayout
@@ -73,71 +87,65 @@ export default function Index() {
 
             <FlashBanner />
 
-            <div className="mb-3.5 flex flex-wrap items-center gap-2">
-                <div className="relative">
-                    <Search
-                        className="pointer-events-none absolute top-2.5 left-2.5 size-3.5 text-muted-foreground"
-                        aria-hidden
-                    />
-                    <Input
-                        type="search"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        placeholder="Search a title…"
-                        aria-label="Search issues by title"
-                        className="h-7.5 w-50 pl-8 text-[13px]"
-                    />
-                </div>
-                <FilterSelect
-                    value={filters.project ?? ''}
-                    options={projects.map((p) => ({ value: p.id, label: p.name }))}
-                    allLabel="All projects"
-                    onChange={(v) => setFilter('project', v)}
-                />
-                <FilterSelect
-                    value={filters.status ?? ''}
-                    options={statuses.map((s) => ({ value: s.id, label: s.name }))}
-                    allLabel="All statuses"
-                    onChange={(v) => setFilter('status', v)}
-                />
-                <FilterSelect
-                    value={filters.category ?? ''}
-                    options={CATEGORIES.map((c) => ({ value: c, label: c }))}
-                    allLabel="All categories"
-                    onChange={(v) => setFilter('category', v)}
-                />
-                <FilterSelect
-                    className="w-36"
-                    value={filters.priority ?? ''}
-                    options={PRIORITIES.map((p) => ({ value: p, label: p }))}
-                    allLabel="Any priority"
-                    onChange={(v) => setFilter('priority', v)}
-                />
-                <FilterSelect
-                    className="w-36"
-                    value={filters.label ?? ''}
-                    options={labels.map((l) => ({ value: l.id, label: l.name }))}
-                    allLabel="Any label"
-                    onChange={(v) => setFilter('label', v)}
-                />
-                <FilterSelect
-                    className="w-40"
-                    value={filters.assignee ?? ''}
-                    options={members.map((m) => ({ value: m.id, label: m.name }))}
-                    allLabel="Any assignee"
-                    onChange={(v) => setFilter('assignee', v)}
-                />
-                <Button
-                    variant={filters.overdue === '1' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setFilter('overdue', filters.overdue === '1' ? '' : '1')}
+            <FilterBar
+                search={search}
+                onSearchChange={setSearch}
+                searchPlaceholder="Search a title…"
+                searchAriaLabel="Search issues by title"
+                visible={issues.length}
+                total={total}
+            >
+                <FilterChip
+                    testId="filter-chip-in-progress"
+                    active={filters.category === 'in_progress'}
+                    onToggle={toggleFilter('category', 'in_progress')}
                 >
+                    <ListTodo aria-hidden className="size-3.25" />
+                    In progress
+                </FilterChip>
+                <FilterChip
+                    testId="filter-chip-done"
+                    active={filters.category === 'done'}
+                    onToggle={toggleFilter('category', 'done')}
+                >
+                    Done
+                </FilterChip>
+                <FilterChip
+                    testId="filter-chip-overdue"
+                    active={filters.overdue === '1'}
+                    onToggle={toggleFilter('overdue', '1')}
+                >
+                    <Clock aria-hidden className="size-3.25" />
                     Overdue
-                </Button>
-                <span className="ml-auto font-mono text-xs text-muted-foreground tabular-nums">
-                    {total} {total === 1 ? 'issue' : 'issues'}
-                </span>
-            </div>
+                </FilterChip>
+                <FilterChip
+                    testId="filter-chip-urgent"
+                    active={filters.priority === 'urgent'}
+                    onToggle={toggleFilter('priority', 'urgent')}
+                >
+                    Urgent
+                </FilterChip>
+                {auth.user ? (
+                    <FilterChip
+                        testId="filter-chip-mine"
+                        active={filters.assignee === myId}
+                        onToggle={toggleFilter('assignee', myId)}
+                    >
+                        <Avatar name={auth.user.name} />
+                        Mine
+                    </FilterChip>
+                ) : null}
+                {projects.map((project) => (
+                    <FilterChip
+                        key={project.id}
+                        testId={`filter-chip-project-${project.id}`}
+                        active={filters.project === project.id}
+                        onToggle={toggleFilter('project', project.id)}
+                    >
+                        Project: {project.name}
+                    </FilterChip>
+                ))}
+            </FilterBar>
 
             <div className="overflow-hidden rounded-xl border bg-card">
                 <Table>
@@ -155,16 +163,25 @@ export default function Index() {
                         {issues.map((issue) => (
                             <IssueTableRow key={issue.id} issue={issue} />
                         ))}
-                        {issues.length === 0 ? (
-                            <TableRow>
-                                <TableCell colSpan={6} className="py-6 text-center text-muted-foreground">
-                                    No issues match these filters.
-                                </TableCell>
-                            </TableRow>
-                        ) : null}
                     </TableBody>
                 </Table>
+                {issues.length === 0 ? (
+                    <div data-test="issues-empty" className="px-5 py-10 text-center">
+                        <p className="font-medium">
+                            {hasActiveFilters ? 'No issues match these filters' : 'No issues yet'}
+                        </p>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                            {hasActiveFilters
+                                ? 'Disable a filter chip or clear the search.'
+                                : 'Use the “New issue” button to create the first one.'}
+                        </p>
+                    </div>
+                ) : null}
             </div>
+
+            <p className="mt-3 text-[13px] text-muted-foreground">
+                Identifiers are opaque (ULIDs): no sequential numbering, display order is not an identifier.
+            </p>
 
             <CreateIssueDialog
                 open={creating}
