@@ -184,6 +184,7 @@ export default function AppLayout({
                                             event.target.value,
                                         )
                                     }
+                                    aria-invalid={workspaceForm.errors.name ? true : undefined}
                                 />
                                 {workspaceForm.errors.name ? (
                                     <p className="text-sm text-destructive">

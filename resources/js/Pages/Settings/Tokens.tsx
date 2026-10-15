@@ -179,6 +179,7 @@ export default function Tokens() {
                                 placeholder="Agent Claude"
                                 required
                                 autoFocus
+                                aria-invalid={createForm.errors.name ? true : undefined}
                             />
                             {createForm.errors.name ? (
                                 <p className="text-sm text-destructive">{createForm.errors.name}</p>

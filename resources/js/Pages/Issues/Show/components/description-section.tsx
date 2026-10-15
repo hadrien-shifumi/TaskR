@@ -81,6 +81,7 @@ export function DescriptionSection({ issue }: DescriptionSectionProps) {
                             className="min-h-[170px]"
                             value={descriptionForm.data.description}
                             onChange={(e) => descriptionForm.setData('description', e.target.value)}
+                            aria-invalid={descriptionForm.errors.description ? true : undefined}
                         />
                     )}
                     {descriptionForm.errors.description ? (

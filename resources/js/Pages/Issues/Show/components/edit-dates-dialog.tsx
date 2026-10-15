@@ -73,6 +73,7 @@ function EditDatesForm({ issue, onClose }: { issue: IssueDetail; onClose: () => 
                             type="date"
                             value={datesForm.data.due_date}
                             onChange={(e) => datesForm.setData('due_date', e.target.value)}
+                            aria-invalid={datesForm.errors.due_date ? true : undefined}
                         />
                         {datesForm.errors.due_date ? (
                             <p className="text-sm text-destructive">{datesForm.errors.due_date}</p>
@@ -88,6 +89,7 @@ function EditDatesForm({ issue, onClose }: { issue: IssueDetail; onClose: () => 
                             min="0"
                             value={datesForm.data.estimated_hours}
                             onChange={(e) => datesForm.setData('estimated_hours', e.target.value)}
+                            aria-invalid={datesForm.errors.estimated_hours ? true : undefined}
                         />
                         {datesForm.errors.estimated_hours ? (
                             <p className="text-sm text-destructive">{datesForm.errors.estimated_hours}</p>

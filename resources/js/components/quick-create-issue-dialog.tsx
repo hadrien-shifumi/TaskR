@@ -60,6 +60,7 @@ export function QuickCreateIssueDialog({ open, onClose, projects }: QuickCreateI
                     autoFocus
                     value={form.data.title}
                     onChange={(e) => form.setData('title', e.target.value)}
+                    aria-invalid={form.errors.title ? true : undefined}
                 />
                 {form.errors.title ? (
                     <p data-test="quick-title-error" className="text-sm text-destructive">
@@ -75,7 +76,10 @@ export function QuickCreateIssueDialog({ open, onClose, projects }: QuickCreateI
                         if (v) form.setData('project_id', v);
                     }}
                 >
-                    <SelectTrigger aria-label="Project">
+                    <SelectTrigger
+                        aria-label="Project"
+                        aria-invalid={form.errors.project_id ? true : undefined}
+                    >
                         <SelectValue>
                             {projects.find((p) => p.id === form.data.project_id)?.name ?? 'Project'}
                         </SelectValue>

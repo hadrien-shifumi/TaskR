@@ -318,6 +318,7 @@ export default function Health() {
                                     type="date"
                                     value={targetForm.data.target_date}
                                     onChange={(e) => targetForm.setData('target_date', e.target.value)}
+                                    aria-invalid={targetForm.errors.target_date ? true : undefined}
                                 />
                             </label>
                             {targetForm.errors.target_date ? (

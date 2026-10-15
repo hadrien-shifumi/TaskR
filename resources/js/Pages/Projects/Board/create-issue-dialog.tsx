@@ -146,6 +146,7 @@ export function BoardCreateIssueDialog({
                     onChange={(e) => createForm.setData('title', e.target.value)}
                     aria-required="true"
                     autoFocus
+                    aria-invalid={createForm.errors.title ? true : undefined}
                 />
                 {createForm.errors.title ? (
                     <p data-test="board-title-error" className="text-sm text-destructive">
@@ -162,7 +163,10 @@ export function BoardCreateIssueDialog({
                             if (v) createForm.setData('project_id', v);
                         }}
                     >
-                        <SelectTrigger aria-label="Project">
+                        <SelectTrigger
+                            aria-label="Project"
+                            aria-invalid={createForm.errors.project_id ? true : undefined}
+                        >
                             <SelectValue>{project.name}</SelectValue>
                         </SelectTrigger>
                         <SelectContent>

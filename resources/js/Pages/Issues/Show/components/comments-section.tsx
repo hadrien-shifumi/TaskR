@@ -145,6 +145,7 @@ export function CommentsSection({ issueId, comments }: CommentsSectionProps) {
                             value={commentForm.data.body}
                             onChange={(e) => commentForm.setData('body', e.target.value)}
                             required
+                            aria-invalid={commentForm.errors.body ? true : undefined}
                         />
                     )}
                     {commentForm.errors.body ? (

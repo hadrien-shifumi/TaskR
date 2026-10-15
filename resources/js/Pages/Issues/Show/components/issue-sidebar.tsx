@@ -296,6 +296,7 @@ export function IssueSidebar({ issue, statuses, members, labels, candidates }: I
                                     className="h-7"
                                     value={labelForm.data.name}
                                     onChange={(e) => labelForm.setData('name', e.target.value)}
+                                    aria-invalid={labelForm.errors.name ? true : undefined}
                                 />
                                 <Button
                                     type="submit"

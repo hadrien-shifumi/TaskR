@@ -262,6 +262,7 @@ export default function Members() {
                                 onChange={(e) => inviteForm.setData('email', e.target.value)}
                                 required
                                 autoFocus
+                                aria-invalid={inviteForm.errors.email ? true : undefined}
                             />
                             {inviteForm.errors.email ? (
                                 <p className="text-sm text-destructive">{inviteForm.errors.email}</p>

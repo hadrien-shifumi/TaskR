@@ -446,6 +446,7 @@ export default function KnowledgeIndex() {
                         onChange={(e) => createForm.setData('title', e.target.value)}
                         required
                         autoFocus
+                        aria-invalid={createForm.errors.title ? true : undefined}
                     />
                     {createForm.errors.title ? (
                         <p className="text-sm text-destructive">{createForm.errors.title}</p>
@@ -491,6 +492,7 @@ export default function KnowledgeIndex() {
                         onChange={(e) => editForm.setData('title', e.target.value)}
                         required
                         autoFocus
+                        aria-invalid={editForm.errors.title ? true : undefined}
                     />
                     {editForm.errors.title ? (
                         <p className="text-sm text-destructive">{editForm.errors.title}</p>

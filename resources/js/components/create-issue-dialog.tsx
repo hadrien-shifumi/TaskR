@@ -126,6 +126,7 @@ export function CreateIssueDialog({ open, onClose, projects, statuses, labels, t
                     value={createForm.data.title}
                     onChange={(e) => createForm.setData('title', e.target.value)}
                     aria-required="true"
+                    aria-invalid={createForm.errors.title ? true : undefined}
                 />
                 {createForm.errors.title ? (
                     <p data-test="title-error" className="text-sm text-destructive">
@@ -149,7 +150,7 @@ export function CreateIssueDialog({ open, onClose, projects, statuses, labels, t
                             if (v) createForm.setData('project_id', v);
                         }}
                     >
-                        <SelectTrigger>
+                        <SelectTrigger aria-invalid={createForm.errors.project_id ? true : undefined}>
                             <SelectValue>
                                 {projects.find((p) => p.id === createForm.data.project_id)?.name ?? 'Project'}
                             </SelectValue>

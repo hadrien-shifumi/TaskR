@@ -109,6 +109,7 @@ export default function Templates() {
                     value={form.data.name}
                     onChange={(e) => form.setData('name', e.target.value)}
                     required
+                    aria-invalid={form.errors.name ? true : undefined}
                 />
                 {form.errors.name ? (
                     <p className="text-sm text-destructive">{form.errors.name}</p>

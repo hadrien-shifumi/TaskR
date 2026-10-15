@@ -65,6 +65,7 @@ function EditTitleForm({ issue, onClose }: { issue: IssueDetail; onClose: () => 
                         value={titleForm.data.title}
                         onChange={(e) => titleForm.setData('title', e.target.value)}
                         required
+                        aria-invalid={titleForm.errors.title ? true : undefined}
                     />
                     {titleForm.errors.title ? (
                         <p className="text-sm text-destructive">{titleForm.errors.title}</p>

@@ -76,6 +76,7 @@ function LogTimeForm({ issueId, onClose }: { issueId: string; onClose: () => voi
                             required
                             value={timeEntryForm.data.hours}
                             onChange={(e) => timeEntryForm.setData('hours', e.target.value)}
+                            aria-invalid={timeEntryForm.errors.hours ? true : undefined}
                         />
                         {timeEntryForm.errors.hours ? (
                             <p className="text-sm text-destructive">{timeEntryForm.errors.hours}</p>
@@ -89,6 +90,7 @@ function LogTimeForm({ issueId, onClose }: { issueId: string; onClose: () => voi
                             type="date"
                             value={timeEntryForm.data.worked_at}
                             onChange={(e) => timeEntryForm.setData('worked_at', e.target.value)}
+                            aria-invalid={timeEntryForm.errors.worked_at ? true : undefined}
                         />
                         {timeEntryForm.errors.worked_at ? (
                             <p className="text-sm text-destructive">{timeEntryForm.errors.worked_at}</p>
@@ -103,6 +105,7 @@ function LogTimeForm({ issueId, onClose }: { issueId: string; onClose: () => voi
                         placeholder="Note (optional)"
                         value={timeEntryForm.data.note}
                         onChange={(e) => timeEntryForm.setData('note', e.target.value)}
+                        aria-invalid={timeEntryForm.errors.note ? true : undefined}
                     />
                     {timeEntryForm.errors.note ? (
                         <p className="text-sm text-destructive">{timeEntryForm.errors.note}</p>
