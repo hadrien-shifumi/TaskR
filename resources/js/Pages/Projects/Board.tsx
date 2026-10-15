@@ -1,4 +1,3 @@
-import { CreateIssueDialog } from '@/components/create-issue-dialog';
 import { ProjectMenu } from '@/components/project-menu';
 import { ProjectViewSwitcher } from '@/components/project-view-switcher';
 import { AvatarStack, HealthBadge, PriorityBadge, StatusBadge } from '@/components/issue-badges';
@@ -18,7 +17,9 @@ import AppLayout from '@/layouts/app-layout';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { ArrowLeft, MoveRight, Plus } from 'lucide-react';
 import { useState } from 'react';
-import type { HealthData } from '@/types';
+import type { HealthData, LabelRef, UserRef } from '@/types';
+import type { TemplateOption } from '@/Pages/Issues/Index/types';
+import { BoardCreateIssueDialog } from './Board/create-issue-dialog';
 
 interface BoardIssue {
     id: string;
@@ -47,6 +48,13 @@ type PageProps = {
     health: HealthData;
     columns: BoardColumn[];
     parentsOnly: boolean;
+    /**
+     * Creation-dialog data, fed by the board payload. Optional for now: the
+     * matching dialog sections stay hidden until the payload ships them.
+     */
+    labels?: LabelRef[];
+    templates?: TemplateOption[];
+    members?: UserRef[];
 };
 
 function formatDue(date: string | null): string {
@@ -64,11 +72,13 @@ function formatDate(date: string | null): string {
 }
 
 export default function Board() {
-    const { project, health, columns, parentsOnly } = usePage<PageProps>().props;
+    const { project, health, columns, parentsOnly, labels, templates, members } = usePage<PageProps>().props;
     const [draggingId, setDraggingId] = useState<string | null>(null);
     const [overColumn, setOverColumn] = useState<string | null>(null);
     const [moveError, setMoveError] = useState<string | null>(null);
     const [creating, setCreating] = useState(false);
+    /** Status preselected in the creation dialog (column "+" button). */
+    const [createDefaultStatusId, setCreateDefaultStatusId] = useState<string | null>(null);
 
     /**
      * The drop is never optimistic: it calls the existing `issues.move`
@@ -116,6 +126,7 @@ export default function Board() {
                 <>
                     <span className="hidden font-mono text-xs text-muted-foreground tabular-nums sm:inline">
                         {health.totalIssues} issues · target: {formatDate(project.targetDate)}
+                        {health.status === 'late' ? ' · overdue' : ''}
                     </span>
                     <ProjectViewSwitcher projectId={project.id} active="board" />
                     <Button
@@ -132,7 +143,13 @@ export default function Board() {
                         Parents only
                     </Button>
                     <ProjectMenu project={project} issuesCount={health.totalIssues} />
-                    <Button size="sm" onClick={() => setCreating(true)}>
+                    <Button
+                        size="sm"
+                        onClick={() => {
+                            setCreateDefaultStatusId(null);
+                            setCreating(true);
+                        }}
+                    >
                         <Plus className="size-3.5" aria-hidden />
                         New issue
                     </Button>
@@ -163,7 +180,7 @@ export default function Board() {
                     <section
                         key={column.id}
                         data-test={`board-column-${column.category}`}
-                        className="flex min-w-0 flex-col rounded-xl border bg-background/70"
+                        className="flex min-w-0 flex-col rounded-xl border bg-card/30"
                         onDragOver={(e) => {
                             e.preventDefault();
                             setOverColumn(column.id);
@@ -184,6 +201,18 @@ export default function Board() {
                                 {column.issuesCount}
                             </Badge>
                             <div className="ml-auto" />
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                data-test={`board-column-add-${column.category}`}
+                                aria-label={`Add an issue in ${column.name}`}
+                                onClick={() => {
+                                    setCreateDefaultStatusId(column.id);
+                                    setCreating(true);
+                                }}
+                            >
+                                <Plus className="size-3.5" aria-hidden />
+                            </Button>
                         </div>
                         <div
                             className={`flex min-h-24 flex-col gap-2.5 px-3.5 pb-3 pl-3.5 ${
@@ -220,8 +249,23 @@ export default function Board() {
                                         className="flex min-h-5.5 flex-wrap items-center gap-2"
                                         onDragStart={(e) => e.stopPropagation()}
                                     >
+                                        <StatusBadge name={column.name} category={column.category} />
                                         <PriorityBadge priority={issue.priority} />
                                         <div className="ml-auto" />
+                                        {issue.dueDate ? (
+                                            <span
+                                                className={`font-mono text-[11px] tabular-nums ${
+                                                    issue.overdue
+                                                        ? 'font-medium text-destructive'
+                                                        : 'text-muted-foreground'
+                                                }`}
+                                            >
+                                                {formatDue(issue.dueDate)}
+                                            </span>
+                                        ) : null}
+                                        <span className="flex">
+                                            <AvatarStack people={issue.assignees} />
+                                        </span>
                                         <DropdownMenu>
                                             <DropdownMenuTrigger
                                                 aria-label={`Move "${issue.title}" to another status`}
@@ -247,20 +291,6 @@ export default function Board() {
                                                 </DropdownMenuGroup>
                                             </DropdownMenuContent>
                                         </DropdownMenu>
-                                        {issue.dueDate ? (
-                                            <span
-                                                className={`font-mono text-[11px] tabular-nums ${
-                                                    issue.overdue
-                                                        ? 'font-medium text-destructive'
-                                                        : 'text-muted-foreground'
-                                                }`}
-                                            >
-                                                {formatDue(issue.dueDate)}
-                                            </span>
-                                        ) : null}
-                                        <span className="flex">
-                                            <AvatarStack people={issue.assignees} />
-                                        </span>
                                     </div>
                                 </article>
                             ))}
@@ -278,13 +308,20 @@ export default function Board() {
                 Card order within a column is not an identifier — issues are keyed by their opaque ULID.
             </p>
 
-            <CreateIssueDialog
+            <BoardCreateIssueDialog
+                key={createDefaultStatusId ?? 'new'}
                 open={creating}
                 onClose={() => setCreating(false)}
-                projects={[{ id: project.id, name: project.name }]}
-                statuses={columns.map((column) => ({ id: column.id, name: column.name, category: column.category }))}
-                labels={[]}
-                templates={[]}
+                project={{ id: project.id, name: project.name }}
+                statuses={columns.map((column) => ({
+                    id: column.id,
+                    name: column.name,
+                    category: column.category,
+                }))}
+                labels={labels ?? []}
+                templates={templates ?? []}
+                members={members ?? []}
+                defaultStatusId={createDefaultStatusId}
             />
         </AppLayout>
     );
