@@ -1,4 +1,5 @@
 import AppLayout from '@/layouts/app-layout';
+import { FlashBanner } from '@/components/flash-banner';
 import { SettingsShell } from '@/components/settings-shell';
 import { Avatar } from '@/components/issue-badges';
 import { Badge } from '@/components/ui/badge';
@@ -52,7 +53,7 @@ function formatJoined(date: string | null): string {
 
 export default function Members() {
     const { members, invitations } = usePage<PageProps>().props;
-    const { workspace, auth, flash } = usePage<PageSharedProps & { flash?: { status?: string } }>().props;
+    const { workspace, auth } = usePage<PageSharedProps>().props;
     const isOwner = workspace?.role === 'owner';
     const [inviting, setInviting] = useState(false);
 
@@ -86,11 +87,7 @@ export default function Members() {
             >
                 <Head title="Members" />
 
-            {flash?.status ? (
-                <p className="mb-4 rounded-lg border bg-muted/50 px-4 py-2.5 text-sm break-all">
-                    {flash.status}
-                </p>
-            ) : null}
+            <FlashBanner className="break-all" />
 
             <div className="overflow-hidden rounded-xl border bg-card">
                 <Table>

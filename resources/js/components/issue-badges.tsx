@@ -86,3 +86,21 @@ export function Avatar({ name, title }: { name: string; title?: string }) {
         </span>
     );
 }
+
+type StackPerson = {
+    id: string | number;
+    name: string;
+};
+
+/** Overlapping avatar row for assignee lists. Renders nothing when empty. */
+export function AvatarStack({ people }: { people: StackPerson[] }) {
+    return (
+        <span className="flex">
+            {people.map((person, index) => (
+                <span key={person.id} className={index > 0 ? '-ml-1.75' : ''}>
+                    <Avatar name={person.name} />
+                </span>
+            ))}
+        </span>
+    );
+}
