@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Actions\Issues\CreateIssue;
+use App\Actions\Issues\SetIssueParent;
 use App\Actions\Projects\CreateProject;
 use App\Actions\Projects\GetProjectHealth;
 use App\Actions\Workspaces\CreateWorkspace;
@@ -185,6 +186,23 @@ class ProjectBoardTest extends TestCase
                 ->where('project.name', 'Site vitrine'));
     }
 
+    public function test_board_includes_project_health_for_the_pagebar_badge(): void
+    {
+        [$owner, $workspace, $project, $statuses] = $this->setupProjectWithStatuses();
+
+        // Target date passed with an open issue: the project is late.
+        $project->forceFill(['target_date' => now()->subDay()->toDateString()])->save();
+        $this->createIssue($project, $statuses['backlog'], 'B1');
+
+        $this->actingAs($owner)
+            ->get(route('projects.board', $project->id))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('health.status', 'late')
+                ->where('health.totalIssues', 1)
+                ->where('health.targetDate', now()->subDay()->toDateString()));
+    }
+
     public function test_board_counts_match_project_health(): void
     {
         [$owner, $workspace, $project, $statuses] = $this->setupProjectWithStatuses();
@@ -219,6 +237,55 @@ class ProjectBoardTest extends TestCase
             $health->issuesByCategory['cancelled'],
             $columns->firstWhere('category', 'cancelled')['issuesCount'],
         );
+    }
+
+    public function test_board_can_show_parent_issues_only(): void
+    {
+        [$owner, $workspace, $project, $statuses] = $this->setupProjectWithStatuses();
+
+        $parent = CreateIssue::run(app(WorkspaceContext::class)->getOrFail(), [
+            'project_id' => $project->id,
+            'title' => 'Epic',
+            'status_id' => $statuses['backlog']->id,
+        ]);
+        $child = CreateIssue::run(app(WorkspaceContext::class)->getOrFail(), [
+            'project_id' => $project->id,
+            'title' => 'Subtask',
+            'status_id' => $statuses['backlog']->id,
+        ]);
+        SetIssueParent::run($child, $parent->id);
+
+        $this->actingAs($owner)
+            ->get(route('projects.board', [$project->id, 'parents' => '1']))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('parentsOnly', true)
+                ->has('columns.0.issues', 1)
+                ->where('columns.0.issues.0.title', 'Epic'));
+    }
+
+    public function test_board_shows_all_issues_by_default(): void
+    {
+        [$owner, $workspace, $project, $statuses] = $this->setupProjectWithStatuses();
+
+        $parent = CreateIssue::run(app(WorkspaceContext::class)->getOrFail(), [
+            'project_id' => $project->id,
+            'title' => 'Epic',
+            'status_id' => $statuses['backlog']->id,
+        ]);
+        $child = CreateIssue::run(app(WorkspaceContext::class)->getOrFail(), [
+            'project_id' => $project->id,
+            'title' => 'Subtask',
+            'status_id' => $statuses['backlog']->id,
+        ]);
+        SetIssueParent::run($child, $parent->id);
+
+        $this->actingAs($owner)
+            ->get(route('projects.board', $project->id))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('parentsOnly', false)
+                ->has('columns.0.issues', 2));
     }
 
     public function test_moving_a_card_uses_the_existing_move_route(): void

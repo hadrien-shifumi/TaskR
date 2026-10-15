@@ -4,6 +4,7 @@ export type IssueDetail = {
     id: string;
     title: string;
     description: string | null;
+    createdAt: string | null;
     project: { id: string; name: string };
     status: { id: string; name: string; category: string };
     priority: string;

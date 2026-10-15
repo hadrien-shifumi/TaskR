@@ -27,15 +27,17 @@ class ShowProjectBoard
     /**
      * Present the kanban board of a project: one column per workspace status
      * (in workspace order, even when empty), each carrying its issues.
+     * With $parentsOnly, subtasks are hidden for a macro view of the project.
      *
-     * @return array{project: array<string, mixed>, columns: array<int, array<string, mixed>>}
+     * @return array{project: array<string, mixed>, health: array<string, mixed>, columns: array<int, array<string, mixed>>, parentsOnly: bool}
      */
-    public function handle(Project $project): array
+    public function handle(Project $project, bool $parentsOnly = false): array
     {
         $workspace = app(WorkspaceContext::class)->getOrFail();
 
         $issues = $project->issues()
             ->with(['assignees'])
+            ->when($parentsOnly, fn ($query) => $query->whereNull('parent_id'))
             ->orderBy('created_at')
             ->orderBy('id')
             ->get()
@@ -45,7 +47,13 @@ class ShowProjectBoard
             'project' => [
                 'id' => $project->id,
                 'name' => $project->name,
+                'description' => $project->description,
+                'targetDate' => $project->target_date?->toDateString(),
+                'createdAt' => $project->created_at?->toISOString(),
             ],
+            // Health feeds the pagebar badge and the projection meta.
+            'health' => GetProjectHealth::run($project)->toArray(),
+            'parentsOnly' => $parentsOnly,
             'columns' => $workspace->statuses()
                 ->get()
                 ->map(fn ($status) => [
@@ -65,7 +73,7 @@ class ShowProjectBoard
 
     public function asController(Request $request, Project $project, ProjectBoardResponder $responder): Response
     {
-        return $responder->toResponse($request, $this->handle($project));
+        return $responder->toResponse($request, $this->handle($project, $request->boolean('parents')));
     }
 
     /**

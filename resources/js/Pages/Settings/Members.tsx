@@ -75,7 +75,7 @@ export default function Members() {
     };
 
     return (
-        <AppLayout title="Settings">
+        <AppLayout title="Settings" subtitle={workspace?.name} narrow>
             <SettingsShell
                 title="Workspace members"
                 description="Two roles only — owner and member. No granular permissions."

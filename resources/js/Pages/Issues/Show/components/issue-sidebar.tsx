@@ -10,7 +10,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { router, useForm } from '@inertiajs/react';
+import { Link, router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import type { LabelRef, UserRef } from '@/types';
 import type { IssueDetail } from '../types';
@@ -22,7 +22,6 @@ type IssueSidebarProps = {
     members: UserRef[];
     labels: LabelRef[];
     candidates: { id: string; title: string }[];
-    onEditIssue: () => void;
 };
 
 function ToggleChipList({
@@ -55,7 +54,7 @@ function ToggleChipList({
 }
 
 /** Metadata column: status, parent, estimate and assignee/label toggles. */
-export function IssueSidebar({ issue, statuses, members, labels, candidates, onEditIssue }: IssueSidebarProps) {
+export function IssueSidebar({ issue, statuses, members, labels, candidates }: IssueSidebarProps) {
     const [parentError, setParentError] = useState<string | null>(null);
     const [editingEstimate, setEditingEstimate] = useState(false);
 
@@ -107,11 +106,6 @@ export function IssueSidebar({ issue, statuses, members, labels, candidates, onE
         router.post(route('issues.labels', issue.id), { label_ids: next });
     };
 
-    const remove = () => {
-        if (!window.confirm(`Delete issue "${issue.title}"?`)) return;
-        router.delete(route('issues.destroy', issue.id));
-    };
-
     const submitEstimate = (e: React.FormEvent) => {
         e.preventDefault();
         estimateForm.post(route('issues.estimate', issue.id), {
@@ -123,7 +117,12 @@ export function IssueSidebar({ issue, statuses, members, labels, candidates, onE
         <aside className="space-y-4 text-sm">
             <div className="space-y-1">
                 <p className="font-medium text-muted-foreground">Project</p>
-                <p>{issue.project.name}</p>
+                <Link
+                    href={route('projects.board', issue.project.id)}
+                    className="text-primary hover:underline"
+                >
+                    {issue.project.name}
+                </Link>
             </div>
             <div className="space-y-1">
                 <p className="font-medium text-muted-foreground">Status</p>
@@ -159,6 +158,14 @@ export function IssueSidebar({ issue, statuses, members, labels, candidates, onE
                         ))}
                     </SelectContent>
                 </Select>
+                {issue.parent ? (
+                    <Link
+                        href={route('issues.show', issue.parent.id)}
+                        className="text-xs text-primary hover:underline"
+                    >
+                        View parent →
+                    </Link>
+                ) : null}
                 {parentError ? (
                     <p role="alert" className="text-xs text-destructive">
                         {parentError}
@@ -221,14 +228,6 @@ export function IssueSidebar({ issue, statuses, members, labels, candidates, onE
                     selectedIds={issue.labels.map((l) => l.id)}
                     onToggle={toggleLabel}
                 />
-            </div>
-            <div className="flex gap-2 pt-2">
-                <Button variant="outline" size="sm" onClick={onEditIssue}>
-                    Edit
-                </Button>
-                <Button variant="ghost" size="sm" onClick={remove}>
-                    Delete
-                </Button>
             </div>
 
             <FormDialog

@@ -28,15 +28,6 @@ export default function Statuses() {
         router.post(route('statuses.reorder'), { ids });
     };
 
-    const move = (status: StatusRow, delta: number) => {
-        const ids = statuses.map((s) => s.id);
-        const index = ids.indexOf(status.id);
-        const target = index + delta;
-        if (target < 0 || target >= ids.length) return;
-        [ids[index], ids[target]] = [ids[target], ids[index]];
-        reorder(ids);
-    };
-
     const dropOn = (index: number) => {
         if (dragIndex === null || dragIndex === index) {
             setDragIndex(null);
@@ -52,7 +43,7 @@ export default function Statuses() {
     };
 
     return (
-        <AppLayout title="Settings">
+        <AppLayout title="Settings" subtitle={workspace?.name} narrow>
             <SettingsShell
                 title="Workspace statuses"
                 description="Defined once for every project. The order below applies across the UI."
@@ -71,7 +62,6 @@ export default function Statuses() {
                         <StatusRowItem
                             key={status.id}
                             status={status}
-                            total={statuses.length}
                             isOwner={isOwner}
                             dragging={dragIndex === index}
                             over={overIndex === index && dragIndex !== null && dragIndex !== index}
@@ -89,12 +79,16 @@ export default function Statuses() {
                                 e.preventDefault();
                                 dropOn(index);
                             }}
-                            onMove={(delta) => move(status, delta)}
                             onEdit={() => setEditing(status)}
                             onDelete={() => setDeleting(status)}
                         />
                     ))}
                 </div>
+
+                <p className="mt-3.5 text-sm text-muted-foreground">
+                    The name is free; the semantic category — shown next to it — carries the color and the meaning
+                    (4 fixed categories: backlog, in progress, done, cancelled).
+                </p>
 
                 <StatusFormDialog
                     open={creating || editing !== null}

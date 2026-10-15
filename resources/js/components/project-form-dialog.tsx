@@ -4,12 +4,12 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useForm } from '@inertiajs/react';
 import { useEffect } from 'react';
-import type { ProjectRow } from '../types';
+import type { ProjectRef } from '@/types';
 
 type ProjectFormDialogProps = {
     open: boolean;
     /** Project being edited, or null in create mode. */
-    project: ProjectRow | null;
+    project: ProjectRef | null;
     onClose: () => void;
 };
 

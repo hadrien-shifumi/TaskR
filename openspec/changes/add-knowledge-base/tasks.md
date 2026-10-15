@@ -6,7 +6,7 @@
 
 ## 2. Modèle et migration
 
-- [x] 2.1 Migration `knowledge_pages` : `id` ULID, `workspace_id` FK, `project_id` FK nullable, `parent_id` self-FK nullable, `title`, `body` (Markdown), `last_editor_id` FK users, `embedded_at` nullable, timestamps ; colonne `embedding` conditionnelle au driver — `vector(1536)` + index `ivfflat (embedding vector_cosine_ops)` via `DB::statement` sur pgsql, `text` (JSON) sur sqlite ; index `(workspace_id)` et `(project_id)`
+- [x] 2.1 Migration `knowledge_pages` : `id` ULID, `workspace_id` FK, `project_id` FK nullable, `parent_id` self-FK nullable, `title`, `body` (Markdown), `last_editor_id` FK users, `embedded_at` nullable, timestamps ; colonne `embedding` conditionnelle au driver — `vector(1024)` + index `ivfflat (embedding vector_cosine_ops)` via `DB::statement` sur pgsql, `text` (JSON) sur sqlite ; index `(workspace_id)` et `(project_id)`
 - [x] 2.2 Modèle `KnowledgePage` : ULID, trait `BelongsToWorkspace`, relations `project`/`parent`/`children`/`lastEditor`, `ancestorIds()` (méthode partagée avec `Issue` si le dédoublonnage est trivial) + factory avec états « vectorisée » / « non vectorisée »
 - [x] 2.3 Tests : auto-fill `workspace_id` depuis le `WorkspaceContext`, isolation par global scope (page d'un autre workspace introuvable par identifiant direct)
 
@@ -51,4 +51,4 @@
 - [x] 8.2 `vendor/bin/pint --dirty --format agent` au propre
 - [ ] 8.3 Dogfood agent réel (client MCP + token) : `list_knowledge` → `get_knowledge` → `search_knowledge` avec une question naturelle → `update_knowledge` → re-`search_knowledge` reflétant la mise à jour
 - [x] 8.4 Revue du pattern : toute requête DB dans une Action, aucun `Inertia::render` hors Responder, aucune logique métier ni appel réseau dans `app/Mcp/` (résolution + appel d'action + sérialisation uniquement)
-- [ ] 8.5 Vérifier le chemin pgsql en conditions réelles (staging ou Postgres local) : migration `vector(1536)` + index, recherche `<=>` fonctionnelle, `knowledge:reembed` idempotent
+- [ ] 8.5 Vérifier le chemin pgsql en conditions réelles (staging ou Postgres local) : migration `vector(1024)` + index, recherche `<=>` fonctionnelle, `knowledge:reembed` idempotent

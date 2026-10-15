@@ -1,5 +1,6 @@
 import AppLayout from '@/layouts/app-layout';
 import { HealthBadge, PriorityBadge, StatusBadge } from '@/components/issue-badges';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
     Table,
@@ -10,6 +11,9 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { Head, Link, usePage } from '@inertiajs/react';
+import { Plus } from 'lucide-react';
+import { useState, type ReactNode } from 'react';
+import { QuickCreateIssueDialog } from '@/components/quick-create-issue-dialog';
 
 interface HealthData {
     issuesByCategory: { backlog: number; in_progress: number; done: number; cancelled: number };
@@ -58,20 +62,30 @@ function formatDate(date: string | null): string {
 }
 
 export default function Home() {
-    const { stats, projects, myIssues } = usePage<PageProps>().props;
+    const { appName, stats, projects, myIssues } = usePage<PageProps>().props;
+    const [creating, setCreating] = useState(false);
 
-    const statCards = [
-        { label: 'Open issues', value: String(stats.openIssues), hint: `out of ${stats.totalIssues} total` },
+    const statCards: { label: string; value: ReactNode; hint: string; danger?: boolean }[] = [
+        { label: 'Open issues', value: stats.openIssues, hint: `out of ${stats.totalIssues} total` },
         {
             label: 'Overdue issues',
-            value: String(stats.overdueIssues),
+            value: stats.overdueIssues,
             hint: 'past due date, not done or cancelled',
             danger: stats.overdueIssues > 0,
         },
-        { label: 'Hours logged', value: `${stats.loggedHoursThisWeek}`, hint: 'this week, all projects' },
+        {
+            label: 'Hours logged',
+            value: (
+                <>
+                    {stats.loggedHoursThisWeek}
+                    <span className="text-[15px] text-muted-foreground"> h</span>
+                </>
+            ),
+            hint: 'this week, all projects',
+        },
         {
             label: 'Active projects',
-            value: String(stats.activeProjects),
+            value: stats.activeProjects,
             hint:
                 stats.archivedProjects > 0
                     ? `+ ${stats.archivedProjects} archived`
@@ -80,7 +94,18 @@ export default function Home() {
     ];
 
     return (
-        <AppLayout>
+        <AppLayout
+            title="Home"
+            subtitle="Workspace overview"
+            actions={
+                projects.length > 0 ? (
+                    <Button size="sm" variant="outline" onClick={() => setCreating(true)}>
+                        <Plus />
+                        New issue
+                    </Button>
+                ) : null
+            }
+        >
             <Head title="Home" />
 
             <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -104,12 +129,9 @@ export default function Home() {
             <section className="mt-6">
                 <div className="mb-3 flex items-center justify-between">
                     <h2 className="text-base font-semibold">Projects health</h2>
-                    <Link
-                        href={route('projects.index')}
-                        className="text-sm text-muted-foreground hover:text-foreground"
-                    >
+                    <Button variant="ghost" size="sm" render={<Link href={route('projects.index')} />}>
                         All projects
-                    </Link>
+                    </Button>
                 </div>
                 {projects.length > 0 ? (
                     <div className="grid gap-4 sm:grid-cols-2">
@@ -151,12 +173,9 @@ export default function Home() {
                 <div className="flex items-center gap-2.5 border-b px-5 py-3.5">
                     <h3 className="text-sm font-semibold">My issues</h3>
                     <div className="flex-1" />
-                    <Link
-                        href={route('issues.index')}
-                        className="text-sm text-muted-foreground hover:text-foreground"
-                    >
+                    <Button variant="ghost" size="sm" render={<Link href={route('issues.index')} />}>
                         View all issues
-                    </Link>
+                    </Button>
                 </div>
                 <Table>
                     <TableHeader>
@@ -202,6 +221,12 @@ export default function Home() {
                     </TableBody>
                 </Table>
             </section>
+
+            <QuickCreateIssueDialog
+                open={creating}
+                onClose={() => setCreating(false)}
+                projects={projects.map((project) => ({ id: project.id, name: project.name }))}
+            />
         </AppLayout>
     );
 }

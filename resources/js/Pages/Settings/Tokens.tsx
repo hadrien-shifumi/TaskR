@@ -21,6 +21,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { Head, router, useForm, usePage } from '@inertiajs/react';
+import type { PageSharedProps } from '@/types';
 
 interface TokenRow {
     id: number;
@@ -31,6 +32,7 @@ interface TokenRow {
 export default function Tokens() {
     const { tokens } = usePage<{ tokens: TokenRow[] }>().props;
     const { flash } = usePage<{ flash?: { status?: string; newToken?: string } }>().props;
+    const { workspace } = usePage<PageSharedProps>().props;
 
     const createForm = useForm({ name: '' });
 
@@ -47,7 +49,7 @@ export default function Tokens() {
     };
 
     return (
-        <AppLayout title="Settings">
+        <AppLayout title="Settings" subtitle={workspace?.name} narrow>
             <SettingsShell
                 title="API tokens"
                 description="Personal access tokens let AI agents use Taskr through the MCP server at /mcp."

@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\Issues\CreateIssue;
+use App\Models\Issue;
 use App\Models\Membership;
 use App\Models\Status;
 use App\Models\User;
@@ -21,15 +22,16 @@ it('lets an owner create, rename and reorder statuses from the UI', function () 
 
     $page->assertSee('En revue');
 
-    // Rename it.
-    $page->click('[data-test="status-row-En revue"] button:has-text("Edit")');
+    // Rename it through the row's actions menu.
+    $page->click('[data-test="status-row-En revue"] button[aria-label="Actions for En revue"]');
+    $page->click('Rename…');
     $page->fill('edit-name', 'En relecture');
     $page->click('button[type="submit"]');
 
     $page->assertSee('En relecture');
 
-    // Scenario "Réordonnancement des statuts": move it above Cancelled.
-    $page->click('[data-test="status-row-En relecture"] button:has-text("Up")');
+    // Scenario "Réordonnancement des statuts": drag it above Cancelled.
+    $page->drag('[data-test="status-row-En relecture"]', '[data-test="status-row-Cancelled"]');
 
     $page->assertSeeIn('[data-test^="status-row-"]:nth-child(4)', 'En relecture');
 
@@ -55,7 +57,8 @@ it('refuses to delete a status that issues still use until they are migrated', f
     $page = visit('/settings/statuses');
 
     // The delete dialog opens and demands a migration target (protected deletion).
-    $page->click('[data-test="status-row-In Progress"] button:has-text("Delete")');
+    $page->click('[data-test="status-row-In Progress"] button[aria-label="Actions for In Progress"]');
+    $page->click('Delete…');
     $page->assertSee('used by 1 issue');
 
     // Migrate the issue to Done, then delete: both happen through the dialog.
@@ -70,7 +73,7 @@ it('refuses to delete a status that issues still use until they are migrated', f
         Status::withoutWorkspaceScope()->where('workspace_id', $workspace->id)->where('name', 'In Progress')->exists()
     )->toBeFalse();
     expect(
-        \App\Models\Issue::withoutWorkspaceScope()->where('workspace_id', $workspace->id)->where('status_id', $status->id)->exists()
+        Issue::withoutWorkspaceScope()->where('workspace_id', $workspace->id)->where('status_id', $status->id)->exists()
     )->toBeFalse();
 });
 

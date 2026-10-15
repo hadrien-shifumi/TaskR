@@ -128,7 +128,7 @@ export default function Templates() {
     );
 
     return (
-        <AppLayout title="Settings">
+        <AppLayout title="Settings" subtitle={workspace?.name} narrow>
             <SettingsShell
                 title="Issue templates"
                 description="Unique name per workspace · Markdown body · default priority and labels. Owner-only."

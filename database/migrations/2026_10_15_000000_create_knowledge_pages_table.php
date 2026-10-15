@@ -35,11 +35,11 @@ return new class extends Migration
         });
 
         // Embedding storage depends on the driver: pgvector in production
-        // (dimension fixed at 1536 — text-embedding-3-small by default;
-        // changing the model or dimensions requires a new migration plus
+        // (dimension fixed at 1024 — mistral-embed by default; changing the
+        // model or dimensions requires a new migration plus
         // `php artisan knowledge:reembed`), JSON text on sqlite for dev/tests.
         if (DB::connection()->getDriverName() === 'pgsql') {
-            DB::statement('ALTER TABLE knowledge_pages ADD COLUMN embedding vector(1536)');
+            DB::statement('ALTER TABLE knowledge_pages ADD COLUMN embedding vector(1024)');
             DB::statement('CREATE INDEX knowledge_pages_embedding_ivfflat ON knowledge_pages USING ivfflat (embedding vector_cosine_ops)');
         } else {
             Schema::table('knowledge_pages', function (Blueprint $table) {

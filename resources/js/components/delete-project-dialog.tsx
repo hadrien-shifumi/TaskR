@@ -10,11 +10,11 @@ import {
 import { router } from '@inertiajs/react';
 import { Archive, TriangleAlert } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import type { ProjectRow } from '../types';
+import type { ProjectRef } from '@/types';
 
 type DeleteProjectDialogProps = {
     /** Project being deleted, or null when the dialog is closed. */
-    project: ProjectRow | null;
+    project: (ProjectRef & { health?: { totalIssues: number } | null }) | null;
     onClose: () => void;
 };
 

@@ -1,0 +1,39 @@
+import { Link } from '@inertiajs/react';
+import { cn } from 'cn';
+
+type ProjectViewSwitcherProps = {
+    projectId: string;
+    /** Which view renders the switcher — the other one is the link target. */
+    active: 'health' | 'board';
+};
+
+/** Pill segment switching between a project's Health and Kanban views. */
+export function ProjectViewSwitcher({ projectId, active }: ProjectViewSwitcherProps) {
+    const items = [
+        { key: 'health', label: 'Health', href: route('projects.health', projectId) },
+        { key: 'board', label: 'Kanban', href: route('projects.board', projectId) },
+    ] as const;
+
+    return (
+        <nav
+            aria-label="Project views"
+            className="inline-flex items-center gap-0.5 rounded-full border bg-card p-0.5"
+        >
+            {items.map((item) => (
+                <Link
+                    key={item.key}
+                    href={item.href}
+                    aria-current={active === item.key ? 'page' : undefined}
+                    className={cn(
+                        'inline-flex h-6.5 items-center rounded-full px-3 text-xs font-medium whitespace-nowrap',
+                        active === item.key
+                            ? 'bg-secondary text-foreground'
+                            : 'text-muted-foreground hover:bg-accent hover:text-foreground',
+                    )}
+                >
+                    {item.label}
+                </Link>
+            ))}
+        </nav>
+    );
+}

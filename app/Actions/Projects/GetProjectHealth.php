@@ -77,6 +77,22 @@ class GetProjectHealth
                 'createdAt' => $project->created_at?->toISOString(),
             ],
             'health' => $health->toArray(),
+            'lateIssues' => $project->issues()
+                ->join('statuses', 'statuses.id', '=', 'issues.status_id')
+                ->whereNotNull('issues.due_date')
+                ->where('issues.due_date', '<', now()->toDateString())
+                ->whereNotIn('statuses.category', [StatusCategory::Done->value, StatusCategory::Cancelled->value])
+                ->orderBy('issues.due_date')
+                ->get(['issues.id', 'issues.title', 'issues.priority', 'issues.due_date', 'statuses.name as statusName', 'statuses.category as statusCategory'])
+                ->map(fn ($issue) => [
+                    'id' => $issue->id,
+                    'title' => $issue->title,
+                    'priority' => $issue->priority instanceof \BackedEnum ? $issue->priority->value : (string) $issue->priority,
+                    'dueDate' => $issue->due_date?->toDateString(),
+                    'statusName' => $issue->statusName,
+                    'statusCategory' => $issue->statusCategory instanceof \BackedEnum ? $issue->statusCategory->value : (string) $issue->statusCategory,
+                ])
+                ->all(),
         ]);
     }
 

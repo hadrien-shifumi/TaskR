@@ -5,6 +5,7 @@ use App\Actions\Projects\CreateProject;
 use App\Actions\Workspaces\CreateWorkspace;
 use App\Models\Invitation;
 use App\Models\User;
+use App\Models\Workspace;
 use App\Support\WorkspaceContext;
 use Illuminate\Support\Str;
 
@@ -70,6 +71,27 @@ it('switches the active workspace and only shows its data', function () {
     $page->click('Projects')
         ->assertSee('Projet B')
         ->assertDontSee('Projet A');
+
+    $page->assertNoSmoke();
+});
+
+it('creates a workspace from the workspace switcher', function () {
+    [$owner] = setupBrowserWorkspace();
+    $this->actingAs($owner);
+
+    $page = visit('/projects');
+
+    // The switcher menu exposes "Create workspace…": the dialog submits to
+    // workspaces.store, which activates the new workspace and lands on home.
+    $page->click('WS')
+        ->click('Create workspace…')
+        ->fill('new-workspace-name', 'Nouveau workspace')
+        ->click('button[type="submit"]');
+
+    $page->assertPathIs('/')
+        ->assertSee('Nouveau workspace');
+
+    expect(Workspace::where('name', 'Nouveau workspace')->exists())->toBeTrue();
 
     $page->assertNoSmoke();
 });

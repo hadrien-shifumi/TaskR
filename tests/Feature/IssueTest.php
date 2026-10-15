@@ -101,6 +101,19 @@ class IssueTest extends TestCase
                 ->where('issue.children.0.id', $child->id));
     }
 
+    public function test_show_page_exposes_the_creation_date(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspace();
+
+        $issue = CreateIssue::run($workspace, ['project_id' => $project->id, 'title' => 'Dated']);
+
+        $this->actingAs($owner)
+            ->get("/issues/{$issue->id}")
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('issue.createdAt', $issue->created_at->toISOString()));
+    }
+
     public function test_cycle_is_rejected(): void
     {
         [$owner, $workspace, $project] = $this->setupWorkspace();
@@ -196,6 +209,22 @@ class IssueTest extends TestCase
                 ->has('issues', 1)
                 ->where('issues.0.title', 'Late')
                 ->where('issues.0.overdue', true));
+    }
+
+    public function test_list_filters_by_title_search(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspace();
+
+        CreateIssue::run($workspace, ['project_id' => $project->id, 'title' => 'Webhook retry']);
+        CreateIssue::run($workspace, ['project_id' => $project->id, 'title' => 'Login page fix']);
+
+        $this->actingAs($owner)
+            ->get('/issues?q=webhook')
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->has('issues', 1)
+                ->where('issues.0.title', 'Webhook retry')
+                ->where('filters.q', 'webhook'));
     }
 
     public function test_issue_urls_use_ulids(): void

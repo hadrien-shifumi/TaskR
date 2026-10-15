@@ -29,3 +29,30 @@ export interface LabelRef {
     name: string;
     color: string;
 }
+
+/** Computed health indicators of a project (always calculated, never stored). */
+export interface HealthData {
+    issuesByCategory: { backlog: number; in_progress: number; done: number; cancelled: number };
+    totalIssues: number;
+    completionPercentage: number | null;
+    overdueIssues: number;
+    estimatedHours: number;
+    loggedHours: number;
+    consumptionRatio: number | null;
+    expectedPercentage: number | null;
+    status: string | null;
+    targetDate: string | null;
+}
+
+/** Project row payload shared by the projects list and the project screens. */
+export interface ProjectRow {
+    id: string;
+    name: string;
+    description: string | null;
+    targetDate: string | null;
+    archivedAt: string | null;
+    health: HealthData | null;
+}
+
+/** Minimal editable project reference used by shared dialogs and menus. */
+export type ProjectRef = Pick<ProjectRow, 'id' | 'name' | 'description' | 'targetDate'>;

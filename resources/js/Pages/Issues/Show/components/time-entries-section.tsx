@@ -1,7 +1,9 @@
+import { Avatar } from '@/components/issue-badges';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { router, useForm, usePage } from '@inertiajs/react';
+import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import type { IssueDetail, TimeEntry } from '../types';
 
@@ -51,113 +53,135 @@ export function TimeEntriesSection({ issue, timeEntries }: TimeEntriesSectionPro
         router.delete(route('issues.time-entries.destroy', [issue.id, entryId]));
     };
 
+    const summary = [
+        { label: 'Logged', value: formatHours(issue.loggedHours) },
+        { label: 'Estimated', value: formatHours(issue.estimatedHours) },
+        {
+            label: 'Remaining',
+            value:
+                issue.remainingHours !== null ? (
+                    <span className={issue.remainingHours < 0 ? 'text-destructive' : ''}>
+                        {formatHours(issue.remainingHours)} left
+                    </span>
+                ) : (
+                    '—'
+                ),
+        },
+    ];
+
     return (
-        <div>
-            <div className="mb-2 flex items-center justify-between">
-                <h2 className="text-lg font-semibold">Time</h2>
-                <p className="text-sm text-muted-foreground">
-                    {formatHours(issue.loggedHours)}
-                    {issue.estimatedHours !== null ? ` / ${formatHours(issue.estimatedHours)}` : ''}
-                    {issue.remainingHours !== null ? (
-                        <span className={issue.remainingHours < 0 ? 'text-destructive' : ''}>
-                            {' '}({formatHours(issue.remainingHours)} left)
-                        </span>
-                    ) : null}
-                </p>
+        <section>
+            <div className="mb-2 flex items-center gap-3">
+                <h2 className="text-base font-semibold">Time</h2>
+                <span className="font-mono text-xs text-muted-foreground tabular-nums">
+                    {formatHours(issue.loggedHours)} logged
+                </span>
             </div>
-            <ul className="space-y-3">
+
+            <div className="mb-4 grid grid-cols-3 gap-4 rounded-lg border bg-card px-4 py-3">
+                {summary.map((cell) => (
+                    <div key={cell.label}>
+                        <p className="text-xs text-muted-foreground">{cell.label}</p>
+                        <p className="font-mono text-sm font-semibold tabular-nums">{cell.value}</p>
+                    </div>
+                ))}
+            </div>
+
+            <ul className="divide-y">
                 {timeEntries.map((entry) => (
-                    <li key={entry.id} className="rounded-md border px-4 py-3">
-                        <div className="mb-1 flex items-center gap-2 text-sm">
-                            <span className="font-medium">{entry.authorName}</span>
-                            <span className="text-muted-foreground">
-                                {entry.workedAt ? new Date(entry.workedAt).toLocaleDateString() : ''}
-                            </span>
-                            <span className="font-medium">{entry.hours}h</span>
-                            {auth.user && auth.user.id === entry.authorId ? (
-                                <span className="ml-auto flex gap-1">
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        data-test="entry-edit"
-                                        onClick={() => {
-                                            setEditingTimeEntry(entry.id);
-                                            timeEntryEditForm.setData({
-                                                hours: String(entry.hours),
-                                                worked_at: entry.workedAt ? entry.workedAt.slice(0, 10) : '',
-                                                note: entry.note ?? '',
-                                            });
-                                        }}
-                                    >
-                                        Edit
-                                    </Button>
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        data-test="entry-delete"
-                                        onClick={() => removeTimeEntry(entry.id)}
-                                    >
-                                        Delete
-                                    </Button>
+                    <li key={entry.id} className="group flex gap-3 py-3.5">
+                        <Avatar name={entry.authorName} />
+                        <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-baseline gap-x-2">
+                                <span className="text-[13px] font-medium">{entry.authorName}</span>
+                                <span className="font-mono text-xs text-muted-foreground tabular-nums">
+                                    {entry.hours}h ·{' '}
+                                    {entry.workedAt ? new Date(entry.workedAt).toLocaleDateString() : ''}
                                 </span>
+                                {auth.user && auth.user.id === entry.authorId ? (
+                                    <span className="ml-auto flex gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100 max-lg:opacity-100">
+                                        <Button
+                                            variant="ghost"
+                                            size="icon-sm"
+                                            aria-label={`Edit time entry by ${entry.authorName}`}
+                                            data-test="entry-edit"
+                                            onClick={() => {
+                                                setEditingTimeEntry(entry.id);
+                                                timeEntryEditForm.setData({
+                                                    hours: String(entry.hours),
+                                                    worked_at: entry.workedAt ? entry.workedAt.slice(0, 10) : '',
+                                                    note: entry.note ?? '',
+                                                });
+                                            }}
+                                        >
+                                            <Pencil aria-hidden />
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon-sm"
+                                            aria-label={`Delete time entry by ${entry.authorName}`}
+                                            data-test="entry-delete"
+                                            onClick={() => removeTimeEntry(entry.id)}
+                                        >
+                                            <Trash2 aria-hidden />
+                                        </Button>
+                                    </span>
+                                ) : null}
+                            </div>
+                            {editingTimeEntry === entry.id ? (
+                                <form onSubmit={(e) => submitTimeEntryEdit(e, entry.id)} className="mt-2 grid gap-2">
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <Input
+                                            type="number"
+                                            step="any"
+                                            min="0.01"
+                                            placeholder="Hours"
+                                            data-test="entry-edit-hours"
+                                            value={timeEntryEditForm.data.hours}
+                                            onChange={(e) => timeEntryEditForm.setData('hours', e.target.value)}
+                                            required
+                                        />
+                                        <Input
+                                            type="date"
+                                            data-test="entry-edit-worked-at"
+                                            value={timeEntryEditForm.data.worked_at}
+                                            onChange={(e) => timeEntryEditForm.setData('worked_at', e.target.value)}
+                                        />
+                                    </div>
+                                    <Textarea
+                                        placeholder="Note (optional)"
+                                        data-test="entry-edit-note"
+                                        value={timeEntryEditForm.data.note}
+                                        onChange={(e) => timeEntryEditForm.setData('note', e.target.value)}
+                                    />
+                                    <div className="flex gap-2">
+                                        <Button type="submit" size="sm" data-test="entry-edit-save" disabled={timeEntryEditForm.processing}>
+                                            Save
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => setEditingTimeEntry(null)}
+                                        >
+                                            Cancel
+                                        </Button>
+                                    </div>
+                                </form>
+                            ) : entry.note ? (
+                                <p className="mt-0.5 text-[13px] whitespace-pre-wrap text-muted-foreground">
+                                    {entry.note}
+                                </p>
                             ) : null}
                         </div>
-                        {editingTimeEntry === entry.id ? (
-                            <form onSubmit={(e) => submitTimeEntryEdit(e, entry.id)} className="grid gap-2">
-                                <div className="grid grid-cols-2 gap-2">
-                                    <Input
-                                        type="number"
-                                        step="any"
-                                        min="0.01"
-                                        placeholder="Hours"
-                                        data-test="entry-edit-hours"
-                                        value={timeEntryEditForm.data.hours}
-                                        onChange={(e) => timeEntryEditForm.setData('hours', e.target.value)}
-                                        required
-                                    />
-                                    <Input
-                                        type="date"
-                                        data-test="entry-edit-worked-at"
-                                        value={timeEntryEditForm.data.worked_at}
-                                        onChange={(e) => timeEntryEditForm.setData('worked_at', e.target.value)}
-                                    />
-                                </div>
-                                <Textarea
-                                    placeholder="Note (optional)"
-                                    data-test="entry-edit-note"
-                                    value={timeEntryEditForm.data.note}
-                                    onChange={(e) => timeEntryEditForm.setData('note', e.target.value)}
-                                />
-                                <div className="flex gap-2">
-                                    <Button type="submit" size="sm" data-test="entry-edit-save" disabled={timeEntryEditForm.processing}>
-                                        Save
-                                    </Button>
-                                    <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => setEditingTimeEntry(null)}
-                                    >
-                                        Cancel
-                                    </Button>
-                                </div>
-                            </form>
-                        ) : (
-                            <>
-                                {entry.note ? (
-                                    <p className="whitespace-pre-wrap text-sm text-muted-foreground">
-                                        {entry.note}
-                                    </p>
-                                ) : null}
-                            </>
-                        )}
                     </li>
                 ))}
                 {timeEntries.length === 0 ? (
-                    <li className="px-4 py-3 text-sm text-muted-foreground">No time logged yet.</li>
+                    <li className="py-3 text-sm text-muted-foreground">No time logged yet.</li>
                 ) : null}
             </ul>
-            <form onSubmit={submitTimeEntry} className="mt-4 grid gap-2">
+
+            <form onSubmit={submitTimeEntry} className="mt-4 grid gap-2 rounded-lg border bg-card p-4">
                 <div className="grid grid-cols-2 gap-2">
                     <Input
                         type="number"
@@ -183,9 +207,10 @@ export function TimeEntriesSection({ issue, timeEntries }: TimeEntriesSectionPro
                     <p className="text-sm text-destructive">{timeEntryForm.errors.hours}</p>
                 ) : null}
                 <Button type="submit" size="sm" data-test="entry-submit" disabled={timeEntryForm.processing} className="justify-self-start">
+                    <Plus className="size-3.5" aria-hidden />
                     Log time
                 </Button>
             </form>
-        </div>
+        </section>
     );
 }

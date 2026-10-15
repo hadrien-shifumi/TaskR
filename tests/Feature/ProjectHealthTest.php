@@ -367,6 +367,26 @@ class ProjectHealthTest extends TestCase
                 ->where('health.issuesByCategory.backlog', 1));
     }
 
+    public function test_health_page_lists_the_late_issues_of_the_project(): void
+    {
+        [$owner, $workspace, $project, $statuses] = $this->setupProjectWithStatuses();
+
+        $overdueOpen = $this->createIssue($project, $statuses, 'in_progress', 'Late open issue', now()->subDays(2)->toDateString());
+        $this->createIssue($project, $statuses, 'done', 'Late but done', now()->subDays(2)->toDateString());
+        $this->createIssue($project, $statuses, 'backlog', 'On time issue', now()->addDays(5)->toDateString());
+
+        $this->actingAs($owner)
+            ->get(route('projects.health', $project->id))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->has('lateIssues', 1)
+                ->where('lateIssues.0.id', $overdueOpen->id)
+                ->where('lateIssues.0.title', 'Late open issue')
+                ->where('lateIssues.0.statusName', 'In Progress')
+                ->where('lateIssues.0.statusCategory', 'in_progress')
+                ->where('lateIssues.0.dueDate', now()->subDays(2)->toDateString()));
+    }
+
     public function test_cross_workspace_access_is_denied(): void
     {
         [$owner, $workspace, $project, $statuses] = $this->setupProjectWithStatuses();

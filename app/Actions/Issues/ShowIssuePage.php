@@ -48,6 +48,7 @@ class ShowIssuePage
                 'id' => $issue->id,
                 'title' => $issue->title,
                 'description' => $issue->description,
+                'createdAt' => $issue->created_at?->toISOString(),
                 'project' => ['id' => $issue->project->id, 'name' => $issue->project->name],
                 'status' => ['id' => $issue->status->id, 'name' => $issue->status->name, 'category' => $issue->status->category->value],
                 'priority' => $issue->priority->value,

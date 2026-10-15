@@ -12,26 +12,36 @@ it('shows the project health overview badge and the health page indicators', fun
     // Scenario "Badge de statut sur la liste" (project-health).
     $page->assertSee('Late');
 
-    $page->click('li:has-text("Refonte site vitrine") button:has-text("Health")');
+    // The project name is the row's link to its health page.
+    $page->click('tr:has-text("Refonte site vitrine") a:has-text("Refonte site vitrine")');
 
-    // Scenario "Consultation de la page Health" + "Répartition par catégorie".
-    $page->assertSee('Health — Refonte site vitrine');
-    $page->assertSeeIn('[data-slot=card]:has([data-slot=card-description]:text-is("Backlog")) [data-slot=card-title]', '3');
-    $page->assertSeeIn('[data-slot=card]:has([data-slot=card-description]:text-is("In Progress")) [data-slot=card-title]', '2');
-    $page->assertSeeIn('[data-slot=card]:has([data-slot=card-description]:text-is("Done")) [data-slot=card-title]', '4');
-    $page->assertSeeIn('[data-slot=card]:has([data-slot=card-description]:text-is("Cancelled")) [data-slot=card-title]', '1');
-    $page->assertSee('50%')
-        ->assertSee('10 issues total');
+    // Scenario "Consultation de la page Health": the pagebar carries the
+    // project name and its computed health badge.
+    $page->assertSee('Issues distribution')
+        ->assertSee('Late issues in this project');
+
+    // Scenario "Répartition par catégorie": 3 backlog, 2 in progress, 4 done, 1 cancelled.
+    $page->assertSeeIn('@dist-backlog', '3');
+    $page->assertSeeIn('@dist-in_progress', '2');
+    $page->assertSeeIn('@dist-done', '4');
+    $page->assertSeeIn('@dist-cancelled', '1');
+
+    // Completion: 4 done + 1 cancelled of 10 issues = 50%.
+    $page->assertSeeIn('@stat-completed', '50%')
+        ->assertSee('of 10 issues');
 
     // Scenario "Issue due dépassée".
-    $page->assertSeeIn('[data-slot=card]:has([data-slot=card-description]:text-is("Overdue issues")) [data-slot=card-title]', '1');
+    $page->assertSeeIn('@stat-overdue', '1');
 
     // Scenario "Consommation à 80 %".
-    $page->assertSee('8.0h / 10.0h')
+    $page->assertSeeIn('@stat-hours', '8.0h / 10.0h')
         ->assertSee('80% of estimated hours consumed');
 
     // Scenario "Projet en retard": target date passed, 50% done, expected 100%.
-    $page->assertSee('Expected at this date: 100%');
+    $page->assertSeeIn('@stat-projection', '100% expected at this date');
+
+    // The late issues table exposes the overdue issue.
+    $page->assertSee('IP1');
 
     app(WorkspaceContext::class)->set($workspace);
     expect($project->name)->toBe('Refonte site vitrine');

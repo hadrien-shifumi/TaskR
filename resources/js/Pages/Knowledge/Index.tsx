@@ -1,4 +1,5 @@
 import AppLayout from '@/layouts/app-layout';
+import { FlashBanner } from '@/components/flash-banner';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -20,6 +21,7 @@ import {
 } from '@/components/ui/select';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
+import type { PageSharedProps } from '@/types';
 
 interface PageRef {
     id: string;
@@ -52,14 +54,14 @@ interface SearchResult {
     projectId: string | null;
 }
 
-interface PageProps {
+type PageProps = {
     pages: PageRef[];
     projects: ProjectOption[];
     selected: SelectedPage | null;
     query?: string;
     results?: SearchResult[];
     searchUnavailable?: boolean;
-}
+};
 
 const NO_PROJECT = '__none__';
 const NO_PARENT = '__none__';
@@ -105,10 +107,11 @@ const emptyForm = { title: '', body: '', project_id: '', parent_id: '' };
 
 export default function KnowledgeIndex() {
     const { pages, projects, selected, query, results, searchUnavailable } = usePage<PageProps>().props;
-    const { flash } = usePage<{ flash?: { status?: string } }>().props;
+    const { workspace } = usePage<PageSharedProps>().props;
 
     const [creating, setCreating] = useState(false);
     const [editing, setEditing] = useState(false);
+    const [deleting, setDeleting] = useState(false);
 
     const createForm = useForm({ ...emptyForm });
     const editForm = useForm({ ...emptyForm });
@@ -147,8 +150,9 @@ export default function KnowledgeIndex() {
 
     const remove = () => {
         if (!selected) return;
-        if (!window.confirm(`Delete page "${selected.title}"?`)) return;
-        router.delete(route('knowledge.destroy', selected.id));
+        router.delete(route('knowledge.destroy', selected.id), {
+            onSuccess: () => setDeleting(false),
+        });
     };
 
     const parentOptions = (excludeId?: string): PageRef[] =>
@@ -160,7 +164,9 @@ export default function KnowledgeIndex() {
     ) => (
         <Select
             value={form.data.project_id || NO_PROJECT}
-            onValueChange={(v) => form.setData('project_id', v === NO_PROJECT ? '' : v)}
+            onValueChange={(v) => {
+                if (v !== null) form.setData('project_id', v === NO_PROJECT ? '' : v);
+            }}
         >
             <SelectTrigger id={`${idPrefix}-project`}>
                 <SelectValue>{form.data.project_id ? (projectName(form.data.project_id) ?? 'Project') : 'Cross-workspace'}</SelectValue>
@@ -183,7 +189,9 @@ export default function KnowledgeIndex() {
     ) => (
         <Select
             value={form.data.parent_id || NO_PARENT}
-            onValueChange={(v) => form.setData('parent_id', v === NO_PARENT ? '' : v)}
+            onValueChange={(v) => {
+                if (v !== null) form.setData('parent_id', v === NO_PARENT ? '' : v);
+            }}
         >
             <SelectTrigger id={`${idPrefix}-parent`}>
                 <SelectValue>{form.data.parent_id ? (pages.find((page) => page.id === form.data.parent_id)?.title ?? 'Parent') : 'No parent'}</SelectValue>
@@ -200,12 +208,18 @@ export default function KnowledgeIndex() {
     );
 
     return (
-        <AppLayout title="Knowledge">
+        <AppLayout
+            title="Knowledge"
+            subtitle={workspace?.name}
+            actions={
+                <Button size="sm" onClick={() => setCreating(true)}>
+                    New page
+                </Button>
+            }
+        >
             <Head title="Knowledge" />
 
-            {flash?.status ? (
-                <p className="mb-4 rounded-md border bg-muted/50 px-4 py-2 text-sm">{flash.status}</p>
-            ) : null}
+            <FlashBanner />
 
             <div className="mb-4 flex flex-wrap items-center gap-2">
                 <form onSubmit={submitSearch} className="flex w-full max-w-md items-center gap-2">
@@ -219,9 +233,6 @@ export default function KnowledgeIndex() {
                         Search
                     </Button>
                 </form>
-                <Button size="sm" onClick={() => setCreating(true)} className="ml-auto">
-                    New page
-                </Button>
             </div>
 
             {searchUnavailable ? (
@@ -318,7 +329,7 @@ export default function KnowledgeIndex() {
                                     >
                                         Edit
                                     </Button>
-                                    <Button variant="ghost" size="sm" onClick={remove}>
+                                    <Button variant="ghost" size="sm" onClick={() => setDeleting(true)}>
                                         Delete
                                     </Button>
                                 </div>
@@ -337,6 +348,30 @@ export default function KnowledgeIndex() {
                     ) : null}
                 </div>
             </div>
+
+            <Dialog
+                open={deleting}
+                onOpenChange={(open) => {
+                    if (!open) setDeleting(false);
+                }}
+            >
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Delete "{selected?.title}"?</DialogTitle>
+                        <DialogDescription>
+                            The page is removed from the knowledge base. This cannot be undone.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="ghost" onClick={() => setDeleting(false)}>
+                            Cancel
+                        </Button>
+                        <Button variant="destructive" data-test="confirm-delete-knowledge" onClick={remove}>
+                            Delete
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             <Dialog open={creating} onOpenChange={setCreating}>
                 <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">

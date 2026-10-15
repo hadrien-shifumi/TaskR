@@ -93,3 +93,47 @@ it('manages comments on an issue from the UI', function () {
 
     $page->assertNoSmoke();
 });
+
+it('creates a title-only issue from the home quick dialog', function () {
+    [$owner, $workspace, $project] = setupBrowserWorkspace(withProject: true);
+    app(WorkspaceContext::class)->set($workspace);
+    $this->actingAs($owner);
+
+    $page = visit('/');
+
+    // Maquette home: the pagebar "New issue" opens the minimal dialog (title
+    // + project only); status and priority fall back to workspace defaults.
+    $page->click('New issue')
+        ->assertSee('stay optional and editable after creation')
+        ->fill('quick-issue-title', 'Alerte depuis home')
+        ->click('[data-slot="select-trigger"]')
+        ->click('[role="option"]:has-text("Site vitrine")')
+        ->click('button[type="submit"]');
+
+    app(WorkspaceContext::class)->set($workspace);
+    $issue = $workspace->issues()->where('title', 'Alerte depuis home')->firstOrFail();
+
+    expect($issue->project_id)->toBe($project->id)
+        ->and($issue->status->category->value)->toBe('backlog')
+        ->and($issue->priority->value)->toBe('none');
+
+    $page->assertSee('Alerte depuis home')
+        ->assertNoSmoke();
+});
+
+it('requires a title in the home quick dialog', function () {
+    [$owner, $workspace] = setupBrowserWorkspace(withProject: true);
+    $this->actingAs($owner);
+
+    $page = visit('/');
+
+    $page->click('New issue')
+        ->click('button[type="submit"]');
+
+    $page->assertSee('The title field is required');
+
+    app(WorkspaceContext::class)->set($workspace);
+    expect($workspace->issues()->count())->toBe(0);
+
+    $page->assertNoSmoke();
+});
