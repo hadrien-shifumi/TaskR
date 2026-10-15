@@ -25,24 +25,25 @@ export default function Register() {
     return (
         <GuestLayout>
             <Head title="Register" />
-            <Card className="w-full max-w-sm">
-                <CardContent className="px-6 py-6">
+            <Card className="w-full py-6">
+                <CardContent className="px-6">
                     <div
                         role="tablist"
                         aria-label="Access mode"
-                        className="mb-4.5 flex gap-0.5 rounded-lg border bg-secondary p-0.75"
+                        className="mb-4.5 flex gap-0.5 rounded-md border bg-secondary p-0.75"
                     >
                         <Link
                             role="tab"
                             aria-selected="false"
                             href={route('login')}
-                            className="flex h-7.5 flex-1 items-center justify-center rounded-md text-[13px] font-medium text-muted-foreground hover:text-foreground"
+                            className="flex h-7.5 flex-1 items-center justify-center rounded-[6px] text-[13px] font-medium text-muted-foreground hover:text-foreground"
                         >
                             Log in
-                        </Link>                        <span
+                        </Link>
+                        <span
                             role="tab"
                             aria-selected="true"
-                            className="flex h-7.5 flex-1 items-center justify-center rounded-md bg-card text-[13px] font-medium shadow-xs"
+                            className="flex h-7.5 flex-1 items-center justify-center rounded-[6px] bg-card text-[13px] font-medium shadow-xs"
                         >
                             Sign up
                         </span>
@@ -53,8 +54,8 @@ export default function Register() {
                         Your first workspace is created automatically.
                     </p>
 
-                    <form onSubmit={submit} className="grid gap-4">
-                        <div className="grid gap-2">
+                    <form onSubmit={submit} className="grid gap-3">
+                        <div className="grid gap-1.5">
                             <Label htmlFor="name">Full name</Label>
                             <Input
                                 id="name"
@@ -63,10 +64,11 @@ export default function Register() {
                                 autoFocus
                                 value={data.name}
                                 onChange={(e) => setData('name', e.target.value)}
+                                aria-invalid={errors.name ? true : undefined}
                             />
                             {fieldError('name')}
                         </div>
-                        <div className="grid gap-2">
+                        <div className="grid gap-1.5">
                             <Label htmlFor="email">Email</Label>
                             <Input
                                 id="email"
@@ -75,10 +77,11 @@ export default function Register() {
                                 required
                                 value={data.email}
                                 onChange={(e) => setData('email', e.target.value)}
+                                aria-invalid={errors.email ? true : undefined}
                             />
                             {fieldError('email')}
                         </div>
-                        <div className="grid gap-2">
+                        <div className="grid gap-1.5">
                             <Label htmlFor="password">Password</Label>
                             <Input
                                 id="password"
@@ -87,10 +90,11 @@ export default function Register() {
                                 required
                                 value={data.password}
                                 onChange={(e) => setData('password', e.target.value)}
+                                aria-invalid={errors.password ? true : undefined}
                             />
                             {fieldError('password')}
                         </div>
-                        <div className="grid gap-2">
+                        <div className="grid gap-1.5">
                             <Label htmlFor="password_confirmation">Confirm password</Label>
                             <Input
                                 id="password_confirmation"
@@ -98,23 +102,26 @@ export default function Register() {
                                 required
                                 value={data.password_confirmation}
                                 onChange={(e) => setData('password_confirmation', e.target.value)}
+                                aria-invalid={errors.password_confirmation ? true : undefined}
                             />
                             {fieldError('password_confirmation')}
                         </div>
-                        <div className="grid gap-2">
+                        <div className="grid gap-1.5">
                             <Label htmlFor="workspace_name">Workspace name (optional)</Label>
                             <Input
                                 id="workspace_name"
                                 placeholder="Studio Nova"
                                 value={data.workspace_name}
                                 onChange={(e) => setData('workspace_name', e.target.value)}
+                                aria-invalid={errors.workspace_name ? true : undefined}
                             />
                             <p className="text-xs text-muted-foreground">
                                 Created with the 4 default statuses: Backlog, In Progress, Done, Cancelled.
                             </p>
                             {fieldError('workspace_name')}
                         </div>
-                        <Button type="submit" size="lg" className="w-full" disabled={processing}>
+                        {/* The maquette sits the submit button 4px under the last field. */}
+                        <Button type="submit" size="lg" className="-mt-2 w-full" disabled={processing}>
                             Register
                         </Button>
                     </form>

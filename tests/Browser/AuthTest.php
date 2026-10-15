@@ -58,6 +58,19 @@ it('logs a user in and out through the form', function () {
         ->assertNoSmoke();
 });
 
+it('shows an inline error and marks the invalid field on a failed login', function () {
+    $page = visit('/login');
+
+    $page->fill('email', 'nobody@example.com')
+        ->fill('password', 'wrong-password')
+        ->click('button[type="submit"]');
+
+    $page->assertSee('These credentials do not match our records.')
+        ->assertAriaAttribute('#email', 'invalid', 'true')
+        ->assertAttributeMissing('#password', 'aria-invalid')
+        ->assertNoSmoke();
+});
+
 it('accepts an invitation through the landing page and login', function () {
     [, $workspace] = setupBrowserWorkspace();
     $newcomer = User::factory()->create(['email' => 'newcomer@example.com']);
