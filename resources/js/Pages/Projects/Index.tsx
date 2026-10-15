@@ -1,19 +1,14 @@
 import { FlashBanner } from '@/components/flash-banner';
 import { Button } from '@/components/ui/button';
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle,
-} from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
 import { Archive } from 'lucide-react';
-import { Head, router, usePage } from '@inertiajs/react';
+import { Head, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import { DeleteProjectDialog } from '@/components/delete-project-dialog';
 import { ProjectFormDialog } from '@/components/project-form-dialog';
+import { ArchivedProjectsDialog } from './Index/components/archived-projects-dialog';
+import { ArchiveProjectDialog } from './Index/components/archive-project-dialog';
 import { ProjectTableRow } from './Index/components/project-table-row';
 import type { ProjectRow } from '@/types';
 
@@ -28,6 +23,7 @@ export default function Index() {
     const { projects } = usePage<PageProps>().props;
     const [creating, setCreating] = useState(false);
     const [editing, setEditing] = useState<ProjectRow | null>(null);
+    const [archiving, setArchiving] = useState<ProjectRow | null>(null);
     const [deleting, setDeleting] = useState<ProjectRow | null>(null);
     const [showArchived, setShowArchived] = useState(false);
 
@@ -38,7 +34,12 @@ export default function Index() {
             actions={
                 <>
                     {projects.archived.length > 0 ? (
-                        <Button variant="outline" size="sm" onClick={() => setShowArchived(true)}>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            data-test="open-archived-dialog"
+                            onClick={() => setShowArchived(true)}
+                        >
                             <Archive className="size-3.5" aria-hidden />
                             Archived
                             <span className="font-mono opacity-70">{projects.archived.length}</span>
@@ -76,6 +77,7 @@ export default function Index() {
                                 key={project.id}
                                 project={project}
                                 onEdit={() => setEditing(project)}
+                                onArchive={() => setArchiving(project)}
                                 onDelete={() => setDeleting(project)}
                             />
                         ))}
@@ -90,53 +92,11 @@ export default function Index() {
                 </Table>
             </div>
 
-            <Dialog open={showArchived} onOpenChange={setShowArchived}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2">
-                            <Archive className="size-4" aria-hidden />
-                            Archived projects
-                        </DialogTitle>
-                        <DialogDescription>
-                            Archived projects stay readable — restore them to reopen the board and health views.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <ul className="divide-y rounded-lg border">
-                        {projects.archived.map((project) => (
-                            <li key={project.id} className="flex items-center gap-3 px-4 py-3">
-                                <div className="min-w-0 flex-1">
-                                    <p className="font-medium text-muted-foreground">{project.name}</p>
-                                </div>
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => router.get(route('projects.board', project.id))}
-                                >
-                                    Board
-                                </Button>
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => router.post(route('projects.archive', project.id))}
-                                >
-                                    Restore
-                                </Button>
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="text-destructive"
-                                    onClick={() => {
-                                        setShowArchived(false);
-                                        setDeleting(project);
-                                    }}
-                                >
-                                    Delete
-                                </Button>
-                            </li>
-                        ))}
-                    </ul>
-                </DialogContent>
-            </Dialog>
+            <ArchivedProjectsDialog
+                open={showArchived}
+                projects={projects.archived}
+                onClose={() => setShowArchived(false)}
+            />
 
             <ProjectFormDialog
                 open={creating || editing !== null}
@@ -146,6 +106,8 @@ export default function Index() {
                     setEditing(null);
                 }}
             />
+
+            <ArchiveProjectDialog project={archiving} onClose={() => setArchiving(null)} />
 
             <DeleteProjectDialog project={deleting} onClose={() => setDeleting(null)} />
         </AppLayout>

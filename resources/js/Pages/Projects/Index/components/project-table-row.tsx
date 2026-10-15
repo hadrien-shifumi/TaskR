@@ -9,7 +9,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { TableCell, TableRow } from '@/components/ui/table';
-import { Link, router } from '@inertiajs/react';
+import { Link } from '@inertiajs/react';
 import { Archive, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import type { ProjectRow } from '@/types';
 
@@ -25,11 +25,13 @@ function formatDate(date: string | null): string {
 type ProjectTableRowProps = {
     project: ProjectRow;
     onEdit: () => void;
+    /** Opens the archive confirmation dialog (maquette dlg-archive). */
+    onArchive: () => void;
     onDelete: () => void;
 };
 
 /** Active project table row: computed health, completion and target date. */
-export function ProjectTableRow({ project, onEdit, onDelete }: ProjectTableRowProps) {
+export function ProjectTableRow({ project, onEdit, onArchive, onDelete }: ProjectTableRowProps) {
     const completion = project.health?.completionPercentage ?? null;
     const overdueTarget =
         project.targetDate !== null && new Date(project.targetDate).getTime() < Date.now();
@@ -86,9 +88,7 @@ export function ProjectTableRow({ project, onEdit, onDelete }: ProjectTableRowPr
                                 <Pencil aria-hidden />
                                 Edit…
                             </DropdownMenuItem>
-                            <DropdownMenuItem
-                                onClick={() => router.post(route('projects.archive', project.id))}
-                            >
+                            <DropdownMenuItem onClick={onArchive}>
                                 <Archive aria-hidden />
                                 Archive…
                             </DropdownMenuItem>
