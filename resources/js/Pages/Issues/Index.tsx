@@ -1,25 +1,6 @@
-import AppLayout from '@/layouts/app-layout';
-import { Avatar, PriorityBadge, StatusBadge } from '@/components/issue-badges';
-import { Badge } from '@/components/ui/badge';
+import { FlashBanner } from '@/components/flash-banner';
+import { FilterSelect } from '@/components/filter-select';
 import { Button } from '@/components/ui/button';
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { MarkdownEditor } from '@/components/ui/markdown-editor';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
 import {
     Table,
     TableBody,
@@ -28,214 +9,83 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
+import AppLayout from '@/layouts/app-layout';
+import { Head, router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
-
-interface UserRef {
-    id: string;
-    name: string;
-}
-
-interface IssueRow {
-    id: string;
-    title: string;
-    project: { id: string; name: string };
-    status: { id: string; name: string; category: string };
-    priority: string;
-    dueDate: string | null;
-    overdue: boolean;
-    assignees: UserRef[];
-    labels: { id: string; name: string; color: string }[];
-}
-
-interface TemplateOption {
-    id: string;
-    name: string;
-    description: string | null;
-    priority: string | null;
-    labels: { id: string; name: string }[];
-}
+import { PRIORITIES } from '@/components/priority-select';
+import type { LabelRef, UserRef } from '@/types';
+import { CreateIssueDialog } from './Index/components/create-issue-dialog';
+import { CreateLabelDialog } from './Index/components/create-label-dialog';
+import { IssueTableRow } from './Index/components/issue-row';
+import type { IssueRow, TemplateOption } from './Index/types';
 
 type PageProps = {
     issues: IssueRow[];
     filters: Record<string, string>;
     projects: { id: string; name: string }[];
     statuses: { id: string; name: string; category: string }[];
-    labels: { id: string; name: string; color: string }[];
+    labels: LabelRef[];
     members: UserRef[];
     templates: TemplateOption[];
 };
 
-const PRIORITIES = ['none', 'low', 'high', 'urgent'];
 const CATEGORIES = ['backlog', 'in_progress', 'done', 'cancelled'];
 
 export default function Index() {
     const { issues, filters, projects, statuses, labels, members, templates } = usePage<PageProps>().props;
-    const { flash } = usePage<{ flash?: { status?: string } }>().props;
     const [creating, setCreating] = useState(false);
     const [creatingLabel, setCreatingLabel] = useState(false);
 
-    const createForm = useForm({
-        project_id: projects[0]?.id ?? '',
-        title: '',
-        description: '',
-        status_id: '',
-        priority: 'none',
-        due_date: '',
-        template: '',
-        label_ids: [] as string[],
-    });
-    const labelForm = useForm({ name: '', color: '' });
-
-    const selectedProject = projects.find((p) => p.id === filters.project);
-    const selectedStatus = statuses.find((s) => s.id === filters.status);
-    const selectedLabel = labels.find((l) => l.id === filters.label);
-    const selectedMember = members.find((m) => m.id === filters.assignee);
-    const createStatusId = createForm.data.status_id || statuses[0]?.id || '';
-
     const setFilter = (key: string, value: string) => {
-        const next = { ...filters, [key]: value === 'all' ? '' : value };
-        router.get(route('issues.index'), next, { preserveState: true });
-    };
-
-    const submitCreate = (e: React.FormEvent) => {
-        e.preventDefault();
-        createForm.post(route('issues.store'), {
-            onSuccess: () => {
-                setCreating(false);
-                createForm.reset();
-            },
-        });
-    };
-
-    const submitLabel = (e: React.FormEvent) => {
-        e.preventDefault();
-        labelForm.post(route('labels.store'), {
-            onSuccess: () => {
-                setCreatingLabel(false);
-                labelForm.reset();
-            },
-        });
-    };
-
-    /**
-     * Client-side pre-fill: the template defaults fill description, priority
-     * and labels so the user sees and edits them before submitting. The
-     * selected template is sent along; the server-side merge then becomes a
-     * no-op because every key is explicitly provided.
-     */
-    const applyTemplate = (templateId: string) => {
-        const template = templates.find((t) => t.id === templateId);
-
-        createForm.setData('template', template ? template.id : '');
-        createForm.setData({
-            description: template?.description ?? '',
-            priority: template?.priority ?? 'none',
-            label_ids: template ? template.labels.map((l) => l.id) : [],
-        });
-    };
-
-    const toggleIssueLabel = (labelId: string) => {
-        const current = createForm.data.label_ids;
-        createForm.setData(
-            'label_ids',
-            current.includes(labelId)
-                ? current.filter((id) => id !== labelId)
-                : [...current, labelId],
-        );
+        router.get(route('issues.index'), { ...filters, [key]: value }, { preserveState: true });
     };
 
     return (
         <AppLayout title="Issues">
             <Head title="Issues" />
 
-            {flash?.status ? (
-                <p className="mb-4 rounded-md border bg-muted/50 px-4 py-2 text-sm">{flash.status}</p>
-            ) : null}
+            <FlashBanner />
 
             <div className="mb-4 flex flex-wrap items-center gap-2">
-                <Select value={filters.project ?? 'all'} onValueChange={(v) => v && setFilter('project', v)}>
-                    <SelectTrigger className="w-44">
-                        <SelectValue>{selectedProject?.name ?? 'All projects'}</SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">All projects</SelectItem>
-                        {projects.map((p) => (
-                            <SelectItem key={p.id} value={p.id}>
-                                {p.name}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-                <Select value={filters.status ?? 'all'} onValueChange={(v) => v && setFilter('status', v)}>
-                    <SelectTrigger className="w-44">
-                        <SelectValue>{selectedStatus?.name ?? 'All statuses'}</SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">All statuses</SelectItem>
-                        {statuses.map((s) => (
-                            <SelectItem key={s.id} value={s.id}>
-                                {s.name}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-                <Select value={filters.category ?? 'all'} onValueChange={(v) => v && setFilter('category', v)}>
-                    <SelectTrigger className="w-44">
-                        <SelectValue>
-                            {filters.category && filters.category !== 'all' ? filters.category : 'All categories'}
-                        </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">All categories</SelectItem>
-                        {CATEGORIES.map((c) => (
-                            <SelectItem key={c} value={c}>
-                                {c}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-                <Select value={filters.priority ?? 'all'} onValueChange={(v) => v && setFilter('priority', v)}>
-                    <SelectTrigger className="w-36">
-                        <SelectValue>
-                            {filters.priority && filters.priority !== 'all' ? filters.priority : 'Any priority'}
-                        </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">Any priority</SelectItem>
-                        {PRIORITIES.map((p) => (
-                            <SelectItem key={p} value={p}>
-                                {p}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-                <Select value={filters.label ?? 'all'} onValueChange={(v) => v && setFilter('label', v)}>
-                    <SelectTrigger className="w-36">
-                        <SelectValue>{selectedLabel?.name ?? 'Any label'}</SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">Any label</SelectItem>
-                        {labels.map((l) => (
-                            <SelectItem key={l.id} value={l.id}>
-                                {l.name}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-                <Select value={filters.assignee ?? 'all'} onValueChange={(v) => v && setFilter('assignee', v)}>
-                    <SelectTrigger className="w-40">
-                        <SelectValue>{selectedMember?.name ?? 'Any assignee'}</SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">Any assignee</SelectItem>
-                        {members.map((m) => (
-                            <SelectItem key={m.id} value={m.id}>
-                                {m.name}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
+                <FilterSelect
+                    value={filters.project ?? ''}
+                    options={projects.map((p) => ({ value: p.id, label: p.name }))}
+                    allLabel="All projects"
+                    onChange={(v) => setFilter('project', v)}
+                />
+                <FilterSelect
+                    value={filters.status ?? ''}
+                    options={statuses.map((s) => ({ value: s.id, label: s.name }))}
+                    allLabel="All statuses"
+                    onChange={(v) => setFilter('status', v)}
+                />
+                <FilterSelect
+                    value={filters.category ?? ''}
+                    options={CATEGORIES.map((c) => ({ value: c, label: c }))}
+                    allLabel="All categories"
+                    onChange={(v) => setFilter('category', v)}
+                />
+                <FilterSelect
+                    className="w-36"
+                    value={filters.priority ?? ''}
+                    options={PRIORITIES.map((p) => ({ value: p, label: p }))}
+                    allLabel="Any priority"
+                    onChange={(v) => setFilter('priority', v)}
+                />
+                <FilterSelect
+                    className="w-36"
+                    value={filters.label ?? ''}
+                    options={labels.map((l) => ({ value: l.id, label: l.name }))}
+                    allLabel="Any label"
+                    onChange={(v) => setFilter('label', v)}
+                />
+                <FilterSelect
+                    className="w-40"
+                    value={filters.assignee ?? ''}
+                    options={members.map((m) => ({ value: m.id, label: m.name }))}
+                    allLabel="Any assignee"
+                    onChange={(v) => setFilter('assignee', v)}
+                />
                 <Button
                     variant={filters.overdue === '1' ? 'default' : 'outline'}
                     size="sm"
@@ -267,53 +117,7 @@ export default function Index() {
                 </TableHeader>
                 <TableBody>
                     {issues.map((issue) => (
-                        <TableRow key={issue.id}>
-                            <TableCell>
-                                <Link href={route('issues.show', issue.id)} className="font-medium hover:underline">
-                                    {issue.title}
-                                </Link>
-                            </TableCell>
-                            <TableCell className="text-muted-foreground">{issue.project.name}</TableCell>
-                            <TableCell>
-                                <StatusBadge name={issue.status.name} category={issue.status.category} />
-                            </TableCell>
-                            <TableCell>
-                                <PriorityBadge priority={issue.priority} />
-                            </TableCell>
-                            <TableCell>
-                                {issue.assignees.length > 0 ? (
-                                    <span className="flex">
-                                        {issue.assignees.map((assignee, index) => (
-                                            <span key={assignee.id} className={index > 0 ? '-ml-1.75' : ''}>
-                                                <Avatar name={assignee.name} />
-                                            </span>
-                                        ))}
-                                    </span>
-                                ) : (
-                                    <span className="text-muted-foreground">—</span>
-                                )}
-                            </TableCell>
-                            <TableCell>
-                                <div className="flex gap-1">
-                                    {issue.labels.map((l) => (
-                                        <Badge key={l.id} variant="outline" className="rounded-full text-muted-foreground">
-                                            {l.name}
-                                        </Badge>
-                                    ))}
-                                    {issue.labels.length === 0 ? (
-                                        <span className="text-muted-foreground">—</span>
-                                    ) : null}
-                                </div>
-                            </TableCell>
-                            <TableCell
-                                className={`font-mono text-xs tabular-nums ${
-                                    issue.overdue ? 'font-medium text-destructive' : 'text-muted-foreground'
-                                }`}
-                            >
-                                {issue.dueDate ? new Date(issue.dueDate).toLocaleDateString() : '—'}
-                                {issue.overdue ? ' (overdue)' : ''}
-                            </TableCell>
-                        </TableRow>
+                        <IssueTableRow key={issue.id} issue={issue} />
                     ))}
                     {issues.length === 0 ? (
                         <TableRow>
@@ -325,206 +129,16 @@ export default function Index() {
                 </TableBody>
             </Table>
 
-            <Dialog open={creating} onOpenChange={setCreating}>
-                <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
-                    <DialogHeader>
-                        <DialogTitle>New issue</DialogTitle>
-                        <DialogDescription>Title is the only required field.</DialogDescription>
-                    </DialogHeader>
-                    <form onSubmit={submitCreate} className="grid gap-4">
-                        {templates.length > 0 ? (
-                            <div className="grid gap-2">
-                                <Label>Template</Label>
-                                <Select
-                                    value={createForm.data.template || 'none'}
-                                    onValueChange={applyTemplate}
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue>
-                                            {templates.find((t) => t.id === createForm.data.template)?.name ??
-                                                'No template'}
-                                        </SelectValue>
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="none">No template</SelectItem>
-                                        {templates.map((t) => (
-                                            <SelectItem key={t.id} value={t.id}>
-                                                {t.name}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                                <p className="text-sm text-muted-foreground">
-                                    Pre-fills description, priority and labels — everything stays editable.
-                                </p>
-                            </div>
-                        ) : null}
-                        <div className="grid gap-2">
-                            <Label htmlFor="issue-title">Title</Label>
-                            <Input
-                                id="issue-title"
-                                value={createForm.data.title}
-                                onChange={(e) => createForm.setData('title', e.target.value)}
-                                aria-required="true"
-                            />
-                            {createForm.errors.title ? (
-                                <p data-test="title-error" className="text-sm text-destructive">
-                                    {createForm.errors.title}
-                                </p>
-                            ) : null}
-                        </div>
-                        <div className="grid gap-2">
-                            <Label>Description</Label>
-                            <MarkdownEditor
-                                value={createForm.data.description}
-                                onChange={(markdown) => createForm.setData('description', markdown)}
-                            />
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="grid gap-2">
-                                <Label>Project</Label>
-                                <Select
-                                    value={createForm.data.project_id}
-                                    onValueChange={(v) => {
-                                        if (v) createForm.setData('project_id', v);
-                                    }}
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue>
-                                            {projects.find((p) => p.id === createForm.data.project_id)?.name ?? 'Project'}
-                                        </SelectValue>
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {projects.map((p) => (
-                                            <SelectItem key={p.id} value={p.id}>
-                                                {p.name}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                                {createForm.errors.project_id ? (
-                                    <p className="text-sm text-destructive">{createForm.errors.project_id}</p>
-                                ) : null}
-                            </div>
-                            <div className="grid gap-2">
-                                <Label>Status</Label>
-                                <Select
-                                    value={createStatusId}
-                                    onValueChange={(v) => {
-                                        if (v) createForm.setData('status_id', v);
-                                    }}
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue>
-                                            {statuses.find((s) => s.id === createStatusId)?.name ?? 'Status'}
-                                        </SelectValue>
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {statuses.map((s) => (
-                                            <SelectItem key={s.id} value={s.id}>
-                                                {s.name}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="grid gap-2">
-                                <Label>Priority</Label>
-                                <Select
-                                    value={createForm.data.priority}
-                                    onValueChange={(v) => {
-                                        if (v) createForm.setData('priority', v);
-                                    }}
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {PRIORITIES.map((p) => (
-                                            <SelectItem key={p} value={p}>
-                                                {p}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="grid gap-2">
-                                <Label htmlFor="issue-due">Due date</Label>
-                                <Input
-                                    id="issue-due"
-                                    type="date"
-                                    value={createForm.data.due_date}
-                                    onChange={(e) => createForm.setData('due_date', e.target.value)}
-                                />
-                            </div>
-                        </div>
-                        <div className="grid gap-2">
-                            <Label>Labels</Label>
-                            <div className="flex flex-wrap gap-1.5">
-                                {labels.map((label) => {
-                                    const selected = createForm.data.label_ids.includes(label.id);
-                                    return (
-                                        <Button
-                                            key={label.id}
-                                            type="button"
-                                            variant={selected ? 'default' : 'outline'}
-                                            size="sm"
-                                            aria-pressed={selected}
-                                            onClick={() => toggleIssueLabel(label.id)}
-                                        >
-                                            {label.name}
-                                        </Button>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                        <DialogFooter>
-                            <Button type="submit" disabled={createForm.processing}>
-                                Create
-                            </Button>
-                        </DialogFooter>
-                    </form>
-                </DialogContent>
-            </Dialog>
+            <CreateIssueDialog
+                open={creating}
+                onClose={() => setCreating(false)}
+                projects={projects}
+                statuses={statuses}
+                labels={labels}
+                templates={templates}
+            />
 
-            <Dialog open={creatingLabel} onOpenChange={setCreatingLabel}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>New label</DialogTitle>
-                        <DialogDescription>Workspace-wide labels, freely attachable.</DialogDescription>
-                    </DialogHeader>
-                    <form onSubmit={submitLabel} className="grid gap-4">
-                        <div className="grid gap-2">
-                            <Label htmlFor="label-name">Name</Label>
-                            <Input
-                                id="label-name"
-                                value={labelForm.data.name}
-                                onChange={(e) => labelForm.setData('name', e.target.value)}
-                                required
-                            />
-                            {labelForm.errors.name ? (
-                                <p className="text-sm text-destructive">{labelForm.errors.name}</p>
-                            ) : null}
-                        </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor="label-color">Color</Label>
-                            <Input
-                                id="label-color"
-                                value={labelForm.data.color}
-                                onChange={(e) => labelForm.setData('color', e.target.value)}
-                                placeholder="gray"
-                            />
-                        </div>
-                        <DialogFooter>
-                            <Button type="submit" disabled={labelForm.processing}>
-                                Create
-                            </Button>
-                        </DialogFooter>
-                    </form>
-                </DialogContent>
-            </Dialog>
+            <CreateLabelDialog open={creatingLabel} onClose={() => setCreatingLabel(false)} />
         </AppLayout>
     );
 }
