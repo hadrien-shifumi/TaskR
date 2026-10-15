@@ -256,6 +256,39 @@ class IssueTest extends TestCase
             ->assertOk();
     }
 
+    public function test_web_created_issue_records_and_exposes_the_creator(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspace();
+
+        $this->actingAs($owner)
+            ->post('/issues', ['project_id' => $project->id, 'title' => 'Avec créateur'])
+            ->assertRedirect();
+
+        $issue = $workspace->issues()->where('title', 'Avec créateur')->firstOrFail();
+        $this->assertSame($owner->id, $issue->created_by);
+
+        $this->actingAs($owner)
+            ->get("/issues/{$issue->id}")
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('issue.creatorName', $owner->name));
+    }
+
+    public function test_issue_created_without_user_has_no_creator(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspace();
+
+        $issue = CreateIssue::run($workspace, ['project_id' => $project->id, 'title' => 'Sans créateur']);
+
+        $this->assertNull($issue->created_by);
+
+        $this->actingAs($owner)
+            ->get("/issues/{$issue->id}")
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('issue.creatorName', null));
+    }
+
     public function test_cross_workspace_access_is_refused(): void
     {
         [$owner, $workspace, $project] = $this->setupWorkspace();

@@ -41,6 +41,7 @@ class CreateIssue
             'label_ids' => ['nullable', 'array'],
             'label_ids.*' => ['ulid', Rule::exists('labels', 'id')->where('workspace_id', $workspace?->id)],
             'template' => ['nullable', 'ulid'],
+            'created_by' => ['nullable', 'integer', 'exists:users,id'],
         ];
     }
 
@@ -58,6 +59,7 @@ class CreateIssue
             'status_id' => $data['status_id'] ?? $workspace->statuses()->firstOrFail()->id,
             'priority' => $data['priority'] ?? Priority::None->value,
             'due_date' => $data['due_date'] ?? null,
+            'created_by' => $data['created_by'] ?? null,
         ]);
 
         if (array_key_exists('assignees', $data) && is_array($data['assignees'])) {
@@ -73,7 +75,10 @@ class CreateIssue
 
     public function asController(ActionRequest $request, IssueRedirectResponder $responder): RedirectResponse
     {
-        $issue = $this->handle($this->currentWorkspace(), $request->validated());
+        $data = $request->validated();
+        $data['created_by'] ??= $request->user()?->getKey();
+
+        $issue = $this->handle($this->currentWorkspace(), $data);
 
         return $responder->created($issue);
     }

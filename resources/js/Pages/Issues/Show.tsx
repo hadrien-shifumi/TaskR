@@ -111,7 +111,13 @@ export default function Show() {
                             >
                                 {issue.project.name}
                             </Link>
-                            {issue.createdAt ? <> · opened {formatDate(issue.createdAt)}</> : null}
+                            {issue.createdAt ? (
+                                <>
+                                    {' '}
+                                    · opened {formatDate(issue.createdAt)}
+                                    {issue.creatorName ? <> by {issue.creatorName}</> : null}
+                                </>
+                            ) : null}
                         </p>
                         <h1 className="text-[26px] leading-[1.2] font-semibold tracking-[-0.02em]">
                             {issue.title}

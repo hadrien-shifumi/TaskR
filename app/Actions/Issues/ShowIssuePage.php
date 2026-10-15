@@ -21,7 +21,7 @@ class ShowIssuePage
      */
     public function handle(Workspace $workspace, Issue $issue): array
     {
-        $issue->load(['project', 'status', 'labels', 'assignees', 'timeEntries.author']);
+        $issue->load(['project', 'status', 'labels', 'assignees', 'timeEntries.author', 'creator']);
         $issue->loadCount('comments');
 
         $parent = $issue->parent()
@@ -49,6 +49,7 @@ class ShowIssuePage
                 'title' => $issue->title,
                 'description' => $issue->description,
                 'createdAt' => $issue->created_at?->toISOString(),
+                'creatorName' => $issue->creator?->name,
                 'project' => ['id' => $issue->project->id, 'name' => $issue->project->name],
                 'status' => ['id' => $issue->status->id, 'name' => $issue->status->name, 'category' => $issue->status->category->value],
                 'priority' => $issue->priority->value,
