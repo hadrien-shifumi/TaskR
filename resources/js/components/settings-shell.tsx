@@ -6,7 +6,7 @@ import type { PageSharedProps } from '@/types';
 const SECTIONS = [
     { path: '/settings/statuses', name: 'settings.statuses', label: 'Statuses' },
     { path: '/settings/members', name: 'settings.members', label: 'Members' },
-    { path: '/settings/templates', name: 'settings.templates', label: 'Templates' },
+    { path: '/settings/templates', name: 'settings.templates', label: 'Issue templates' },
     { path: '/settings/tokens', name: 'settings.tokens', label: 'API tokens' },
 ];
 

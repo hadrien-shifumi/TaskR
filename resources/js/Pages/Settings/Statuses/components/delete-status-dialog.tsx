@@ -167,9 +167,13 @@ export function DeleteStatusDialog({ status, statuses, onClose }: DeleteStatusDi
                             Cancel
                         </Button>
                         <Button
-                            variant="outline"
+                            variant={migrateIds.length > 0 ? 'outline' : 'destructive'}
                             data-test="confirm-delete-status"
-                            className="border-destructive/35 text-destructive hover:bg-destructive/10"
+                            className={
+                                migrateIds.length > 0
+                                    ? 'border-destructive/35 text-destructive hover:bg-destructive/10'
+                                    : undefined
+                            }
                             disabled={migrating}
                             onClick={() => confirmDelete()}
                         >

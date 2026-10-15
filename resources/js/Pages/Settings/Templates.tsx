@@ -2,8 +2,17 @@ import { FlashBanner } from '@/components/flash-banner';
 import { FormDialog } from '@/components/form-dialog';
 import { LabelPicker } from '@/components/label-picker';
 import { PrioritySelect } from '@/components/priority-select';
+import { PriorityBadge } from '@/components/issue-badges';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuGroup,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { MarkdownEditor } from '@/components/ui/markdown-editor';
@@ -18,6 +27,7 @@ import {
 import { SettingsShell } from '@/components/settings-shell';
 import AppLayout from '@/layouts/app-layout';
 import { Head, router, useForm, usePage } from '@inertiajs/react';
+import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import type { PageSharedProps } from '@/types';
 
@@ -35,7 +45,10 @@ interface LabelOption {
     color: string;
 }
 
-const emptyForm = { name: '', description: '', priority: 'none', label_ids: [] as string[] };
+/** Body pre-filled in the create dialog (maquette: "corps markdown prérempli"). */
+const DEFAULT_BODY = '## Context\n\n## Steps to reproduce\n1.\n\n## Expected / Actual';
+
+const emptyForm = { name: '', description: DEFAULT_BODY, priority: 'none', label_ids: [] as string[] };
 
 export default function Templates() {
     const { templates, labels } = usePage<{ templates: TemplateRow[]; labels: LabelOption[] }>().props;
@@ -101,27 +114,29 @@ export default function Templates() {
                     <p className="text-sm text-destructive">{form.errors.name}</p>
                 ) : null}
             </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-2">
+                    <Label>Default priority</Label>
+                    <PrioritySelect
+                        value={form.data.priority}
+                        onValueChange={(priority) => form.setData('priority', priority)}
+                    />
+                </div>
+                <div className="grid gap-2">
+                    <Label>Default labels</Label>
+                    <LabelPicker
+                        labels={labels}
+                        selectedIds={form.data.label_ids}
+                        onToggle={(labelId) => toggleLabel(form, labelId)}
+                        idPrefix={`${idPrefix}-label`}
+                    />
+                </div>
+            </div>
             <div className="grid gap-2">
                 <Label>Default description</Label>
                 <MarkdownEditor
                     value={form.data.description}
                     onChange={(markdown) => form.setData('description', markdown)}
-                />
-            </div>
-            <div className="grid gap-2">
-                <Label>Default priority</Label>
-                <PrioritySelect
-                    value={form.data.priority}
-                    onValueChange={(priority) => form.setData('priority', priority)}
-                />
-            </div>
-            <div className="grid gap-2">
-                <Label>Default labels</Label>
-                <LabelPicker
-                    labels={labels}
-                    selectedIds={form.data.label_ids}
-                    onToggle={(labelId) => toggleLabel(form, labelId)}
-                    idPrefix={`${idPrefix}-label`}
                 />
             </div>
         </>
@@ -142,80 +157,96 @@ export default function Templates() {
 
                 <FlashBanner />
 
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Name</TableHead>
-                            <TableHead>Priority</TableHead>
-                            <TableHead>Labels</TableHead>
-                            {isOwner ? <TableHead className="w-40 text-right">Actions</TableHead> : null}
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {templates.map((template) => (
-                            <TableRow key={template.id}>
-                                <TableCell>
-                                    <span className="font-medium">{template.name}</span>
-                                    {template.description ? (
-                                        <p className="line-clamp-1 text-sm text-muted-foreground">
-                                            {template.description.split('\n')[0]}
-                                        </p>
-                                    ) : null}
-                                </TableCell>
-                                <TableCell>
-                                    {template.priority && template.priority !== 'none' ? (
-                                        <Badge variant="outline">{template.priority}</Badge>
-                                    ) : (
-                                        <span className="text-muted-foreground">—</span>
-                                    )}
-                                </TableCell>
-                                <TableCell>
-                                    <div className="flex gap-1">
-                                        {template.labels.map((label) => (
-                                            <Badge key={label.id} variant="secondary">
-                                                {label.name}
-                                            </Badge>
-                                        ))}
-                                        {template.labels.length === 0 ? (
-                                            <span className="text-muted-foreground">—</span>
+                <div className="overflow-hidden rounded-xl border bg-card">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Template</TableHead>
+                                <TableHead>Default priority</TableHead>
+                                <TableHead>Labels</TableHead>
+                                {isOwner ? <TableHead className="w-16" /> : null}
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {templates.map((template) => (
+                                <TableRow key={template.id}>
+                                    <TableCell>
+                                        <span className="font-medium">{template.name}</span>
+                                        {template.description ? (
+                                            <p className="line-clamp-1 text-sm text-muted-foreground">
+                                                {template.description.split('\n')[0]}
+                                            </p>
                                         ) : null}
-                                    </div>
-                                </TableCell>
-                                {isOwner ? (
-                                    <TableCell className="text-right">
-                                        <div className="flex justify-end gap-1">
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => {
-                                                    setEditing(template);
-                                                    editForm.setData({
-                                                        name: template.name,
-                                                        description: template.description ?? '',
-                                                        priority: template.priority ?? 'none',
-                                                        label_ids: template.labels.map((label) => label.id),
-                                                    });
-                                                }}
-                                            >
-                                                Edit
-                                            </Button>
-                                            <Button variant="ghost" size="sm" onClick={() => remove(template)}>
-                                                Delete
-                                            </Button>
+                                    </TableCell>
+                                    <TableCell>
+                                        <PriorityBadge priority={template.priority ?? 'none'} />
+                                    </TableCell>
+                                    <TableCell>
+                                        <div className="flex gap-1">
+                                            {template.labels.map((label) => (
+                                                <Badge
+                                                    key={label.id}
+                                                    variant="outline"
+                                                    className="text-muted-foreground"
+                                                >
+                                                    {label.name}
+                                                </Badge>
+                                            ))}
+                                            {template.labels.length === 0 ? (
+                                                <span className="text-muted-foreground">—</span>
+                                            ) : null}
                                         </div>
                                     </TableCell>
-                                ) : null}
-                            </TableRow>
-                        ))}
-                        {templates.length === 0 ? (
-                            <TableRow>
-                                <TableCell colSpan={isOwner ? 4 : 3} className="py-6 text-center text-muted-foreground">
-                                    No templates yet.
-                                </TableCell>
-                            </TableRow>
-                        ) : null}
-                    </TableBody>
-                </Table>
+                                    {isOwner ? (
+                                        <TableCell className="text-right">
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger
+                                                    aria-label={`Actions for template ${template.name}`}
+                                                    className="grid size-6.5 place-items-center rounded-md text-muted-foreground outline-none hover:bg-accent hover:text-foreground"
+                                                >
+                                                    <MoreHorizontal className="size-4" aria-hidden />
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
+                                                    <DropdownMenuGroup>
+                                                        <DropdownMenuItem
+                                                            onClick={() => {
+                                                                setEditing(template);
+                                                                editForm.setData({
+                                                                    name: template.name,
+                                                                    description: template.description ?? '',
+                                                                    priority: template.priority ?? 'none',
+                                                                    label_ids: template.labels.map((label) => label.id),
+                                                                });
+                                                            }}
+                                                        >
+                                                            <Pencil aria-hidden />
+                                                            Edit…
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuSeparator />
+                                                        <DropdownMenuItem
+                                                            variant="destructive"
+                                                            onClick={() => remove(template)}
+                                                        >
+                                                            <Trash2 aria-hidden />
+                                                            Delete…
+                                                        </DropdownMenuItem>
+                                                    </DropdownMenuGroup>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        </TableCell>
+                                    ) : null}
+                                </TableRow>
+                            ))}
+                            {templates.length === 0 ? (
+                                <TableRow>
+                                    <TableCell colSpan={isOwner ? 4 : 3} className="py-6 text-center text-muted-foreground">
+                                        No templates yet.
+                                    </TableCell>
+                                </TableRow>
+                            ) : null}
+                        </TableBody>
+                    </Table>
+                </div>
 
                 <FormDialog
                     open={creating}

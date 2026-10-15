@@ -46,8 +46,8 @@ export function StatusRowItem({
             onDragOver={onDragOver}
             onDrop={onDrop}
             className={`flex items-center gap-3 rounded-lg border bg-card px-3.5 py-3 shadow-xs ${
-                over && !dragging ? 'border-primary ring-2 ring-ring' : ''
-            } ${dragging ? 'opacity-40' : ''}`}
+                status.issuesCount === 0 ? 'border-dashed' : ''
+            } ${over && !dragging ? 'border-primary ring-2 ring-ring' : ''} ${dragging ? 'opacity-40' : ''}`}
         >
             {isOwner ? (
                 <span aria-label="Reorder" className="cursor-grab text-muted-foreground">
@@ -55,7 +55,7 @@ export function StatusRowItem({
                 </span>
             ) : null}
             <strong className="text-sm">{status.name}</strong>
-            <StatusBadge name={status.category} category={status.category} />
+            <StatusBadge name={status.category.replace('_', ' ')} category={status.category} />
             <span className="ml-auto font-mono text-xs text-muted-foreground tabular-nums">
                 {status.issuesCount} {status.issuesCount === 1 ? 'issue' : 'issues'}
             </span>

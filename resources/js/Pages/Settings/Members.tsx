@@ -12,6 +12,14 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuGroup,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -23,6 +31,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { Head, router, useForm, usePage } from '@inertiajs/react';
+import { MoreHorizontal, Send, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
 import type { PageSharedProps } from '@/types';
 
@@ -51,6 +60,9 @@ function formatJoined(date: string | null): string {
     return new Date(date).toLocaleDateString(undefined, { year: 'numeric', month: 'short' });
 }
 
+const MENU_TRIGGER_CLASS =
+    'grid size-6.5 place-items-center rounded-md text-muted-foreground outline-none hover:bg-accent hover:text-foreground';
+
 export default function Members() {
     const { members, invitations } = usePage<PageProps>().props;
     const { workspace, auth } = usePage<PageSharedProps>().props;
@@ -72,6 +84,15 @@ export default function Members() {
     const remove = (member: MemberRow) => {
         if (!window.confirm(`Remove ${member.name} from this workspace?`)) return;
         router.delete(route('workspaces.members.destroy', [workspace?.id, member.id]));
+    };
+
+    const resend = (invitation: InvitationRow) => {
+        router.post(route('workspaces.invitations.resend', [workspace?.id, invitation.id]));
+    };
+
+    const cancel = (invitation: InvitationRow) => {
+        if (!window.confirm(`Cancel the invitation for ${invitation.email}? The acceptance link will stop working.`)) return;
+        router.delete(route('workspaces.invitations.destroy', [workspace?.id, invitation.id]));
     };
 
     return (
@@ -125,15 +146,28 @@ export default function Members() {
                                 </TableCell>
                                 <TableCell>
                                     {isOwner && auth.user?.id !== member.id ? (
-                                        <Button variant="ghost" size="sm" onClick={() => remove(member)}>
-                                            Remove
-                                        </Button>
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger
+                                                aria-label={`Actions for ${member.name}`}
+                                                className={MENU_TRIGGER_CLASS}
+                                            >
+                                                <MoreHorizontal className="size-4" aria-hidden />
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                                <DropdownMenuGroup>
+                                                    <DropdownMenuItem variant="destructive" onClick={() => remove(member)}>
+                                                        <Trash2 aria-hidden />
+                                                        Remove from workspace…
+                                                    </DropdownMenuItem>
+                                                </DropdownMenuGroup>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
                                     ) : null}
                                 </TableCell>
                             </TableRow>
                         ))}
                         {invitations.map((invitation) => (
-                            <TableRow key={invitation.id}>
+                            <TableRow key={invitation.id} data-test={`invitation-row-${invitation.email}`}>
                                 <TableCell>
                                     <div className="flex items-center gap-2.5">
                                         <span className="opacity-50 grayscale">
@@ -166,7 +200,31 @@ export default function Members() {
                                         {invitation.status === 'sent' ? 'Invitation sent' : 'Expired'}
                                     </Badge>
                                 </TableCell>
-                                <TableCell />
+                                <TableCell>
+                                    {isOwner ? (
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger
+                                                aria-label={`Actions for invitation ${invitation.email}`}
+                                                className={MENU_TRIGGER_CLASS}
+                                            >
+                                                <MoreHorizontal className="size-4" aria-hidden />
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                                <DropdownMenuGroup>
+                                                    <DropdownMenuItem onClick={() => resend(invitation)}>
+                                                        <Send aria-hidden />
+                                                        Resend invitation
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuSeparator />
+                                                    <DropdownMenuItem variant="destructive" onClick={() => cancel(invitation)}>
+                                                        <X aria-hidden />
+                                                        Cancel invitation…
+                                                    </DropdownMenuItem>
+                                                </DropdownMenuGroup>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    ) : null}
+                                </TableCell>
                             </TableRow>
                         ))}
                         {members.length === 0 && invitations.length === 0 ? (
