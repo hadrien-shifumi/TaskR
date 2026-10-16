@@ -86,6 +86,10 @@ env:
     QUEUE_CONNECTION: database
     CACHE_STORE: database
     SESSION_DRIVER: database
+    # Semantic search — OpenAI-compatible embeddings endpoint (Mistral).
+    # The API key is injected from .kamal/secrets via env.secret below.
+    KNOWLEDGE_EMBEDDINGS_BASE_URL: https://api.mistral.ai/v1
+    KNOWLEDGE_EMBEDDINGS_MODEL: mistral-embed
     # Migrations run once at boot in the web container (entrypoint detects the
     # role from the container command: octane → web, queue:work → worker).
     RUN_MIGRATIONS: "true"
