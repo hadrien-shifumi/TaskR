@@ -18,7 +18,9 @@ return new class extends Migration
             $table->ulid('parent_id')->nullable();
             $table->string('title');
             $table->text('body');
-            $table->ulid('last_editor_id');
+            // users.id is a bigint (auto-increment), not a ULID — every other
+            // table references it with foreignId().
+            $table->foreignId('last_editor_id');
             $table->foreign('last_editor_id')->references('id')->on('users')->cascadeOnDelete();
             $table->timestamp('embedded_at')->nullable();
             $table->timestamps();
