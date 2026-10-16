@@ -8,7 +8,7 @@
             },
             "taskr": {
                 "type": "remote",
-                "url": "http://localhost:8000/mcp",
+                "url": "https://taskr.shifumi-dev.fr/mcp",
                 "oauth": false,
                 "headers": {
                     "Authorization": "Bearer {env:TASKR_MCP_TOKEN}"
@@ -17,3 +17,4 @@
         }
     }
 }
+

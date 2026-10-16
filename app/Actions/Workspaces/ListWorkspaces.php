@@ -18,13 +18,13 @@ class ListWorkspaces
     {
         return $user->memberships()
             ->with('workspace')
-            ->orderBy('name')
             ->get()
             ->map(fn ($membership) => [
                 'id' => $membership->workspace->id,
                 'name' => $membership->workspace->name,
                 'role' => $membership->role->value,
             ])
+            ->sortBy('name')
             ->values()
             ->all();
     }
