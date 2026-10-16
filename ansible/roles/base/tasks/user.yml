@@ -1,0 +1,30 @@
+---
+- name: Create deploy user
+  ansible.builtin.user:
+    name: "{{ base_deploy_user }}"
+    shell: "{{ base_deploy_user_shell }}"
+    groups: sudo
+    append: true
+    password_lock: true
+
+- name: Allow sudo without password for deploy user
+  ansible.builtin.copy:
+    content: "{{ base_deploy_user }} ALL=(ALL) NOPASSWD:ALL\n"
+    dest: "/etc/sudoers.d/{{ base_deploy_user }}"
+    mode: "0440"
+    validate: "visudo -cf %s"
+
+- name: Authorize SSH keys for deploy user
+  ansible.posix.authorized_key:
+    user: "{{ base_deploy_user }}"
+    key: "{{ item }}"
+    state: present
+  loop: "{{ base_deploy_user_authorized_keys }}"
+  register: base_user_keys
+
+- name: Ensure at least one SSH key is configured
+  ansible.builtin.assert:
+    that: base_deploy_user_authorized_keys | length > 0
+    fail_msg: >
+      base_deploy_user_authorized_keys is empty — you would lock yourself out
+      of the server once root login is disabled. Add at least one public key.

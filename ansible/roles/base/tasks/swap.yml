@@ -1,0 +1,42 @@
+---
+- name: Check current swap
+  ansible.builtin.command: "swapon --show"
+  changed_when: false
+  register: base_swap_status
+
+- name: Create swap file
+  ansible.builtin.command: "fallocate -l {{ base_swap_size_mb }}M {{ base_swap_file }}"
+  args:
+    creates: "{{ base_swap_file }}"
+
+- name: Set swap file permissions
+  ansible.builtin.file:
+    path: "{{ base_swap_file }}"
+    mode: "0600"
+    owner: root
+    group: root
+
+- name: Format swap file
+  ansible.builtin.command: "mkswap {{ base_swap_file }}"
+  when: base_swap_status.stdout is not search(base_swap_file)
+  register: base_swap_formatted
+  changed_when: base_swap_formatted.rc == 0
+
+- name: Enable swap file
+  ansible.builtin.command: "swapon {{ base_swap_file }}"
+  when: base_swap_status.stdout is not search(base_swap_file)
+  changed_when: false
+
+- name: Persist swap in fstab
+  ansible.builtin.lineinfile:
+    path: /etc/fstab
+    line: "{{ base_swap_file }} none swap sw 0 0"
+    state: present
+    backup: true
+
+- name: Lower swappiness
+  ansible.posix.sysctl:
+    name: vm.swappiness
+    value: "10"
+    state: present
+    reload: true

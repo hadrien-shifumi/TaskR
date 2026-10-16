@@ -1,0 +1,14 @@
+---
+# Base cookbook: secure a freshly provisioned Scaleway server before Kamal
+# installs Docker and deploys the application.
+#
+#   ansible-playbook secure.yml
+#
+# Idempotent: safe to re-run at any time.
+- name: Secure and harden servers
+  hosts: all
+  become: true
+  gather_facts: true
+
+  roles:
+    - role: base

@@ -1,0 +1,10 @@
+# Copy to ansible/inventory/hosts.ini (gitignored) and fill in real IPs.
+# Scaleway instances are reachable as root with the SSH key set at creation
+# (or via the Scaleway console "send keys" feature).
+
+[scaleway_servers]
+# 51.15.0.10  hostname=taskr-web-1
+
+[scaleway_servers:vars]
+ansible_user=root
+ansible_python_interpreter=/usr/bin/python3

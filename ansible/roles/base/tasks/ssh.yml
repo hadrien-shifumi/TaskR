@@ -1,0 +1,26 @@
+---
+- name: Harden sshd configuration
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+    state: present
+    validate: "/usr/sbin/sshd -t -f %s"
+  loop:
+    - regexp: "^#?Port "
+      line: "Port {{ base_ssh_port }}"
+    - regexp: "^#?PermitRootLogin "
+      line: "PermitRootLogin {{ base_ssh_permit_root_login }}"
+    - regexp: "^#?PasswordAuthentication "
+      line: "PasswordAuthentication {{ base_ssh_password_authentication }}"
+    - regexp: "^#?PubkeyAuthentication "
+      line: "PubkeyAuthentication yes"
+    - regexp: "^#?X11Forwarding "
+      line: "X11Forwarding no"
+    - regexp: "^#?MaxAuthTries "
+      line: "MaxAuthTries 3"
+    - regexp: "^#?ClientAliveInterval "
+      line: "ClientAliveInterval 300"
+    - regexp: "^#?ClientAliveCountMax "
+      line: "ClientAliveCountMax 2"
+  notify: Restart sshd

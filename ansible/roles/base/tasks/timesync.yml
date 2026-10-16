@@ -1,0 +1,6 @@
+---
+- name: Ensure chrony is running (NTP)
+  ansible.builtin.systemd:
+    name: chrony
+    state: started
+    enabled: true

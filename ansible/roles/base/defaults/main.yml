@@ -1,0 +1,24 @@
+---
+# Base role defaults — override via inventory vars or --extra-vars.
+
+# Admin user created on the server (Kamal and humans use it, not root).
+base_deploy_user: deploy
+base_deploy_user_shell: /bin/bash
+# Public keys authorized on the deploy user. Put yours here or in
+# inventory/host_vars/<host>.yml:
+base_deploy_user_authorized_keys: []
+#  - ssh-ed25519 AAAA... hadrien@macbook
+
+# SSH hardening
+base_ssh_port: 22
+base_ssh_permit_root_login: "no"
+base_ssh_password_authentication: "no"
+
+# Firewall: allow SSH and HTTP(S) only.
+base_firewall_allow: []
+#  - { rule: allow, port: 443, proto: tcp }
+#  - { rule: allow, port: 80, proto: tcp }
+
+# Swap (small Scaleway instances have 1-4 GB RAM).
+base_swap_file: /swapfile
+base_swap_size_mb: 2048

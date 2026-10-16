@@ -1,0 +1,101 @@
+# Kamal 2 deployment configuration for Scaleway.
+# Docs: https://kamaldeployer.com/docs/configuration
+#
+# Prerequisites (see docs/DEPLOYMENT.md):
+#   - ansible/secure.yml has been run on the servers (deploy user, Docker-ready)
+#   - a Scaleway Container Registry namespace exists
+#   - a Scaleway managed PostgreSQL database (pgvector enabled) exists
+#   - .kamal/secrets is filled in
+
+service: taskr
+image: taskr
+
+# Replace hosts with your Scaleway server IPs (or use the KAMAL_WEB_HOSTS
+# secret). The deploy user is created by ansible/secure.yml.
+servers:
+  web:
+    hosts:
+      - <%= ENV.fetch("KAMAL_WEB_HOSTS", "203.0.113.10").split(",") %>
+    options:
+      cpus: 2
+  worker:
+    hosts:
+      - <%= ENV.fetch("KAMAL_WEB_HOSTS", "203.0.113.10").split(",") %>
+    cmd: php artisan queue:work --sleep=3 --tries=3 --max-time=3600
+    options:
+      cpus: 1
+
+registry:
+  # Scaleway Container Registry — namespace "taskr" in fr-par.
+  # Login: username "nologin", password = a Scaleway secret key.
+  url: '<%= ENV.fetch("KAMAL_REGISTRY", "rg.fr-par.scw.cloud/taskr") %>'
+  username: nologin
+  password:
+    - KAMAL_REGISTRY_PASSWORD
+
+builder:
+  # Scaleway PLAY2-PICO is arm64, PRO2-XXS is amd64 — set accordingly,
+  # or use ["amd64", "arm64"] with a remote builder for multi-arch images.
+  arch: <%= ENV.fetch("KAMAL_ARCH", "amd64") %>
+  cache:
+    type: registry
+    image: '<%= ENV.fetch("KAMAL_REGISTRY", "rg.fr-par.scw.cloud/taskr") %>-cache'
+
+# Kamal's proxy (Traefik) terminates TLS (ACME/Let's Encrypt) and forwards
+# to the app container on port 8080 (Octane/FrankenPHP).
+proxy:
+  host: '<%= ENV.fetch("KAMAL_PROXY_HOST", "taskr.example.com") %>'
+  app_port: 8080
+  healthcheck:
+    path: /up
+    interval: 5
+    timeout: 5
+  # For a first deploy without DNS, comment the host above and use:
+  # publish: false
+
+# Pull-based logging shipped with the host's docker json-file driver.
+logging:
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+env:
+  clear:
+    APP_ENV: production
+    APP_DEBUG: false
+    APP_URL: 'https://<%= ENV.fetch("KAMAL_PROXY_HOST", "taskr.example.com") %>'
+    APP_MAINTENANCE_DRIVER: file
+    LOG_CHANNEL: stderr
+    LOG_LEVEL: info
+    DB_CONNECTION: pgsql
+    # Scaleway managed PostgreSQL endpoint (host:port of the primary node).
+    DB_HOST: '<%= ENV.fetch("KAMAL_DB_HOST", "taskr-db.example.nodes.scw.cloud") %>'
+    DB_PORT: '<%= ENV.fetch("KAMAL_DB_PORT", "5432") %>'
+    DB_DATABASE: taskr
+    DB_USERNAME: taskr
+    DB_SSLMODE: require
+    OCTANE_SERVER: frankenphp
+    OCTANE_HTTPS: true
+    QUEUE_CONNECTION: database
+    CACHE_STORE: database
+    SESSION_DRIVER: database
+  secret:
+    - APP_KEY
+    - DB_PASSWORD
+    - KNOWLEDGE_EMBEDDINGS_API_KEY
+  roles:
+    web:
+      clear:
+        ROLE: web
+        RUN_MIGRATIONS: "true"
+    worker:
+      clear:
+        ROLE: worker
+
+# Volumes persisted across deploys.
+volumes:
+  - "taskr_storage:/app/storage"
+
+# Give Octane workers time to finish in-flight requests.
+stop_wait_time: 30

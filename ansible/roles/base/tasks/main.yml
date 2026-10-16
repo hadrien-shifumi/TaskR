@@ -1,0 +1,20 @@
+---
+- name: Include OS family check
+  ansible.builtin.assert:
+    that: ansible_facts.os_family == "Debian"
+    fail_msg: "This cookbook targets Debian/Ubuntu (Scaleway Ubuntu images). Found {{ ansible_facts.os_family }}."
+
+- name: Gather package facts
+  ansible.builtin.package_facts:
+    manager: auto
+
+- name: Base hardening tasks
+  ansible.builtin.import_tasks: packages.yml
+- ansible.builtin.import_tasks: user.yml
+- ansible.builtin.import_tasks: ssh.yml
+- ansible.builtin.import_tasks: firewall.yml
+- ansible.builtin.import_tasks: fail2ban.yml
+- ansible.builtin.import_tasks: unattended_upgrades.yml
+- ansible.builtin.import_tasks: timesync.yml
+- ansible.builtin.import_tasks: swap.yml
+- ansible.builtin.import_tasks: sysctl.yml
