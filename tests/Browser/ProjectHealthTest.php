@@ -41,7 +41,8 @@ it('shows the project health overview badge and the health page indicators', fun
     // Scenario "Issue due dépassée".
     $page->assertSeeIn('@stat-overdue', '1');
 
-    // Scenario "Consommation à 80 %".
+    // Scenario "Consommation à 80 % sur le travail ouvert" (D1's 100h/100h,
+    // done, must stay excluded from the ratio).
     $page->assertSeeIn('@stat-hours', '8 / 10 h')
         ->assertSee('logged / estimated · 80% consumed');
 

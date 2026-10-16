@@ -44,8 +44,9 @@ function setupBrowserWorkspace(bool $withProject = false): array
 /**
  * Browser fixture seeding a project for the project-health scenarios:
  * 3 backlog, 2 in progress (one overdue), 4 done, 1 cancelled → 40% complete
- * (done only over the total); 10h estimated, 8h logged → 80% consumption;
- * target date passed → late.
+ * (done only over the total); 10h estimated / 8h logged on open issues → 80%
+ * consumption over open work (D1's 100h/100h stay excluded); target date
+ * passed → late.
  */
 function seedProjectWithHealth(Workspace $workspace, User $owner): Project
 {
@@ -68,12 +69,16 @@ function seedProjectWithHealth(Workspace $workspace, User $owner): Project
         ...$extra,
     ]);
 
-    $issue('B1', $statuses['backlog']);
-    $issue('B2', $statuses['backlog']);
-    $issue('B3', $statuses['backlog']);
+    $backlog = [
+        $issue('B1', $statuses['backlog']),
+        $issue('B2', $statuses['backlog']),
+        $issue('B3', $statuses['backlog']),
+    ];
 
-    $issue('IP1', $statuses['in_progress'], ['due_date' => now()->subWeek()->toDateString()]);
-    $issue('IP2', $statuses['in_progress']);
+    $inProgress = [
+        $issue('IP1', $statuses['in_progress'], ['due_date' => now()->subWeek()->toDateString()]),
+        $issue('IP2', $statuses['in_progress']),
+    ];
 
     $done = [
         $issue('D1', $statuses['done']),
@@ -84,11 +89,15 @@ function seedProjectWithHealth(Workspace $workspace, User $owner): Project
 
     $issue('C1', $statuses['cancelled']);
 
-    // 4h + 6h estimated, 4h + 4h logged → 80% consumption.
-    SetIssueEstimate::run($done[0], 4.0);
-    CreateTimeEntry::run($done[0], $owner, ['hours' => 4]);
-    SetIssueEstimate::run($done[1], 6.0);
-    CreateTimeEntry::run($done[1], $owner, ['hours' => 4]);
+    // Consumption ratio covers open work only: 4h + 6h estimated and
+    // 4h + 4h logged on backlog/in_progress issues → 80%. D1 carries
+    // 100h estimated / 100h logged and must stay excluded (done).
+    SetIssueEstimate::run($done[0], 100.0);
+    CreateTimeEntry::run($done[0], $owner, ['hours' => 100]);
+    SetIssueEstimate::run($backlog[0], 4.0);
+    CreateTimeEntry::run($backlog[0], $owner, ['hours' => 4]);
+    SetIssueEstimate::run($inProgress[1], 6.0);
+    CreateTimeEntry::run($inProgress[1], $owner, ['hours' => 4]);
 
     return $project;
 }

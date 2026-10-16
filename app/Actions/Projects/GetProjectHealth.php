@@ -207,18 +207,22 @@ class GetProjectHealth
             ->get()
             ->keyBy('project_id');
 
-        // Sum estimated hours per project.
+        // Sum estimated hours over open issues (backlog + in_progress) per project.
+        // Estimates of done/cancelled issues are no longer objectives to consume.
         $estimates = $this->issuesBaseQuery($projectIds, $workspaceId)
+            ->whereIn('statuses.category', [StatusCategory::Backlog->value, StatusCategory::InProgress->value])
             ->selectRaw('project_id, COALESCE(SUM(estimated_hours), 0) AS estimated_hours')
             ->groupBy('project_id')
             ->get()
             ->keyBy('project_id');
 
-        // Sum logged hours per project (join time_entries).
+        // Sum logged hours over open issues (backlog + in_progress) per project.
         $logged = \DB::table('time_entries')
             ->join('issues', 'issues.id', '=', 'time_entries.issue_id')
+            ->join('statuses', 'statuses.id', '=', 'issues.status_id')
             ->where('time_entries.workspace_id', $workspaceId)
             ->whereIn('issues.project_id', $projectIds)
+            ->whereIn('statuses.category', [StatusCategory::Backlog->value, StatusCategory::InProgress->value])
             ->selectRaw('issues.project_id, COALESCE(SUM(time_entries.hours), 0) AS logged_hours')
             ->groupBy('issues.project_id')
             ->get()

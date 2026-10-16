@@ -361,6 +361,109 @@ class ProjectHealthTest extends TestCase
         $this->assertNull($health->consumptionRatio);
     }
 
+    // ── Ratio de consommation : périmètre travail ouvert ────────────
+
+    public function test_consumption_ratio_ignores_done_issues_without_logged_time(): void
+    {
+        [$owner, $workspace, $project, $statuses] = $this->setupProjectWithStatuses();
+
+        $issue = $this->createIssue($project, $statuses, 'done', 'Done without tracking');
+        SetIssueEstimate::run($issue, 10.0);
+
+        $health = GetProjectHealth::run($project);
+
+        // L'estimation d'une issue terminée ne compte plus dans la santé.
+        $this->assertSame(0.0, $health->estimatedHours);
+        $this->assertSame(0.0, $health->loggedHours);
+        $this->assertNull($health->consumptionRatio);
+    }
+
+    public function test_consumption_ratio_ignores_done_issues_with_partial_logged_time(): void
+    {
+        [$owner, $workspace, $project, $statuses] = $this->setupProjectWithStatuses();
+
+        $done = $this->createIssue($project, $statuses, 'done', 'Done partially tracked');
+        SetIssueEstimate::run($done, 10.0);
+        CreateTimeEntry::run($done, $owner, ['hours' => 2]);
+
+        $open = $this->createIssue($project, $statuses, 'in_progress', 'Open');
+        SetIssueEstimate::run($open, 4.0);
+        CreateTimeEntry::run($open, $owner, ['hours' => 1]);
+
+        $health = GetProjectHealth::run($project);
+
+        $this->assertSame(4.0, $health->estimatedHours);
+        $this->assertSame(1.0, $health->loggedHours);
+        $this->assertSame(25.0, $health->consumptionRatio);
+    }
+
+    public function test_consumption_ratio_ignores_cancelled_issues(): void
+    {
+        [$owner, $workspace, $project, $statuses] = $this->setupProjectWithStatuses();
+
+        $cancelled = $this->createIssue($project, $statuses, 'cancelled', 'Cancelled');
+        SetIssueEstimate::run($cancelled, 5.0);
+
+        $open = $this->createIssue($project, $statuses, 'backlog', 'Open');
+        SetIssueEstimate::run($open, 5.0);
+
+        $health = GetProjectHealth::run($project);
+
+        $this->assertSame(5.0, $health->estimatedHours);
+        $this->assertSame(0.0, $health->loggedHours);
+        $this->assertSame(0.0, $health->consumptionRatio);
+    }
+
+    public function test_consumption_ratio_counts_backlog_and_in_progress_issues(): void
+    {
+        [$owner, $workspace, $project, $statuses] = $this->setupProjectWithStatuses();
+
+        $backlog = $this->createIssue($project, $statuses, 'backlog', 'Backlog');
+        $inProgress = $this->createIssue($project, $statuses, 'in_progress', 'In progress');
+        SetIssueEstimate::run($backlog, 6.0);
+        SetIssueEstimate::run($inProgress, 4.0);
+        CreateTimeEntry::run($backlog, $owner, ['hours' => 5]);
+        CreateTimeEntry::run($inProgress, $owner, ['hours' => 3]);
+
+        $health = GetProjectHealth::run($project);
+
+        $this->assertSame(10.0, $health->estimatedHours);
+        $this->assertSame(8.0, $health->loggedHours);
+        $this->assertSame(80.0, $health->consumptionRatio);
+    }
+
+    public function test_consumption_ratio_is_null_when_only_done_issues_have_estimates(): void
+    {
+        [$owner, $workspace, $project, $statuses] = $this->setupProjectWithStatuses();
+
+        // Exemple de la réflexion métier : 2 issues de 10 h en DONE, 0 h logguées.
+        $issue1 = $this->createIssue($project, $statuses, 'done', 'Done 1');
+        $issue2 = $this->createIssue($project, $statuses, 'done', 'Done 2');
+        SetIssueEstimate::run($issue1, 10.0);
+        SetIssueEstimate::run($issue2, 10.0);
+
+        $health = GetProjectHealth::run($project);
+
+        $this->assertSame(0.0, $health->estimatedHours);
+        $this->assertSame(0.0, $health->loggedHours);
+        $this->assertNull($health->consumptionRatio);
+    }
+
+    public function test_logged_hours_ignore_time_entries_of_done_issues(): void
+    {
+        [$owner, $workspace, $project, $statuses] = $this->setupProjectWithStatuses();
+
+        $done = $this->createIssue($project, $statuses, 'done', 'Done');
+        CreateTimeEntry::run($done, $owner, ['hours' => 3]);
+
+        $open = $this->createIssue($project, $statuses, 'in_progress', 'Open');
+        CreateTimeEntry::run($open, $owner, ['hours' => 2]);
+
+        $health = GetProjectHealth::run($project);
+
+        $this->assertSame(2.0, $health->loggedHours);
+    }
+
     // ── 5.3 Tests feature ───────────────────────────────────────────
 
     public function test_health_recalculates_when_issue_status_changes(): void
