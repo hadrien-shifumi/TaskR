@@ -251,11 +251,15 @@ const fr: typeof en = {
         estimateHours: "Estimation (heures)",
         estimatePlaceholder: "ex. 6,5",
         severalAssignees: "Plusieurs assignés possibles.",
+        filterByAssignee: "Filtrer par assigné",
+        allAssignees: "Tous les assignés",
+        me: "Moi",
     },
 
     projectHealth: {
         headTitle: "Santé — {{name}}",
         intro: "Tous les indicateurs ci-dessous sont calculés à partir des tickets — rien n'est saisi à la main.",
+        memberIntro: "Votre charge de travail sur ce projet, calculée à partir de vos tickets assignés.",
         statCompleted: "Terminé",
         statCompletedHint: "{{done}} terminés + {{cancelled}} annulés sur {{total}} tickets",
         statOverdue: "En retard",
@@ -284,6 +288,13 @@ const fr: typeof en = {
         targetProjection:
             "Date cible {{date}}. Déplacer la date cible ou clôturer les tickets restants recalcule la projection immédiatement.",
         recalculate: "Recalculer la projection",
+        myWorkload: "Ma charge",
+        openIssues: "Tickets ouverts",
+        hoursLogged: "Heures saisies",
+        overdue: "En retard",
+        teamWorkload: "Charge de l'équipe",
+        member: "Membre",
+        hours: "Heures",
     },
 
     home: {

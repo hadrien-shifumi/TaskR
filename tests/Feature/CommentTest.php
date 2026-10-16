@@ -22,7 +22,7 @@ class CommentTest extends TestCase
         $owner = User::factory()->create();
         $workspace = CreateWorkspace::run($owner, ['name' => 'WS']);
         app(WorkspaceContext::class)->set($workspace);
-        $project = CreateProject::run($workspace, ['name' => 'Site vitrine']);
+        $project = CreateProject::run($workspace, $owner, ['name' => 'Site vitrine']);
         $issue = CreateIssue::run($workspace, ['project_id' => $project->id, 'title' => 'Page de profil']);
 
         $member = User::factory()->create();
@@ -131,7 +131,7 @@ class CommentTest extends TestCase
         [$owner, , $issue] = $this->setupIssue();
         $workspace = app(WorkspaceContext::class)->get();
 
-        $other = CreateProject::run($workspace, ['name' => 'Autre projet']);
+        $other = CreateProject::run($workspace, $owner, ['name' => 'Autre projet']);
         $otherIssue = CreateIssue::run($workspace, ['project_id' => $other->id, 'title' => 'Autre']);
 
         $comment = AddComment::run($otherIssue, $owner, 'Sur une autre issue');

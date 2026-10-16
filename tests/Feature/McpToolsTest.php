@@ -158,7 +158,7 @@ class McpToolsTest extends TestCase
         $intruder = User::factory()->create();
         $theirs = CreateWorkspace::run($intruder, ['name' => 'Theirs']);
         app(WorkspaceContext::class)->set($theirs);
-        $theirProject = CreateProject::run($theirs, ['name' => 'Their project']);
+        $theirProject = CreateProject::run($theirs, $intruder, ['name' => 'Their project']);
         $theirIssue = CreateIssueAction::run($theirs, ['project_id' => $theirProject->id, 'title' => 'Theirs']);
 
         TaskrServer::actingAs($owner)
@@ -375,7 +375,7 @@ class McpToolsTest extends TestCase
         $workspace = CreateWorkspace::run($owner, ['name' => 'WS']);
         app(WorkspaceContext::class)->set($workspace);
 
-        $project = CreateProject::run($workspace, ['name' => 'Site vitrine']);
+        $project = CreateProject::run($workspace, $owner, ['name' => 'Site vitrine']);
 
         return [$owner, $workspace, $project];
     }

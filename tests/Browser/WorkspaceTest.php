@@ -48,11 +48,11 @@ it('lets an invited user join the workspace through the acceptance link', functi
 it('switches the active workspace and only shows its data', function () {
     [$owner, $workspace] = setupBrowserWorkspace();
     app(WorkspaceContext::class)->set($workspace);
-    CreateProject::run($workspace, ['name' => 'Projet A']);
+    CreateProject::run($workspace, $owner, ['name' => 'Projet A']);
 
     $second = CreateWorkspace::run($owner, ['name' => 'WS 2']);
     app(WorkspaceContext::class)->set($second);
-    CreateProject::run($second, ['name' => 'Projet B']);
+    CreateProject::run($second, $owner, ['name' => 'Projet B']);
     $this->actingAs($owner);
 
     $page = visit('/projects');

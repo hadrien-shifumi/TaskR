@@ -6,6 +6,7 @@ use App\Enums\StatusCategory;
 use App\Models\Project;
 use App\Models\User;
 use App\Responders\Projects\ProjectHealthResponder;
+use App\Support\PersonWorkload;
 use App\Support\ProjectHealth;
 use App\Support\WorkspaceContext;
 use Carbon\Carbon;
@@ -66,7 +67,16 @@ class GetProjectHealth
 
     public function asController(Request $request, Project $project, ProjectHealthResponder $responder): Response
     {
-        $health = $this->handle($project);
+        $user = $request->user();
+        $canSeeGlobalKpis = $user !== null && $project->canManage($user);
+
+        $health = $canSeeGlobalKpis ? $this->handle($project) : null;
+
+        $myWorkload = $user !== null ? $this->computeWorkloadFor($project, $user) : null;
+
+        $teamWorkload = $canSeeGlobalKpis
+            ? $this->computeTeamWorkload($project)
+            : null;
 
         return $responder->toResponse($request, [
             'project' => [
@@ -76,8 +86,11 @@ class GetProjectHealth
                 'targetDate' => $project->target_date?->toDateString(),
                 'createdAt' => $project->created_at?->toISOString(),
             ],
-            'health' => $health->toArray(),
-            'lateIssues' => $project->issues()
+            'health' => $health?->toArray(),
+            'canSeeGlobalKpis' => $canSeeGlobalKpis,
+            'myWorkload' => $myWorkload?->toArray(),
+            'teamWorkload' => array_map(fn ($w) => $w->toArray(), $teamWorkload ?? []),
+            'lateIssues' => $canSeeGlobalKpis ? $project->issues()
                 ->join('statuses', 'statuses.id', '=', 'issues.status_id')
                 ->whereNotNull('issues.due_date')
                 ->where('issues.due_date', '<', now()->toDateString())
@@ -92,8 +105,79 @@ class GetProjectHealth
                     'statusName' => $issue->statusName,
                     'statusCategory' => $issue->statusCategory instanceof \BackedEnum ? $issue->statusCategory->value : (string) $issue->statusCategory,
                 ])
-                ->all(),
+                ->all() : [],
         ]);
+    }
+
+    /**
+     * Compute workload for a single user on a project.
+     */
+    private function computeWorkloadFor(Project $project, User $user): PersonWorkload
+    {
+        $workspaceId = app(WorkspaceContext::class)->id();
+
+        $baseQuery = \DB::table('issues')
+            ->join('statuses', 'statuses.id', '=', 'issues.status_id')
+            ->join('issue_assignees', 'issue_assignees.issue_id', '=', 'issues.id')
+            ->where('issues.workspace_id', $workspaceId)
+            ->where('issues.project_id', $project->id)
+            ->where('issue_assignees.user_id', $user->id);
+
+        $totalIssues = (clone $baseQuery)->count();
+
+        $openIssues = (clone $baseQuery)
+            ->whereIn('statuses.category', [StatusCategory::Backlog->value, StatusCategory::InProgress->value])
+            ->count();
+
+        $overdueIssues = (clone $baseQuery)
+            ->whereIn('statuses.category', [StatusCategory::Backlog->value, StatusCategory::InProgress->value])
+            ->whereNotNull('issues.due_date')
+            ->where('issues.due_date', '<', now()->toDateString())
+            ->count();
+
+        $estimatedHours = (float) (clone $baseQuery)
+            ->whereIn('statuses.category', [StatusCategory::Backlog->value, StatusCategory::InProgress->value])
+            ->sum('issues.estimated_hours');
+
+        $loggedHours = (float) \DB::table('time_entries')
+            ->join('issues', 'issues.id', '=', 'time_entries.issue_id')
+            ->join('issue_assignees', 'issue_assignees.issue_id', '=', 'issues.id')
+            ->join('statuses', 'statuses.id', '=', 'issues.status_id')
+            ->where('issues.workspace_id', $workspaceId)
+            ->where('issues.project_id', $project->id)
+            ->where('issue_assignees.user_id', $user->id)
+            ->whereIn('statuses.category', [StatusCategory::Backlog->value, StatusCategory::InProgress->value])
+            ->sum('time_entries.hours');
+
+        return new PersonWorkload(
+            userId: $user->id,
+            userName: $user->name,
+            openIssues: $openIssues,
+            totalIssues: $totalIssues,
+            overdueIssues: $overdueIssues,
+            estimatedHours: $estimatedHours,
+            loggedHours: $loggedHours,
+        );
+    }
+
+    /**
+     * Compute workload for all roster members of a project.
+     *
+     * @return array<int, PersonWorkload>
+     */
+    private function computeTeamWorkload(Project $project): array
+    {
+        $roster = $project->projectMembers()
+            ->with('user')
+            ->orderBy('created_at')
+            ->get();
+
+        $workloads = [];
+        foreach ($roster as $pm) {
+            $workloads[] = $this->computeWorkloadFor($project, $pm->user);
+        }
+
+        return $workloads;
     }
 
     /**

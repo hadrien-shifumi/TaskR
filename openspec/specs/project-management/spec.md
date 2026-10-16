@@ -23,3 +23,27 @@ La suppression définitive d'un projet SHALL être refusée tant qu'il contient 
 #### Scenario: Suppression refusée
 - **WHEN** un membre tente de supprimer un projet contenant 3 issues
 - **THEN** l'action est refusée avec un message invitant à archiver
+
+### Requirement: Roster projet (rôles projet)
+Chaque projet SHALL posséder un roster de membres avec trois rôles possibles : `owner` (créateur du projet par défaut, unique par projet), `manager` (multiples, peut gérer le roster) et `member` (membre du roster sans droit de gestion). L'`owner` du workspace est traité comme super-manager sur tous les projets.
+
+#### Scenario: Création de projet avec auto-onboard
+- **WHEN** un membre crée un projet
+- **THEN** il devient automatiquement `owner` du projet (roster)
+
+#### Scenario: Gestion du roster réservée aux managers
+- **WHEN** un `member` du roster (non manager) tente d'ajouter ou retirer un membre
+- **THEN** l'action est refusée (403)
+- **AND** un `owner` projet, `manager` projet ou `owner` workspace peut effectuer l'opération
+
+#### Scenario: Transfert d'ownership
+- **WHEN** un `owner` projet transfère son rôle à un autre membre
+- **THEN** le nouveau devient `owner` et l'ancien devient `member`
+- **AND** il n'existe jamais deux `owner` simultanément
+
+#### Scenario: Membre du roster = membre du workspace
+- **WHEN** on tente d'ajouter au roster un utilisateur qui n'est pas membre du workspace
+- **THEN** la validation échoue
+
+### Requirement: Roster sans contrôle d'accès
+Le roster projet ne modifie PAS la visibilité des projets : tout membre du workspace peut voir et opérer sur tous les projets. Le roster pilote uniquement le filtre assignee, la charge de travail et la visibilité des indicateurs de santé (voir spec `project-health`).

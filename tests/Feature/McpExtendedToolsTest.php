@@ -570,7 +570,7 @@ class McpExtendedToolsTest extends TestCase
         $workspace = CreateWorkspace::run($owner, ['name' => 'WS']);
         app(WorkspaceContext::class)->set($workspace);
 
-        $project = CreateProject::run($workspace, ['name' => 'Site vitrine']);
+        $project = CreateProject::run($workspace, $owner, ['name' => 'Site vitrine']);
 
         return [$owner, $workspace, $project];
     }

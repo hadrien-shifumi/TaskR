@@ -36,7 +36,7 @@ class CreateProject extends AgentTool
         $data = $request->validate($action->rules());
 
         return Response::structured([
-            'project' => $this->presentProject($action->handle($workspace, $data)),
+            'project' => $this->presentProject($action->handle($workspace, $this->currentUser($request), $data)),
         ]);
     }
 

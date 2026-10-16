@@ -26,7 +26,7 @@ class IssueTest extends TestCase
         $workspace = CreateWorkspace::run($owner, ['name' => 'WS']);
         app(WorkspaceContext::class)->set($workspace);
 
-        $project = CreateProject::run($workspace, ['name' => 'Site vitrine']);
+        $project = CreateProject::run($workspace, $owner, ['name' => 'Site vitrine']);
 
         $member = User::factory()->create();
         Membership::create([
@@ -142,7 +142,7 @@ class IssueTest extends TestCase
         $other = User::factory()->create();
         $otherWorkspace = CreateWorkspace::run($other, ['name' => 'Other']);
         app(WorkspaceContext::class)->set($otherWorkspace);
-        $otherProject = CreateProject::run($otherWorkspace, ['name' => 'Other project']);
+        $otherProject = CreateProject::run($otherWorkspace, $other, ['name' => 'Other project']);
         $foreign = CreateIssue::run($otherWorkspace, ['project_id' => $otherProject->id, 'title' => 'Foreign']);
 
         // Scoped validation must reject the foreign parent id.

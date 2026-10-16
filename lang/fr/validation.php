@@ -64,6 +64,13 @@ return [
         'workspace_name' => "nom de l'espace de travail",
         'body' => 'contenu',
         'color' => 'couleur',
+        'user_id' => 'membre',
+        'role' => 'rôle',
+    ],
+
+    'project_member' => [
+        'single_owner' => 'Un projet ne peut avoir qu\'un seul propriétaire.',
+        'cannot_remove_owner' => 'Le propriétaire du projet ne peut pas être retiré du roster.',
     ],
 
 ];

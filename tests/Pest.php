@@ -36,7 +36,7 @@ function setupBrowserWorkspace(bool $withProject = false): array
         return [$owner, $workspace];
     }
 
-    $project = CreateProject::run($workspace, ['name' => 'Site vitrine']);
+    $project = CreateProject::run($workspace, $owner, ['name' => 'Site vitrine']);
 
     return [$owner, $workspace, $project];
 }
@@ -51,7 +51,7 @@ function seedProjectWithHealth(Workspace $workspace, User $owner): Project
 {
     app(WorkspaceContext::class)->set($workspace);
 
-    $project = CreateProject::run($workspace, [
+    $project = CreateProject::run($workspace, $owner, [
         'name' => 'Refonte site vitrine',
         'target_date' => now()->subDay()->toDateString(),
     ]);

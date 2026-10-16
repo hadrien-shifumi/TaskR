@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use App\Actions\Issues\CreateIssue;
 use App\Actions\Projects\CreateProject;
 use App\Actions\Workspaces\CreateWorkspace;
-use App\Models\Status;
 use App\Models\User;
 use App\Support\WorkspaceContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -22,7 +21,7 @@ class StatusUsageTest extends TestCase
         $workspace = CreateWorkspace::run($owner, ['name' => 'WS']);
         app(WorkspaceContext::class)->set($workspace);
 
-        $project = CreateProject::run($workspace, ['name' => 'Site vitrine']);
+        $project = CreateProject::run($workspace, $owner, ['name' => 'Site vitrine']);
         $backlog = $workspace->statuses()->where('name', 'Backlog')->firstOrFail();
         $inProgress = $workspace->statuses()->where('name', 'In Progress')->firstOrFail();
 

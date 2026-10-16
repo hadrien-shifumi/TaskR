@@ -96,14 +96,32 @@ La liste des projets du workspace SHALL afficher pour chaque projet une vue d'en
 - **WHEN** un membre consulte la liste des projets et qu'un projet est `at-risk`
 - **THEN** la liste affiche un badge "at-risk" et le pourcentage terminé de ce projet
 
-### Requirement: Visibilité de la santé
-Tout membre du workspace SHALL pouvoir consulter la santé de n'importe quel projet du workspace, sans restriction de rôle.
+### Requirement: Visibilité de la santé par rôle
+La page Health d'un projet SHALL être accessible à tout membre du workspace, mais les **indicateurs globaux** (compteurs par catégorie, pourcentage terminé, issues en retard, ratio de consommation, projection) SHALL être transmis uniquement aux rôles suivants : `owner` workspace, `owner` projet, `manager` projet. Un membre non-manager SHALL recevoir uniquement sa propre charge de travail.
 
-#### Scenario: Consultation par un membre simple
-- **WHEN** un membre (rôle member) consulte la page Health d'un projet de son workspace
-- **THEN** tous les indicateurs lui sont présentés
+#### Scenario: Member non-manager consulte la page Health
+- **WHEN** un membre (rôle member, non manager du projet) consulte la page Health d'un projet de son workspace
+- **THEN** la réponse ne contient aucun indicateur global (`health` est null, `canSeeGlobalKpis` est false)
+- **AND** la réponse contient sa charge de travail personnelle (`myWorkload`)
+
+#### Scenario: Owner/manager consulte la page Health
+- **WHEN** un owner workspace, owner projet ou manager projet consulte la page Health d'un projet
+- **THEN** tous les indicateurs globaux lui sont présentés
+- **AND** la charge de travail de chaque membre du roster est disponible (`teamWorkload`)
 
 #### Scenario: Accès inter-workspace refusé
 - **WHEN** un utilisateur tente d'accéder à la santé d'un projet appartenant à un workspace dont il n'est pas membre
 - **THEN** l'accès est refusé
+
+### Requirement: Charge de travail par personne
+Le système SHALL calculer à la lecture, pour chaque personne, sa charge de travail sur un projet : nombre d'issues ouvertes assignées (backlog + in_progress), heures estimées vs logguées, issues en retard. Cette charge est toujours calculée, jamais stockée.
+
+#### Scenario: Ma charge de travail (member)
+- **WHEN** un membre consulte la page Health d'un projet
+- **THEN** il voit sa propre charge : issues ouvertes assignées, heures estimées/logguées, issues en retard personnelles
+
+#### Scenario: Charge de l'équipe (owner/manager)
+- **WHEN** un owner/manager consulte la page Health d'un projet
+- **THEN** il voit une ligne par membre du roster (owner, managers, members) avec sa charge de travail
+- **AND** il voit également sa propre charge s'il est dans le roster
 

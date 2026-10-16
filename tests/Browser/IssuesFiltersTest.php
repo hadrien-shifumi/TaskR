@@ -28,8 +28,8 @@ function seedIssuesFiltersWorkspace(): array
     [$owner, $workspace] = setupBrowserWorkspace();
     app(WorkspaceContext::class)->set($workspace);
 
-    $payments = CreateProject::run($workspace, ['name' => 'Payments']);
-    $mobile = CreateProject::run($workspace, ['name' => 'Mobile']);
+    $payments = CreateProject::run($workspace, $owner, ['name' => 'Payments']);
+    $mobile = CreateProject::run($workspace, $owner, ['name' => 'Mobile']);
 
     $member = User::factory()->create();
     Membership::create(['user_id' => $member->id, 'workspace_id' => $workspace->id, 'role' => 'member']);

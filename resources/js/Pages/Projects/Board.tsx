@@ -1,6 +1,6 @@
 import { ProjectMenu } from '@/components/project-menu';
 import { ProjectViewSwitcher } from '@/components/project-view-switcher';
-import { AvatarStack, HealthBadge, PriorityBadge, StatusBadge } from '@/components/issue-badges';
+import { Avatar, AvatarStack, HealthBadge, PriorityBadge, StatusBadge } from '@/components/issue-badges';
 import { Banner } from '@/components/banner';
 import { FlashBanner } from '@/components/flash-banner';
 import { Badge } from '@/components/ui/badge';
@@ -14,9 +14,16 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import AppLayout from '@/layouts/app-layout';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { ArrowLeft, MoveRight, Plus } from 'lucide-react';
+import { ArrowLeft, MoveRight, Plus, User } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { HealthData, LabelRef, UserRef } from '@/types';
@@ -41,6 +48,11 @@ interface BoardColumn {
     issues: BoardIssue[];
 }
 
+interface ProjectPerson {
+    id: number;
+    name: string;
+}
+
 type PageProps = {
     project: {
         id: string;
@@ -51,6 +63,9 @@ type PageProps = {
     health: HealthData;
     columns: BoardColumn[];
     parentsOnly: boolean;
+    filters: Record<string, string>;
+    projectPeople: ProjectPerson[];
+    currentUserId: number | null;
     /**
      * Creation-dialog data, fed by the board payload. Optional for now: the
      * matching dialog sections stay hidden until the payload ships them.
@@ -61,7 +76,8 @@ type PageProps = {
 };
 
 export default function Board() {
-    const { project, health, columns, parentsOnly, labels, templates, members } = usePage<PageProps>().props;
+    const { project, health, columns, parentsOnly, filters, projectPeople, currentUserId, labels, templates, members } =
+        usePage<PageProps>().props;
     const { t } = useTranslation();
     const [draggingId, setDraggingId] = useState<string | null>(null);
     const [overColumn, setOverColumn] = useState<string | null>(null);
@@ -69,6 +85,22 @@ export default function Board() {
     const [creating, setCreating] = useState(false);
     /** Status preselected in the creation dialog (column "+" button). */
     const [createDefaultStatusId, setCreateDefaultStatusId] = useState<string | null>(null);
+
+    /** Sets the assignee filter via URL query param (preserveState). */
+    const setAssigneeFilter = (value: string) => {
+        const params: Record<string, string> = { ...filters };
+        if (value === '' || value === 'all') {
+            delete params.assignee;
+        } else {
+            params.assignee = value;
+        }
+        if (parentsOnly) {
+            params.parents = '1';
+        }
+        router.get(route('projects.board', project.id), params, { preserveState: true });
+    };
+
+    const currentAssignee = filters.assignee ?? '';
 
     /**
      * The drop is never optimistic: it calls the existing `issues.move`
@@ -121,6 +153,38 @@ export default function Board() {
                         })}
                         {health.status === 'late' ? t('projectBoard.overdueSuffix') : ''}
                     </span>
+                    {/* Assignee filter */}
+                    <Select
+                        value={currentAssignee || 'all'}
+                        onValueChange={setAssigneeFilter}
+                    >
+                        <SelectTrigger
+                            className="h-7.5 w-40 text-[13px]"
+                            aria-label={t('projectBoard.filterByAssignee')}
+                            data-test="board-assignee-filter"
+                        >
+                            <User className="size-3.5 text-muted-foreground" aria-hidden />
+                            <SelectValue placeholder={t('projectBoard.allAssignees')} />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">{t('projectBoard.allAssignees')}</SelectItem>
+                            {currentUserId !== null ? (
+                                <SelectItem value={String(currentUserId)} data-test="board-filter-me">
+                                    {t('projectBoard.me')}
+                                </SelectItem>
+                            ) : null}
+                            {projectPeople
+                                .filter((person) => person.id !== currentUserId)
+                                .map((person) => (
+                                    <SelectItem key={person.id} value={String(person.id)}>
+                                        <span className="flex items-center gap-2">
+                                            <Avatar name={person.name} className="size-4" />
+                                            {person.name}
+                                        </span>
+                                    </SelectItem>
+                                ))}
+                        </SelectContent>
+                    </Select>
                     <ProjectViewSwitcher projectId={project.id} active="board" />
                     <Button
                         variant={parentsOnly ? 'default' : 'outline'}

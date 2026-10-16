@@ -66,6 +66,12 @@ return [
         'deleted' => 'Project deleted.',
     ],
 
+    'project_member' => [
+        'created' => 'Member added to the project.',
+        'updated' => 'Member role updated.',
+        'deleted' => 'Member removed from the project.',
+    ],
+
     'comment' => [
         'added' => 'Comment added.',
         'updated' => 'Comment updated.',

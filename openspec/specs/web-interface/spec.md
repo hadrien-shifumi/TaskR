@@ -41,6 +41,21 @@ Le système SHALL fournir un board kanban par projet à `/projects/{project}/boa
 - **WHEN** on compare les compteurs du board aux répartitions de la santé projet pour le même projet
 - **THEN** les nombres concordent (mêmes issues, mêmes statuts)
 
+### Requirement: Filtre assignee sur le board kanban
+Le board kanban SHALL fournir un filtre par assigné, persisté dans l'URL (query param `assignee`, partageable). La liste des personnes filtrables SHALL être limitée aux personnes sur le projet (roster ∪ utilisateurs déjà assignés à des issues du projet) — jamais tout le workspace. Une option « Moi » SHALL être proposée en tête de liste. Le filtre SHALL se composer avec le toggle « Parents only ».
+
+#### Scenario: Filtrage par assigné
+- **WHEN** un membre sélectionne un assigné dans le filtre du board
+- **THEN** seules les issues assignées à cette personne sont affichées, et le filtre est visible dans l'URL
+
+#### Scenario: Option « Moi »
+- **WHEN** un membre clique sur « Moi » dans le filtre
+- **THEN** seules ses propres issues assignées sont affichées
+
+#### Scenario: Composition avec « Parents only »
+- **WHEN** un membre active le filtre assignee et le toggle « Parents only »
+- **THEN** seules les issues parents assignées à cette personne sont affichées
+
 ### Requirement: Réglages multi-sections avec lecture seule member
 Les réglages SHALL présenter les sections Statuts, Membres, Gabarits et l'emplacement réservé « Tokens API », chacune à sa route derrière un shell commun. Une section Membres SHALL lister les membres avec leur rôle et permettre l'invitation par email et le retrait d'un membre (actions owner). Un `member` SHALL voir les réglages en lecture seule : contrôles owner-only masqués ou désactivés, avec un indicateur de lecture seule ; les refus backend restent la barrière effective.
 

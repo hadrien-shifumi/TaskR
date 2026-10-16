@@ -117,8 +117,8 @@ class SearchKnowledgeTest extends TestCase
         $this->configureEmbeddings();
         [$owner, $workspace] = $this->setupWorkspace();
 
-        $billing = CreateProject::run($workspace, ['name' => 'Facturation']);
-        $other = CreateProject::run($workspace, ['name' => 'Site vitrine']);
+        $billing = CreateProject::run($workspace, $owner, ['name' => 'Facturation']);
+        $other = CreateProject::run($workspace, $owner, ['name' => 'Site vitrine']);
 
         KnowledgePage::factory()->vectorized(self::BILLING_VECTOR)->create([
             'workspace_id' => $workspace->id,

@@ -23,7 +23,7 @@ class KnowledgePageTest extends TestCase
         $workspace = CreateWorkspace::run($owner, ['name' => 'WS']);
         app(WorkspaceContext::class)->set($workspace);
 
-        $project = CreateProject::run($workspace, ['name' => 'Facturation']);
+        $project = CreateProject::run($workspace, $owner, ['name' => 'Facturation']);
 
         $member = User::factory()->create();
         Membership::create([
@@ -88,7 +88,7 @@ class KnowledgePageTest extends TestCase
         $stranger = User::factory()->create();
         $otherWorkspace = CreateWorkspace::run($stranger, ['name' => 'Other']);
         app(WorkspaceContext::class)->set($otherWorkspace);
-        $foreignProject = CreateProject::run($otherWorkspace, ['name' => 'Étranger']);
+        $foreignProject = CreateProject::run($otherWorkspace, $stranger, ['name' => 'Étranger']);
         app(WorkspaceContext::class)->set($workspace);
 
         $this->actingAs($owner)

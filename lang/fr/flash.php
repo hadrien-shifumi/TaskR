@@ -66,6 +66,12 @@ return [
         'deleted' => 'Projet supprimé.',
     ],
 
+    'project_member' => [
+        'created' => 'Membre ajouté au projet.',
+        'updated' => 'Rôle du membre mis à jour.',
+        'deleted' => 'Membre retiré du projet.',
+    ],
+
     'comment' => [
         'added' => 'Commentaire ajouté.',
         'updated' => 'Commentaire mis à jour.',

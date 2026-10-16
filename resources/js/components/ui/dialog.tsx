@@ -5,8 +5,14 @@ import { cn } from "cn"
 import { Button } from "@/components/ui/button"
 import { XIcon } from "lucide-react"
 
-function Dialog({ ...props }: DialogPrimitive.Root.Props) {
-  return <DialogPrimitive.Root data-slot="dialog" {...props} />
+/**
+ * Dialog root wrapper. `disablePointerDismissal` defaults to `true` so that
+ * clicking the backdrop never closes the dialog — only the close button or
+ * the Escape key do. This prevents accidental loss of in-progress form input.
+ * Pass `disablePointerDismissal={false}` to opt back into backdrop dismissal.
+ */
+function Dialog({ disablePointerDismissal = true, ...props }: DialogPrimitive.Root.Props) {
+  return <DialogPrimitive.Root data-slot="dialog" disablePointerDismissal={disablePointerDismissal} {...props} />
 }
 
 function DialogTrigger({ ...props }: DialogPrimitive.Trigger.Props) {

@@ -2,12 +2,14 @@
 
 namespace App\Actions\Projects;
 
+use App\Enums\ProjectRole;
 use App\Models\Project;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Responders\Projects\ProjectRedirectResponder;
 use App\Support\WorkspaceContext;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Lorisleiva\Actions\ActionRequest;
 use Lorisleiva\Actions\Concerns\AsController;
@@ -36,20 +38,34 @@ class CreateProject
     }
 
     /**
+     * Create a project and auto-onboard the creator as project owner.
+     *
      * @param  array{name: string, description?: string|null, target_date?: string|null}  $data
      */
-    public function handle(Workspace $workspace, array $data): Project
+    public function handle(Workspace $workspace, User $creator, array $data): Project
     {
-        return Project::create([
-            'name' => $data['name'],
-            'description' => $data['description'] ?? null,
-            'target_date' => $data['target_date'] ?? null,
-        ]);
+        return DB::transaction(function () use ($creator, $data): Project {
+            $project = Project::create([
+                'name' => $data['name'],
+                'description' => $data['description'] ?? null,
+                'target_date' => $data['target_date'] ?? null,
+            ]);
+
+            $project->projectMembers()->create([
+                'user_id' => $creator->getKey(),
+                'role' => ProjectRole::Owner->value,
+            ]);
+
+            return $project;
+        });
     }
 
     public function asController(ActionRequest $request, ProjectRedirectResponder $responder): RedirectResponse
     {
-        $project = $this->handle($this->currentWorkspace(), $request->validated());
+        $user = $request->user();
+        abort_unless($user instanceof User, 401);
+
+        $project = $this->handle($this->currentWorkspace(), $user, $request->validated());
 
         return $responder->created($project);
     }

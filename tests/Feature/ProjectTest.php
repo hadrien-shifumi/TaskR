@@ -45,7 +45,7 @@ class ProjectTest extends TestCase
         $workspace = CreateWorkspace::run($owner, ['name' => 'WS']);
 
         app(WorkspaceContext::class)->set($workspace);
-        CreateProject::run($workspace, ['name' => 'Site vitrine']);
+        CreateProject::run($workspace, $owner, ['name' => 'Site vitrine']);
 
         $this->actingAs($owner)
             ->post('/projects', ['name' => 'Site vitrine'])
@@ -58,7 +58,7 @@ class ProjectTest extends TestCase
         $workspace = CreateWorkspace::run($owner, ['name' => 'WS']);
 
         app(WorkspaceContext::class)->set($workspace);
-        $project = CreateProject::run($workspace, ['name' => 'Site vitrine']);
+        $project = CreateProject::run($workspace, $owner, ['name' => 'Site vitrine']);
 
         $this->actingAs($owner)
             ->post("/projects/{$project->id}/archive")
@@ -79,8 +79,8 @@ class ProjectTest extends TestCase
         $workspace = CreateWorkspace::run($owner, ['name' => 'WS']);
 
         app(WorkspaceContext::class)->set($workspace);
-        $active = CreateProject::run($workspace, ['name' => 'Active']);
-        $archived = CreateProject::run($workspace, ['name' => 'Archived']);
+        $active = CreateProject::run($workspace, $owner, ['name' => 'Active']);
+        $archived = CreateProject::run($workspace, $owner, ['name' => 'Archived']);
         $archived->update(['archived_at' => now()]);
 
         $this->actingAs($owner)
@@ -100,7 +100,7 @@ class ProjectTest extends TestCase
         $workspace = CreateWorkspace::run($owner, ['name' => 'WS']);
 
         app(WorkspaceContext::class)->set($workspace);
-        $project = CreateProject::run($workspace, ['name' => 'Sprint zéro']);
+        $project = CreateProject::run($workspace, $owner, ['name' => 'Sprint zéro']);
         $project->update(['archived_at' => now()->subDay()]);
         CreateIssue::run($workspace, ['project_id' => $project->id, 'title' => 'Tâche 1']);
         CreateIssue::run($workspace, ['project_id' => $project->id, 'title' => 'Tâche 2']);
@@ -124,7 +124,7 @@ class ProjectTest extends TestCase
         $workspace = CreateWorkspace::run($owner, ['name' => 'WS']);
 
         app(WorkspaceContext::class)->set($workspace);
-        $project = CreateProject::run($workspace, ['name' => 'Site vitrine']);
+        $project = CreateProject::run($workspace, $owner, ['name' => 'Site vitrine']);
 
         $intruder = User::factory()->create();
         CreateWorkspace::run($intruder, ['name' => 'Theirs']);
@@ -142,7 +142,7 @@ class ProjectTest extends TestCase
         $workspace = CreateWorkspace::run($owner, ['name' => 'WS']);
 
         app(WorkspaceContext::class)->set($workspace);
-        $project = CreateProject::run($workspace, ['name' => 'Site vitrine']);
+        $project = CreateProject::run($workspace, $owner, ['name' => 'Site vitrine']);
 
         $this->actingAs($owner)
             ->patch("/projects/{$project->id}", ['name' => 'Renamed', 'description' => 'Nouvelle desc'])

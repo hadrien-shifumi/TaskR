@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Actions\Issues\CreateIssue;
 use App\Actions\Projects\CreateProject;
 use App\Actions\Workspaces\CreateWorkspace;
+use App\Models\Issue;
 use App\Models\Project;
 use App\Models\Status;
 use App\Models\User;
@@ -27,7 +28,7 @@ class HomeDashboardTest extends TestCase
         $workspace = CreateWorkspace::run($owner, ['name' => 'WS']);
         app(WorkspaceContext::class)->set($workspace);
 
-        $project = CreateProject::run($workspace, ['name' => 'Site vitrine']);
+        $project = CreateProject::run($workspace, $owner, ['name' => 'Site vitrine']);
 
         $statuses = [];
         foreach ($workspace->statuses as $status) {
@@ -70,7 +71,7 @@ class HomeDashboardTest extends TestCase
     public function test_home_shows_project_counters(): void
     {
         [$owner, $workspace, $project, $statuses] = $this->setupWorkspaceWithProject();
-        CreateProject::run($workspace, ['name' => 'Archivé']);
+        CreateProject::run($workspace, $owner, ['name' => 'Archivé']);
 
         $this->actingAs($owner)
             ->get(route('home'))
@@ -101,7 +102,7 @@ class HomeDashboardTest extends TestCase
     {
         [$owner, $workspace, $project, $statuses] = $this->setupWorkspaceWithProject();
         $this->createIssue($project, $statuses['in_progress'], 'Mine');
-        $issue = \App\Models\Issue::query()->where('title', 'Mine')->firstOrFail();
+        $issue = Issue::query()->where('title', 'Mine')->firstOrFail();
         $issue->assignees()->attach($owner);
 
         $this->actingAs($owner)

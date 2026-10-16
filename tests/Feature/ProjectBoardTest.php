@@ -30,7 +30,7 @@ class ProjectBoardTest extends TestCase
         $workspace = CreateWorkspace::run($owner, ['name' => 'WS']);
         app(WorkspaceContext::class)->set($workspace);
 
-        $project = CreateProject::run($workspace, ['name' => $projectName]);
+        $project = CreateProject::run($workspace, $owner, ['name' => $projectName]);
 
         $statuses = [];
         foreach ($workspace->statuses as $status) {
@@ -133,7 +133,7 @@ class ProjectBoardTest extends TestCase
     public function test_board_excludes_issues_from_other_projects(): void
     {
         [$owner, $workspace, $project, $statuses] = $this->setupProjectWithStatuses();
-        $other = CreateProject::run($workspace, ['name' => 'Autre projet']);
+        $other = CreateProject::run($workspace, $owner, ['name' => 'Autre projet']);
         $this->createIssue($other, $statuses['backlog'], 'Elsewhere');
 
         $this->actingAs($owner)

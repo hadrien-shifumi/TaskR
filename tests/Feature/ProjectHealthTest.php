@@ -37,7 +37,7 @@ class ProjectHealthTest extends TestCase
         $workspace = CreateWorkspace::run($owner, ['name' => 'WS']);
         app(WorkspaceContext::class)->set($workspace);
 
-        $project = CreateProject::run($workspace, ['name' => 'Site vitrine']);
+        $project = CreateProject::run($workspace, $owner, ['name' => 'Site vitrine']);
 
         $statuses = [];
         foreach ($workspace->statuses as $status) {
@@ -410,9 +410,12 @@ class ProjectHealthTest extends TestCase
                 ->component('Projects/Health')
                 ->where('project.id', $project->id)
                 ->where('project.name', $project->name)
-                ->has('health')
-                ->where('health.totalIssues', 1)
-                ->where('health.issuesByCategory.backlog', 1));
+                // Member does NOT see global KPIs (restricted by role)
+                ->where('health', null)
+                ->where('canSeeGlobalKpis', false)
+                // Member sees their own workload
+                ->has('myWorkload')
+                ->where('myWorkload.userId', $member->id));
     }
 
     public function test_health_page_lists_the_late_issues_of_the_project(): void
@@ -462,7 +465,7 @@ class ProjectHealthTest extends TestCase
         $this->createIssue($project, $statuses, 'done', 'Done 1');
         $this->createIssue($project, $statuses, 'backlog', 'Todo 1');
 
-        $project2 = CreateProject::run($workspace, ['name' => 'AAA Second project']);
+        $project2 = CreateProject::run($workspace, $owner, ['name' => 'AAA Second project']);
         $this->createIssue($project2, $statuses, 'backlog', 'Todo A');
 
         $this->actingAs($owner)
@@ -504,7 +507,7 @@ class ProjectHealthTest extends TestCase
 
         $this->createIssue($project, $statuses, 'done');
 
-        $project2 = CreateProject::run($workspace, ['name' => 'Empty project']);
+        $project2 = CreateProject::run($workspace, $owner, ['name' => 'Empty project']);
 
         $projects = $workspace->projects()->get()->all();
         $healthMap = app(GetProjectHealth::class)->handleForProjects($projects);

@@ -26,8 +26,8 @@ Un membre `owner` SHALL pouvoir inviter un utilisateur par adresse email. L'invi
 - **WHEN** un utilisateur `member` tente d'inviter quelqu'un
 - **THEN** l'action est refusée avec une erreur explicite
 
-### Requirement: Rôles limités à owner et member
-Le système SHALL fournir exactement deux rôles : `owner` (gestion des membres, des statuts, suppression du workspace) et `member` (usage courant). Il n'existera PAS de permissions granulaires.
+### Requirement: Rôles workspace limités à owner et member
+Le système SHALL fournir exactement deux rôles au niveau **workspace** : `owner` (gestion des membres, des statuts, suppression du workspace) et `member` (usage courant). Il n'existera PAS de permissions granulaires au niveau workspace. Les rôles **projet** (owner/manager/member) sont définis dans la spec `project-management`.
 
 #### Scenario: Suppression d'un statut réservée aux owners
 - **WHEN** un `member` tente de supprimer un statut du workspace

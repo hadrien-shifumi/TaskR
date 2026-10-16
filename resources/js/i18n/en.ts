@@ -251,11 +251,15 @@ const en = {
         estimateHours: "Estimate (hours)",
         estimatePlaceholder: "e.g. 6.5",
         severalAssignees: "Several assignees possible.",
+        filterByAssignee: "Filter by assignee",
+        allAssignees: "All assignees",
+        me: "Me",
     },
 
     projectHealth: {
         headTitle: "Health — {{name}}",
         intro: "All indicators below are calculated from the issues — nothing is entered by hand.",
+        memberIntro: "Your workload on this project, calculated from your assigned issues.",
         statCompleted: "Completed",
         statCompletedHint: "{{done}} done + {{cancelled}} cancelled of {{total}} issues",
         statOverdue: "Overdue",
@@ -283,6 +287,13 @@ const en = {
         targetProjection:
             "Target date {{date}}. Moving the target date or closing the remaining issues recalculates the projection immediately.",
         recalculate: "Recalculate projection",
+        myWorkload: "My workload",
+        openIssues: "Open issues",
+        hoursLogged: "Hours logged",
+        overdue: "Overdue",
+        teamWorkload: "Team workload",
+        member: "Member",
+        hours: "Hours",
     },
 
     home: {

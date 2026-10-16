@@ -2,10 +2,12 @@
 
 namespace App\Models;
 
+use App\Enums\ProjectRole;
 use App\Models\Concerns\BelongsToWorkspace;
 use App\Models\Scopes\WorkspaceScope;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Project extends BaseModel
@@ -32,6 +34,63 @@ class Project extends BaseModel
         return (int) $this->issues()
             ->withoutGlobalScope(WorkspaceScope::class)
             ->count();
+    }
+
+    /**
+     * Project roster: users with a role on this project.
+     *
+     * @return BelongsToMany<User, $this>
+     */
+    public function members(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'project_members')
+            ->withPivot('role')
+            ->using(ProjectMember::class)
+            ->withTimestamps();
+    }
+
+    /**
+     * @return HasMany<ProjectMember, $this>
+     */
+    public function projectMembers(): HasMany
+    {
+        return $this->hasMany(ProjectMember::class);
+    }
+
+    /**
+     * Get the project role of a user, or null if not in the roster.
+     */
+    public function roleOf(User $user): ?ProjectRole
+    {
+        $membership = $this->projectMembers()
+            ->where('user_id', $user->getKey())
+            ->first();
+
+        return $membership?->role;
+    }
+
+    /**
+     * Is the user a manager of this project (owner or manager role)?
+     */
+    public function isManager(User $user): bool
+    {
+        $role = $this->roleOf($user);
+
+        return $role === ProjectRole::Owner || $role === ProjectRole::Manager;
+    }
+
+    /**
+     * Can the user manage this project's roster?
+     * Workspace owner is a super-manager; project owner/manager can also manage.
+     */
+    public function canManage(User $user): bool
+    {
+        // Workspace owner is always a super-manager
+        if ($this->workspace->hasOwner($user)) {
+            return true;
+        }
+
+        return $this->isManager($user);
     }
 
     public function scopeActive(Builder $query): Builder

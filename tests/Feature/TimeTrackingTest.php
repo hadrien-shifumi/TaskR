@@ -28,7 +28,7 @@ class TimeTrackingTest extends TestCase
         $owner = User::factory()->create();
         $workspace = CreateWorkspace::run($owner, ['name' => 'WS']);
         app(WorkspaceContext::class)->set($workspace);
-        $project = CreateProject::run($workspace, ['name' => 'Site vitrine']);
+        $project = CreateProject::run($workspace, $owner, ['name' => 'Site vitrine']);
         $issue = CreateIssue::run($workspace, ['project_id' => $project->id, 'title' => 'Page de profil']);
 
         $member = User::factory()->create();
@@ -235,7 +235,7 @@ class TimeTrackingTest extends TestCase
         $otherOwner = User::factory()->create();
         $otherWorkspace = CreateWorkspace::run($otherOwner, ['name' => 'Other WS']);
         app(WorkspaceContext::class)->set($otherWorkspace);
-        $otherProject = CreateProject::run($otherWorkspace, ['name' => 'Other project']);
+        $otherProject = CreateProject::run($otherWorkspace, $otherOwner, ['name' => 'Other project']);
         $otherIssue = CreateIssue::run($otherWorkspace, ['project_id' => $otherProject->id, 'title' => 'Other issue']);
 
         // Switch back to the first workspace context.
@@ -260,7 +260,7 @@ class TimeTrackingTest extends TestCase
         $otherOwner = User::factory()->create();
         $otherWorkspace = CreateWorkspace::run($otherOwner, ['name' => 'Other WS']);
         app(WorkspaceContext::class)->set($otherWorkspace);
-        $otherProject = CreateProject::run($otherWorkspace, ['name' => 'Other project']);
+        $otherProject = CreateProject::run($otherWorkspace, $otherOwner, ['name' => 'Other project']);
         $otherIssue = CreateIssue::run($otherWorkspace, ['project_id' => $otherProject->id, 'title' => 'Other issue']);
 
         // Add the member to the other workspace.

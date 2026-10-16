@@ -4,6 +4,7 @@ use App\Actions\Issues\CreateIssue;
 use App\Actions\Projects\CreateProject;
 use App\Models\Project;
 use App\Models\Status;
+use App\Models\User;
 use App\Models\Workspace;
 use App\Support\WorkspaceContext;
 
@@ -15,11 +16,11 @@ use App\Support\WorkspaceContext;
  *
  * @return array{0: Project, 1: Project}
  */
-function seedProjectsListProjects(Workspace $workspace): array
+function seedProjectsListProjects(Workspace $workspace, User $owner): array
 {
     app(WorkspaceContext::class)->set($workspace);
 
-    $active = CreateProject::run($workspace, [
+    $active = CreateProject::run($workspace, $owner, [
         'name' => 'Refonte site vitrine',
         'description' => 'Nouvelle identité, pages éditoriales et SEO.',
         'target_date' => now()->subDay()->toDateString(),
@@ -35,7 +36,7 @@ function seedProjectsListProjects(Workspace $workspace): array
     CreateIssue::run($workspace, ['project_id' => $active->id, 'title' => 'B1']);
     CreateIssue::run($workspace, ['project_id' => $active->id, 'title' => 'B2']);
 
-    $archived = CreateProject::run($workspace, ['name' => 'Sprint zéro']);
+    $archived = CreateProject::run($workspace, $owner, ['name' => 'Sprint zéro']);
     CreateIssue::run($workspace, ['project_id' => $archived->id, 'title' => 'A1']);
     CreateIssue::run($workspace, ['project_id' => $archived->id, 'title' => 'A2']);
     $archived->update(['archived_at' => now()->subDay()]);
@@ -45,7 +46,7 @@ function seedProjectsListProjects(Workspace $workspace): array
 
 it('renders the active projects table like the maquette', function () {
     [$owner, $workspace] = setupBrowserWorkspace();
-    seedProjectsListProjects($workspace);
+    seedProjectsListProjects($workspace, $owner);
     $this->actingAs($owner);
 
     $page = visit('/projects');
@@ -84,7 +85,7 @@ it('renders the active projects table like the maquette', function () {
 
 it('lists archived projects in a dialog with issue count, archive date and actions', function () {
     [$owner, $workspace] = setupBrowserWorkspace();
-    seedProjectsListProjects($workspace);
+    seedProjectsListProjects($workspace, $owner);
     $this->actingAs($owner);
 
     $page = visit('/projects');
@@ -108,7 +109,7 @@ it('lists archived projects in a dialog with issue count, archive date and actio
 
 it('restores an archived project from the archived dialog', function () {
     [$owner, $workspace] = setupBrowserWorkspace();
-    [$active, $archived] = seedProjectsListProjects($workspace);
+    [$active, $archived] = seedProjectsListProjects($workspace, $owner);
     $this->actingAs($owner);
 
     $page = visit('/projects');
@@ -128,7 +129,7 @@ it('restores an archived project from the archived dialog', function () {
 
 it('opens an archived project from the archived dialog', function () {
     [$owner, $workspace] = setupBrowserWorkspace();
-    [$active, $archived] = seedProjectsListProjects($workspace);
+    [$active, $archived] = seedProjectsListProjects($workspace, $owner);
     $this->actingAs($owner);
 
     $page = visit('/projects');
@@ -144,7 +145,7 @@ it('opens an archived project from the archived dialog', function () {
 
 it('asks for confirmation before archiving a project from the row menu', function () {
     [$owner, $workspace] = setupBrowserWorkspace();
-    [$active, $archived] = seedProjectsListProjects($workspace);
+    [$active, $archived] = seedProjectsListProjects($workspace, $owner);
     $this->actingAs($owner);
 
     $page = visit('/projects');
@@ -170,7 +171,7 @@ it('asks for confirmation before archiving a project from the row menu', functio
 
 it('refuses to delete a project that still has issues and offers archiving instead', function () {
     [$owner, $workspace] = setupBrowserWorkspace();
-    [$active, $archived] = seedProjectsListProjects($workspace);
+    [$active, $archived] = seedProjectsListProjects($workspace, $owner);
     $this->actingAs($owner);
 
     $page = visit('/projects');
