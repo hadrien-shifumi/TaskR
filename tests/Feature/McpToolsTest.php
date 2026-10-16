@@ -75,11 +75,19 @@ class McpToolsTest extends TestCase
         $intruder = User::factory()->create();
         CreateWorkspace::run($intruder, ['name' => 'Theirs']);
 
+        CreateWorkspace::run($owner, ['name' => 'Another workspace']);
+
         $result = TaskrServer::actingAs($owner)->tool(ListWorkspacesTool::class)->assertOk()->payload();
 
-        $this->assertCount(1, $result['workspaces']);
-        $this->assertSame($workspace->id, $result['workspaces'][0]['id']);
-        $this->assertSame('owner', $result['workspaces'][0]['role']);
+        $this->assertCount(2, $result['workspaces']);
+        // Sorted by workspace name, not by a memberships column (the memberships
+        // table has no name column, which the SQL ORDER BY would reveal on PostgreSQL).
+        $this->assertSame(
+            ['Another workspace', $workspace->name],
+            array_column($result['workspaces'], 'name')
+        );
+        $this->assertSame($workspace->id, $result['workspaces'][1]['id']);
+        $this->assertSame('owner', $result['workspaces'][1]['role']);
     }
 
     public function test_tool_call_on_non_member_workspace_is_refused_without_leak(): void
