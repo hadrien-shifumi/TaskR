@@ -93,6 +93,18 @@ const en = {
             allProjects: "All projects",
             overdue: "Overdue",
         },
+        views: {
+            list: "List",
+            kanban: "Kanban",
+            aria: "View mode",
+        },
+        kanban: {
+            emptyColumn: "No issue — drop a card here",
+            moveRefused: "The move was refused.",
+            moveTo: "Move to",
+            moveToAria: 'Move "{{title}}" to another status',
+            projectBoard: "Board — {{name}}",
+        },
         emptyFiltered: "No issues match these filters",
         emptyFilteredHint: "Disable a filter or clear the search.",
         empty: "No issues yet",

@@ -19,3 +19,26 @@ export interface TemplateOption {
     priority: string | null;
     labels: { id: string; name: string }[];
 }
+
+export interface KanbanIssue {
+    id: string;
+    title: string;
+    priority: string;
+    dueDate: string | null;
+    overdue: boolean;
+    assignees: UserRef[];
+    labels: LabelRef[];
+}
+
+export interface KanbanColumn {
+    id: string;
+    name: string;
+    category: string;
+    issuesCount: number;
+    issues: KanbanIssue[];
+}
+
+export interface ProjectBoard {
+    project: { id: string; name: string };
+    columns: KanbanColumn[];
+}

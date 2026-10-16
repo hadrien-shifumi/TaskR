@@ -91,6 +91,18 @@ const fr: typeof en = {
             allProjects: "Tous les projets",
             overdue: "En retard",
         },
+        views: {
+            list: "Liste",
+            kanban: "Kanban",
+            aria: "Mode d'affichage",
+        },
+        kanban: {
+            emptyColumn: "Aucun ticket — déposez une carte ici",
+            moveRefused: "Le déplacement a été refusé.",
+            moveTo: "Déplacer vers",
+            moveToAria: "Déplacer « {{title}} » vers un autre statut",
+            projectBoard: "Board — {{name}}",
+        },
         emptyFiltered: "Aucun ticket ne correspond à ces filtres",
         emptyFilteredHint: "Désactivez un filtre ou effacez la recherche.",
         empty: "Aucun ticket pour le moment",
