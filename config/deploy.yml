@@ -48,6 +48,10 @@ builder:
 proxy:
   host: '<%= ENV.fetch("KAMAL_PROXY_HOST", "taskr.example.com") %>'
   app_port: 8080
+  # Automatic TLS via Let's Encrypt (port 443 must be reachable).
+  ssl: true
+  # Keep forwarding X-Forwarded-* headers to Laravel (trusted proxies).
+  forward_headers: true
   healthcheck:
     path: /up
     interval: 5
