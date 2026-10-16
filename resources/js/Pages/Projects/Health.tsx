@@ -9,7 +9,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import AppLayout from '@/layouts/app-layout';
 import { ArrowLeft } from 'lucide-react';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
+import { useTranslation } from 'react-i18next';
 import type { HealthData } from '@/types';
+import { formatDate } from '@/lib/format-date';
 
 interface LateIssue {
     id: string;
@@ -36,17 +38,9 @@ function formatHours(hours: number): string {
     return hours.toFixed(1).replace(/\.0$/, '');
 }
 
-function formatDate(date: string | null): string {
-    if (!date) return '—';
-    return new Date(date).toLocaleDateString(undefined, {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-    });
-}
-
 export default function Health() {
     const { project, health, lateIssues } = usePage<PageProps>().props;
+    const { t } = useTranslation();
 
     const targetForm = useForm({
         name: project.name,
@@ -71,12 +65,12 @@ export default function Health() {
         project.targetDate !== null && project.targetDate < new Date().toISOString().slice(0, 10);
 
     const meters: { key: string; label: string; value: number; color: ProgressColor }[] = [
-        { key: 'done', label: 'done', value: health.issuesByCategory.done, color: 'success' },
-        { key: 'in_progress', label: 'in progress', value: health.issuesByCategory.in_progress, color: 'info' },
-        { key: 'backlog', label: 'backlog', value: health.issuesByCategory.backlog, color: 'muted' },
+        { key: 'done', label: t('statusCategory.done'), value: health.issuesByCategory.done, color: 'success' },
+        { key: 'in_progress', label: t('statusCategory.in_progress'), value: health.issuesByCategory.in_progress, color: 'info' },
+        { key: 'backlog', label: t('statusCategory.backlog'), value: health.issuesByCategory.backlog, color: 'muted' },
         {
             key: 'cancelled',
-            label: 'cancelled',
+            label: t('statusCategory.cancelled'),
             value: health.issuesByCategory.cancelled,
             color: 'muted-soft',
         },
@@ -85,27 +79,31 @@ export default function Health() {
     const statCards = [
         {
             key: 'stat-completed',
-            label: 'Completed',
+            label: t('projectHealth.statCompleted'),
             value: completion !== null ? String(completion) : '—',
             suffix: completion !== null ? ' %' : '',
-            hint: `${health.issuesByCategory.done} done + ${health.issuesByCategory.cancelled} cancelled of ${health.totalIssues} issues`,
+            hint: t('projectHealth.statCompletedHint', {
+                done: health.issuesByCategory.done,
+                cancelled: health.issuesByCategory.cancelled,
+                total: health.totalIssues,
+            }),
         },
         {
             key: 'stat-overdue',
-            label: 'Overdue',
+            label: t('projectHealth.statOverdue'),
             value: String(health.overdueIssues),
-            hint: 'Past due date, not done or cancelled',
+            hint: t('projectHealth.statOverdueHint'),
             danger: health.overdueIssues > 0,
         },
         {
             key: 'stat-hours',
-            label: 'Hours',
+            label: t('projectHealth.statHours'),
             value: formatHours(health.loggedHours),
             suffix: ` / ${formatHours(health.estimatedHours)} h`,
             hint:
                 health.consumptionRatio !== null
-                    ? `logged / estimated · ${Math.round(health.consumptionRatio)}% consumed`
-                    : 'No estimates set',
+                    ? t('projectHealth.consumption', { percent: Math.round(health.consumptionRatio) })
+                    : t('projectHealth.noEstimates'),
         },
     ];
 
@@ -115,7 +113,7 @@ export default function Health() {
                 <Button
                     variant="ghost"
                     size="icon"
-                    aria-label="Back to projects"
+                    aria-label={t('projectBoard.backToProjects')}
                     onClick={() => router.get(route('projects.index'))}
                 >
                     <ArrowLeft aria-hidden />
@@ -134,8 +132,8 @@ export default function Health() {
                             data-test="pagebar-meta"
                             className="hidden font-mono text-xs text-muted-foreground tabular-nums sm:inline"
                         >
-                            target: {formatDate(project.targetDate)}
-                            {targetPassed ? ' · overdue' : ''}
+                            {t('home.target', { date: formatDate(project.targetDate) })}
+                            {targetPassed ? t('projectBoard.overdueSuffix') : ''}
                         </span>
                     ) : null}
                     <ProjectViewSwitcher projectId={project.id} active="health" />
@@ -143,11 +141,11 @@ export default function Health() {
                 </>
             }
         >
-            <Head title={`Health — ${project.name}`} />
+            <Head title={t('projectHealth.headTitle', { name: project.name })} />
 
             <p className="mb-5 max-w-[62ch] text-[15px] text-muted-foreground">
                 {project.description ? `${project.description} ` : null}
-                All indicators below are calculated from the issues — nothing is entered by hand.
+                {t('projectHealth.intro')}
             </p>
 
             <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -171,14 +169,14 @@ export default function Health() {
                 ))}
                 <Card data-test="stat-projection" className="gap-2 py-5">
                     <CardContent className="grid gap-1.5 px-5">
-                        <p className="text-xs text-muted-foreground">Projection</p>
+                        <p className="text-xs text-muted-foreground">{t('projectHealth.projection')}</p>
                         <div className="flex h-[28px] items-center gap-2">
                             <HealthBadge status={health.status} />
                         </div>
                         <p className="text-xs text-muted-foreground">
                             {expected !== null
-                                ? `${completion ?? 0}% done · ${expected}% expected at this date`
-                                : 'No target date — no projection'}
+                                ? t('projectHealth.projectionHint', { completion: completion ?? 0, expected })
+                                : t('projectHealth.noProjectionHint')}
                         </p>
                     </CardContent>
                 </Card>
@@ -189,9 +187,9 @@ export default function Health() {
                     <Card className="py-5">
                         <CardContent className="grid gap-3.5 px-5">
                             <div className="flex items-center justify-between">
-                                <h2 className="text-base font-semibold">Issues distribution</h2>
+                                <h2 className="text-base font-semibold">{t('projectHealth.distribution')}</h2>
                                 <span className="font-mono text-xs text-muted-foreground tabular-nums">
-                                    {health.totalIssues} issues
+                                    {t('projectHealth.issuesCount', { count: health.totalIssues })}
                                 </span>
                             </div>
                             {meters.map((meter) => (
@@ -218,22 +216,22 @@ export default function Health() {
 
                     <div className="overflow-hidden rounded-xl border bg-card">
                         <div className="flex items-center gap-2.5 border-b px-5 py-3.5">
-                            <h3 className="text-sm font-semibold">Late issues in this project</h3>
+                            <h3 className="text-sm font-semibold">{t('projectHealth.lateIssues')}</h3>
                             <div className="flex-1" />
                             <Link
                                 href={route('issues.index', { project: project.id })}
                                 className="text-sm text-muted-foreground hover:text-foreground"
                             >
-                                All issues
+                                {t('projectHealth.allIssues')}
                             </Link>
                         </div>
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead>Title</TableHead>
-                                    <TableHead>Status</TableHead>
-                                    <TableHead>Priority</TableHead>
-                                    <TableHead>Due date</TableHead>
+                                    <TableHead>{t('columns.title')}</TableHead>
+                                    <TableHead>{t('columns.status')}</TableHead>
+                                    <TableHead>{t('columns.priority')}</TableHead>
+                                    <TableHead>{t('columns.dueDate')}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -261,7 +259,7 @@ export default function Health() {
                                 {lateIssues.length === 0 ? (
                                     <TableRow>
                                         <TableCell colSpan={4} className="py-6 text-center text-muted-foreground">
-                                            No late issue — every open issue is within its due date.
+                                            {t('projectHealth.noLateIssues')}
                                         </TableCell>
                                     </TableRow>
                                 ) : null}
@@ -272,17 +270,17 @@ export default function Health() {
 
                 <Card className="py-5">
                     <CardContent className="grid gap-3.5 px-5">
-                        <h2 className="text-base font-semibold">Projection</h2>
+                        <h2 className="text-base font-semibold">{t('projectHealth.projection')}</h2>
                         <div data-test="projection-done">
                             <div className="mb-1.5 flex items-center justify-between text-sm">
-                                <span className="text-muted-foreground">Done to date</span>
+                                <span className="text-muted-foreground">{t('projectHealth.doneToDate')}</span>
                                 <span className="font-mono font-semibold tabular-nums">{completion ?? 0}%</span>
                             </div>
                             <Progress value={completion ?? 0} color="success" />
                         </div>
                         <div data-test="projection-expected">
                             <div className="mb-1.5 flex items-center justify-between text-sm">
-                                <span className="text-muted-foreground">Expected to date</span>
+                                <span className="text-muted-foreground">{t('projectHealth.expectedToDate')}</span>
                                 <span className="font-mono font-semibold tabular-nums">
                                     {expected !== null ? `${expected}%` : '—'}
                                 </span>
@@ -295,23 +293,25 @@ export default function Health() {
                         <hr className="border-border" />
                         <p className="text-[12.5px] text-muted-foreground">
                             {health.targetDate === null ? (
-                                'Set a target date to activate the projection: the expected pace is derived from the project start and the target.'
+                                t('projectHealth.noTargetProjection')
                             ) : health.status === 'late' && paceGap !== null ? (
                                 <>
-                                    {`The target date of ${formatDate(health.targetDate)} is past with a ${paceGap}-point gap on the expected pace: the projection is `}
-                                    <strong className="text-destructive">Late</strong>
-                                    {'. Moving the target date or closing the remaining issues recalculates the projection immediately.'}
+                                    {t('projectHealth.lateProjection', {
+                                        date: formatDate(health.targetDate),
+                                        gap: paceGap,
+                                    })}{' '}
+                                    <strong className="text-destructive">{t('projectHealth.lateWord')}</strong>
+                                    {t('projectHealth.projectionSuffix')}
                                 </>
                             ) : (
                                 <>
-                                    Target date {formatDate(health.targetDate)}. Moving the target date or closing
-                                    the remaining issues recalculates the projection immediately.
+                                    {t('projectHealth.targetProjection', { date: formatDate(health.targetDate) })}
                                 </>
                             )}
                         </p>
                         <form className="grid gap-2" onSubmit={saveTargetDate}>
                             <label className="grid gap-1.5 text-sm" htmlFor="target-date">
-                                <span className="text-muted-foreground">Target date</span>
+                                <span className="text-muted-foreground">{t('projectForm.targetDate')}</span>
                                 <Input
                                     id="target-date"
                                     data-test="target-date-input"
@@ -331,7 +331,7 @@ export default function Health() {
                                 data-test="recalculate-projection"
                                 disabled={targetForm.processing}
                             >
-                                Recalculate projection
+                                {t('projectHealth.recalculate')}
                             </Button>
                         </form>
                     </CardContent>

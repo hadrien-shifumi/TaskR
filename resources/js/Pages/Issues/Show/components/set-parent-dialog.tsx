@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/select';
 import { router } from '@inertiajs/react';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { IssueDetail } from '../types';
 
 type SetParentDialogProps = {
@@ -54,6 +55,7 @@ function SetParentForm({
     candidates: { id: string; title: string }[];
     onClose: () => void;
 }) {
+    const { t } = useTranslation();
     const [parentId, setParentId] = useState<string>(issue.parent?.id ?? 'none');
     const [cycleError, setCycleError] = useState<string | null>(null);
 
@@ -68,8 +70,8 @@ function SetParentForm({
                 onHttpException: (response) => {
                     setCycleError(
                         response.status === 422
-                            ? 'this issue is a direct child — making it the parent would create a cycle. A parent must also belong to the same workspace.'
-                            : 'the parent could not be set.',
+                            ? t('issueShow.cycleError')
+                            : t('issueShow.setError'),
                     );
                     return false;
                 },
@@ -80,12 +82,12 @@ function SetParentForm({
     return (
         <DialogContent>
             <DialogHeader>
-                <DialogTitle>Set parent issue</DialogTitle>
-                <DialogDescription>Same workspace only · cycles are forbidden.</DialogDescription>
+                <DialogTitle>{t('issueShow.parentTitle')}</DialogTitle>
+                <DialogDescription>{t('issueShow.parentHint')}</DialogDescription>
             </DialogHeader>
             <form onSubmit={setParent} className="grid gap-4">
                 <div className="grid gap-2">
-                    <Label htmlFor="parent-select">Parent issue</Label>
+                    <Label htmlFor="parent-select">{t('issueShow.parentIssue')}</Label>
                     <Select
                         value={parentId}
                         onValueChange={(value) => {
@@ -98,12 +100,12 @@ function SetParentForm({
                         <SelectTrigger id="parent-select" data-test="parent-select" className="w-full">
                             <SelectValue>
                                 {parentId === 'none'
-                                    ? 'No parent'
-                                    : (candidates.find((c) => c.id === parentId)?.title ?? 'No parent')}
+                                    ? t('issueShow.noParent')
+                                    : (candidates.find((c) => c.id === parentId)?.title ?? t('issueShow.noParent'))}
                             </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="none">No parent</SelectItem>
+                            <SelectItem value="none">{t('issueShow.noParent')}</SelectItem>
                             {candidates.map((candidate) => (
                                 <SelectItem key={candidate.id} value={candidate.id}>
                                     {candidate.title}
@@ -114,15 +116,15 @@ function SetParentForm({
                 </div>
                 {cycleError ? (
                     <Banner variant="danger" role="alert" data-test="cycle-error">
-                        <strong>Attachment refused:</strong> {cycleError}
+                        <strong>{t('issueShow.cycleRefused')}</strong> {cycleError}
                     </Banner>
                 ) : null}
                 <DialogFooter>
                     <Button type="button" variant="ghost" onClick={onClose}>
-                        Cancel
+                        {t('common.cancel')}
                     </Button>
                     <Button type="submit" data-test="parent-submit">
-                        Set parent
+                        {t('issueShow.setParent')}
                     </Button>
                 </DialogFooter>
             </form>

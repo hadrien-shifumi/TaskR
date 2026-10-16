@@ -15,6 +15,7 @@ import AppLayout from '@/layouts/app-layout';
 import { Head, router, usePage } from '@inertiajs/react';
 import { Clock, ListTodo } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { LabelRef, PageSharedProps, UserRef } from '@/types';
 import { CreateLabelDialog } from './Index/components/create-label-dialog';
 import { IssueTableRow } from './Index/components/issue-row';
@@ -36,6 +37,7 @@ export default function Index() {
     const { issues, total, totalUnfiltered, filters, projects, statuses, labels, templates } =
         usePage<PageProps>().props;
     const { auth } = usePage<PageSharedProps>().props;
+    const { t } = useTranslation();
     const [creating, setCreating] = useState(false);
     const [creatingLabel, setCreatingLabel] = useState(false);
     const [search, setSearch] = useState(filters.q ?? '');
@@ -72,28 +74,28 @@ export default function Index() {
 
     return (
         <AppLayout
-            title="Issues"
-            subtitle="All projects of the workspace"
+            title={t('issuesPage.title')}
+            subtitle={t('issuesPage.subtitle')}
             actions={
                 <>
                     <Button variant="outline" size="sm" onClick={() => setCreatingLabel(true)}>
-                        New label
+                        {t('issuesPage.newLabel')}
                     </Button>
                     <Button size="sm" onClick={() => setCreating(true)}>
-                        New issue
+                        {t('issues.newIssue')}
                     </Button>
                 </>
             }
         >
-            <Head title="Issues" />
+            <Head title={t('issuesPage.title')} />
 
             <FlashBanner />
 
             <FilterBar
                 search={search}
                 onSearchChange={setSearch}
-                searchPlaceholder="Search a title…"
-                searchAriaLabel="Search issues by title"
+                searchPlaceholder={t('issuesPage.searchPlaceholder')}
+                searchAriaLabel={t('issuesPage.searchAria')}
                 visible={issues.length}
                 total={totalUnfiltered}
             >
@@ -103,14 +105,14 @@ export default function Index() {
                     onToggle={toggleFilter('category', 'in_progress')}
                 >
                     <ListTodo aria-hidden className="size-3.25" />
-                    In progress
+                    {t('statusCategory.in_progress')}
                 </FilterChip>
                 <FilterChip
                     testId="filter-chip-done"
                     active={filters.category === 'done'}
                     onToggle={toggleFilter('category', 'done')}
                 >
-                    Done
+                    {t('statusCategory.done')}
                 </FilterChip>
                 <FilterChip
                     testId="filter-chip-overdue"
@@ -118,14 +120,14 @@ export default function Index() {
                     onToggle={toggleFilter('overdue', '1')}
                 >
                     <Clock aria-hidden className="size-3.25" />
-                    Overdue
+                    {t('issuesPage.chips.overdue')}
                 </FilterChip>
                 <FilterChip
                     testId="filter-chip-urgent"
                     active={filters.priority === 'urgent'}
                     onToggle={toggleFilter('priority', 'urgent')}
                 >
-                    Urgent
+                    {t('issuesPage.chips.urgent')}
                 </FilterChip>
                 {auth.user ? (
                     <FilterChip
@@ -134,7 +136,7 @@ export default function Index() {
                         onToggle={toggleFilter('assignee', myId)}
                     >
                         <Avatar name={auth.user.name} />
-                        Mine
+                        {t('issuesPage.chips.mine')}
                     </FilterChip>
                 ) : null}
                 {projects.map((project) => (
@@ -144,7 +146,7 @@ export default function Index() {
                         active={filters.project === project.id}
                         onToggle={toggleFilter('project', project.id)}
                     >
-                        Project: {project.name}
+                        {t('issuesPage.chips.project', { name: project.name })}
                     </FilterChip>
                 ))}
             </FilterBar>
@@ -153,12 +155,12 @@ export default function Index() {
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead className="w-[30%]">Title</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead>Priority</TableHead>
-                            <TableHead className="hidden md:table-cell">Labels</TableHead>
-                            <TableHead>Assignees</TableHead>
-                            <TableHead>Due date</TableHead>
+                            <TableHead className="w-[30%]">{t('columns.title')}</TableHead>
+                            <TableHead>{t('columns.status')}</TableHead>
+                            <TableHead>{t('columns.priority')}</TableHead>
+                            <TableHead className="hidden md:table-cell">{t('columns.labels')}</TableHead>
+                            <TableHead>{t('columns.assignees')}</TableHead>
+                            <TableHead>{t('columns.dueDate')}</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -170,19 +172,19 @@ export default function Index() {
                 {issues.length === 0 ? (
                     <div data-test="issues-empty" className="px-5 py-10 text-center">
                         <p className="font-medium">
-                            {hasActiveFilters ? 'No issues match these filters' : 'No issues yet'}
+                            {hasActiveFilters ? t('issuesPage.emptyFiltered') : t('issuesPage.empty')}
                         </p>
                         <p className="mt-1 text-sm text-muted-foreground">
                             {hasActiveFilters
-                                ? 'Disable a filter chip or clear the search.'
-                                : 'Use the “New issue” button to create the first one.'}
+                                ? t('issuesPage.emptyFilteredHint')
+                                : t('issuesPage.emptyHint')}
                         </p>
                     </div>
                 ) : null}
             </div>
 
             <p className="mt-3 text-[13px] text-muted-foreground">
-                Identifiers are opaque (ULIDs): no sequential numbering, display order is not an identifier.
+                {t('issuesPage.ulidNote')}
             </p>
 
             <CreateIssueDialog

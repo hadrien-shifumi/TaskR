@@ -17,6 +17,6 @@ class ResendInvitationResponder
 
         return redirect()
             ->route('settings.members')
-            ->with('status', "Invitation resent for {$invitation->email}: {$link}");
+            ->with('status', __('flash.invitation.resent', ['email' => $invitation->email, 'link' => $link]));
     }
 }

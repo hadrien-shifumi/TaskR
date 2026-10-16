@@ -12,6 +12,7 @@ import {
 import { router } from '@inertiajs/react';
 import { Archive, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { ProjectRef } from '@/types';
 
 type ProjectMenuProps = {
@@ -24,6 +25,7 @@ type ProjectMenuProps = {
  * Delete is refused while the project still has issues (domain rule) so the
  * entry stays disabled with the count. */
 export function ProjectMenu({ project, issuesCount }: ProjectMenuProps) {
+    const { t } = useTranslation();
     const [editing, setEditing] = useState(false);
     const [deleting, setDeleting] = useState(false);
 
@@ -31,7 +33,7 @@ export function ProjectMenu({ project, issuesCount }: ProjectMenuProps) {
         <>
             <DropdownMenu>
                 <DropdownMenuTrigger
-                    aria-label={`Actions for ${project.name}`}
+                    aria-label={t('projectMenu.actionsFor', { name: project.name })}
                     className="grid size-7 place-items-center rounded-lg text-muted-foreground outline-none hover:bg-accent hover:text-foreground"
                 >
                     <MoreHorizontal className="size-4" aria-hidden />
@@ -41,13 +43,13 @@ export function ProjectMenu({ project, issuesCount }: ProjectMenuProps) {
                         <DropdownMenuLabel>{project.name}</DropdownMenuLabel>
                         <DropdownMenuItem onClick={() => setEditing(true)}>
                             <Pencil aria-hidden />
-                            Edit…
+                            {t('projectMenu.edit')}
                         </DropdownMenuItem>
                         <DropdownMenuItem
                             onClick={() => router.post(route('projects.archive', project.id))}
                         >
                             <Archive aria-hidden />
-                            Archive…
+                            {t('projectMenu.archive')}
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
@@ -56,7 +58,7 @@ export function ProjectMenu({ project, issuesCount }: ProjectMenuProps) {
                             onClick={() => setDeleting(true)}
                         >
                             <Trash2 aria-hidden />
-                            Delete…
+                            {t('projectMenu.delete')}
                             {issuesCount > 0 ? ` (${issuesCount})` : ''}
                         </DropdownMenuItem>
                     </DropdownMenuGroup>

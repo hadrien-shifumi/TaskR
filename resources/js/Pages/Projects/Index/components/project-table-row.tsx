@@ -12,16 +12,9 @@ import {
 import { TableCell, TableRow } from '@/components/ui/table';
 import { Link } from '@inertiajs/react';
 import { Archive, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { formatDate } from '@/lib/format-date';
 import type { ProjectRow } from '@/types';
-
-function formatDate(date: string | null): string {
-    if (!date) return '—';
-    return new Date(date).toLocaleDateString(undefined, {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-    });
-}
 
 type ProjectTableRowProps = {
     project: ProjectRow;
@@ -33,6 +26,7 @@ type ProjectTableRowProps = {
 
 /** Active project table row: computed health, completion and target date. */
 export function ProjectTableRow({ project, onEdit, onArchive, onDelete }: ProjectTableRowProps) {
+    const { t } = useTranslation();
     const completion = project.health?.completionPercentage ?? null;
     const overdueTarget =
         project.targetDate !== null && new Date(project.targetDate).getTime() < Date.now();
@@ -72,7 +66,7 @@ export function ProjectTableRow({ project, onEdit, onArchive, onDelete }: Projec
             <TableCell>
                 <DropdownMenu>
                     <DropdownMenuTrigger
-                        aria-label={`Actions for ${project.name}`}
+                        aria-label={t('projectMenu.actionsFor', { name: project.name })}
                         className="grid size-6.5 place-items-center rounded-md text-muted-foreground outline-none hover:bg-accent hover:text-foreground"
                     >
                         <MoreHorizontal className="size-4" aria-hidden />
@@ -82,16 +76,16 @@ export function ProjectTableRow({ project, onEdit, onArchive, onDelete }: Projec
                             <DropdownMenuLabel>{project.name}</DropdownMenuLabel>
                             <DropdownMenuItem onClick={onEdit}>
                                 <Pencil aria-hidden />
-                                Edit…
+                                {t('projectMenu.edit')}
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={onArchive}>
                                 <Archive aria-hidden />
-                                Archive…
+                                {t('projectMenu.archive')}
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem variant="destructive" onClick={onDelete}>
                                 <Trash2 aria-hidden />
-                                Delete…
+                                {t('projectMenu.delete')}
                             </DropdownMenuItem>
                         </DropdownMenuGroup>
                     </DropdownMenuContent>

@@ -11,20 +11,20 @@ class CommentRedirectResponder
     {
         return redirect()
             ->route('issues.show', $comment->issue_id)
-            ->with('status', 'Comment added.');
+            ->with('status', __('flash.comment.added'));
     }
 
     public function updated(Comment $comment): RedirectResponse
     {
         return redirect()
             ->route('issues.show', $comment->issue_id)
-            ->with('status', 'Comment updated.');
+            ->with('status', __('flash.comment.updated'));
     }
 
     public function deleted(Comment $comment): RedirectResponse
     {
         return redirect()
             ->route('issues.show', $comment->issue_id)
-            ->with('status', 'Comment deleted.');
+            ->with('status', __('flash.comment.deleted'));
     }
 }

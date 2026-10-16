@@ -16,6 +16,6 @@ class InviteMemberResponder
 
         return redirect()
             ->back()
-            ->with('status', "Invitation created for {$invitation->email}: {$link}");
+            ->with('status', __('flash.invitation.created', ['email' => $invitation->email, 'link' => $link]));
     }
 }

@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/dialog';
 import { router } from '@inertiajs/react';
 import { Archive } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import type { ProjectRef } from '@/types';
 
 type ArchiveProjectDialogProps = {
@@ -23,6 +24,7 @@ type ArchiveProjectDialogProps = {
  * removes the project from the active list, nothing is deleted.
  */
 export function ArchiveProjectDialog({ project, onClose }: ArchiveProjectDialogProps) {
+    const { t } = useTranslation();
     return (
         <Dialog
             open={project !== null}
@@ -33,16 +35,15 @@ export function ArchiveProjectDialog({ project, onClose }: ArchiveProjectDialogP
             {project ? (
                 <DialogContent showCloseButton={false}>
                     <DialogHeader>
-                        <DialogTitle>Archive "{project.name}"?</DialogTitle>
-                        <DialogDescription>The project disappears from the active list.</DialogDescription>
+                        <DialogTitle>{t('projectsPage.archiveTitle', { name: project.name })}</DialogTitle>
+                        <DialogDescription>{t('projectsPage.archiveDescription')}</DialogDescription>
                     </DialogHeader>
                     <Banner variant="info">
-                        Issues stay readable and the project can be unarchived at any time. No data is
-                        deleted.
+                        {t('projectsPage.archiveBanner')}
                     </Banner>
                     <DialogFooter>
                         <Button variant="ghost" onClick={onClose}>
-                            Cancel
+                            {t('common.cancel')}
                         </Button>
                         <Button
                             data-test="confirm-archive-project"
@@ -52,7 +53,7 @@ export function ArchiveProjectDialog({ project, onClose }: ArchiveProjectDialogP
                             }}
                         >
                             <Archive className="size-4" aria-hidden />
-                            Archive
+                            {t('projectsPage.archive')}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

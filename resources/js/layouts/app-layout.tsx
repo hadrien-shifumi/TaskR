@@ -13,6 +13,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Link, router, useForm, usePage } from "@inertiajs/react";
+import { useTranslation } from "react-i18next";
 import {
     BookOpen,
     ChevronDown,
@@ -24,6 +25,7 @@ import {
     SlidersHorizontal,
 } from "lucide-react";
 import type { PageSharedProps } from "@/types";
+import { LanguageSwitcher } from "@/components/language-switcher";
 
 interface AppLayoutProps {
     /** Pagebar title — a string, or a node when badges sit next to it. */
@@ -40,27 +42,27 @@ interface AppLayoutProps {
 }
 
 const NAV_ITEMS = [
-    { label: "Home", route: "home", prefix: "/", icon: Home },
+    { label: "nav.home", route: "home", prefix: "/", icon: Home },
     {
-        label: "Projects",
+        label: "nav.projects",
         route: "projects.index",
         prefix: "/projects",
         icon: Folder,
     },
     {
-        label: "Issues",
+        label: "nav.issues",
         route: "issues.index",
         prefix: "/issues",
         icon: ListChecks,
     },
     {
-        label: "Knowledge",
+        label: "nav.knowledge",
         route: "knowledge.index",
         prefix: "/knowledge",
         icon: BookOpen,
     },
     {
-        label: "Settings",
+        label: "nav.settings",
         route: "settings.statuses",
         prefix: "/settings",
         icon: SlidersHorizontal,
@@ -79,6 +81,7 @@ export default function AppLayout({
 }: AppLayoutProps) {
     const { auth, workspace, workspaces } = usePage<PageSharedProps>().props;
     const { url } = usePage();
+    const { t } = useTranslation();
 
     const isActive = (prefix: string) =>
         prefix === "/" ? url === "/" : url.startsWith(prefix);
@@ -112,7 +115,7 @@ export default function AppLayout({
                     <>
                         <DropdownMenu>
                             <DropdownMenuTrigger
-                                aria-label="Switch workspace"
+                                aria-label={t("layout.switchWorkspace")}
                                 className="flex w-full items-center gap-2 rounded-lg border bg-card px-2.5 py-2 text-left shadow-xs transition-colors hover:bg-accent max-lg:w-auto max-lg:shrink-0"
                             >
                                 <span className="grid size-5.5 shrink-0 place-items-center rounded-md bg-primary/25 text-[11px] font-bold text-primary">
@@ -126,7 +129,7 @@ export default function AppLayout({
                             <DropdownMenuContent align="start" className="w-56">
                                 <DropdownMenuGroup>
                                     <DropdownMenuLabel>
-                                        Your workspaces
+                                        {t("layout.yourWorkspaces")}
                                     </DropdownMenuLabel>
                                     {workspaces.map((ws) => (
                                         <DropdownMenuItem
@@ -157,21 +160,21 @@ export default function AppLayout({
                                     onClick={() => setCreatingWorkspace(true)}
                                 >
                                     <Plus aria-hidden />
-                                    Create workspace…
+                                    {t("layout.createWorkspace")}…
                                 </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
                         <FormDialog
                             open={creatingWorkspace}
                             onOpenChange={setCreatingWorkspace}
-                            title="Create workspace"
-                            description="Your new workspace starts with the 4 default statuses: Backlog, In Progress, Done, Cancelled."
-                            submitLabel="Create workspace"
+                            title={t("layout.createWorkspace")}
+                            description={t("layout.createWorkspaceDescription")}
+                            submitLabel={t("layout.createWorkspace")}
                             processing={workspaceForm.processing}
                             onSubmit={submitWorkspace}
                         >
                             <div className="grid gap-2">
-                                <Label htmlFor="new-workspace-name">Name</Label>
+                                <Label htmlFor="new-workspace-name">{t("common.name")}</Label>
                                 <Input
                                     id="new-workspace-name"
                                     name="name"
@@ -197,12 +200,12 @@ export default function AppLayout({
                 ) : null}
 
                 <p className="px-2 pt-3.5 pb-1 font-mono text-[12px] tracking-[0.08em] uppercase text-muted-foreground max-lg:hidden">
-                    Workspace
+                    {t("layout.workspaceLabel")}
                 </p>
 
                 <nav
                     className="flex items-start gap-1.5 max-lg:flex-none lg:flex-col"
-                    aria-label="Main"
+                    aria-label={t("nav.mainNav")}
                 >
                     {NAV_ITEMS.map((item) => {
                         const Icon = item.icon;
@@ -217,7 +220,7 @@ export default function AppLayout({
                             >
                                 <Icon className="size-4 shrink-0" aria-hidden />
                                 <span className="max-lg:hidden">
-                                    {item.label}
+                                    {t(item.label)}
                                 </span>
                             </Link>
                         );
@@ -225,10 +228,11 @@ export default function AppLayout({
                 </nav>
 
                 {auth.user ? (
-                    <div className="mt-auto px-2 pt-3 pb-3.5 max-lg:ml-auto max-lg:p-0 lg:border-t">
+                    <div className="mt-auto flex items-center gap-1 max-lg:ml-auto max-lg:p-0 lg:flex-col lg:border-t lg:px-2 lg:pt-3 lg:pb-3.5">
+                        <LanguageSwitcher />
                         <DropdownMenu>
                             <DropdownMenuTrigger
-                                aria-label="Account menu"
+                                aria-label={t("layout.accountMenu")}
                                 className="flex w-full items-center gap-2.5 rounded-lg py-1 text-left max-lg:w-auto max-lg:px-1"
                             >
                                 <span className="grid size-6.5 shrink-0 place-items-center rounded-full border border-primary/25 bg-primary/20 text-[10px] font-semibold tracking-wide text-primary">
@@ -239,7 +243,9 @@ export default function AppLayout({
                                         {auth.user.name}
                                     </span>
                                     <span className="block text-[11px] text-muted-foreground">
-                                        {workspace?.role ?? "member"}
+                                        {t(
+                                            `layout.roles.${workspace?.role ?? "member"}`,
+                                        )}
                                     </span>
                                 </span>
                             </DropdownMenuTrigger>
@@ -258,7 +264,7 @@ export default function AppLayout({
                                         }
                                     >
                                         <LogOut aria-hidden />
-                                        Log out
+                                        {t("layout.logOut")}
                                     </DropdownMenuItem>
                                 </DropdownMenuGroup>
                             </DropdownMenuContent>

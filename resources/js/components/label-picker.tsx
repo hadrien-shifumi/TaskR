@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button';
+import { useTranslation } from 'react-i18next';
 
 type LabelOption = {
     id: string;
@@ -19,8 +20,10 @@ type LabelPickerProps = {
  * form.
  */
 export function LabelPicker({ labels, selectedIds, onToggle, idPrefix }: LabelPickerProps) {
+    const { t } = useTranslation();
+
     if (labels.length === 0) {
-        return <p className="text-sm text-muted-foreground">No labels in this workspace yet.</p>;
+        return <p className="text-sm text-muted-foreground">{t('labelPicker.noLabels')}</p>;
     }
 
     return (

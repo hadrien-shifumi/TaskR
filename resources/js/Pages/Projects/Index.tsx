@@ -5,6 +5,7 @@ import AppLayout from '@/layouts/app-layout';
 import { Archive } from 'lucide-react';
 import { Head, usePage } from '@inertiajs/react';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { DeleteProjectDialog } from '@/components/delete-project-dialog';
 import { ProjectFormDialog } from '@/components/project-form-dialog';
 import { ArchivedProjectsDialog } from './Index/components/archived-projects-dialog';
@@ -21,6 +22,7 @@ type PageProps = {
 
 export default function Index() {
     const { projects } = usePage<PageProps>().props;
+    const { t } = useTranslation();
     const [creating, setCreating] = useState(false);
     const [editing, setEditing] = useState<ProjectRow | null>(null);
     const [archiving, setArchiving] = useState<ProjectRow | null>(null);
@@ -29,8 +31,8 @@ export default function Index() {
 
     return (
         <AppLayout
-            title="Projects"
-            subtitle="Active workspace only"
+            title={t('projectsPage.title')}
+            subtitle={t('projectsPage.subtitle')}
             actions={
                 <>
                     {projects.archived.length > 0 ? (
@@ -41,34 +43,34 @@ export default function Index() {
                             onClick={() => setShowArchived(true)}
                         >
                             <Archive className="size-3.5" aria-hidden />
-                            Archived
+                            {t('projectsPage.archived')}
                             <span className="font-mono opacity-70">{projects.archived.length}</span>
                         </Button>
                     ) : null}
                     <Button size="sm" onClick={() => setCreating(true)}>
-                        New project
+                        {t('projectsPage.newProject')}
                     </Button>
                 </>
             }
         >
-            <Head title="Projects" />
+            <Head title={t('projectsPage.title')} />
 
             <FlashBanner />
 
             <p className="mb-4 text-sm text-muted-foreground">
-                Projects of the active workspace only. Completion and projection are computed — never entered.
+                {t('projectsPage.intro')}
             </p>
 
             <div className="overflow-hidden rounded-xl border bg-card">
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead className="w-[34%]">Project</TableHead>
-                            <TableHead>Health</TableHead>
-                            <TableHead className="w-[16%]">Completed</TableHead>
-                            <TableHead>Target date</TableHead>
-                            <TableHead className="font-mono">Issues</TableHead>
-                            <TableHead className="w-10" aria-label="Actions" />
+                            <TableHead className="w-[34%]">{t('projectsPage.columnProject')}</TableHead>
+                            <TableHead>{t('projectsPage.columnHealth')}</TableHead>
+                            <TableHead className="w-[16%]">{t('projectsPage.columnCompleted')}</TableHead>
+                            <TableHead>{t('projectsPage.columnTargetDate')}</TableHead>
+                            <TableHead className="font-mono">{t('projectsPage.columnIssues')}</TableHead>
+                            <TableHead className="w-10" aria-label={t('common.actions')} />
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -84,7 +86,7 @@ export default function Index() {
                         {projects.active.length === 0 ? (
                             <TableRow>
                                 <TableCell colSpan={6} className="py-6 text-center text-muted-foreground">
-                                    No active projects yet — create one to get started.
+                                    {t('projectsPage.empty')}
                                 </TableCell>
                             </TableRow>
                         ) : null}

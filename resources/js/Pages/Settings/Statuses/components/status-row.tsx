@@ -9,6 +9,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { GripVertical, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import type { StatusRow } from '../types';
 
 type StatusRowItemProps = {
@@ -37,6 +38,7 @@ export function StatusRowItem({
     onEdit,
     onDelete,
 }: StatusRowItemProps) {
+    const { t } = useTranslation();
     return (
         <div
             draggable={isOwner}
@@ -50,19 +52,21 @@ export function StatusRowItem({
             } ${over && !dragging ? 'border-primary ring-2 ring-ring' : ''} ${dragging ? 'opacity-40' : ''}`}
         >
             {isOwner ? (
-                <span aria-label="Reorder" className="cursor-grab text-muted-foreground">
+                <span aria-label={t('settings.reorder')} className="cursor-grab text-muted-foreground">
                     <GripVertical className="size-4" />
                 </span>
             ) : null}
             <strong className="text-sm">{status.name}</strong>
-            <StatusBadge name={status.category.replace('_', ' ')} category={status.category} />
+            <StatusBadge name={t(`statusCategory.${status.category}`)} category={status.category} />
             <span className="ml-auto font-mono text-xs text-muted-foreground tabular-nums">
-                {status.issuesCount} {status.issuesCount === 1 ? 'issue' : 'issues'}
+                {status.issuesCount === 1
+                    ? t('projectsPage.issueCount', { count: status.issuesCount })
+                    : t('projectsPage.issueCountPlural', { count: status.issuesCount })}
             </span>
             {isOwner ? (
                 <DropdownMenu>
                     <DropdownMenuTrigger
-                        aria-label={`Actions for ${status.name}`}
+                        aria-label={t('projectMenu.actionsFor', { name: status.name })}
                         className="grid size-6.5 place-items-center rounded-md text-muted-foreground outline-none hover:bg-accent hover:text-foreground"
                     >
                         <MoreHorizontal className="size-4" aria-hidden />
@@ -72,12 +76,12 @@ export function StatusRowItem({
                             <DropdownMenuLabel>{status.name}</DropdownMenuLabel>
                             <DropdownMenuItem onClick={onEdit}>
                                 <Pencil aria-hidden />
-                                Rename…
+                                {t('settings.rename')}
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem variant="destructive" onClick={onDelete}>
                                 <Trash2 aria-hidden />
-                                Delete…
+                                {t('projectMenu.delete')}
                             </DropdownMenuItem>
                         </DropdownMenuGroup>
                     </DropdownMenuContent>

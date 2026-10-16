@@ -10,14 +10,10 @@ import {
 } from '@/components/ui/select';
 import { useForm } from '@inertiajs/react';
 import { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { StatusRow } from '../types';
 
-const CATEGORIES = [
-    { value: 'backlog', label: 'Backlog' },
-    { value: 'in_progress', label: 'In Progress' },
-    { value: 'done', label: 'Done' },
-    { value: 'cancelled', label: 'Cancelled' },
-];
+const CATEGORIES = ['backlog', 'in_progress', 'done', 'cancelled'];
 
 type StatusFormDialogProps = {
     open: boolean;
@@ -28,6 +24,7 @@ type StatusFormDialogProps = {
 
 /** Create/edit dialog for a workspace status; `status` selects the mode. */
 export function StatusFormDialog({ open, status, onClose }: StatusFormDialogProps) {
+    const { t } = useTranslation();
     const form = useForm({ name: '', category: 'backlog' });
 
     // Seed at open: edit mode reuses the row's values, create mode resets.
@@ -61,14 +58,14 @@ export function StatusFormDialog({ open, status, onClose }: StatusFormDialogProp
             onOpenChange={(o) => {
                 if (!o) onClose();
             }}
-            title={status ? 'Edit status' : 'New status'}
-            description={status ? 'Rename or change category.' : 'Free-form name, one of the 4 semantic categories.'}
-            submitLabel={status ? 'Save' : 'Create'}
+            title={status ? t('settings.statusEditTitle') : t('settings.statusNewTitle')}
+            description={status ? t('settings.statusEditDescription') : t('settings.statusNewDescription')}
+            submitLabel={status ? t('common.save') : t('common.create')}
             processing={form.processing}
             onSubmit={submit}
         >
             <div className="grid gap-2">
-                <Label htmlFor={status ? 'edit-name' : 'new-name'}>Name</Label>
+                <Label htmlFor={status ? 'edit-name' : 'new-name'}>{t('common.name')}</Label>
                 <Input
                     id={status ? 'edit-name' : 'new-name'}
                     value={form.data.name}
@@ -81,7 +78,7 @@ export function StatusFormDialog({ open, status, onClose }: StatusFormDialogProp
                 ) : null}
             </div>
             <div className="grid gap-2">
-                <Label>Category</Label>
+                <Label>{t('settings.categoryLabel')}</Label>
                 <Select
                     value={form.data.category}
                     onValueChange={(v) => {
@@ -92,15 +89,15 @@ export function StatusFormDialog({ open, status, onClose }: StatusFormDialogProp
                         <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                        {CATEGORIES.map((c) => (
-                            <SelectItem key={c.value} value={c.value}>
-                                {c.label}
+                        {CATEGORIES.map((category) => (
+                            <SelectItem key={category} value={category}>
+                                {t(`statusCategory.${category}`)}
                             </SelectItem>
                         ))}
                     </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
-                    The category sets the badge color across the UI.
+                    {t('settings.categoryNote')}
                 </p>
             </div>
         </FormDialog>

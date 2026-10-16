@@ -11,6 +11,7 @@ import {
 import { router } from '@inertiajs/react';
 import { Archive } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { ProjectRef } from '@/types';
 
 type DeleteProjectDialogProps = {
@@ -24,6 +25,7 @@ type DeleteProjectDialogProps = {
  * issues and the refusal surfaces here with the archive path offered.
  */
 export function DeleteProjectDialog({ project, onClose }: DeleteProjectDialogProps) {
+    const { t } = useTranslation();
     const [deleteRefusal, setDeleteRefusal] = useState<string | null>(null);
 
     useEffect(() => {
@@ -35,7 +37,7 @@ export function DeleteProjectDialog({ project, onClose }: DeleteProjectDialogPro
         router.delete(route('projects.destroy', project.id), {
             onHttpException: () => {
                 setDeleteRefusal(
-                    `Deletion refused — "${project.name}" contains issues. Archive it instead: the project stays consultable.`,
+                    t('deleteProject.refusal', { name: project.name }),
                 );
                 return false;
             },
@@ -55,11 +57,11 @@ export function DeleteProjectDialog({ project, onClose }: DeleteProjectDialogPro
             {project ? (
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Delete "{project.name}"?</DialogTitle>
+                        <DialogTitle>{t('deleteProject.title', { name: project.name })}</DialogTitle>
                         <DialogDescription>
                             {project.health?.totalIssues
-                                ? 'This project contains issues.'
-                                : 'This cannot be undone.'}
+                                ? t('deleteProject.containsIssues')
+                                : t('deleteProject.cannotUndo')}
                         </DialogDescription>
                     </DialogHeader>
                     {deleteRefusal ? (
@@ -75,20 +77,20 @@ export function DeleteProjectDialog({ project, onClose }: DeleteProjectDialogPro
                                 }}
                             >
                                 <Archive className="size-4" />
-                                Archive "{project.name}" instead
+                                {t('deleteProject.archiveInstead', { name: project.name })}
                             </Button>
                         </div>
                     ) : null}
                     <DialogFooter>
                         <Button variant="ghost" onClick={onClose}>
-                            Cancel
+                            {t('common.cancel')}
                         </Button>
                         <Button
                             variant="destructive"
                             data-test="confirm-delete-project"
                             onClick={() => confirmDelete()}
                         >
-                            Delete
+                            {t('common.delete')}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

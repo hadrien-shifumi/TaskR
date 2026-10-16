@@ -25,7 +25,9 @@ import {
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import { BookOpen, Pencil, Plus, Search, Trash2 } from 'lucide-react';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { PageSharedProps } from '@/types';
+import { formatDate } from '@/lib/format-date';
 
 interface PageRef {
     id: string;
@@ -88,11 +90,6 @@ function buildTree(pages: PageRef[]): TreeNode[] {
     return roots;
 }
 
-function formatDate(date: string | null): string {
-    if (!date) return '—';
-    return new Date(date).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
-}
-
 /** Maquette sidebar nav-item pattern applied to a tree row. */
 function TreeRow({ node, depth, selectedId }: { node: TreeNode; depth: number; selectedId: string | null }) {
     return (
@@ -117,6 +114,7 @@ const emptyForm = { title: '', body: '', project_id: '', parent_id: '' };
 export default function KnowledgeIndex() {
     const { pages, projects, selected, query, results, searchUnavailable } = usePage<PageProps>().props;
     const { workspace } = usePage<PageSharedProps>().props;
+    const { t } = useTranslation();
 
     const [creating, setCreating] = useState(false);
     const [editing, setEditing] = useState(false);
@@ -180,10 +178,10 @@ export default function KnowledgeIndex() {
             }}
         >
             <SelectTrigger id={`${idPrefix}-project`} className="w-full">
-                <SelectValue>{form.data.project_id ? (projectName(form.data.project_id) ?? 'Project') : 'Cross-workspace'}</SelectValue>
+                <SelectValue>{form.data.project_id ? (projectName(form.data.project_id) ?? t('issues.fields.project')) : t('knowledge.crossWorkspace')}</SelectValue>
             </SelectTrigger>
             <SelectContent>
-                <SelectItem value={NO_PROJECT}>Cross-workspace</SelectItem>
+                <SelectItem value={NO_PROJECT}>{t('knowledge.crossWorkspace')}</SelectItem>
                 {projects.map((project) => (
                     <SelectItem key={project.id} value={project.id}>
                         {project.name}
@@ -205,10 +203,10 @@ export default function KnowledgeIndex() {
             }}
         >
             <SelectTrigger id={`${idPrefix}-parent`} className="w-full">
-                <SelectValue>{form.data.parent_id ? (pages.find((page) => page.id === form.data.parent_id)?.title ?? 'Parent') : 'No parent'}</SelectValue>
+                <SelectValue>{form.data.parent_id ? (pages.find((page) => page.id === form.data.parent_id)?.title ?? t('knowledge.parentFallback')) : t('issueShow.noParent')}</SelectValue>
             </SelectTrigger>
             <SelectContent>
-                <SelectItem value={NO_PARENT}>No parent</SelectItem>
+                <SelectItem value={NO_PARENT}>{t('issueShow.noParent')}</SelectItem>
                 {parentOptions(excludeId).map((page) => (
                     <SelectItem key={page.id} value={page.id}>
                         {page.title}
@@ -220,16 +218,16 @@ export default function KnowledgeIndex() {
 
     return (
         <AppLayout
-            title="Knowledge"
+            title={t('knowledge.title')}
             subtitle={workspace?.name}
             actions={
                 <Button size="sm" onClick={() => setCreating(true)}>
                     <Plus />
-                    New page
+                    {t('knowledge.newPage')}
                 </Button>
             }
         >
-            <Head title="Knowledge" />
+            <Head title={t('knowledge.title')} />
 
             <FlashBanner />
 
@@ -243,36 +241,35 @@ export default function KnowledgeIndex() {
                         type="search"
                         value={searchForm.data.q}
                         onChange={(e) => searchForm.setData('q', e.target.value)}
-                        placeholder="Search the knowledge base…"
-                        aria-label="Semantic search"
+                        placeholder={t('knowledge.searchPlaceholder')}
+                        aria-label={t('knowledge.searchAria')}
                         className="h-7.5 rounded-md pl-8 text-[13px]"
                     />
                 </div>
                 <Button type="submit" variant="outline" size="sm" disabled={searchForm.processing}>
-                    Search
+                    {t('knowledge.searchButton')}
                 </Button>
             </form>
 
             {searchUnavailable ? (
                 <Banner variant="warning" className="mb-4">
-                    Semantic search is not configured for this workspace. Pages stay readable — ask an admin
-                    to set KNOWLEDGE_EMBEDDINGS_BASE_URL and KNOWLEDGE_EMBEDDINGS_API_KEY.
+                    {t('knowledge.searchUnavailable')}
                 </Banner>
             ) : null}
 
             <div className="grid items-start gap-6 lg:grid-cols-[16rem_1fr]">
                 <aside className="overflow-hidden rounded-xl border bg-card">
                     <div className="flex items-center gap-2.5 border-b px-4 py-3">
-                        <h2 className="text-sm font-semibold">Pages</h2>
+                        <h2 className="text-sm font-semibold">{t('knowledge.pages')}</h2>
                         <span className="rounded-full bg-secondary px-2 py-0.5 font-mono text-[11px] text-muted-foreground tabular-nums">
                             {pages.length}
                         </span>
                     </div>
-                    <nav aria-label="Knowledge tree" className="flex flex-col gap-3 px-3 py-3">
+                    <nav aria-label={t('knowledge.treeAria')} className="flex flex-col gap-3 px-3 py-3">
                         {crossWorkspaceTrees.length > 0 ? (
                             <section>
                                 <h3 className="px-2 pb-1 font-mono text-[12px] tracking-[0.08em] uppercase text-muted-foreground">
-                                    Cross-workspace
+                                    {t('knowledge.crossWorkspace')}
                                 </h3>
                                 {crossWorkspaceTrees.map((node) => (
                                     <TreeRow key={node.id} node={node} depth={0} selectedId={selectedId} />
@@ -294,25 +291,27 @@ export default function KnowledgeIndex() {
                             );
                         })}
                         {pages.length === 0 ? (
-                            <p className="px-2 text-sm text-muted-foreground">No knowledge pages yet.</p>
+                            <p className="px-2 text-sm text-muted-foreground">{t('knowledge.noPages')}</p>
                         ) : null}
                     </nav>
                 </aside>
 
                 <div className="min-w-0">
                     {results !== undefined ? (
-                        <section aria-label="Search results">
+                        <section aria-label={t('knowledge.searchAria')}>
                             <div className="mb-3 flex items-center gap-2">
-                                <h2 className="text-base font-semibold">Results for “{query}”</h2>
+                                <h2 className="text-base font-semibold">
+                                    {t('knowledge.resultsFor', { query })}
+                                </h2>
                                 <span className="rounded-full bg-secondary px-2 py-0.5 font-mono text-[11px] text-muted-foreground tabular-nums">
                                     {results.length}
                                 </span>
                             </div>
                             {results.length === 0 ? (
                                 <div className="rounded-xl border border-dashed px-4 py-8 text-center">
-                                    <p className="font-medium">No matching pages.</p>
+                                    <p className="font-medium">{t('knowledge.noMatchingPages')}</p>
                                     <p className="mt-1 text-sm text-muted-foreground">
-                                        Try different keywords or rephrase the question.
+                                        {t('knowledge.noMatchingHint')}
                                     </p>
                                 </div>
                             ) : (
@@ -354,7 +353,7 @@ export default function KnowledgeIndex() {
                                 {selected.projectId ? (
                                     <Badge variant="secondary">{projectName(selected.projectId)}</Badge>
                                 ) : (
-                                    <Badge variant="outline">Cross-workspace</Badge>
+                                    <Badge variant="outline">{t('knowledge.crossWorkspace')}</Badge>
                                 )}
                                 <div className="ml-auto flex items-center gap-1">
                                     <Button
@@ -371,7 +370,7 @@ export default function KnowledgeIndex() {
                                         }}
                                     >
                                         <Pencil aria-hidden />
-                                        Edit
+                                        {t('issueShow.edit')}
                                     </Button>
                                     <Button
                                         variant="ghost"
@@ -380,11 +379,13 @@ export default function KnowledgeIndex() {
                                         onClick={() => setDeleting(true)}
                                     >
                                         <Trash2 aria-hidden />
-                                        Delete
+                                        {t('common.delete')}
                                     </Button>
                                 </div>
                                 <p className="w-full text-[13px] text-muted-foreground">
-                                    {selected.lastEditor ? `Edited by ${selected.lastEditor}` : null}
+                                    {selected.lastEditor
+                                        ? t('knowledge.editedBy', { name: selected.lastEditor })
+                                        : null}
                                     {selected.updatedAt ? ` · ${formatDate(selected.updatedAt)}` : null}
                                 </p>
                             </header>
@@ -395,9 +396,9 @@ export default function KnowledgeIndex() {
                     ) : results === undefined ? (
                         <div className="rounded-xl border border-dashed px-4 py-10 text-center">
                             <BookOpen className="mx-auto size-5 text-muted-foreground" aria-hidden />
-                            <p className="mt-2 font-medium">No page selected</p>
+                            <p className="mt-2 font-medium">{t('knowledge.noPageSelected')}</p>
                             <p className="mt-1 text-sm text-muted-foreground">
-                                Select a page in the tree, or search to get started.
+                                {t('knowledge.noPageSelectedHint')}
                             </p>
                         </div>
                     ) : null}
@@ -412,17 +413,17 @@ export default function KnowledgeIndex() {
             >
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Delete "{selected?.title}"?</DialogTitle>
+                        <DialogTitle>{t('knowledge.deleteTitle', { title: selected?.title })}</DialogTitle>
                         <DialogDescription>
-                            The page is removed from the knowledge base. This cannot be undone.
+                            {t('knowledge.deleteDescription')}
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
                         <Button variant="ghost" onClick={() => setDeleting(false)}>
-                            Cancel
+                            {t('common.cancel')}
                         </Button>
                         <Button variant="destructive" data-test="confirm-delete-knowledge" onClick={remove}>
-                            Delete
+                            {t('common.delete')}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -431,15 +432,15 @@ export default function KnowledgeIndex() {
             <FormDialog
                 open={creating}
                 onOpenChange={setCreating}
-                title="New knowledge page"
-                description="Markdown body, optional parent page and project attachment."
-                submitLabel="Create"
+                title={t('knowledge.newPageTitle')}
+                description={t('knowledge.newPageDescription')}
+                submitLabel={t('common.create')}
                 processing={createForm.processing}
                 contentClassName="max-h-[90vh] overflow-y-auto sm:max-w-2xl"
                 onSubmit={submitCreate}
             >
                 <div className="grid gap-2">
-                    <Label htmlFor="new-knowledge-title">Title</Label>
+                    <Label htmlFor="new-knowledge-title">{t('issues.fields.title')}</Label>
                     <Input
                         id="new-knowledge-title"
                         value={createForm.data.title}
@@ -453,7 +454,7 @@ export default function KnowledgeIndex() {
                     ) : null}
                 </div>
                 <div className="grid gap-2">
-                    <Label>Body</Label>
+                    <Label>{t('knowledge.body')}</Label>
                     <MarkdownEditor
                         value={createForm.data.body}
                         onChange={(markdown) => createForm.setData('body', markdown)}
@@ -464,11 +465,11 @@ export default function KnowledgeIndex() {
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                     <div className="grid gap-2">
-                        <Label htmlFor="new-knowledge-project">Project</Label>
+                        <Label htmlFor="new-knowledge-project">{t('issues.fields.project')}</Label>
                         {projectSelect(createForm, 'new-knowledge')}
                     </div>
                     <div className="grid gap-2">
-                        <Label htmlFor="new-knowledge-parent">Parent page</Label>
+                        <Label htmlFor="new-knowledge-parent">{t('knowledge.parentPage')}</Label>
                         {parentSelect(createForm, 'new-knowledge')}
                     </div>
                 </div>
@@ -477,15 +478,15 @@ export default function KnowledgeIndex() {
             <FormDialog
                 open={editing}
                 onOpenChange={setEditing}
-                title="Edit page"
-                description="The page is re-indexed for semantic search after saving."
-                submitLabel="Save"
+                title={t('knowledge.editPageTitle')}
+                description={t('knowledge.editPageDescription')}
+                submitLabel={t('common.save')}
                 processing={editForm.processing}
                 contentClassName="max-h-[90vh] overflow-y-auto sm:max-w-2xl"
                 onSubmit={submitEdit}
             >
                 <div className="grid gap-2">
-                    <Label htmlFor="edit-knowledge-title">Title</Label>
+                    <Label htmlFor="edit-knowledge-title">{t('issues.fields.title')}</Label>
                     <Input
                         id="edit-knowledge-title"
                         value={editForm.data.title}
@@ -499,7 +500,7 @@ export default function KnowledgeIndex() {
                     ) : null}
                 </div>
                 <div className="grid gap-2">
-                    <Label>Body</Label>
+                    <Label>{t('knowledge.body')}</Label>
                     <MarkdownEditor
                         value={editForm.data.body}
                         onChange={(markdown) => editForm.setData('body', markdown)}
@@ -510,11 +511,11 @@ export default function KnowledgeIndex() {
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                     <div className="grid gap-2">
-                        <Label htmlFor="edit-knowledge-project">Project</Label>
+                        <Label htmlFor="edit-knowledge-project">{t('issues.fields.project')}</Label>
                         {projectSelect(editForm, 'edit-knowledge')}
                     </div>
                     <div className="grid gap-2">
-                        <Label htmlFor="edit-knowledge-parent">Parent page</Label>
+                        <Label htmlFor="edit-knowledge-parent">{t('knowledge.parentPage')}</Label>
                         {parentSelect(editForm, 'edit-knowledge', selected?.id)}
                     </div>
                 </div>

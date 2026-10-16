@@ -10,6 +10,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useForm } from '@inertiajs/react';
+import { useTranslation } from 'react-i18next';
 import type { IssueDetail } from '../types';
 
 type EditDatesDialogProps = {
@@ -38,6 +39,7 @@ export function EditDatesDialog({ issue, open, onClose }: EditDatesDialogProps) 
 }
 
 function EditDatesForm({ issue, onClose }: { issue: IssueDetail; onClose: () => void }) {
+    const { t } = useTranslation();
     const datesForm = useForm({
         title: issue.title,
         description: issue.description ?? '',
@@ -60,13 +62,13 @@ function EditDatesForm({ issue, onClose }: { issue: IssueDetail; onClose: () => 
     return (
         <DialogContent>
             <DialogHeader>
-                <DialogTitle>{'Due date & estimation'}</DialogTitle>
-                <DialogDescription>Both are optional.</DialogDescription>
+                <DialogTitle>{t('issueShow.datesTitle')}</DialogTitle>
+                <DialogDescription>{t('issueShow.bothOptional')}</DialogDescription>
             </DialogHeader>
             <form onSubmit={submitDates} className="grid gap-4">
                 <div className="grid grid-cols-2 gap-4">
                     <div className="grid gap-2">
-                        <Label htmlFor="edit-due-date">Due date</Label>
+                        <Label htmlFor="edit-due-date">{t('issues.fields.dueDate')}</Label>
                         <Input
                             id="edit-due-date"
                             data-test="dates-due"
@@ -80,7 +82,7 @@ function EditDatesForm({ issue, onClose }: { issue: IssueDetail; onClose: () => 
                         ) : null}
                     </div>
                     <div className="grid gap-2">
-                        <Label htmlFor="edit-estimate">Estimation (hours)</Label>
+                        <Label htmlFor="edit-estimate">{t('issueShow.estimationHours')}</Label>
                         <Input
                             id="edit-estimate"
                             data-test="dates-estimate"
@@ -98,10 +100,10 @@ function EditDatesForm({ issue, onClose }: { issue: IssueDetail; onClose: () => 
                 </div>
                 <DialogFooter>
                     <Button type="button" variant="ghost" onClick={onClose}>
-                        Cancel
+                        {t('common.cancel')}
                     </Button>
                     <Button type="submit" data-test="dates-save" disabled={datesForm.processing}>
-                        Save
+                        {t('common.save')}
                     </Button>
                 </DialogFooter>
             </form>

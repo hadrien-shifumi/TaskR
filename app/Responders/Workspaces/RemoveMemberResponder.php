@@ -11,6 +11,6 @@ class RemoveMemberResponder
     {
         return redirect()
             ->route('settings.members')
-            ->with('status', "Member {$member->name} removed.");
+            ->with('status', __('flash.member.removed', ['name' => $member->name]));
     }
 }

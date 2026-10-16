@@ -45,8 +45,13 @@ class HandleInertiaRequests
                     'id' => $user->id,
                     'name' => $user->name,
                     'email' => $user->email,
+                    'locale' => $user->locale,
                 ] : null,
             ],
+            // Lazy: resolved when the response is rendered, so a request that
+            // changes the locale (UpdateUserLocale) returns the NEW locale if
+            // its response ever renders props directly instead of redirecting.
+            'locale' => fn () => app()->getLocale(),
             'workspace' => $workspace ? [
                 'id' => $workspace->id,
                 'name' => $workspace->name,

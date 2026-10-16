@@ -2,13 +2,14 @@ import { Banner } from '@/components/banner';
 import { Lock } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Link, usePage } from '@inertiajs/react';
+import { useTranslation } from 'react-i18next';
 import type { PageSharedProps } from '@/types';
 
 const SECTIONS = [
-    { path: '/settings/statuses', name: 'settings.statuses', label: 'Statuses' },
-    { path: '/settings/members', name: 'settings.members', label: 'Members' },
-    { path: '/settings/templates', name: 'settings.templates', label: 'Issue templates' },
-    { path: '/settings/tokens', name: 'settings.tokens', label: 'API tokens' },
+    { path: '/settings/statuses', name: 'settings.statuses', label: 'settings.sections.statuses' },
+    { path: '/settings/members', name: 'settings.members', label: 'settings.sections.members' },
+    { path: '/settings/templates', name: 'settings.templates', label: 'settings.sections.templates' },
+    { path: '/settings/tokens', name: 'settings.tokens', label: 'settings.sections.tokens' },
 ];
 
 interface SettingsShellProps {
@@ -32,13 +33,14 @@ interface SettingsShellProps {
 export function SettingsShell({ title, description, actions, memberReadOnly = true, children }: SettingsShellProps) {
     const { props, url } = usePage<PageSharedProps>();
     const { workspace } = props;
+    const { t } = useTranslation();
     const isOwner = workspace?.role === 'owner';
     const readOnly = memberReadOnly && !isOwner;
 
     return (
         <div className="space-y-5">
             <nav
-                aria-label="Settings sections"
+                aria-label={t('settings.sectionsAria')}
                 className="flex gap-0.5 border-b"
             >
                 {SECTIONS.map((section) => (
@@ -52,7 +54,7 @@ export function SettingsShell({ title, description, actions, memberReadOnly = tr
                                 : 'border-transparent text-muted-foreground hover:text-foreground'
                         }`}
                     >
-                        {section.label}
+                        {t(section.label)}
                     </Link>
                 ))}
             </nav>
@@ -68,15 +70,15 @@ export function SettingsShell({ title, description, actions, memberReadOnly = tr
                 ) : (
                     <span className="inline-flex items-center gap-2 rounded-lg border bg-card px-2.5 py-1.5 text-xs text-muted-foreground">
                         <Lock className="size-3.5" />
-                        Read-only — member
+                        {t('settings.readOnlyBadge')}
                     </span>
                 )}
             </div>
 
             {readOnly ? (
                 <Banner variant="info" icon={Lock}>
-                    Members see settings read-only. Managing statuses, members and templates is
-                    reserved for workspace <strong>owners</strong>.
+                    {t('settings.readOnlyPrefix')} <strong>{t('settings.ownerWord')}</strong>
+                    {t('settings.readOnlySuffix')}
                 </Banner>
             ) : null}
 

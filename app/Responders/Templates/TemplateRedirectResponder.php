@@ -11,20 +11,20 @@ class TemplateRedirectResponder
     {
         return redirect()
             ->route('settings.templates')
-            ->with('status', "Template \"{$template->name}\" created.");
+            ->with('status', __('flash.template.created', ['name' => $template->name]));
     }
 
     public function updated(?IssueTemplate $template): RedirectResponse
     {
         return redirect()
             ->route('settings.templates')
-            ->with('status', 'Template updated.');
+            ->with('status', __('flash.template.updated'));
     }
 
     public function deleted(): RedirectResponse
     {
         return redirect()
             ->route('settings.templates')
-            ->with('status', 'Template deleted.');
+            ->with('status', __('flash.template.deleted'));
     }
 }

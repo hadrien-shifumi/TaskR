@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useForm } from '@inertiajs/react';
+import { useTranslation } from 'react-i18next';
 
 type LogTimeDialogProps = {
     issueId: string;
@@ -37,6 +38,7 @@ export function LogTimeDialog({ issueId, open, onClose }: LogTimeDialogProps) {
 }
 
 function LogTimeForm({ issueId, onClose }: { issueId: string; onClose: () => void }) {
+    const { t } = useTranslation();
     const timeEntryForm = useForm({
         hours: '',
         worked_at: new Date().toISOString().slice(0, 10),
@@ -57,22 +59,22 @@ function LogTimeForm({ issueId, onClose }: { issueId: string; onClose: () => voi
     return (
         <DialogContent>
             <DialogHeader>
-                <DialogTitle>Log time</DialogTitle>
+                <DialogTitle>{t('issueShow.logTime')}</DialogTitle>
                 <DialogDescription>
-                    Record worked time on this issue. Only the hours are required.
+                    {t('issueShow.logTimeHint')}
                 </DialogDescription>
             </DialogHeader>
             <form onSubmit={submitTimeEntry} className="grid gap-4">
                 <div className="grid grid-cols-2 gap-4">
                     <div className="grid gap-2">
-                        <Label htmlFor="log-time-hours">Hours</Label>
+                        <Label htmlFor="log-time-hours">{t('issueShow.hours')}</Label>
                         <Input
                             id="log-time-hours"
                             data-test="log-time-hours"
                             type="number"
                             step="any"
                             min="0.01"
-                            placeholder="Hours"
+                            placeholder={t('issueShow.hours')}
                             required
                             value={timeEntryForm.data.hours}
                             onChange={(e) => timeEntryForm.setData('hours', e.target.value)}
@@ -83,7 +85,7 @@ function LogTimeForm({ issueId, onClose }: { issueId: string; onClose: () => voi
                         ) : null}
                     </div>
                     <div className="grid gap-2">
-                        <Label htmlFor="log-time-date">Date</Label>
+                        <Label htmlFor="log-time-date">{t('issueShow.date')}</Label>
                         <Input
                             id="log-time-date"
                             data-test="log-time-date"
@@ -98,11 +100,11 @@ function LogTimeForm({ issueId, onClose }: { issueId: string; onClose: () => voi
                     </div>
                 </div>
                 <div className="grid gap-2">
-                    <Label htmlFor="log-time-note">Note</Label>
+                    <Label htmlFor="log-time-note">{t('issueShow.note')}</Label>
                     <Textarea
                         id="log-time-note"
                         data-test="log-time-note"
-                        placeholder="Note (optional)"
+                        placeholder={t('issueShow.notePlaceholder')}
                         value={timeEntryForm.data.note}
                         onChange={(e) => timeEntryForm.setData('note', e.target.value)}
                         aria-invalid={timeEntryForm.errors.note ? true : undefined}
@@ -113,10 +115,10 @@ function LogTimeForm({ issueId, onClose }: { issueId: string; onClose: () => voi
                 </div>
                 <DialogFooter>
                     <Button type="button" variant="ghost" onClick={onClose}>
-                        Cancel
+                        {t('common.cancel')}
                     </Button>
                     <Button type="submit" data-test="entry-submit" disabled={timeEntryForm.processing}>
-                        Log time
+                        {t('issueShow.logTime')}
                     </Button>
                 </DialogFooter>
             </form>

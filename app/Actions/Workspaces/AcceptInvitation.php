@@ -74,6 +74,6 @@ class AcceptInvitation
 
         session(['workspace_id' => $workspace->id]);
 
-        return redirect()->route('home')->with('status', "You joined {$workspace->name}.");
+        return redirect()->route('home')->with('status', __('flash.joined_workspace', ['name' => $workspace->name]));
     }
 }

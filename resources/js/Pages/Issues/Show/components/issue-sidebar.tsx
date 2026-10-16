@@ -19,6 +19,7 @@ import {
 import { Link, router, useForm } from '@inertiajs/react';
 import { Plus, X } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { LabelRef, UserRef } from '@/types';
 import type { IssueDetail } from '../types';
 import { EditDatesDialog } from './edit-dates-dialog';
@@ -73,6 +74,7 @@ function PropAction({ children, ...props }: React.ComponentProps<'button'>) {
  * priority, assignees, labels, due date, estimation, parent.
  */
 export function IssueSidebar({ issue, statuses, members, labels, candidates }: IssueSidebarProps) {
+    const { t } = useTranslation();
     const [datesOpen, setDatesOpen] = useState(false);
     const [parentOpen, setParentOpen] = useState(false);
     const [addingLabel, setAddingLabel] = useState(false);
@@ -156,7 +158,7 @@ export function IssueSidebar({ issue, statuses, members, labels, candidates }: I
                     </DropdownMenuItem>
                 ))
             ) : (
-                <DropdownMenuItem disabled>All members are assigned</DropdownMenuItem>
+                <DropdownMenuItem disabled>{t('issueShow.allAssigned')}</DropdownMenuItem>
             )}
         </DropdownMenuContent>
     );
@@ -167,12 +169,12 @@ export function IssueSidebar({ issue, statuses, members, labels, candidates }: I
         <aside className="lg:sticky lg:top-[76px]">
             <Card className="py-5">
                 <CardContent className="flex flex-col px-5">
-                    <PropRow label="Status" hint="Free change: Backlog → Done directly is allowed.">
+                    <PropRow label={t('issues.fields.status')} hint={t('issueShow.statusHint')}>
                         <Select value={issue.status.id} onValueChange={(value) => value && move(value)}>
                             <SelectTrigger
                                 data-test="status-select"
                                 className="w-full"
-                                aria-label="Status — free change, no imposed transition"
+                                aria-label={t('issueShow.statusAria')}
                             >
                                 <SelectValue>{issue.status.name}</SelectValue>
                             </SelectTrigger>
@@ -186,18 +188,22 @@ export function IssueSidebar({ issue, statuses, members, labels, candidates }: I
                         </Select>
                     </PropRow>
 
-                    <PropRow label="Priority">
+                    <PropRow label={t('issues.fields.priority')}>
                         <Select
                             value={issue.priority}
                             onValueChange={(value) => value && changePriority(value)}
                         >
-                            <SelectTrigger data-test="priority-select" className="w-full" aria-label="Priority">
-                                <SelectValue>{issue.priority}</SelectValue>
+                            <SelectTrigger
+                                data-test="priority-select"
+                                className="w-full"
+                                aria-label={t('issues.fields.priority')}
+                            >
+                                <SelectValue>{t(`priority.${issue.priority}`)}</SelectValue>
                             </SelectTrigger>
                             <SelectContent>
                                 {PRIORITIES.map((priority) => (
                                     <SelectItem key={priority} value={priority}>
-                                        {priority}
+                                        {t(`priority.${priority}`)}
                                     </SelectItem>
                                 ))}
                             </SelectContent>
@@ -205,11 +211,11 @@ export function IssueSidebar({ issue, statuses, members, labels, candidates }: I
                     </PropRow>
 
                     <PropRow
-                        label="Assignees"
+                        label={t('columns.assignees')}
                         action={
                             <DropdownMenu>
                                 <DropdownMenuTrigger
-                                    aria-label="Add assignee"
+                                    aria-label={t('issueShow.addAssignee')}
                                     render={
                                         <PropAction>
                                             <Plus className="size-3" aria-hidden />
@@ -219,7 +225,7 @@ export function IssueSidebar({ issue, statuses, members, labels, candidates }: I
                                 {assigneeMenuContent}
                             </DropdownMenu>
                         }
-                        hint="Each assignee is added and removed independently."
+                        hint={t('issueShow.assigneesHint')}
                     >
                         <span className="flex items-center">
                             {issue.assignees.map((assignee, index) => (
@@ -227,8 +233,8 @@ export function IssueSidebar({ issue, statuses, members, labels, candidates }: I
                                     key={assignee.id}
                                     type="button"
                                     data-test="assignee-remove"
-                                    aria-label={`Remove ${assignee.name}`}
-                                    title={`Remove ${assignee.name}`}
+                                    aria-label={t('issueShow.remove', { name: assignee.name })}
+                                    title={t('issueShow.remove', { name: assignee.name })}
                                     onClick={() => toggleAssignee(assignee.id)}
                                     className={`inline-flex rounded-full ring-2 ring-card transition-shadow hover:ring-destructive/40 ${
                                         index > 0 ? '-ml-1.75' : ''
@@ -239,7 +245,7 @@ export function IssueSidebar({ issue, statuses, members, labels, candidates }: I
                             ))}
                             <DropdownMenu>
                                 <DropdownMenuTrigger
-                                    aria-label="Add assignee"
+                                    aria-label={t('issueShow.addAssignee')}
                                     data-test="assignee-add"
                                     className={`grid size-5.5 place-items-center rounded-full border-2 border-card bg-muted text-muted-foreground transition-colors hover:text-foreground ${
                                         issue.assignees.length > 0 ? '-ml-1.75' : ''
@@ -253,17 +259,17 @@ export function IssueSidebar({ issue, statuses, members, labels, candidates }: I
                     </PropRow>
 
                     <PropRow
-                        label="Labels"
+                        label={t('columns.labels')}
                         action={
                             <PropAction
-                                aria-label="Add label"
+                                aria-label={t('issueShow.add')}
                                 data-test="label-add"
                                 onClick={() => setAddingLabel((value) => !value)}
                             >
                                 <Plus className="size-3" aria-hidden />
                             </PropAction>
                         }
-                        hint="Free-form — created on the fly."
+                        hint={t('issueShow.labelsHint')}
                     >
                         {issue.labels.length > 0 ? (
                             <span className="flex flex-wrap gap-1.5">
@@ -276,7 +282,7 @@ export function IssueSidebar({ issue, statuses, members, labels, candidates }: I
                                         <button
                                             type="button"
                                             data-test="label-remove"
-                                            aria-label={`Remove label ${label.name}`}
+                                            aria-label={t('issueShow.removeLabel', { name: label.name })}
                                             onClick={() => toggleLabel(label.id)}
                                             className="rounded-full text-muted-foreground transition-colors hover:text-foreground"
                                         >
@@ -292,7 +298,7 @@ export function IssueSidebar({ issue, statuses, members, labels, candidates }: I
                             <form onSubmit={submitLabel} className="flex items-start gap-2">
                                 <Input
                                     data-test="label-new-name"
-                                    placeholder="New label name…"
+                                    placeholder={t('issueShow.newLabelPlaceholder')}
                                     className="h-7"
                                     value={labelForm.data.name}
                                     onChange={(e) => labelForm.setData('name', e.target.value)}
@@ -305,7 +311,7 @@ export function IssueSidebar({ issue, statuses, members, labels, candidates }: I
                                     data-test="label-create-submit"
                                     disabled={labelForm.processing}
                                 >
-                                    Add
+                                    {t('issueShow.add')}
                                 </Button>
                             </form>
                         ) : null}
@@ -315,15 +321,17 @@ export function IssueSidebar({ issue, statuses, members, labels, candidates }: I
                     </PropRow>
 
                     <PropRow
-                        label="Due date"
+                        label={t('columns.dueDate')}
                         action={
                             <PropAction data-test="dates-dialog-open" onClick={() => setDatesOpen(true)}>
-                                Edit
+                                {t('issueShow.edit')}
                             </PropAction>
                         }
                         hint={
                             issue.overdue
-                                ? `Overdue for ${daysLate} ${daysLate === 1 ? 'day' : 'days'}.`
+                                ? daysLate === 1
+                                    ? t('issueShow.overdueFor', { count: daysLate })
+                                    : t('issueShow.overdueForDays', { count: daysLate })
                                 : undefined
                         }
                     >
@@ -336,18 +344,18 @@ export function IssueSidebar({ issue, statuses, members, labels, candidates }: I
                         </p>
                     </PropRow>
 
-                    <PropRow label="Estimation">
+                    <PropRow label={t('issueShow.estimation')}>
                         <p className="font-mono text-[13px] tabular-nums">{formatHours(issue.estimatedHours)}</p>
                     </PropRow>
 
                     <PropRow
-                        label="Parent"
+                        label={t('issueShow.parentIssue')}
                         action={
                             <PropAction data-test="parent-dialog-open" onClick={() => setParentOpen(true)}>
-                                Set
+                                {t('issueShow.setAction')}
                             </PropAction>
                         }
-                        hint="Soft hierarchy — same workspace only, any depth."
+                        hint={t('issueShow.softHierarchyHint')}
                     >
                         {issue.parent ? (
                             <Link

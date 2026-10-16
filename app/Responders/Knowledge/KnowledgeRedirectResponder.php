@@ -11,20 +11,20 @@ class KnowledgeRedirectResponder
     {
         return redirect()
             ->route('knowledge.show', $page)
-            ->with('status', "Page \"{$page->title}\" created.");
+            ->with('status', __('flash.page.created', ['title' => $page->title]));
     }
 
     public function updated(KnowledgePage $page): RedirectResponse
     {
         return redirect()
             ->route('knowledge.show', $page)
-            ->with('status', "Page \"{$page->title}\" updated.");
+            ->with('status', __('flash.page.updated', ['title' => $page->title]));
     }
 
     public function deleted(): RedirectResponse
     {
         return redirect()
             ->route('knowledge.index')
-            ->with('status', 'Page deleted.');
+            ->with('status', __('flash.page.deleted'));
     }
 }

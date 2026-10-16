@@ -33,7 +33,9 @@ import {
 import { Head, router, useForm, usePage } from '@inertiajs/react';
 import { MoreHorizontal, Send, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { PageSharedProps } from '@/types';
+import { formatMonthYear } from '@/lib/format-date';
 
 interface MemberRow {
     id: number;
@@ -56,8 +58,7 @@ type PageProps = {
 };
 
 function formatJoined(date: string | null): string {
-    if (!date) return '—';
-    return new Date(date).toLocaleDateString(undefined, { year: 'numeric', month: 'short' });
+    return formatMonthYear(date);
 }
 
 const MENU_TRIGGER_CLASS =
@@ -66,6 +67,7 @@ const MENU_TRIGGER_CLASS =
 export default function Members() {
     const { members, invitations } = usePage<PageProps>().props;
     const { workspace, auth } = usePage<PageSharedProps>().props;
+    const { t } = useTranslation();
     const isOwner = workspace?.role === 'owner';
     const [inviting, setInviting] = useState(false);
 
@@ -82,7 +84,7 @@ export default function Members() {
     };
 
     const remove = (member: MemberRow) => {
-        if (!window.confirm(`Remove ${member.name} from this workspace?`)) return;
+        if (!window.confirm(t('membersPage.removeConfirm', { name: member.name }))) return;
         router.delete(route('workspaces.members.destroy', [workspace?.id, member.id]));
     };
 
@@ -91,22 +93,22 @@ export default function Members() {
     };
 
     const cancel = (invitation: InvitationRow) => {
-        if (!window.confirm(`Cancel the invitation for ${invitation.email}? The acceptance link will stop working.`)) return;
+        if (!window.confirm(t('membersPage.cancelConfirm', { email: invitation.email }))) return;
         router.delete(route('workspaces.invitations.destroy', [workspace?.id, invitation.id]));
     };
 
     return (
-        <AppLayout title="Settings" subtitle={workspace?.name} narrow>
+        <AppLayout title={t('settings.pageTitle')} subtitle={workspace?.name} narrow>
             <SettingsShell
-                title="Workspace members"
-                description="Two roles only — owner and member. No granular permissions."
+                title={t('membersPage.title')}
+                description={t('membersPage.description')}
                 actions={
                     <Button size="sm" onClick={() => setInviting(true)}>
-                        Invite
+                        {t('membersPage.invite')}
                     </Button>
                 }
             >
-                <Head title="Members" />
+                <Head title={t('settings.sections.members')} />
 
             <FlashBanner className="break-all" />
 
@@ -114,9 +116,9 @@ export default function Members() {
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead>Member</TableHead>
-                            <TableHead>Role</TableHead>
-                            <TableHead>Status</TableHead>
+                            <TableHead>{t('membersPage.columnMember')}</TableHead>
+                            <TableHead>{t('membersPage.columnRole')}</TableHead>
+                            <TableHead>{t('membersPage.columnStatus')}</TableHead>
                             <TableHead className="w-16" />
                         </TableRow>
                     </TableHeader>
@@ -138,11 +140,11 @@ export default function Members() {
                                 </TableCell>
                                 <TableCell>
                                     <Badge variant="secondary" className="rounded-full bg-secondary text-muted-foreground">
-                                        {member.role}
+                                        {t(`layout.roles.${member.role}`)}
                                     </Badge>
                                 </TableCell>
                                 <TableCell className="text-sm text-muted-foreground">
-                                    Member since {formatJoined(member.joinedAt)}
+                                    {t('membersPage.memberSince', { date: formatJoined(member.joinedAt) })}
                                 </TableCell>
                                 <TableCell>
                                     {isOwner && auth.user?.id !== member.id ? (
@@ -157,7 +159,7 @@ export default function Members() {
                                                 <DropdownMenuGroup>
                                                     <DropdownMenuItem variant="destructive" onClick={() => remove(member)}>
                                                         <Trash2 aria-hidden />
-                                                        Remove from workspace…
+                                                        {t('membersPage.removeFromWorkspace')}
                                                     </DropdownMenuItem>
                                                 </DropdownMenuGroup>
                                             </DropdownMenuContent>
@@ -182,7 +184,7 @@ export default function Members() {
                                 </TableCell>
                                 <TableCell>
                                     <Badge variant="secondary" className="rounded-full bg-secondary text-muted-foreground">
-                                        member
+                                        {t('layout.roles.member')}
                                     </Badge>
                                 </TableCell>
                                 <TableCell>
@@ -197,14 +199,16 @@ export default function Members() {
                                         {invitation.status === 'sent' ? (
                                             <span className="size-1.5 rounded-full bg-current" />
                                         ) : null}
-                                        {invitation.status === 'sent' ? 'Invitation sent' : 'Expired'}
+                                        {invitation.status === 'sent'
+                                            ? t('membersPage.invitationSent')
+                                            : t('membersPage.expired')}
                                     </Badge>
                                 </TableCell>
                                 <TableCell>
                                     {isOwner ? (
                                         <DropdownMenu>
                                             <DropdownMenuTrigger
-                                                aria-label={`Actions for invitation ${invitation.email}`}
+                                                aria-label={t('membersPage.invitationAria', { email: invitation.email })}
                                                 className={MENU_TRIGGER_CLASS}
                                             >
                                                 <MoreHorizontal className="size-4" aria-hidden />
@@ -213,12 +217,12 @@ export default function Members() {
                                                 <DropdownMenuGroup>
                                                     <DropdownMenuItem onClick={() => resend(invitation)}>
                                                         <Send aria-hidden />
-                                                        Resend invitation
+                                                        {t('membersPage.resend')}
                                                     </DropdownMenuItem>
                                                     <DropdownMenuSeparator />
                                                     <DropdownMenuItem variant="destructive" onClick={() => cancel(invitation)}>
                                                         <X aria-hidden />
-                                                        Cancel invitation…
+                                                        {t('membersPage.cancelInvitation')}
                                                     </DropdownMenuItem>
                                                 </DropdownMenuGroup>
                                             </DropdownMenuContent>
@@ -230,7 +234,7 @@ export default function Members() {
                         {members.length === 0 && invitations.length === 0 ? (
                             <TableRow>
                                 <TableCell colSpan={4} className="py-6 text-center text-muted-foreground">
-                                    No members yet.
+                                    {t('membersPage.noMembers')}
                                 </TableCell>
                             </TableRow>
                         ) : null}
@@ -239,21 +243,22 @@ export default function Members() {
             </div>
 
             <p className="mt-3 text-sm text-muted-foreground">
-                Invitations are reserved for owners. Invitees join the workspace as <strong>member</strong>{' '}
-                after accepting.
+                {t('membersPage.notePrefix')} <strong>{t('membersPage.memberWord')}</strong>{' '}
+                {t('membersPage.noteSuffix')}
             </p>
 
             <Dialog open={inviting} onOpenChange={setInviting}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Invite a member</DialogTitle>
+                        <DialogTitle>{t('membersPage.inviteTitle')}</DialogTitle>
                         <DialogDescription>
-                            The role is always <strong>member</strong> — two roles only.
+                            {t('membersPage.inviteDescriptionPrefix')} <strong>{t('membersPage.memberWord')}</strong>{' '}
+                            {t('membersPage.inviteDescriptionSuffix')}
                         </DialogDescription>
                     </DialogHeader>
                     <form onSubmit={submitInvite} className="grid gap-4">
                         <div className="grid gap-2">
-                            <Label htmlFor="invite-email">Email</Label>
+                            <Label htmlFor="invite-email">{t('auth.login.email')}</Label>
                             <Input
                                 id="invite-email"
                                 type="email"
@@ -270,7 +275,7 @@ export default function Members() {
                         </div>
                         <DialogFooter>
                             <Button type="submit" disabled={inviteForm.processing}>
-                                Invite
+                                {t('membersPage.invite')}
                             </Button>
                         </DialogFooter>
                     </form>

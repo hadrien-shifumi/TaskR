@@ -12,27 +12,27 @@ class TimeTrackingResponder
     {
         return redirect()
             ->route('issues.show', $issue->id)
-            ->with('status', 'Estimate updated.');
+            ->with('status', __('flash.estimate.updated'));
     }
 
     public function entryCreated(TimeEntry $timeEntry): RedirectResponse
     {
         return redirect()
             ->route('issues.show', $timeEntry->issue_id)
-            ->with('status', 'Time entry added.');
+            ->with('status', __('flash.time_entry.added'));
     }
 
     public function entryUpdated(TimeEntry $timeEntry): RedirectResponse
     {
         return redirect()
             ->route('issues.show', $timeEntry->issue_id)
-            ->with('status', 'Time entry updated.');
+            ->with('status', __('flash.time_entry.updated'));
     }
 
     public function entryDeleted(TimeEntry $timeEntry): RedirectResponse
     {
         return redirect()
             ->route('issues.show', $timeEntry->issue_id)
-            ->with('status', 'Time entry deleted.');
+            ->with('status', __('flash.time_entry.deleted'));
     }
 }

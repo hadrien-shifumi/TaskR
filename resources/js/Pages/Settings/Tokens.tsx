@@ -24,7 +24,9 @@ import {
 import { Head, router, useForm, usePage } from '@inertiajs/react';
 import { Check, Copy } from 'lucide-react';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { PageSharedProps } from '@/types';
+import { formatDate } from '@/lib/format-date';
 
 interface TokenRow {
     id: number;
@@ -37,6 +39,7 @@ export default function Tokens() {
     const { tokens } = usePage<{ tokens: TokenRow[] }>().props;
     const { flash } = usePage<{ flash?: { status?: string; newToken?: string } }>().props;
     const { workspace } = usePage<PageSharedProps>().props;
+    const { t } = useTranslation();
 
     const [creating, setCreating] = useState(false);
     const [copied, setCopied] = useState(false);
@@ -55,7 +58,7 @@ export default function Tokens() {
     };
 
     const revoke = (token: TokenRow) => {
-        if (!window.confirm(`Revoke token "${token.name}"? Agents using it will immediately lose access.`)) return;
+        if (!window.confirm(t('tokensPage.revokeConfirm', { name: token.name }))) return;
         router.delete(route('tokens.destroy', token.id));
     };
 
@@ -77,30 +80,31 @@ export default function Tokens() {
     };
 
     return (
-        <AppLayout title="Settings" subtitle={workspace?.name} narrow>
+        <AppLayout title={t('settings.pageTitle')} subtitle={workspace?.name} narrow>
             <SettingsShell
-                title="API tokens"
-                description="Personal access tokens let AI agents use Taskr through the MCP server at /mcp."
+                title={t('settings.sections.tokens')}
+                description={t('tokensPage.description')}
                 memberReadOnly={false}
                 actions={
                     <Button size="sm" onClick={() => setCreating(true)}>
-                        New token
+                        {t('tokensPage.newToken')}
                     </Button>
                 }
             >
-                <Head title="API tokens" />
+                <Head title={t('settings.sections.tokens')} />
 
             <FlashBanner />
 
             <Banner variant="warning" className="mb-4">
-                A token's value is shown <strong>only once</strong>, at creation. It cannot be retrieved
-                afterwards.
+                {t('tokensPage.bannerPrefix')} <strong>{t('tokensPage.bannerWord')}</strong>
+                {t('tokensPage.bannerSuffix')}
             </Banner>
 
             {flash?.newToken ? (
                 <div className="mb-4 rounded-xl border bg-card p-5" data-test="token-created-card">
                     <p className="mb-2 text-sm text-muted-foreground">
-                        Token created just now — <strong className="font-medium text-foreground">copy it now</strong>
+                        {t('tokensPage.createdNow')}{' '}
+                        <strong className="font-medium text-foreground">{t('tokensPage.copyNow')}</strong>
                     </p>
                     <div
                         data-test="token-created-value"
@@ -111,10 +115,10 @@ export default function Tokens() {
                     <div className="mt-2.5 flex items-center gap-2">
                         <Button variant="outline" size="sm" onClick={copyToken}>
                             {copied ? <Check aria-hidden /> : <Copy aria-hidden />}
-                            {copied ? 'Copied' : 'Copy'}
+                            {copied ? t('issueShow.copied') : t('tokensPage.copy')}
                         </Button>
                         <Button variant="ghost" size="sm" onClick={dismissCreatedToken}>
-                            I've copied my token
+                            {t('tokensPage.iveCopied')}
                         </Button>
                     </div>
                 </div>
@@ -124,9 +128,9 @@ export default function Tokens() {
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead>Name</TableHead>
-                            <TableHead>Created</TableHead>
-                            <TableHead>Last used</TableHead>
+                            <TableHead>{t('common.name')}</TableHead>
+                            <TableHead>{t('tokensPage.columnCreated')}</TableHead>
+                            <TableHead>{t('tokensPage.columnLastUsed')}</TableHead>
                             <TableHead className="w-16" />
                         </TableRow>
                     </TableHeader>
@@ -134,7 +138,7 @@ export default function Tokens() {
                         {tokens.length === 0 ? (
                             <TableRow>
                                 <TableCell colSpan={4} className="text-muted-foreground">
-                                    No API tokens yet.
+                                    {t('tokensPage.noTokens')}
                                 </TableCell>
                             </TableRow>
                         ) : null}
@@ -142,10 +146,10 @@ export default function Tokens() {
                             <TableRow key={token.id}>
                                 <TableCell className="font-medium">{token.name}</TableCell>
                                 <TableCell className="font-mono text-xs text-muted-foreground tabular-nums">
-                                    {new Date(token.createdAt).toLocaleDateString()}
+                                    {formatDate(token.createdAt)}
                                 </TableCell>
                                 <TableCell className="font-mono text-xs text-muted-foreground tabular-nums">
-                                    {token.lastUsedAt ? new Date(token.lastUsedAt).toLocaleDateString() : '—'}
+                                    {formatDate(token.lastUsedAt ?? null)}
                                 </TableCell>
                                 <TableCell className="text-right">
                                     <Button
@@ -154,7 +158,7 @@ export default function Tokens() {
                                         className="text-destructive hover:bg-destructive/10 hover:text-destructive"
                                         onClick={() => revoke(token)}
                                     >
-                                        Revoke
+                                        {t('tokensPage.revoke')}
                                     </Button>
                                 </TableCell>
                             </TableRow>
@@ -166,12 +170,12 @@ export default function Tokens() {
             <Dialog open={creating} onOpenChange={setCreating}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>New token</DialogTitle>
-                        <DialogDescription>The value will be shown only once, at creation.</DialogDescription>
+                        <DialogTitle>{t('tokensPage.newTokenTitle')}</DialogTitle>
+                        <DialogDescription>{t('tokensPage.newTokenDescription')}</DialogDescription>
                     </DialogHeader>
                     <form onSubmit={submitCreate} className="grid gap-4">
                         <div className="grid gap-2">
-                            <Label htmlFor="token-name">Name</Label>
+                            <Label htmlFor="token-name">{t('common.name')}</Label>
                             <Input
                                 id="token-name"
                                 value={createForm.data.name}
@@ -187,7 +191,7 @@ export default function Tokens() {
                         </div>
                         <DialogFooter>
                             <Button type="submit" disabled={createForm.processing}>
-                                Create token
+                                {t('tokensPage.createToken')}
                             </Button>
                         </DialogFooter>
                     </form>

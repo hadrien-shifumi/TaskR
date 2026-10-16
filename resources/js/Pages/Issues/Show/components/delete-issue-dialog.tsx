@@ -9,6 +9,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { router } from '@inertiajs/react';
+import { useTranslation } from 'react-i18next';
 import type { IssueDetail } from '../types';
 import { formatHours } from './format';
 
@@ -24,6 +25,8 @@ type DeleteIssueDialogProps = {
  * logged time and comments are lost, child issues become root issues.
  */
 export function DeleteIssueDialog({ issue, commentsCount, onClose }: DeleteIssueDialogProps) {
+    const { t } = useTranslation();
+
     const confirmDelete = () => {
         if (!issue) return;
         router.delete(route('issues.destroy', issue.id), {
@@ -41,16 +44,16 @@ export function DeleteIssueDialog({ issue, commentsCount, onClose }: DeleteIssue
             {issue ? (
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Delete this issue?</DialogTitle>
+                        <DialogTitle>{t('issueShow.deleteTitle')}</DialogTitle>
                         <DialogDescription>“{issue.title}”</DialogDescription>
                     </DialogHeader>
                     <CascadeBanner issue={issue} commentsCount={commentsCount} />
                     <DialogFooter>
                         <Button variant="ghost" onClick={onClose}>
-                            Cancel
+                            {t('common.cancel')}
                         </Button>
                         <Button variant="destructive" data-test="confirm-delete-issue" onClick={confirmDelete}>
-                            Delete
+                            {t('common.delete')}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -60,21 +63,27 @@ export function DeleteIssueDialog({ issue, commentsCount, onClose }: DeleteIssue
 }
 
 function CascadeBanner({ issue, commentsCount }: { issue: IssueDetail; commentsCount: number }) {
+    const { t } = useTranslation();
     const lost: string[] = [];
-    if (issue.loggedHours > 0) lost.push(`the logged time (${formatHours(issue.loggedHours)})`);
-    if (commentsCount > 0) lost.push(`${commentsCount} ${commentsCount === 1 ? 'comment' : 'comments'}`);
+    if (issue.loggedHours > 0) lost.push(t('issueShow.loggedTime', { hours: formatHours(issue.loggedHours) }));
+    if (commentsCount > 0)
+        lost.push(
+            commentsCount === 1
+                ? t('issueShow.commentCount', { count: commentsCount })
+                : t('issueShow.commentCountPlural', { count: commentsCount }),
+        );
 
     return (
         <Banner variant="danger">
             {lost.length > 0 ? (
-                <>Deletion also removes {lost.join(' and ')}.</>
+                <>{t('issueShow.deletionAlsoRemoves', { items: lost.join(' and ') })}</>
             ) : (
-                <>This cannot be undone.</>
+                <>{t('issueShow.cannotUndo')}</>
             )}
             {issue.children.length > 0
-                ? ` ${issue.children.length} child ${
-                      issue.children.length === 1 ? 'issue becomes a root issue' : 'issues become root issues'
-                  }.`
+                ? issue.children.length === 1
+                    ? t('issueShow.childBecomesRoot', { count: issue.children.length })
+                    : t('issueShow.childrenBecomeRoots', { count: issue.children.length })
                 : ''}
         </Banner>
     );

@@ -27,6 +27,7 @@ class IssuePresenter
             'parentId' => $issue->parent_id,
             'assigneeIds' => $issue->assignees->pluck('id')->values()->all(),
             'labelIds' => $issue->labels->pluck('id')->values()->all(),
+            'estimatedHours' => $issue->estimated_hours !== null ? (float) $issue->estimated_hours : null,
             'createdAt' => $issue->created_at->toISOString(),
         ];
     }

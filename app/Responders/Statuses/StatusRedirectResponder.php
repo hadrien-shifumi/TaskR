@@ -11,20 +11,20 @@ class StatusRedirectResponder
     {
         return redirect()
             ->route('settings.statuses')
-            ->with('status', "Status \"{$status->name}\" created.");
+            ->with('status', __('flash.status.created', ['name' => $status->name]));
     }
 
     public function updated(?Status $status): RedirectResponse
     {
         return redirect()
             ->route('settings.statuses')
-            ->with('status', 'Statuses updated.');
+            ->with('status', __('flash.status.updated'));
     }
 
     public function deleted(): RedirectResponse
     {
         return redirect()
             ->route('settings.statuses')
-            ->with('status', 'Status deleted.');
+            ->with('status', __('flash.status.deleted'));
     }
 }

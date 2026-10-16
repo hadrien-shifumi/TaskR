@@ -1,5 +1,6 @@
 import { Link } from '@inertiajs/react';
 import { cn } from 'cn';
+import { useTranslation } from 'react-i18next';
 
 type ProjectViewSwitcherProps = {
     projectId: string;
@@ -9,14 +10,15 @@ type ProjectViewSwitcherProps = {
 
 /** Pill segment switching between a project's Health and Kanban views. */
 export function ProjectViewSwitcher({ projectId, active }: ProjectViewSwitcherProps) {
+    const { t } = useTranslation();
     const items = [
-        { key: 'health', label: 'Health', href: route('projects.health', projectId) },
-        { key: 'board', label: 'Kanban', href: route('projects.board', projectId) },
+        { key: 'health', label: t('projects.views.health'), href: route('projects.health', projectId) },
+        { key: 'board', label: t('projects.views.board'), href: route('projects.board', projectId) },
     ] as const;
 
     return (
         <nav
-            aria-label="Project views"
+            aria-label={t('projects.views.aria')}
             className="inline-flex items-center gap-0.5 rounded-full border bg-card p-0.5"
         >
             {items.map((item) => (

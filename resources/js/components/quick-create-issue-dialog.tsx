@@ -9,6 +9,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { useForm } from '@inertiajs/react';
+import { useTranslation } from 'react-i18next';
 
 type ProjectOption = { id: string; name: string };
 
@@ -24,6 +25,7 @@ type QuickCreateIssueDialogProps = {
  * server-side, everything else stays editable after creation.
  */
 export function QuickCreateIssueDialog({ open, onClose, projects }: QuickCreateIssueDialogProps) {
+    const { t } = useTranslation();
     const form = useForm({
         title: '',
         project_id: projects[0]?.id ?? '',
@@ -45,17 +47,17 @@ export function QuickCreateIssueDialog({ open, onClose, projects }: QuickCreateI
             onOpenChange={(o) => {
                 if (!o) onClose();
             }}
-            title="New issue"
-            description="A title is enough — default status and priority are applied."
-            submitLabel="Create issue"
+            title={t('issues.newIssue')}
+            description={t('issues.quickDescription')}
+            submitLabel={t('issues.create')}
             processing={form.processing}
             onSubmit={submit}
         >
             <div className="grid gap-2">
-                <Label htmlFor="quick-issue-title">Title</Label>
+                <Label htmlFor="quick-issue-title">{t('issues.fields.title')}</Label>
                 <Input
                     id="quick-issue-title"
-                    placeholder="Describe the task in one sentence"
+                    placeholder={t('issues.quickTitlePlaceholder')}
                     aria-required="true"
                     autoFocus
                     value={form.data.title}
@@ -69,7 +71,7 @@ export function QuickCreateIssueDialog({ open, onClose, projects }: QuickCreateI
                 ) : null}
             </div>
             <div className="grid gap-2">
-                <Label>Project</Label>
+                <Label>{t('issues.fields.project')}</Label>
                 <Select
                     value={form.data.project_id}
                     onValueChange={(v) => {
@@ -77,11 +79,11 @@ export function QuickCreateIssueDialog({ open, onClose, projects }: QuickCreateI
                     }}
                 >
                     <SelectTrigger
-                        aria-label="Project"
+                        aria-label={t('issues.fields.project')}
                         aria-invalid={form.errors.project_id ? true : undefined}
                     >
                         <SelectValue>
-                            {projects.find((p) => p.id === form.data.project_id)?.name ?? 'Project'}
+                            {projects.find((p) => p.id === form.data.project_id)?.name ?? t('issues.fields.project')}
                         </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
@@ -97,8 +99,7 @@ export function QuickCreateIssueDialog({ open, onClose, projects }: QuickCreateI
                 ) : null}
             </div>
             <p className="text-sm text-muted-foreground">
-                All other fields (description, labels, assignees, due date) stay optional and
-                editable after creation.
+                {t('issues.quickFooter')}
             </p>
         </FormDialog>
     );

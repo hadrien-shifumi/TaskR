@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Banner } from '@/components/banner';
 import { Head, router, usePage } from '@inertiajs/react';
+import { useTranslation } from 'react-i18next';
 
 type PageProps = {
     invitation: {
@@ -21,16 +22,20 @@ type PageProps = {
  * after login, which is forwarded the acceptance URL as return target. */
 export default function AcceptInvitation() {
     const { invitation } = usePage<PageProps>().props;
+    const { t } = useTranslation();
 
     return (
         <GuestLayout>
-            <Head title={`Join ${invitation.workspaceName}`} />
+            <Head title={t('auth.invitation.joinTitle', { workspace: invitation.workspaceName })} />
             <Card className="w-full py-6">
                 <CardContent className="px-6">
-                    <h1 className="text-[19px] font-semibold tracking-tight">Join {invitation.workspaceName}</h1>
+                    <h1 className="text-[19px] font-semibold tracking-tight">
+                        {t('auth.invitation.joinTitle', { workspace: invitation.workspaceName })}
+                    </h1>
                     <p className="mt-1 mb-4.5 text-sm text-muted-foreground">
-                        {invitation.inviterName} invites you to join{' '}
-                        <strong className="font-medium text-foreground">{invitation.workspaceName}</strong> as a{' '}
+                        {t('auth.invitation.invitedBy', { inviter: invitation.inviterName })}{' '}
+                        <strong className="font-medium text-foreground">{invitation.workspaceName}</strong>{' '}
+                        {t('auth.invitation.asRole')}{' '}
                         <Badge variant="secondary" className="rounded-full bg-secondary text-muted-foreground">
                             {invitation.role}
                         </Badge>
@@ -38,13 +43,13 @@ export default function AcceptInvitation() {
                     </p>
 
                     <Banner variant="info" className="mb-4 rounded-md text-[13px]">
-                        As a <strong>member</strong> you get access to the projects, issues, comments and time
-                        logging of the workspace. Managing statuses and members stays reserved for owners.
+                        {t('auth.invitation.memberPrefix')} <strong>{t('auth.invitation.memberRole')}</strong>{' '}
+                        {t('auth.invitation.memberSuffix')}
                     </Banner>
 
                     <form className="grid gap-3" onSubmit={(e) => { e.preventDefault(); }}>
                         <div className="grid gap-1.5">
-                            <Label htmlFor="invitation-email">Invitation email</Label>
+                            <Label htmlFor="invitation-email">{t('auth.invitation.invitationEmail')}</Label>
                             <Input
                                 id="invitation-email"
                                 type="email"
@@ -59,7 +64,7 @@ export default function AcceptInvitation() {
                             className="w-full"
                             onClick={() => router.get(route('login'), { redirect: invitation.acceptUrl })}
                         >
-                            Accept the invitation
+                            {t('auth.invitation.accept')}
                         </Button>
                         <Button
                             type="button"
@@ -67,7 +72,7 @@ export default function AcceptInvitation() {
                             className="w-full"
                             onClick={() => router.get(route('login'))}
                         >
-                            Decline
+                            {t('auth.invitation.decline')}
                         </Button>
                     </form>
                 </CardContent>

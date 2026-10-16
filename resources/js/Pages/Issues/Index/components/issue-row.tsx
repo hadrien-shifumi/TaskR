@@ -3,12 +3,15 @@ import { Badge } from '@/components/ui/badge';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import { Link } from '@inertiajs/react';
+import { useTranslation } from 'react-i18next';
+import { formatDate } from '@/lib/format-date';
 import type { IssueRow } from '../types';
 
 /** Single row of the filtered issues table: the project folds into the
  *  title's meta sub-line, as short ULID · project. Cancelled issues are
  *  struck through, muted and not linked. */
 export function IssueTableRow({ issue }: { issue: IssueRow }) {
+    const { t } = useTranslation();
     const cancelled = issue.status.category === 'cancelled';
 
     return (
@@ -56,7 +59,7 @@ export function IssueTableRow({ issue }: { issue: IssueRow }) {
                 {issue.assignees.length > 0 ? (
                     <AvatarStack people={issue.assignees} />
                 ) : (
-                    <span className="text-xs text-muted-foreground">Unassigned</span>
+                    <span className="text-xs text-muted-foreground">{t('issuesPage.unassigned')}</span>
                 )}
             </TableCell>
             <TableCell
@@ -65,7 +68,7 @@ export function IssueTableRow({ issue }: { issue: IssueRow }) {
                     issue.overdue ? 'font-medium text-destructive' : 'text-muted-foreground',
                 )}
             >
-                {issue.dueDate ? new Date(issue.dueDate).toLocaleDateString() : '—'}
+                {formatDate(issue.dueDate)}
             </TableCell>
         </TableRow>
     );

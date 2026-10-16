@@ -10,6 +10,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useForm } from '@inertiajs/react';
+import { useTranslation } from 'react-i18next';
 import type { IssueDetail } from '../types';
 
 type EditIssueDialogProps = {
@@ -37,6 +38,7 @@ export function EditIssueDialog({ issue, open, onClose }: EditIssueDialogProps) 
 }
 
 function EditTitleForm({ issue, onClose }: { issue: IssueDetail; onClose: () => void }) {
+    const { t } = useTranslation();
     const titleForm = useForm({
         title: issue.title,
         description: issue.description ?? '',
@@ -54,12 +56,12 @@ function EditTitleForm({ issue, onClose }: { issue: IssueDetail; onClose: () => 
     return (
         <DialogContent>
             <DialogHeader>
-                <DialogTitle>Edit title</DialogTitle>
-                <DialogDescription>Rename this issue.</DialogDescription>
+                <DialogTitle>{t('issueShow.editTitleDialogTitle')}</DialogTitle>
+                <DialogDescription>{t('issueShow.renameHint')}</DialogDescription>
             </DialogHeader>
             <form onSubmit={submitEdit} className="grid gap-4">
                 <div className="grid gap-2">
-                    <Label htmlFor="edit-issue-title">Title</Label>
+                    <Label htmlFor="edit-issue-title">{t('issues.fields.title')}</Label>
                     <Input
                         id="edit-issue-title"
                         value={titleForm.data.title}
@@ -73,10 +75,10 @@ function EditTitleForm({ issue, onClose }: { issue: IssueDetail; onClose: () => 
                 </div>
                 <DialogFooter>
                     <Button type="button" variant="ghost" onClick={onClose}>
-                        Cancel
+                        {t('common.cancel')}
                     </Button>
                     <Button type="submit" data-test="title-save" disabled={titleForm.processing}>
-                        Save
+                        {t('common.save')}
                     </Button>
                 </DialogFooter>
             </form>

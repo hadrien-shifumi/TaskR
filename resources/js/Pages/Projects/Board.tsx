@@ -18,8 +18,10 @@ import AppLayout from '@/layouts/app-layout';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { ArrowLeft, MoveRight, Plus } from 'lucide-react';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { HealthData, LabelRef, UserRef } from '@/types';
 import type { TemplateOption } from '@/Pages/Issues/Index/types';
+import { formatShortDate, formatDate } from '@/lib/format-date';
 import { BoardCreateIssueDialog } from './Board/create-issue-dialog';
 
 interface BoardIssue {
@@ -58,22 +60,9 @@ type PageProps = {
     members?: UserRef[];
 };
 
-function formatDue(date: string | null): string {
-    if (!date) return '';
-    return new Date(date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-}
-
-function formatDate(date: string | null): string {
-    if (!date) return 'no target date';
-    return new Date(date).toLocaleDateString(undefined, {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-    });
-}
-
 export default function Board() {
     const { project, health, columns, parentsOnly, labels, templates, members } = usePage<PageProps>().props;
+    const { t } = useTranslation();
     const [draggingId, setDraggingId] = useState<string | null>(null);
     const [overColumn, setOverColumn] = useState<string | null>(null);
     const [moveError, setMoveError] = useState<string | null>(null);
@@ -93,7 +82,7 @@ export default function Board() {
             { status_id: statusId },
             {
                 onError: (errors) => {
-                    setMoveError(errors.status_id ?? 'The move was refused.');
+                    setMoveError(errors.status_id ?? t('projectBoard.moveRefused'));
                 },
             },
         );
@@ -111,7 +100,7 @@ export default function Board() {
                 <Button
                     variant="ghost"
                     size="icon"
-                    aria-label="Back to projects"
+                    aria-label={t('projectBoard.backToProjects')}
                     onClick={() => router.get(route('projects.index'))}
                 >
                     <ArrowLeft aria-hidden />
@@ -126,8 +115,11 @@ export default function Board() {
             actions={
                 <>
                     <span className="hidden font-mono text-xs text-muted-foreground tabular-nums sm:inline">
-                        {health.totalIssues} issues · target: {formatDate(project.targetDate)}
-                        {health.status === 'late' ? ' · overdue' : ''}
+                        {t('projectBoard.issuesTarget', {
+                            count: health.totalIssues,
+                            date: project.targetDate ? formatDate(project.targetDate) : t('home.noTargetDate'),
+                        })}
+                        {health.status === 'late' ? t('projectBoard.overdueSuffix') : ''}
                     </span>
                     <ProjectViewSwitcher projectId={project.id} active="board" />
                     <Button
@@ -141,7 +133,7 @@ export default function Board() {
                             )
                         }
                     >
-                        Parents only
+                        {t('projectBoard.parentsOnly')}
                     </Button>
                     <ProjectMenu project={project} issuesCount={health.totalIssues} />
                     <Button
@@ -152,17 +144,17 @@ export default function Board() {
                         }}
                     >
                         <Plus className="size-3.5" aria-hidden />
-                        New issue
+                        {t('issues.newIssue')}
                     </Button>
                 </>
             }
         >
-            <Head title={`Board — ${project.name}`} />
+            <Head title={t('projectBoard.headTitle', { name: project.name })} />
 
             <p className="mb-4 text-sm text-muted-foreground">
                 {parentsOnly
-                    ? 'Macro view — subtasks are hidden. Columns follow the workspace statuses: drag a card to change its status, transitions are always free.'
-                    : 'Columns follow the workspace statuses, in their order. Drag a card to change its status — transitions are always free.'}
+                    ? t('projectBoard.macroIntro')
+                    : t('projectBoard.intro')}
             </p>
 
             <FlashBanner />
@@ -203,7 +195,7 @@ export default function Board() {
                                 variant="ghost"
                                 size="icon"
                                 data-test={`board-column-add-${column.category}`}
-                                aria-label={`Add an issue in ${column.name}`}
+                                aria-label={t('projectBoard.addInColumn', { name: column.name })}
                                 onClick={() => {
                                     setCreateDefaultStatusId(column.id);
                                     setCreating(true);
@@ -258,7 +250,7 @@ export default function Board() {
                                                         : 'text-muted-foreground'
                                                 }`}
                                             >
-                                                {formatDue(issue.dueDate)}
+                                                {formatShortDate(issue.dueDate)}
                                             </span>
                                         ) : null}
                                         <span className="flex">
@@ -266,15 +258,15 @@ export default function Board() {
                                         </span>
                                         <DropdownMenu>
                                             <DropdownMenuTrigger
-                                                aria-label={`Move "${issue.title}" to another status`}
+                                                aria-label={t('projectBoard.moveToAria', { title: issue.title })}
                                                 className="inline-flex h-6 cursor-pointer items-center gap-1 rounded-md px-1.5 font-mono text-[11px] text-muted-foreground outline-none hover:bg-accent hover:text-foreground"
                                             >
                                                 <MoveRight className="size-3" />
-                                                Move to
+                                                {t('projectBoard.moveTo')}
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
                                                 <DropdownMenuGroup>
-                                                    <DropdownMenuLabel>Move to</DropdownMenuLabel>
+                                                    <DropdownMenuLabel>{t('projectBoard.moveTo')}</DropdownMenuLabel>
                                                     <DropdownMenuSeparator />
                                                     {columns
                                                         .filter((candidate) => candidate.id !== column.id)
@@ -294,7 +286,7 @@ export default function Board() {
                             ))}
                             {column.issues.length === 0 ? (
                                 <p className="rounded-lg border border-dashed px-2.5 py-5 text-center text-xs text-muted-foreground">
-                                    No issue — drop a card here
+                                    {t('projectBoard.emptyColumn')}
                                 </p>
                             ) : null}
                         </div>
@@ -303,7 +295,7 @@ export default function Board() {
             </div>
 
             <p className="mt-2 text-sm text-muted-foreground">
-                Card order within a column is not an identifier — issues are keyed by their opaque ULID.
+                {t('projectBoard.orderNote')}
             </p>
 
             <BoardCreateIssueDialog

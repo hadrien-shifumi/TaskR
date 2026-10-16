@@ -5,8 +5,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { router, useForm, usePage } from '@inertiajs/react';
 import { Pencil, Trash2 } from 'lucide-react';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { IssueDetail, TimeEntry } from '../types';
-import { formatHours } from './format';
+import { formatDate, formatHours } from './format';
 import { LogTimeDialog } from './log-time-dialog';
 import { SectionHead } from './section-head';
 
@@ -22,6 +23,7 @@ type TimeEntriesSectionProps = {
  */
 export function TimeEntriesSection({ issue, timeEntries }: TimeEntriesSectionProps) {
     const { auth } = usePage<{ auth: { user: { id: number } | null } }>().props;
+    const { t } = useTranslation();
     const [editingTimeEntry, setEditingTimeEntry] = useState<string | null>(null);
     const [logging, setLogging] = useState(false);
 
@@ -39,16 +41,19 @@ export function TimeEntriesSection({ issue, timeEntries }: TimeEntriesSectionPro
     };
 
     const removeTimeEntry = (entryId: string) => {
-        if (!window.confirm('Delete this time entry?')) return;
+        if (!window.confirm(t('timeEntries.deleteConfirm'))) return;
         router.delete(route('issues.time-entries.destroy', [issue.id, entryId]));
     };
 
     const summary = [
-        { label: 'Logged', value: formatHours(issue.loggedHours), danger: false },
-        { label: 'Estimated', value: formatHours(issue.estimatedHours), danger: false },
+        { label: t('timeEntries.summaryLogged'), value: formatHours(issue.loggedHours), danger: false },
+        { label: t('timeEntries.summaryEstimated'), value: formatHours(issue.estimatedHours), danger: false },
         {
-            label: 'Remaining',
-            value: issue.remainingHours !== null ? `${formatHours(issue.remainingHours)} left` : '—',
+            label: t('timeEntries.summaryRemaining'),
+            value:
+                issue.remainingHours !== null
+                    ? t('timeEntries.hoursLeft', { hours: formatHours(issue.remainingHours) })
+                    : '—',
             danger: issue.remainingHours !== null && issue.remainingHours < 0,
         },
     ];
@@ -56,11 +61,11 @@ export function TimeEntriesSection({ issue, timeEntries }: TimeEntriesSectionPro
     return (
         <section>
             <SectionHead
-                title="Time"
-                count={`${formatHours(issue.loggedHours)} logged`}
+                title={t('timeEntries.title')}
+                count={t('timeEntries.loggedCount', { hours: formatHours(issue.loggedHours) })}
                 action={
                     <Button variant="outline" size="sm" data-test="log-time" onClick={() => setLogging(true)}>
-                        Log time
+                        {t('issueShow.logTime')}
                     </Button>
                 }
             />
@@ -93,8 +98,7 @@ export function TimeEntriesSection({ issue, timeEntries }: TimeEntriesSectionPro
                             <div className="flex flex-wrap items-baseline gap-x-2">
                                 <span className="text-[13px] font-medium">{entry.authorName}</span>
                                 <span className="font-mono text-xs text-muted-foreground tabular-nums">
-                                    {entry.hours}h ·{' '}
-                                    {entry.workedAt ? new Date(entry.workedAt).toLocaleDateString() : ''}
+                                    {entry.hours}h · {entry.workedAt ? formatDate(entry.workedAt) : ''}
                                 </span>
                             </div>
                             {editingTimeEntry === entry.id ? (
@@ -104,7 +108,7 @@ export function TimeEntriesSection({ issue, timeEntries }: TimeEntriesSectionPro
                                             type="number"
                                             step="any"
                                             min="0.01"
-                                            placeholder="Hours"
+                                            placeholder={t('issueShow.hours')}
                                             data-test="entry-edit-hours"
                                             value={timeEntryEditForm.data.hours}
                                             onChange={(e) => timeEntryEditForm.setData('hours', e.target.value)}
@@ -118,7 +122,7 @@ export function TimeEntriesSection({ issue, timeEntries }: TimeEntriesSectionPro
                                         />
                                     </div>
                                     <Textarea
-                                        placeholder="Note (optional)"
+                                        placeholder={t('issueShow.notePlaceholder')}
                                         data-test="entry-edit-note"
                                         value={timeEntryEditForm.data.note}
                                         onChange={(e) => timeEntryEditForm.setData('note', e.target.value)}
@@ -130,7 +134,7 @@ export function TimeEntriesSection({ issue, timeEntries }: TimeEntriesSectionPro
                                             data-test="entry-edit-save"
                                             disabled={timeEntryEditForm.processing}
                                         >
-                                            Save
+                                            {t('common.save')}
                                         </Button>
                                         <Button
                                             type="button"
@@ -138,7 +142,7 @@ export function TimeEntriesSection({ issue, timeEntries }: TimeEntriesSectionPro
                                             size="sm"
                                             onClick={() => setEditingTimeEntry(null)}
                                         >
-                                            Cancel
+                                            {t('common.cancel')}
                                         </Button>
                                     </div>
                                 </form>
@@ -153,7 +157,7 @@ export function TimeEntriesSection({ issue, timeEntries }: TimeEntriesSectionPro
                                 <Button
                                     variant="ghost"
                                     size="icon-sm"
-                                    aria-label={`Edit time entry by ${entry.authorName}`}
+                                    aria-label={t('timeEntries.editBy', { name: entry.authorName })}
                                     data-test="entry-edit"
                                     onClick={() => {
                                         setEditingTimeEntry(entry.id);
@@ -169,7 +173,7 @@ export function TimeEntriesSection({ issue, timeEntries }: TimeEntriesSectionPro
                                 <Button
                                     variant="ghost"
                                     size="icon-sm"
-                                    aria-label={`Delete time entry by ${entry.authorName}`}
+                                    aria-label={t('timeEntries.deleteBy', { name: entry.authorName })}
                                     data-test="entry-delete"
                                     onClick={() => removeTimeEntry(entry.id)}
                                 >
@@ -180,7 +184,7 @@ export function TimeEntriesSection({ issue, timeEntries }: TimeEntriesSectionPro
                     </li>
                 ))}
                 {timeEntries.length === 0 ? (
-                    <li className="py-3 text-sm text-muted-foreground">No time logged yet.</li>
+                    <li className="py-3 text-sm text-muted-foreground">{t('timeEntries.empty')}</li>
                 ) : null}
             </ul>
 

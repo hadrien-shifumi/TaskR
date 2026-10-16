@@ -4,8 +4,10 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
+import { useTranslation } from 'react-i18next';
 
 export default function Login() {
+    const { t } = useTranslation();
     // Guest pages (invitations…) hand their return target over as a query
     // parameter; the login POST forwards it so the responder can send the
     // user back where they came from (same-app paths only, guarded server-side).
@@ -24,12 +26,12 @@ export default function Login() {
 
     return (
         <GuestLayout>
-            <Head title="Log in" />
+            <Head title={t('auth.login.title')} />
             <Card className="w-full py-6">
                 <CardContent className="px-6">
                     <div
                         role="tablist"
-                        aria-label="Access mode"
+                        aria-label={t('auth.accessMode')}
                         className="mb-4.5 flex gap-0.5 rounded-md border bg-secondary p-0.75"
                     >
                         <span
@@ -37,7 +39,7 @@ export default function Login() {
                             aria-selected="true"
                             className="flex h-7.5 flex-1 items-center justify-center rounded-[6px] bg-card text-[13px] font-medium shadow-xs"
                         >
-                            Log in
+                            {t('auth.loginTab')}
                         </span>
                         <Link
                             role="tab"
@@ -45,16 +47,16 @@ export default function Login() {
                             href={route('register')}
                             className="flex h-7.5 flex-1 items-center justify-center rounded-[6px] text-[13px] font-medium text-muted-foreground hover:text-foreground"
                         >
-                            Sign up
+                            {t('auth.signupTab')}
                         </Link>
                     </div>
 
-                    <h1 className="text-[19px] font-semibold tracking-tight">Welcome back</h1>
-                    <p className="mt-1 mb-4.5 text-sm text-muted-foreground">Access your workspaces.</p>
+                    <h1 className="text-[19px] font-semibold tracking-tight">{t('auth.login.welcome')}</h1>
+                    <p className="mt-1 mb-4.5 text-sm text-muted-foreground">{t('auth.login.subtitle')}</p>
 
                     <form onSubmit={submit} className="grid gap-3">
                         <div className="grid gap-1.5">
-                            <Label htmlFor="email">Email</Label>
+                            <Label htmlFor="email">{t('auth.login.email')}</Label>
                             <Input
                                 id="email"
                                 type="email"
@@ -68,7 +70,7 @@ export default function Login() {
                             {errors.email ? <p className="text-sm text-destructive">{errors.email}</p> : null}
                         </div>
                         <div className="grid gap-1.5">
-                            <Label htmlFor="password">Password</Label>
+                            <Label htmlFor="password">{t('auth.login.password')}</Label>
                             <Input
                                 id="password"
                                 type="password"
@@ -82,7 +84,7 @@ export default function Login() {
                         </div>
                         {/* The maquette sits the submit button 4px under the last field. */}
                         <Button type="submit" size="lg" className="-mt-2 w-full" disabled={processing}>
-                            Log in
+                            {t('auth.login.submit')}
                         </Button>
                     </form>
                 </CardContent>

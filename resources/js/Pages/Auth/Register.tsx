@@ -4,8 +4,10 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Head, Link, useForm } from '@inertiajs/react';
+import { useTranslation } from 'react-i18next';
 
 export default function Register() {
+    const { t } = useTranslation();
     const { data, setData, post, processing, errors } = useForm({
         name: '',
         email: '',
@@ -24,12 +26,12 @@ export default function Register() {
 
     return (
         <GuestLayout>
-            <Head title="Register" />
+            <Head title={t('auth.register.title')} />
             <Card className="w-full py-6">
                 <CardContent className="px-6">
                     <div
                         role="tablist"
-                        aria-label="Access mode"
+                        aria-label={t('auth.accessMode')}
                         className="mb-4.5 flex gap-0.5 rounded-md border bg-secondary p-0.75"
                     >
                         <Link
@@ -38,25 +40,25 @@ export default function Register() {
                             href={route('login')}
                             className="flex h-7.5 flex-1 items-center justify-center rounded-[6px] text-[13px] font-medium text-muted-foreground hover:text-foreground"
                         >
-                            Log in
+                            {t('auth.loginTab')}
                         </Link>
                         <span
                             role="tab"
                             aria-selected="true"
                             className="flex h-7.5 flex-1 items-center justify-center rounded-[6px] bg-card text-[13px] font-medium shadow-xs"
                         >
-                            Sign up
+                            {t('auth.signupTab')}
                         </span>
                     </div>
 
-                    <h1 className="text-[19px] font-semibold tracking-tight">Create your account</h1>
+                    <h1 className="text-[19px] font-semibold tracking-tight">{t('auth.register.createAccount')}</h1>
                     <p className="mt-1 mb-4.5 text-sm text-muted-foreground">
-                        Your first workspace is created automatically.
+                        {t('auth.register.subtitle')}
                     </p>
 
                     <form onSubmit={submit} className="grid gap-3">
                         <div className="grid gap-1.5">
-                            <Label htmlFor="name">Full name</Label>
+                            <Label htmlFor="name">{t('auth.register.fullName')}</Label>
                             <Input
                                 id="name"
                                 placeholder="Camille Riva"
@@ -69,7 +71,7 @@ export default function Register() {
                             {fieldError('name')}
                         </div>
                         <div className="grid gap-1.5">
-                            <Label htmlFor="email">Email</Label>
+                            <Label htmlFor="email">{t('auth.register.email')}</Label>
                             <Input
                                 id="email"
                                 type="email"
@@ -82,11 +84,11 @@ export default function Register() {
                             {fieldError('email')}
                         </div>
                         <div className="grid gap-1.5">
-                            <Label htmlFor="password">Password</Label>
+                            <Label htmlFor="password">{t('auth.register.password')}</Label>
                             <Input
                                 id="password"
                                 type="password"
-                                placeholder="8 characters minimum"
+                                placeholder={t('auth.register.passwordHint')}
                                 required
                                 value={data.password}
                                 onChange={(e) => setData('password', e.target.value)}
@@ -95,7 +97,7 @@ export default function Register() {
                             {fieldError('password')}
                         </div>
                         <div className="grid gap-1.5">
-                            <Label htmlFor="password_confirmation">Confirm password</Label>
+                            <Label htmlFor="password_confirmation">{t('auth.register.confirmPassword')}</Label>
                             <Input
                                 id="password_confirmation"
                                 type="password"
@@ -107,7 +109,7 @@ export default function Register() {
                             {fieldError('password_confirmation')}
                         </div>
                         <div className="grid gap-1.5">
-                            <Label htmlFor="workspace_name">Workspace name (optional)</Label>
+                            <Label htmlFor="workspace_name">{t('auth.register.workspaceName')}</Label>
                             <Input
                                 id="workspace_name"
                                 placeholder="Studio Nova"
@@ -116,13 +118,13 @@ export default function Register() {
                                 aria-invalid={errors.workspace_name ? true : undefined}
                             />
                             <p className="text-xs text-muted-foreground">
-                                Created with the 4 default statuses: Backlog, In Progress, Done, Cancelled.
+                                {t('auth.register.workspaceHint')}
                             </p>
                             {fieldError('workspace_name')}
                         </div>
                         {/* The maquette sits the submit button 4px under the last field. */}
                         <Button type="submit" size="lg" className="-mt-2 w-full" disabled={processing}>
-                            Register
+                            {t('auth.register.submit')}
                         </Button>
                     </form>
                 </CardContent>

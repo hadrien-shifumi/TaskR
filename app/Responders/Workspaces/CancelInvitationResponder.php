@@ -11,6 +11,6 @@ class CancelInvitationResponder
     {
         return redirect()
             ->route('settings.members')
-            ->with('status', "Invitation for {$invitation->email} cancelled.");
+            ->with('status', __('flash.invitation.cancelled', ['email' => $invitation->email]));
     }
 }

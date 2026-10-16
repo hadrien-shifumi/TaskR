@@ -14,7 +14,9 @@ import {
 import { Head, Link, usePage } from '@inertiajs/react';
 import { Plus } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { QuickCreateIssueDialog } from '@/components/quick-create-issue-dialog';
+import { formatDate } from '@/lib/format-date';
 
 interface HealthData {
     issuesByCategory: { backlog: number; in_progress: number; done: number; cancelled: number };
@@ -57,57 +59,53 @@ type PageProps = {
     myIssues: MyIssue[];
 };
 
-function formatDate(date: string | null): string {
-    if (!date) return '—';
-    return new Date(date).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
-}
-
 export default function Home() {
     const { appName, stats, projects, myIssues } = usePage<PageProps>().props;
+    const { t } = useTranslation();
     const [creating, setCreating] = useState(false);
 
     const statCards: { label: string; value: ReactNode; hint: string; danger?: boolean }[] = [
-        { label: 'Open issues', value: stats.openIssues, hint: `out of ${stats.totalIssues} total` },
+        { label: t('home.stats.openIssues'), value: stats.openIssues, hint: t('home.stats.openIssuesHint', { total: stats.totalIssues }) },
         {
-            label: 'Overdue issues',
+            label: t('home.stats.overdue'),
             value: stats.overdueIssues,
-            hint: 'past due date, not done or cancelled',
+            hint: t('home.stats.overdueHint'),
             danger: stats.overdueIssues > 0,
         },
         {
-            label: 'Hours logged',
+            label: t('home.stats.hoursLogged'),
             value: (
                 <>
                     {stats.loggedHoursThisWeek}
                     <span className="text-[15px] text-muted-foreground"> h</span>
                 </>
             ),
-            hint: 'this week, all projects',
+            hint: t('home.stats.hoursHint'),
         },
         {
-            label: 'Active projects',
+            label: t('home.stats.activeProjects'),
             value: stats.activeProjects,
             hint:
                 stats.archivedProjects > 0
-                    ? `+ ${stats.archivedProjects} archived`
-                    : 'no archived project',
+                    ? t('home.stats.archivedHint', { count: stats.archivedProjects })
+                    : t('home.stats.noArchivedHint'),
         },
     ];
 
     return (
         <AppLayout
-            title="Home"
-            subtitle="Workspace overview"
+            title={t('home.title')}
+            subtitle={t('home.subtitle')}
             actions={
                 projects.length > 0 ? (
                     <Button size="sm" variant="outline" onClick={() => setCreating(true)}>
                         <Plus />
-                        New issue
+                        {t('home.newIssue')}
                     </Button>
                 ) : null
             }
         >
-            <Head title="Home" />
+            <Head title={t('home.title')} />
 
             <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
                 {statCards.map((card) => (
@@ -129,9 +127,9 @@ export default function Home() {
 
             <section className="mt-6">
                 <div className="mb-3 flex items-center justify-between">
-                    <h2 className="text-base font-semibold">Projects health</h2>
+                    <h2 className="text-base font-semibold">{t('home.projectsHealth')}</h2>
                     <Button variant="ghost" size="sm" render={<Link href={route('projects.index')} />}>
-                        All projects
+                        {t('home.allProjects')}
                     </Button>
                 </div>
                 {projects.length > 0 ? (
@@ -151,11 +149,11 @@ export default function Home() {
                                     color="success"
                                 />
                                 <div className="flex items-center justify-between text-sm text-muted-foreground">
-                                    <span>{project.health.completionPercentage ?? 0}% complete</span>
+                                    <span>{t('home.complete', { percent: project.health.completionPercentage ?? 0 })}</span>
                                     <span className="font-mono text-xs tabular-nums">
                                         {project.health.targetDate
-                                            ? `target: ${formatDate(project.health.targetDate)}`
-                                            : 'no target date'}
+                                            ? t('home.target', { date: formatDate(project.health.targetDate) })
+                                            : t('home.noTargetDate')}
                                     </span>
                                 </div>
                             </Link>
@@ -163,27 +161,27 @@ export default function Home() {
                     </div>
                 ) : (
                     <p className="rounded-xl border border-dashed px-4 py-8 text-center text-sm text-muted-foreground">
-                        No active project yet — create one from the projects page.
+                        {t('home.noActiveProject')}
                     </p>
                 )}
             </section>
 
             <section className="mt-6 overflow-hidden rounded-xl border bg-card">
                 <div className="flex items-center gap-2.5 border-b px-5 py-3.5">
-                    <h3 className="text-sm font-semibold">My issues</h3>
+                    <h3 className="text-sm font-semibold">{t('home.myIssues')}</h3>
                     <div className="flex-1" />
                     <Button variant="ghost" size="sm" render={<Link href={route('issues.index')} />}>
-                        View all issues
+                        {t('home.viewAllIssues')}
                     </Button>
                 </div>
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead>Title</TableHead>
-                            <TableHead>Project</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead>Priority</TableHead>
-                            <TableHead>Due date</TableHead>
+                            <TableHead>{t('columns.title')}</TableHead>
+                            <TableHead>{t('columns.project')}</TableHead>
+                            <TableHead>{t('columns.status')}</TableHead>
+                            <TableHead>{t('columns.priority')}</TableHead>
+                            <TableHead>{t('columns.dueDate')}</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -213,7 +211,7 @@ export default function Home() {
                         {myIssues.length === 0 ? (
                             <TableRow>
                                 <TableCell colSpan={5} className="py-6 text-center text-muted-foreground">
-                                    No issue assigned to you yet.
+                                    {t('home.noAssignedIssues')}
                                 </TableCell>
                             </TableRow>
                         ) : null}

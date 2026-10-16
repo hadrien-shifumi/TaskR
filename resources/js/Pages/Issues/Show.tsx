@@ -13,6 +13,7 @@ import AppLayout from '@/layouts/app-layout';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { ArrowLeft, Check, Copy, CornerDownRight, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { LabelRef, UserRef } from '@/types';
 import { CommentsSection } from './Show/components/comments-section';
 import { DeleteIssueDialog } from './Show/components/delete-issue-dialog';
@@ -36,6 +37,7 @@ type PageProps = {
 
 export default function Show() {
     const { issue, comments, timeEntries, statuses, members, labels, candidates } = usePage<PageProps>().props;
+    const { t } = useTranslation();
     const [editingTitle, setEditingTitle] = useState(false);
     const [deleting, setDeleting] = useState(false);
     const [copied, setCopied] = useState(false);
@@ -54,7 +56,7 @@ export default function Show() {
                     <Button
                         variant="ghost"
                         size="icon"
-                        aria-label="Back to issues"
+                        aria-label={t('issueShow.backToIssues')}
                         onClick={() => router.get(route('issues.index'))}
                     >
                         <ArrowLeft aria-hidden />
@@ -71,11 +73,11 @@ export default function Show() {
                 <>
                     <Button variant="ghost" size="sm" data-test="copy-identifier" onClick={copyId}>
                         {copied ? <Check className="size-3.5" aria-hidden /> : <Copy className="size-3.5" aria-hidden />}
-                        {copied ? 'Copied' : 'Copy identifier'}
+                        {copied ? t('issueShow.copied') : t('issueShow.copyIdentifier')}
                     </Button>
                     <DropdownMenu>
                         <DropdownMenuTrigger
-                            aria-label="Issue actions"
+                            aria-label={t('issueShow.issueActions')}
                             data-test="issue-menu"
                             className="grid size-7 place-items-center rounded-lg text-muted-foreground outline-none hover:bg-accent hover:text-foreground"
                         >
@@ -85,11 +87,11 @@ export default function Show() {
                             <DropdownMenuGroup>
                                 <DropdownMenuItem onClick={() => setEditingTitle(true)}>
                                     <Pencil aria-hidden />
-                                    Edit title…
+                                    {t('issueShow.editTitle')}
                                 </DropdownMenuItem>
                                 <DropdownMenuItem variant="destructive" onClick={() => setDeleting(true)}>
                                     <Trash2 aria-hidden />
-                                    Delete issue…
+                                    {t('issueShow.deleteIssue')}
                                 </DropdownMenuItem>
                             </DropdownMenuGroup>
                         </DropdownMenuContent>
@@ -114,8 +116,8 @@ export default function Show() {
                             {issue.createdAt ? (
                                 <>
                                     {' '}
-                                    · opened {formatDate(issue.createdAt)}
-                                    {issue.creatorName ? <> by {issue.creatorName}</> : null}
+                                    · {t('issueShow.opened', { date: formatDate(issue.createdAt) })}
+                                    {issue.creatorName ? <> {t('issueShow.by', { name: issue.creatorName })}</> : null}
                                 </>
                             ) : null}
                         </p>
@@ -134,8 +136,8 @@ export default function Show() {
                                             : 'bg-secondary text-muted-foreground'
                                     }`}
                                 >
-                                    due {formatDate(issue.dueDate)}
-                                    {issue.overdue ? ' · overdue' : ''}
+                                    {t('issueShow.due', { date: formatDate(issue.dueDate) })}
+                                    {issue.overdue ? t('issueShow.overdueSuffix') : ''}
                                 </Badge>
                             ) : null}
                         </div>
@@ -144,7 +146,7 @@ export default function Show() {
                     <DescriptionSection issue={issue} />
 
                     <section>
-                        <SectionHead title="Child issues" count={issue.children.length} />
+                        <SectionHead title={t('issueShow.childIssues')} count={issue.children.length} />
                         {issue.children.length > 0 ? (
                             <ul className="divide-y">
                                 {issue.children.map((child) => (
@@ -170,7 +172,7 @@ export default function Show() {
                                 ))}
                             </ul>
                         ) : (
-                            <p className="text-sm text-muted-foreground">No child issues.</p>
+                            <p className="text-sm text-muted-foreground">{t('issueShow.noChildIssues')}</p>
                         )}
                     </section>
 

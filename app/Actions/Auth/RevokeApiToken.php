@@ -30,6 +30,6 @@ class RevokeApiToken
         $tokenId = (string) $request->route('token');
         $this->handle($user, $tokenId);
 
-        return redirect()->route('settings.tokens')->with('status', 'API token revoked.');
+        return redirect()->route('settings.tokens')->with('status', __('flash.token.revoked'));
     }
 }

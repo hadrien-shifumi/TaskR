@@ -1,4 +1,5 @@
 import { Badge } from '@/components/ui/badge';
+import { useTranslation } from 'react-i18next';
 
 /**
  * Semantic badges shared by the issue screens. Colors only ever come from the
@@ -24,10 +25,12 @@ export function StatusBadge({ name, category }: { name: string; category: string
 }
 
 export function PriorityBadge({ priority }: { priority: string }) {
+    const { t } = useTranslation();
+
     if (priority === 'none') {
         return (
             <Badge variant="secondary" className="rounded-full bg-secondary text-muted-foreground">
-                none
+                {t('priority.none')}
             </Badge>
         );
     }
@@ -39,14 +42,16 @@ export function PriorityBadge({ priority }: { priority: string }) {
               ? 'bg-warning/10 text-warning'
               : 'bg-info/10 text-info';
 
-    return <Badge variant="secondary" className={`rounded-full ${tone}`}>{priority}</Badge>;
+    return <Badge variant="secondary" className={`rounded-full ${tone}`}>{t(`priority.${priority}`)}</Badge>;
 }
 
 export function HealthBadge({ status }: { status: string | null }) {
+    const { t } = useTranslation();
+
     if (status === null) {
         return (
             <Badge variant="secondary" className="rounded-full bg-secondary text-muted-foreground">
-                No projection
+                {t('health.noProjection')}
             </Badge>
         );
     }
@@ -61,7 +66,7 @@ export function HealthBadge({ status }: { status: string | null }) {
     return (
         <Badge variant="secondary" className={`rounded-full ${tone}`}>
             <span className={DOT} />
-            {status === 'ok' ? 'On track' : status === 'at-risk' ? 'At risk' : 'Late'}
+            {status === 'ok' ? t('health.onTrack') : status === 'at-risk' ? t('health.atRisk') : t('health.late')}
         </Badge>
     );
 }

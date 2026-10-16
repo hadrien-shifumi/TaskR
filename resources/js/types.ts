@@ -2,6 +2,7 @@ export interface AuthUser {
     id: number;
     name: string;
     email: string;
+    locale: string;
 }
 
 export interface WorkspaceSummary {
@@ -15,6 +16,8 @@ export interface PageSharedProps {
     auth: { user: AuthUser | null };
     workspace: WorkspaceSummary | null;
     workspaces: WorkspaceSummary[];
+    /** Active application locale for the request (en | fr). */
+    locale: string;
 }
 
 /** Minimal user reference embedded in issue payloads. */

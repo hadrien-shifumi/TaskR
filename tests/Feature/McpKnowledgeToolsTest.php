@@ -6,6 +6,7 @@ use App\Actions\Workspaces\CreateWorkspace;
 use App\Jobs\VectorizeKnowledgePage;
 use App\Mcp\Servers\TaskrServer;
 use App\Mcp\Tools\CreateKnowledge;
+use App\Mcp\Tools\DeleteKnowledge;
 use App\Mcp\Tools\GetKnowledge;
 use App\Mcp\Tools\ListKnowledge;
 use App\Mcp\Tools\SearchKnowledge;
@@ -59,7 +60,7 @@ class McpKnowledgeToolsTest extends TestCase
         return [$owner, $workspace];
     }
 
-    public function test_tools_catalog_exposes_knowledge_tools_without_delete(): void
+    public function test_tools_catalog_exposes_all_knowledge_tools(): void
     {
         TaskrServer::tools()->assertRegistered([
             ListKnowledge::class,
@@ -67,6 +68,7 @@ class McpKnowledgeToolsTest extends TestCase
             SearchKnowledge::class,
             CreateKnowledge::class,
             UpdateKnowledge::class,
+            DeleteKnowledge::class,
         ]);
 
         $defaults = (new \ReflectionClass(TaskrServer::class))->getDefaultProperties();
@@ -78,8 +80,7 @@ class McpKnowledgeToolsTest extends TestCase
             fn (string $tool): bool => str_contains($tool, 'Knowledge'),
         );
 
-        $this->assertCount(5, $knowledgeTools);
-        $this->assertNotContains('App\\Mcp\\Tools\\DeleteKnowledge', $registered);
+        $this->assertCount(6, $knowledgeTools);
     }
 
     public function test_list_then_get_knowledge_immersion_flow(): void

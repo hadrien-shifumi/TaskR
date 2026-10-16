@@ -5,6 +5,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { useTranslation } from 'react-i18next';
 
 export const PRIORITIES = ['none', 'low', 'high', 'urgent'];
 
@@ -16,6 +17,8 @@ type PrioritySelectProps = {
 
 /** Issue priority picker over the fixed priority scale. */
 export function PrioritySelect({ id, value, onValueChange }: PrioritySelectProps) {
+    const { t } = useTranslation();
+
     return (
         <Select
             value={value}
@@ -29,7 +32,7 @@ export function PrioritySelect({ id, value, onValueChange }: PrioritySelectProps
             <SelectContent>
                 {PRIORITIES.map((priority) => (
                     <SelectItem key={priority} value={priority}>
-                        {priority}
+                        {t(`priority.${priority}`)}
                     </SelectItem>
                 ))}
             </SelectContent>

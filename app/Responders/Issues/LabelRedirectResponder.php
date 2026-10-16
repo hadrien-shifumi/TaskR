@@ -11,6 +11,6 @@ class LabelRedirectResponder
     {
         return redirect()
             ->route('issues.index')
-            ->with('status', "Label \"{$label->name}\" created.");
+            ->with('status', __('flash.label.created', ['name' => $label->name]));
     }
 }

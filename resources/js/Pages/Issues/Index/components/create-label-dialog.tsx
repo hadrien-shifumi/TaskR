@@ -2,6 +2,7 @@ import { FormDialog } from '@/components/form-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useForm } from '@inertiajs/react';
+import { useTranslation } from 'react-i18next';
 
 type CreateLabelDialogProps = {
     open: boolean;
@@ -10,6 +11,7 @@ type CreateLabelDialogProps = {
 
 /** Workspace-wide label creation. */
 export function CreateLabelDialog({ open, onClose }: CreateLabelDialogProps) {
+    const { t } = useTranslation();
     const labelForm = useForm({ name: '', color: '' });
 
     const submitLabel = (e: React.FormEvent) => {
@@ -28,14 +30,14 @@ export function CreateLabelDialog({ open, onClose }: CreateLabelDialogProps) {
             onOpenChange={(o) => {
                 if (!o) onClose();
             }}
-            title="New label"
-            description="Workspace-wide labels, freely attachable."
-            submitLabel="Create"
+            title={t('issuesPage.newLabel')}
+            description={t('labelDialog.description')}
+            submitLabel={t('common.create')}
             processing={labelForm.processing}
             onSubmit={submitLabel}
         >
             <div className="grid gap-2">
-                <Label htmlFor="label-name">Name</Label>
+                <Label htmlFor="label-name">{t('common.name')}</Label>
                 <Input
                     id="label-name"
                     value={labelForm.data.name}
@@ -48,12 +50,12 @@ export function CreateLabelDialog({ open, onClose }: CreateLabelDialogProps) {
                 ) : null}
             </div>
             <div className="grid gap-2">
-                <Label htmlFor="label-color">Color</Label>
+                <Label htmlFor="label-color">{t('labelDialog.color')}</Label>
                 <Input
                     id="label-color"
                     value={labelForm.data.color}
                     onChange={(e) => labelForm.setData('color', e.target.value)}
-                    placeholder="gray"
+                    placeholder={t('labelDialog.colorPlaceholder')}
                 />
             </div>
         </FormDialog>

@@ -8,6 +8,7 @@ use App\Actions\Auth\RevokeApiToken;
 use App\Actions\Auth\ShowApiTokensPage;
 use App\Actions\Auth\ShowLoginPage;
 use App\Actions\Auth\ShowRegistrationPage;
+use App\Actions\Auth\UpdateUserLocale;
 use App\Actions\Comments\AddComment;
 use App\Actions\Comments\DeleteComment;
 use App\Actions\Comments\UpdateComment;
@@ -65,6 +66,8 @@ Route::middleware('guest')->group(function (): void {
 });
 
 Route::post('/logout', LogoutUser::class)->middleware('auth')->name('logout');
+
+Route::match(['put', 'patch'], '/user/locale', UpdateUserLocale::class)->middleware('auth')->name('user.locale.update');
 
 // Acceptance is reachable by guests: the action renders the invitation landing
 // page for them and performs the membership only for authenticated users.

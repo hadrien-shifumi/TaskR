@@ -59,7 +59,7 @@ class CreateWorkspace
 
         return redirect()
             ->route('home')
-            ->with('status', "Workspace \"{$workspace->name}\" created.");
+            ->with('status', __('flash.workspace.created', ['name' => $workspace->name]));
     }
 
     private function createDefaultStatuses(Workspace $workspace): void

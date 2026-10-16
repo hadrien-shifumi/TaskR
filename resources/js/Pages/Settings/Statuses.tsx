@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
 import { Head, router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { PageSharedProps } from '@/types';
 import { DeleteStatusDialog } from './Statuses/components/delete-status-dialog';
 import { StatusFormDialog } from './Statuses/components/status-form-dialog';
@@ -17,6 +18,7 @@ type PageProps = {
 export default function Statuses() {
     const { statuses } = usePage<PageProps>().props;
     const { workspace } = usePage<PageSharedProps>().props;
+    const { t } = useTranslation();
     const isOwner = workspace?.role === 'owner';
     const [creating, setCreating] = useState(false);
     const [editing, setEditing] = useState<StatusRow | null>(null);
@@ -43,17 +45,17 @@ export default function Statuses() {
     };
 
     return (
-        <AppLayout title="Settings" subtitle={workspace?.name} narrow>
+        <AppLayout title={t('settings.pageTitle')} subtitle={workspace?.name} narrow>
             <SettingsShell
-                title="Workspace statuses"
-                description="Defined once for every project. The order below applies across the UI."
+                title={t('settings.statusesTitle')}
+                description={t('settings.statusesDescription')}
                 actions={
                     <Button size="sm" onClick={() => setCreating(true)}>
-                        New status
+                        {t('settings.newStatus')}
                     </Button>
                 }
             >
-                <Head title="Statuses" />
+                <Head title={t('settings.sections.statuses')} />
 
                 <FlashBanner />
 
@@ -86,8 +88,7 @@ export default function Statuses() {
                 </div>
 
                 <p className="mt-3.5 text-sm text-muted-foreground">
-                    The name is free; the semantic category — shown next to it — carries the color and the meaning
-                    (4 fixed categories: backlog, in progress, done, cancelled).
+                    {t('settings.statusesNote')}
                 </p>
 
                 <StatusFormDialog

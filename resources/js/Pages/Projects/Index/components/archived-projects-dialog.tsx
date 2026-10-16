@@ -7,16 +7,9 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { router } from '@inertiajs/react';
+import { useTranslation } from 'react-i18next';
+import { formatDate } from '@/lib/format-date';
 import type { ProjectRow } from '@/types';
-
-function formatDate(date: string | null): string {
-    if (!date) return '—';
-    return new Date(date).toLocaleDateString(undefined, {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-    });
-}
 
 type ArchivedProjectsDialogProps = {
     open: boolean;
@@ -29,6 +22,7 @@ type ArchivedProjectsDialogProps = {
  * their issue count and archive date — each stays viewable and restorable.
  */
 export function ArchivedProjectsDialog({ open, projects, onClose }: ArchivedProjectsDialogProps) {
+    const { t } = useTranslation();
     return (
         <Dialog
             open={open}
@@ -38,13 +32,13 @@ export function ArchivedProjectsDialog({ open, projects, onClose }: ArchivedProj
         >
             <DialogContent className="sm:max-w-[620px]">
                 <DialogHeader>
-                    <DialogTitle>Archived projects</DialogTitle>
+                    <DialogTitle>{t('projectsPage.archivedTitle')}</DialogTitle>
                     <DialogDescription>
-                        Out of the active list — issues stay readable, unarchiving is possible.
+                        {t('projectsPage.archivedDescription')}
                     </DialogDescription>
                 </DialogHeader>
                 {projects.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">No archived projects.</p>
+                    <p className="text-sm text-muted-foreground">{t('projectsPage.noArchived')}</p>
                 ) : (
                     <ul className="flex flex-col gap-3.5">
                         {projects.map((project) => {
@@ -58,7 +52,11 @@ export function ArchivedProjectsDialog({ open, projects, onClose }: ArchivedProj
                                     <div className="min-w-0">
                                         <p className="font-medium">{project.name}</p>
                                         <p className="text-xs text-muted-foreground">
-                                            {`${issues} ${issues === 1 ? 'issue' : 'issues'} · archived on ${formatDate(project.archivedAt)}`}
+                                            {`${
+                                                issues === 1
+                                                    ? t('projectsPage.issueCount', { count: issues })
+                                                    : t('projectsPage.issueCountPlural', { count: issues })
+                                            } · ${t('projectsPage.archivedOn', { date: formatDate(project.archivedAt) })}`}
                                         </p>
                                     </div>
                                     <div className="flex shrink-0 items-center gap-2">
@@ -67,14 +65,14 @@ export function ArchivedProjectsDialog({ open, projects, onClose }: ArchivedProj
                                             size="sm"
                                             onClick={() => router.get(route('projects.health', project.id))}
                                         >
-                                            View
+                                            {t('projectsPage.view')}
                                         </Button>
                                         <Button
                                             variant="outline"
                                             size="sm"
                                             onClick={() => router.post(route('projects.archive', project.id))}
                                         >
-                                            Unarchive
+                                            {t('projectsPage.unarchive')}
                                         </Button>
                                     </div>
                                 </li>

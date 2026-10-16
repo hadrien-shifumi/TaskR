@@ -5,6 +5,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { router, useForm, usePage } from '@inertiajs/react';
 import { Pencil, Trash2 } from 'lucide-react';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { CommentItem } from '../types';
 import { timeAgo } from './format';
 import { SectionHead } from './section-head';
@@ -20,6 +21,7 @@ type CommentsSectionProps = {
  */
 export function CommentsSection({ issueId, comments }: CommentsSectionProps) {
     const { auth } = usePage<{ auth: { user: { id: number; name: string } | null } }>().props;
+    const { t } = useTranslation();
     const [editingComment, setEditingComment] = useState<string | null>(null);
     const [previewing, setPreviewing] = useState(false);
 
@@ -44,13 +46,13 @@ export function CommentsSection({ issueId, comments }: CommentsSectionProps) {
     };
 
     const removeComment = (commentId: string) => {
-        if (!window.confirm('Delete this comment?')) return;
+        if (!window.confirm(t('comments.deleteConfirm'))) return;
         router.delete(route('comments.destroy', [issueId, commentId]));
     };
 
     return (
         <section>
-            <SectionHead title={`Comments (${comments.length})`} />
+            <SectionHead title={t('comments.title', { count: comments.length })} />
             <ul className="divide-y">
                 {comments.map((comment) => (
                     <li key={comment.id} className="group flex gap-3 py-3.5">
@@ -77,7 +79,7 @@ export function CommentsSection({ issueId, comments }: CommentsSectionProps) {
                                             data-test="comment-edit-save"
                                             disabled={commentEditForm.processing}
                                         >
-                                            Save
+                                            {t('common.save')}
                                         </Button>
                                         <Button
                                             type="button"
@@ -85,7 +87,7 @@ export function CommentsSection({ issueId, comments }: CommentsSectionProps) {
                                             size="sm"
                                             onClick={() => setEditingComment(null)}
                                         >
-                                            Cancel
+                                            {t('common.cancel')}
                                         </Button>
                                     </div>
                                 </form>
@@ -98,7 +100,7 @@ export function CommentsSection({ issueId, comments }: CommentsSectionProps) {
                                 <Button
                                     variant="ghost"
                                     size="icon-sm"
-                                    aria-label={`Edit comment by ${comment.authorName}`}
+                                    aria-label={t('comments.editBy', { name: comment.authorName })}
                                     data-test="comment-edit"
                                     onClick={() => {
                                         setEditingComment(comment.id);
@@ -110,7 +112,7 @@ export function CommentsSection({ issueId, comments }: CommentsSectionProps) {
                                 <Button
                                     variant="ghost"
                                     size="icon-sm"
-                                    aria-label={`Delete comment by ${comment.authorName}`}
+                                    aria-label={t('comments.deleteBy', { name: comment.authorName })}
                                     data-test="comment-delete"
                                     onClick={() => removeComment(comment.id)}
                                 >
@@ -125,7 +127,7 @@ export function CommentsSection({ issueId, comments }: CommentsSectionProps) {
             <div className="mt-3.5 flex gap-3">
                 <Avatar name={auth.user?.name ?? '?'} />
                 <form onSubmit={submitComment} className="grid min-w-0 flex-1 gap-2">
-                    <span className="font-mono text-xs text-muted-foreground">Add a comment (Markdown)</span>
+                    <span className="font-mono text-xs text-muted-foreground">{t('comments.addLabel')}</span>
                     {previewing ? (
                         <div
                             data-test="comment-preview-view"
@@ -134,13 +136,13 @@ export function CommentsSection({ issueId, comments }: CommentsSectionProps) {
                             {commentForm.data.body ? (
                                 <MarkdownView value={commentForm.data.body} className="text-[13.5px]" />
                             ) : (
-                                <p className="text-sm italic text-muted-foreground">Nothing to preview yet.</p>
+                                <p className="text-sm italic text-muted-foreground">{t('issueShow.nothingToPreview')}</p>
                             )}
                         </div>
                     ) : (
                         <Textarea
                             data-test="comment-body"
-                            placeholder="Add a comment..."
+                            placeholder={t('comments.placeholder')}
                             className="min-h-[70px]"
                             value={commentForm.data.body}
                             onChange={(e) => commentForm.setData('body', e.target.value)}
@@ -159,10 +161,10 @@ export function CommentsSection({ issueId, comments }: CommentsSectionProps) {
                             data-test="comment-preview"
                             onClick={() => setPreviewing((value) => !value)}
                         >
-                            {previewing ? 'Write' : 'Preview'}
+                            {previewing ? t('issueShow.write') : t('issueShow.preview')}
                         </Button>
                         <Button type="submit" size="sm" data-test="comment-submit" disabled={commentForm.processing}>
-                            Comment
+                            {t('comments.submit')}
                         </Button>
                     </div>
                 </form>

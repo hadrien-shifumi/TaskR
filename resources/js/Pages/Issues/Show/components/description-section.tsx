@@ -3,6 +3,7 @@ import { MarkdownView } from '@/components/ui/markdown-editor';
 import { Textarea } from '@/components/ui/textarea';
 import { useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { IssueDetail } from '../types';
 import { SectionHead } from './section-head';
 
@@ -16,6 +17,7 @@ type DescriptionSectionProps = {
  */
 export function DescriptionSection({ issue }: DescriptionSectionProps) {
     const { auth } = usePage<{ auth: { user: { id: number; name: string } | null } }>().props;
+    const { t } = useTranslation();
     const [editing, setEditing] = useState(false);
     const [previewing, setPreviewing] = useState(false);
 
@@ -50,11 +52,11 @@ export function DescriptionSection({ issue }: DescriptionSectionProps) {
     return (
         <section>
             <SectionHead
-                title="Description"
+                title={t('issueShow.description')}
                 action={
                     editing ? undefined : (
                         <Button variant="ghost" size="sm" data-test="description-edit" onClick={startEditing}>
-                            Edit
+                            {t('issueShow.edit')}
                         </Button>
                     )
                 }
@@ -62,7 +64,7 @@ export function DescriptionSection({ issue }: DescriptionSectionProps) {
             {editing ? (
                 <form onSubmit={submitDescription} className="grid gap-2.5">
                     <p className="font-mono text-xs text-muted-foreground">
-                        Description (Markdown) — the editor offers a preview
+                        {t('issueShow.markdownHint')}
                     </p>
                     {previewing ? (
                         <div
@@ -72,7 +74,7 @@ export function DescriptionSection({ issue }: DescriptionSectionProps) {
                             {descriptionForm.data.description ? (
                                 <MarkdownView value={descriptionForm.data.description} className="text-[14.5px]" />
                             ) : (
-                                <p className="text-sm italic text-muted-foreground">Nothing to preview yet.</p>
+                                <p className="text-sm italic text-muted-foreground">{t('issueShow.nothingToPreview')}</p>
                             )}
                         </div>
                     ) : (
@@ -94,10 +96,10 @@ export function DescriptionSection({ issue }: DescriptionSectionProps) {
                             data-test="description-edit-save"
                             disabled={descriptionForm.processing}
                         >
-                            Save
+                            {t('common.save')}
                         </Button>
                         <Button type="button" variant="ghost" size="sm" onClick={() => setEditing(false)}>
-                            Cancel
+                            {t('common.cancel')}
                         </Button>
                         <Button
                             type="button"
@@ -106,17 +108,17 @@ export function DescriptionSection({ issue }: DescriptionSectionProps) {
                             data-test="description-preview"
                             onClick={() => setPreviewing((value) => !value)}
                         >
-                            {previewing ? 'Write' : 'Preview'}
+                            {previewing ? t('issueShow.write') : t('issueShow.preview')}
                         </Button>
                         <span className="ml-auto text-xs text-muted-foreground">
-                            Edited by {auth.user?.name ?? 'you'} · just now
+                            {t('issueShow.editedBy', { name: auth.user?.name ?? 'you' })}
                         </span>
                     </div>
                 </form>
             ) : issue.description ? (
                 <MarkdownView value={issue.description} className="text-[14.5px] leading-relaxed" />
             ) : (
-                <p className="text-sm italic text-muted-foreground">No description yet — use Edit to add one.</p>
+                <p className="text-sm italic text-muted-foreground">{t('issueShow.noDescription')}</p>
             )}
         </section>
     );

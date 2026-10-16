@@ -29,6 +29,7 @@ import AppLayout from '@/layouts/app-layout';
 import { Head, router, useForm, usePage } from '@inertiajs/react';
 import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { PageSharedProps } from '@/types';
 
 interface TemplateRow {
@@ -53,6 +54,7 @@ const emptyForm = { name: '', description: DEFAULT_BODY, priority: 'none', label
 export default function Templates() {
     const { templates, labels } = usePage<{ templates: TemplateRow[]; labels: LabelOption[] }>().props;
     const { workspace } = usePage<PageSharedProps>().props;
+    const { t } = useTranslation();
     const isOwner = workspace?.role === 'owner';
 
     const [editing, setEditing] = useState<TemplateRow | null>(null);
@@ -93,7 +95,7 @@ export default function Templates() {
     };
 
     const remove = (template: TemplateRow) => {
-        if (!window.confirm(`Delete template "${template.name}"? Existing issues are not affected.`)) return;
+        if (!window.confirm(t('templatesPage.deleteConfirm', { name: template.name }))) return;
         router.delete(route('templates.destroy', template.id));
     };
 
@@ -103,7 +105,7 @@ export default function Templates() {
     ) => (
         <>
             <div className="grid gap-2">
-                <Label htmlFor={`${idPrefix}-name`}>Name</Label>
+                <Label htmlFor={`${idPrefix}-name`}>{t('common.name')}</Label>
                 <Input
                     id={`${idPrefix}-name`}
                     value={form.data.name}
@@ -117,14 +119,14 @@ export default function Templates() {
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
                 <div className="grid gap-2">
-                    <Label>Default priority</Label>
+                    <Label>{t('templatesPage.defaultPriority')}</Label>
                     <PrioritySelect
                         value={form.data.priority}
                         onValueChange={(priority) => form.setData('priority', priority)}
                     />
                 </div>
                 <div className="grid gap-2">
-                    <Label>Default labels</Label>
+                    <Label>{t('templatesPage.defaultLabels')}</Label>
                     <LabelPicker
                         labels={labels}
                         selectedIds={form.data.label_ids}
@@ -134,7 +136,7 @@ export default function Templates() {
                 </div>
             </div>
             <div className="grid gap-2">
-                <Label>Default description</Label>
+                <Label>{t('templatesPage.defaultDescription')}</Label>
                 <MarkdownEditor
                     value={form.data.description}
                     onChange={(markdown) => form.setData('description', markdown)}
@@ -144,17 +146,17 @@ export default function Templates() {
     );
 
     return (
-        <AppLayout title="Settings" subtitle={workspace?.name} narrow>
+        <AppLayout title={t('settings.pageTitle')} subtitle={workspace?.name} narrow>
             <SettingsShell
-                title="Issue templates"
-                description="Unique name per workspace · Markdown body · default priority and labels. Owner-only."
+                title={t('settings.sections.templates')}
+                description={t('templatesPage.description')}
                 actions={
                     <Button size="sm" onClick={() => setCreating(true)}>
-                        New template
+                        {t('templatesPage.newTemplate')}
                     </Button>
                 }
             >
-                <Head title="Templates" />
+                <Head title={t('settings.sections.templates')} />
 
                 <FlashBanner />
 
@@ -162,9 +164,9 @@ export default function Templates() {
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>Template</TableHead>
-                                <TableHead>Default priority</TableHead>
-                                <TableHead>Labels</TableHead>
+                                <TableHead>{t('templatesPage.columnTemplate')}</TableHead>
+                                <TableHead>{t('templatesPage.columnDefaultPriority')}</TableHead>
+                                <TableHead>{t('templatesPage.columnLabels')}</TableHead>
                                 {isOwner ? <TableHead className="w-16" /> : null}
                             </TableRow>
                         </TableHeader>
@@ -202,7 +204,7 @@ export default function Templates() {
                                         <TableCell className="text-right">
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger
-                                                    aria-label={`Actions for template ${template.name}`}
+                                                    aria-label={t('templatesPage.templateAria', { name: template.name })}
                                                     className="grid size-6.5 place-items-center rounded-md text-muted-foreground outline-none hover:bg-accent hover:text-foreground"
                                                 >
                                                     <MoreHorizontal className="size-4" aria-hidden />
@@ -221,7 +223,7 @@ export default function Templates() {
                                                             }}
                                                         >
                                                             <Pencil aria-hidden />
-                                                            Edit…
+                                                            {t('projectMenu.edit')}
                                                         </DropdownMenuItem>
                                                         <DropdownMenuSeparator />
                                                         <DropdownMenuItem
@@ -229,7 +231,7 @@ export default function Templates() {
                                                             onClick={() => remove(template)}
                                                         >
                                                             <Trash2 aria-hidden />
-                                                            Delete…
+                                                            {t('projectMenu.delete')}
                                                         </DropdownMenuItem>
                                                     </DropdownMenuGroup>
                                                 </DropdownMenuContent>
@@ -241,7 +243,7 @@ export default function Templates() {
                             {templates.length === 0 ? (
                                 <TableRow>
                                     <TableCell colSpan={isOwner ? 4 : 3} className="py-6 text-center text-muted-foreground">
-                                        No templates yet.
+                                        {t('templatesPage.noTemplates')}
                                     </TableCell>
                                 </TableRow>
                             ) : null}
@@ -252,9 +254,9 @@ export default function Templates() {
                 <FormDialog
                     open={creating}
                     onOpenChange={setCreating}
-                    title="New template"
-                    description="Pre-fill values applied when creating an issue. Everything stays editable."
-                    submitLabel="Create"
+                    title={t('templatesPage.newTitle')}
+                    description={t('templatesPage.newDescription')}
+                    submitLabel={t('common.create')}
                     processing={createForm.processing}
                     contentClassName="max-h-[90vh] overflow-y-auto sm:max-w-2xl"
                     onSubmit={submitCreate}
@@ -267,9 +269,9 @@ export default function Templates() {
                     onOpenChange={(open) => {
                         if (!open) setEditing(null);
                     }}
-                    title="Edit template"
-                    description="Changes never affect existing issues."
-                    submitLabel="Save"
+                    title={t('templatesPage.editTitle')}
+                    description={t('templatesPage.editDescription')}
+                    submitLabel={t('common.save')}
                     processing={editForm.processing}
                     contentClassName="max-h-[90vh] overflow-y-auto sm:max-w-2xl"
                     onSubmit={submitEdit}

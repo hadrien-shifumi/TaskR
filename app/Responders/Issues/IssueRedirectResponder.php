@@ -11,14 +11,14 @@ class IssueRedirectResponder
     {
         return redirect()
             ->route('issues.show', $issue)
-            ->with('status', 'Issue created.');
+            ->with('status', __('flash.issue.created'));
     }
 
     public function updated(Issue $issue): RedirectResponse
     {
         return redirect()
             ->route('issues.show', $issue)
-            ->with('status', 'Issue updated.');
+            ->with('status', __('flash.issue.updated'));
     }
 
     /**
@@ -29,13 +29,13 @@ class IssueRedirectResponder
     {
         return redirect()
             ->back()
-            ->with('status', 'Issue moved.');
+            ->with('status', __('flash.issue.moved'));
     }
 
     public function deleted(): RedirectResponse
     {
         return redirect()
             ->route('issues.index')
-            ->with('status', 'Issue deleted.');
+            ->with('status', __('flash.issue.deleted'));
     }
 }

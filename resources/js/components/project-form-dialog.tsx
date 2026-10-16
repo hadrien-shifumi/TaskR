@@ -4,6 +4,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useForm } from '@inertiajs/react';
 import { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { ProjectRef } from '@/types';
 
 type ProjectFormDialogProps = {
@@ -15,6 +16,7 @@ type ProjectFormDialogProps = {
 
 /** Create/edit dialog for a project; `project` selects the mode. */
 export function ProjectFormDialog({ open, project, onClose }: ProjectFormDialogProps) {
+    const { t } = useTranslation();
     const form = useForm({ name: '', description: '', target_date: '' });
 
     // Seed at open: edit mode reuses the row's values, create mode resets.
@@ -52,14 +54,14 @@ export function ProjectFormDialog({ open, project, onClose }: ProjectFormDialogP
             onOpenChange={(o) => {
                 if (!o) onClose();
             }}
-            title={project ? 'Edit project' : 'New project'}
-            description={project ? 'Rename or update the description.' : 'Create a project in this workspace.'}
-            submitLabel={project ? 'Save' : 'Create'}
+            title={project ? t('projectForm.editTitle') : t('projectForm.newTitle')}
+            description={project ? t('projectForm.editDescription') : t('projectForm.newDescription')}
+            submitLabel={project ? t('common.save') : t('common.create')}
             processing={form.processing}
             onSubmit={submit}
         >
             <div className="grid gap-2">
-                <Label htmlFor={project ? 'edit-name' : 'new-name'}>Name</Label>
+                <Label htmlFor={project ? 'edit-name' : 'new-name'}>{t('common.name')}</Label>
                 <Input
                     id={project ? 'edit-name' : 'new-name'}
                     value={form.data.name}
@@ -72,7 +74,7 @@ export function ProjectFormDialog({ open, project, onClose }: ProjectFormDialogP
                 ) : null}
             </div>
             <div className="grid gap-2">
-                <Label htmlFor={project ? 'edit-description' : 'new-description'}>Description</Label>
+                <Label htmlFor={project ? 'edit-description' : 'new-description'}>{t('common.description')}</Label>
                 <Textarea
                     id={project ? 'edit-description' : 'new-description'}
                     value={form.data.description}
@@ -80,7 +82,7 @@ export function ProjectFormDialog({ open, project, onClose }: ProjectFormDialogP
                 />
             </div>
             <div className="grid gap-2">
-                <Label htmlFor={project ? 'edit-target-date' : 'new-target-date'}>Target date</Label>
+                <Label htmlFor={project ? 'edit-target-date' : 'new-target-date'}>{t('projectForm.targetDate')}</Label>
                 <Input
                     id={project ? 'edit-target-date' : 'new-target-date'}
                     type="date"

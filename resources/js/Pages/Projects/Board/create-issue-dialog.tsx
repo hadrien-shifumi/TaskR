@@ -12,6 +12,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { router, useForm } from '@inertiajs/react';
+import { useTranslation } from 'react-i18next';
 import type { LabelRef, UserRef } from '@/types';
 import type { TemplateOption } from '@/Pages/Issues/Index/types';
 
@@ -49,6 +50,7 @@ export function BoardCreateIssueDialog({
     members,
     defaultStatusId,
 }: BoardCreateIssueDialogProps) {
+    const { t } = useTranslation();
     const createForm = useForm({
         project_id: project.id,
         title: '',
@@ -130,18 +132,18 @@ export function BoardCreateIssueDialog({
             onOpenChange={(o) => {
                 if (!o) onClose();
             }}
-            title="New issue"
-            description="Only the title is required — everything else is optional."
-            submitLabel="Create issue"
+            title={t('issues.newIssue')}
+            description={t('projectBoard.boardDialogDescription')}
+            submitLabel={t('issues.create')}
             processing={createForm.processing}
             contentClassName="max-h-[90vh] overflow-y-auto sm:max-w-3xl"
             onSubmit={submitCreate}
         >
             <div className="grid gap-2">
-                <Label htmlFor="board-issue-title">Title</Label>
+                <Label htmlFor="board-issue-title">{t('issues.fields.title')}</Label>
                 <Input
                     id="board-issue-title"
-                    placeholder="Describe the task in one sentence"
+                    placeholder={t('issues.quickTitlePlaceholder')}
                     value={createForm.data.title}
                     onChange={(e) => createForm.setData('title', e.target.value)}
                     aria-required="true"
@@ -156,7 +158,7 @@ export function BoardCreateIssueDialog({
             </div>
             <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
-                    <Label>Project</Label>
+                    <Label>{t('issues.fields.project')}</Label>
                     <Select
                         value={createForm.data.project_id}
                         onValueChange={(v) => {
@@ -164,7 +166,7 @@ export function BoardCreateIssueDialog({
                         }}
                     >
                         <SelectTrigger
-                            aria-label="Project"
+                            aria-label={t('issues.fields.project')}
                             aria-invalid={createForm.errors.project_id ? true : undefined}
                         >
                             <SelectValue>{project.name}</SelectValue>
@@ -179,7 +181,7 @@ export function BoardCreateIssueDialog({
                 </div>
                 {templates.length > 0 ? (
                     <div className="grid gap-2">
-                        <Label>Template</Label>
+                        <Label>{t('issues.template')}</Label>
                         <Select
                             value={createForm.data.template || 'none'}
                             onValueChange={(v) => v && applyTemplate(v)}
@@ -187,11 +189,11 @@ export function BoardCreateIssueDialog({
                             <SelectTrigger>
                                 <SelectValue>
                                     {templates.find((t) => t.id === createForm.data.template)?.name ??
-                                        'No template'}
+                                        t('issues.noTemplate')}
                                 </SelectValue>
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="none">No template</SelectItem>
+                                <SelectItem value="none">{t('issues.noTemplate')}</SelectItem>
                                 {templates.map((t) => (
                                     <SelectItem key={t.id} value={t.id}>
                                         {t.name}
@@ -200,13 +202,13 @@ export function BoardCreateIssueDialog({
                             </SelectContent>
                         </Select>
                         <p className="text-sm text-muted-foreground">
-                            Pre-fills without constraining — no persistent link.
+                            {t('projectBoard.boardTemplateHint')}
                         </p>
                     </div>
                 ) : null}
             </div>
             <div className="grid gap-2">
-                <Label>Description</Label>
+                <Label>{t('issues.fields.description')}</Label>
                 <MarkdownEditor
                     value={createForm.data.description}
                     onChange={(markdown) => createForm.setData('description', markdown)}
@@ -214,7 +216,7 @@ export function BoardCreateIssueDialog({
             </div>
             <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
-                    <Label>Status</Label>
+                    <Label>{t('issues.fields.status')}</Label>
                     <Select
                         value={createStatusId}
                         onValueChange={(v) => {
@@ -223,20 +225,22 @@ export function BoardCreateIssueDialog({
                     >
                         <SelectTrigger data-test="board-issue-status">
                             <SelectValue>
-                                {createStatus ? `${createStatus.name} · ${createStatus.category}` : 'Status'}
+                                {createStatus
+                                    ? `${createStatus.name} · ${t(`statusCategory.${createStatus.category}`)}`
+                                    : t('issues.fields.status')}
                             </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
                             {statuses.map((status) => (
                                 <SelectItem key={status.id} value={status.id}>
-                                    {status.name} · {status.category}
+                                    {status.name} · {t(`statusCategory.${status.category}`)}
                                 </SelectItem>
                             ))}
                         </SelectContent>
                     </Select>
                 </div>
                 <div className="grid gap-2">
-                    <Label>Priority</Label>
+                    <Label>{t('issues.fields.priority')}</Label>
                     <PrioritySelect
                         value={createForm.data.priority}
                         onValueChange={(priority) => createForm.setData('priority', priority)}
@@ -247,7 +251,7 @@ export function BoardCreateIssueDialog({
                 <div className="grid grid-cols-2 gap-4">
                     {labels.length > 0 ? (
                         <div className="grid gap-2">
-                            <Label>Labels</Label>
+                            <Label>{t('issues.fields.labels')}</Label>
                             <LabelPicker
                                 labels={labels}
                                 selectedIds={createForm.data.label_ids}
@@ -257,7 +261,7 @@ export function BoardCreateIssueDialog({
                     ) : null}
                     {members.length > 0 ? (
                         <div className="grid gap-2">
-                            <Label>Assignees</Label>
+                            <Label>{t('columns.assignees')}</Label>
                             <div className="flex flex-wrap gap-2">
                                 {members.map((member) => {
                                     const selected = createForm.data.assignees.includes(member.id);
@@ -278,14 +282,14 @@ export function BoardCreateIssueDialog({
                                     );
                                 })}
                             </div>
-                            <p className="text-sm text-muted-foreground">Several assignees possible.</p>
+                            <p className="text-sm text-muted-foreground">{t('projectBoard.severalAssignees')}</p>
                         </div>
                     ) : null}
                 </div>
             ) : null}
             <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
-                    <Label htmlFor="board-issue-due">Due date</Label>
+                    <Label htmlFor="board-issue-due">{t('issues.fields.dueDate')}</Label>
                     <Input
                         id="board-issue-due"
                         type="date"
@@ -294,13 +298,13 @@ export function BoardCreateIssueDialog({
                     />
                 </div>
                 <div className="grid gap-2">
-                    <Label htmlFor="board-issue-estimate">Estimate (hours)</Label>
+                    <Label htmlFor="board-issue-estimate">{t('projectBoard.estimateHours')}</Label>
                     <Input
                         id="board-issue-estimate"
                         type="number"
                         step="0.5"
                         min="0"
-                        placeholder="e.g. 6.5"
+                        placeholder={t('projectBoard.estimatePlaceholder')}
                         value={createForm.data.estimated_hours}
                         onChange={(e) => createForm.setData('estimated_hours', e.target.value)}
                     />

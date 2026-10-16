@@ -12,6 +12,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { useForm } from '@inertiajs/react';
+import { useTranslation } from 'react-i18next';
 import type { LabelRef } from '@/types';
 import type { TemplateOption } from '@/Pages/Issues/Index/types';
 
@@ -29,6 +30,7 @@ type CreateIssueDialogProps = {
 
 /** Full-issue creation form: template pre-fill, fields and label toggles. */
 export function CreateIssueDialog({ open, onClose, projects, statuses, labels, templates }: CreateIssueDialogProps) {
+    const { t } = useTranslation();
     const createForm = useForm({
         project_id: projects[0]?.id ?? '',
         title: '',
@@ -85,16 +87,16 @@ export function CreateIssueDialog({ open, onClose, projects, statuses, labels, t
             onOpenChange={(o) => {
                 if (!o) onClose();
             }}
-            title="New issue"
-            description="Title is the only required field."
-            submitLabel="Create"
+            title={t('issues.newIssue')}
+            description={t('issues.titleOnlyRequired')}
+            submitLabel={t('common.create')}
             processing={createForm.processing}
             contentClassName="max-h-[90vh] overflow-y-auto sm:max-w-3xl"
             onSubmit={submitCreate}
         >
             {templates.length > 0 ? (
                 <div className="grid gap-2">
-                    <Label>Template</Label>
+                    <Label>{t('issues.template')}</Label>
                     <Select
                         value={createForm.data.template || 'none'}
                         onValueChange={(v) => v && applyTemplate(v)}
@@ -102,11 +104,11 @@ export function CreateIssueDialog({ open, onClose, projects, statuses, labels, t
                         <SelectTrigger>
                             <SelectValue>
                                 {templates.find((t) => t.id === createForm.data.template)?.name ??
-                                    'No template'}
+                                    t('issues.noTemplate')}
                             </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="none">No template</SelectItem>
+                            <SelectItem value="none">{t('issues.noTemplate')}</SelectItem>
                             {templates.map((t) => (
                                 <SelectItem key={t.id} value={t.id}>
                                     {t.name}
@@ -115,12 +117,12 @@ export function CreateIssueDialog({ open, onClose, projects, statuses, labels, t
                         </SelectContent>
                     </Select>
                     <p className="text-sm text-muted-foreground">
-                        Pre-fills description, priority and labels — everything stays editable.
+                        {t('issues.templateHint')}
                     </p>
                 </div>
             ) : null}
             <div className="grid gap-2">
-                <Label htmlFor="issue-title">Title</Label>
+                <Label htmlFor="issue-title">{t('issues.fields.title')}</Label>
                 <Input
                     id="issue-title"
                     value={createForm.data.title}
@@ -135,7 +137,7 @@ export function CreateIssueDialog({ open, onClose, projects, statuses, labels, t
                 ) : null}
             </div>
             <div className="grid gap-2">
-                <Label>Description</Label>
+                <Label>{t('issues.fields.description')}</Label>
                 <MarkdownEditor
                     value={createForm.data.description}
                     onChange={(markdown) => createForm.setData('description', markdown)}
@@ -143,7 +145,7 @@ export function CreateIssueDialog({ open, onClose, projects, statuses, labels, t
             </div>
             <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
-                    <Label>Project</Label>
+                    <Label>{t('issues.fields.project')}</Label>
                     <Select
                         value={createForm.data.project_id}
                         onValueChange={(v) => {
@@ -152,7 +154,7 @@ export function CreateIssueDialog({ open, onClose, projects, statuses, labels, t
                     >
                         <SelectTrigger aria-invalid={createForm.errors.project_id ? true : undefined}>
                             <SelectValue>
-                                {projects.find((p) => p.id === createForm.data.project_id)?.name ?? 'Project'}
+                                {projects.find((p) => p.id === createForm.data.project_id)?.name ?? t('issues.fields.project')}
                             </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
@@ -169,7 +171,7 @@ export function CreateIssueDialog({ open, onClose, projects, statuses, labels, t
                 </div>
                 {statuses.length > 0 ? (
                     <div className="grid gap-2">
-                        <Label>Status</Label>
+                        <Label>{t('issues.fields.status')}</Label>
                         <Select
                             value={createStatusId}
                             onValueChange={(v) => {
@@ -178,7 +180,7 @@ export function CreateIssueDialog({ open, onClose, projects, statuses, labels, t
                         >
                             <SelectTrigger>
                                 <SelectValue>
-                                    {statuses.find((s) => s.id === createStatusId)?.name ?? 'Status'}
+                                    {statuses.find((s) => s.id === createStatusId)?.name ?? t('issues.fields.status')}
                                 </SelectValue>
                             </SelectTrigger>
                             <SelectContent>
@@ -194,14 +196,14 @@ export function CreateIssueDialog({ open, onClose, projects, statuses, labels, t
             </div>
             <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
-                    <Label>Priority</Label>
+                    <Label>{t('issues.fields.priority')}</Label>
                     <PrioritySelect
                         value={createForm.data.priority}
                         onValueChange={(priority) => createForm.setData('priority', priority)}
                     />
                 </div>
                 <div className="grid gap-2">
-                    <Label htmlFor="issue-due">Due date</Label>
+                    <Label htmlFor="issue-due">{t('issues.fields.dueDate')}</Label>
                     <Input
                         id="issue-due"
                         type="date"
@@ -212,7 +214,7 @@ export function CreateIssueDialog({ open, onClose, projects, statuses, labels, t
             </div>
             {labels.length > 0 ? (
                 <div className="grid gap-2">
-                    <Label>Labels</Label>
+                    <Label>{t('issues.fields.labels')}</Label>
                     <LabelPicker
                         labels={labels}
                         selectedIds={createForm.data.label_ids}

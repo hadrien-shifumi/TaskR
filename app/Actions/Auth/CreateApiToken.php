@@ -41,7 +41,7 @@ class CreateApiToken
 
         return redirect()
             ->route('settings.tokens')
-            ->with('status', 'API token created.')
+            ->with('status', __('flash.token.created'))
             ->with('newToken', $newToken->plainTextToken);
     }
 }

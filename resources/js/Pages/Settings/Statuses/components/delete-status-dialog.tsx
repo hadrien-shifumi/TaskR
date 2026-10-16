@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/select';
 import { router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { StatusRow } from '../types';
 
 type DeleteStatusDialogProps = {
@@ -34,6 +35,7 @@ type DeleteStatusDialogProps = {
  * the error surfaces here — no client-side copy of the rule.
  */
 export function DeleteStatusDialog({ status, statuses, onClose }: DeleteStatusDialogProps) {
+    const { t } = useTranslation();
     const [migrateIds, setMigrateIds] = useState<string[]>([]);
     const [migrateTo, setMigrateTo] = useState('');
     const [migrationError, setMigrationError] = useState<string | null>(null);
@@ -51,7 +53,7 @@ export function DeleteStatusDialog({ status, statuses, onClose }: DeleteStatusDi
             router.post(route('issues.move', issueId), { status_id: statusId }, {
                 onSuccess: () => resolve(true),
                 onHttpException: () => {
-                    setMigrationError('The migration was refused. Reload and retry.');
+                    setMigrationError(t('settings.migrationRefused'));
                     resolve(false);
                     return false;
                 },
@@ -69,7 +71,7 @@ export function DeleteStatusDialog({ status, statuses, onClose }: DeleteStatusDi
         }
 
         if (!migrateTo) {
-            setMigrationError('Choose the status the issues move to first.');
+            setMigrationError(t('settings.chooseFirst'));
             return;
         }
 
@@ -86,8 +88,8 @@ export function DeleteStatusDialog({ status, statuses, onClose }: DeleteStatusDi
             onHttpException: (response) => {
                 setMigrationError(
                     response.status === 409
-                        ? `Refused — "${status.name}" received new issues since the page loaded. Retry the migration.`
-                        : 'The deletion was refused.',
+                        ? t('settings.receivedNewIssues', { name: status.name })
+                        : t('settings.deletionRefused'),
                 );
                 setMigrating(false);
                 return false;
@@ -111,26 +113,31 @@ export function DeleteStatusDialog({ status, statuses, onClose }: DeleteStatusDi
                     <DialogHeader>
                         <DialogTitle>
                             {migrateIds.length > 0
-                                ? `"${status.name}" is used by ${migrateIds.length} ${
-                                      migrateIds.length === 1 ? 'issue' : 'issues'
-                                  }`
-                                : `Delete "${status.name}"?`}
+                                ? migrateIds.length === 1
+                                    ? t('settings.usedByIssues', { name: status.name, count: migrateIds.length })
+                                    : t('settings.usedByIssuesPlural', { name: status.name, count: migrateIds.length })
+                                : t('settings.deleteStatusTitle', { name: status.name })}
                         </DialogTitle>
                         <DialogDescription>
                             {migrateIds.length > 0
-                                ? 'Deletion is refused while issues use this status.'
-                                : 'No issue uses this status.'}
+                                ? t('settings.deleteStatusRefusedDescription')
+                                : t('settings.noIssuesUseStatus')}
                         </DialogDescription>
                     </DialogHeader>
 
                     {migrateIds.length > 0 ? (
                         <div className="grid gap-3.5">
                             <Banner variant="danger">
-                                Move {migrateIds.length === 1 ? 'this issue' : `these ${migrateIds.length} issues`} to
-                                another status first, then delete “{status.name}”.
+                                {t('settings.migrateBanner', {
+                                    issues:
+                                        migrateIds.length === 1
+                                            ? t('settings.thisIssue')
+                                            : t('settings.migrateIssueList', { count: migrateIds.length }),
+                                    name: status.name,
+                                })}
                             </Banner>
                             <div className="grid gap-2">
-                                <Label>Move the issues to</Label>
+                                <Label>{t('settings.moveIssuesTo')}</Label>
                                 <Select
                                     value={migrateTo}
                                     onValueChange={(value) => {
@@ -138,7 +145,7 @@ export function DeleteStatusDialog({ status, statuses, onClose }: DeleteStatusDi
                                     }}
                                 >
                                     <SelectTrigger>
-                                        <SelectValue placeholder="Choose a status" />
+                                        <SelectValue placeholder={t('settings.chooseStatus')} />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {statuses
@@ -161,7 +168,7 @@ export function DeleteStatusDialog({ status, statuses, onClose }: DeleteStatusDi
 
                     <DialogFooter>
                         <Button variant="ghost" onClick={onClose}>
-                            Cancel
+                            {t('common.cancel')}
                         </Button>
                         <Button
                             variant={migrateIds.length > 0 ? 'outline' : 'destructive'}
@@ -174,7 +181,7 @@ export function DeleteStatusDialog({ status, statuses, onClose }: DeleteStatusDi
                             disabled={migrating}
                             onClick={() => confirmDelete()}
                         >
-                            {migrateIds.length > 0 ? 'Move then delete' : 'Delete'}
+                            {migrateIds.length > 0 ? t('settings.moveThenDelete') : t('common.delete')}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
