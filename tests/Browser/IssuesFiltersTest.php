@@ -12,7 +12,7 @@ use App\Support\WorkspaceContext;
 
 /**
  * Seeds the reference filter scenario of the issues list (maquette
- * screens/issues.html): two projects and five issues covering every chip.
+ * screens/issues.html): two projects and five issues covering every filter.
  *
  *  - webhook  Payments · In Progress · urgent · due yesterday  · owner
  *             → in progress, overdue, urgent, mine, Payments
@@ -77,7 +77,14 @@ function seedIssuesFiltersWorkspace(): array
 
 const ISSUE_ROWS = '[data-test^="issue-row-"]';
 
-it('filters the list with cumulative chips and a visible/total counter', function () {
+/** Opens a filter select and picks the option with the given label. */
+function selectFilterOption($page, string $selectTestId, string $optionLabel): void
+{
+    $page->click("@{$selectTestId}");
+    $page->click("[role=\"option\"]:has-text(\"{$optionLabel}\")");
+}
+
+it('filters the list with cumulative selects and a visible/total counter', function () {
     ['owner' => $owner] = seedIssuesFiltersWorkspace();
     $this->actingAs($owner);
 
@@ -87,7 +94,7 @@ it('filters the list with cumulative chips and a visible/total counter', functio
     $page->assertSeeIn('@filter-count', '5 / 5');
 
     // "In progress" keeps the two in-progress issues only.
-    $page->click('@filter-chip-in-progress');
+    selectFilterOption($page, 'filter-select-category', 'In progress');
     $page->assertQueryStringHas('category', 'in_progress');
     $page->assertCount(ISSUE_ROWS, 2);
     $page->assertSee('Webhook retry with backoff');
@@ -95,24 +102,47 @@ it('filters the list with cumulative chips and a visible/total counter', functio
     $page->assertDontSee('Design color tokens');
     $page->assertSeeIn('@filter-count', '2 / 5');
 
-    // Chips cumulate (AND): in progress AND overdue keeps the webhook issue.
-    $page->click('@filter-chip-overdue');
+    // Selects cumulate (AND): in progress AND overdue keeps the webhook issue.
+    selectFilterOption($page, 'filter-select-overdue', 'Overdue');
     $page->assertQueryStringHas('category', 'in_progress');
     $page->assertQueryStringHas('overdue', '1');
     $page->assertCount(ISSUE_ROWS, 1);
     $page->assertDontSee('Crash on launch with iOS 17.4');
     $page->assertSeeIn('@filter-count', '1 / 5');
 
-    // Toggling a chip off removes its URL param and widens the list again.
-    $page->click('@filter-chip-in-progress');
+    // Switching the category back to "All statuses" removes its URL param.
+    selectFilterOption($page, 'filter-select-category', 'All statuses');
     $page->assertQueryStringMissing('category');
     $page->assertQueryStringHas('overdue', '1');
     $page->assertCount(ISSUE_ROWS, 2);
     $page->assertSee('Migrate API to eu-west-3');
 
-    $page->click('@filter-chip-overdue');
+    selectFilterOption($page, 'filter-select-overdue', 'All issues');
     $page->assertQueryStringMissing('overdue');
     $page->assertCount(ISSUE_ROWS, 5);
+
+    $page->assertNoSmoke();
+});
+
+it('offers every status category in the category select', function () {
+    ['owner' => $owner] = seedIssuesFiltersWorkspace();
+    $this->actingAs($owner);
+
+    $page = visit('/issues');
+
+    // Open the category select and verify every status category is listed.
+    $page->click('@filter-select-category');
+    $page->assertPresent('[role="option"]:has-text("All statuses")');
+    $page->assertPresent('[role="option"]:has-text("Backlog")');
+    $page->assertPresent('[role="option"]:has-text("In progress")');
+    $page->assertPresent('[role="option"]:has-text("Done")');
+    $page->assertPresent('[role="option"]:has-text("Cancelled")');
+
+    // Picking "Backlog" filters the list (migrate is the only backlog issue).
+    $page->click('[role="option"]:has-text("Backlog")');
+    $page->assertQueryStringHas('category', 'backlog');
+    $page->assertCount(ISSUE_ROWS, 1);
+    $page->assertSee('Migrate API to eu-west-3');
 
     $page->assertNoSmoke();
 });
@@ -146,86 +176,86 @@ it('shows the filtered empty state when nothing matches', function () {
     $page->fill('@filter-search', 'no-such-issue');
     $page->assertVisible('@issues-empty');
     $page->assertSee('No issues match these filters');
-    $page->assertSee('Disable a filter chip or clear the search.');
+    $page->assertSee('Disable a filter or clear the search.');
     $page->assertCount(ISSUE_ROWS, 0);
 
-    // The empty state also covers chip combinations matching nothing.
+    // The empty state also covers select combinations matching nothing.
     $page->fill('@filter-search', '');
     $page->assertQueryStringMissing('q');
     $page->assertMissing('@issues-empty');
 
-    $page->click('@filter-chip-done');
-    $page->click('@filter-chip-overdue');
+    selectFilterOption($page, 'filter-select-category', 'Done');
+    selectFilterOption($page, 'filter-select-overdue', 'Overdue');
     $page->assertCount(ISSUE_ROWS, 0);
     $page->assertVisible('@issues-empty');
     $page->assertSee('No issues match these filters');
 
-    $page->click('@filter-chip-done');
-    $page->click('@filter-chip-overdue');
+    selectFilterOption($page, 'filter-select-category', 'All statuses');
+    selectFilterOption($page, 'filter-select-overdue', 'All issues');
     $page->assertCount(ISSUE_ROWS, 5);
 
     $page->assertNoSmoke();
 });
 
-it('filters to the current user with the mine chip', function () {
+it('filters to the current user with the assignee select', function () {
     ['owner' => $owner] = seedIssuesFiltersWorkspace();
     $this->actingAs($owner);
 
     $page = visit('/issues');
 
-    $page->click('@filter-chip-mine');
+    selectFilterOption($page, 'filter-select-assignee', $owner->name);
     $page->assertQueryStringHas('assignee', (string) $owner->id);
     $page->assertCount(ISSUE_ROWS, 1);
     $page->assertSee('Webhook retry with backoff');
     $page->assertDontSee('Design color tokens');
 
-    $page->click('@filter-chip-mine');
+    selectFilterOption($page, 'filter-select-assignee', 'All assignees');
     $page->assertQueryStringMissing('assignee');
     $page->assertCount(ISSUE_ROWS, 5);
 
     $page->assertNoSmoke();
 });
 
-it('filters by project with one chip per project', function () {
+it('filters by project with the project select', function () {
     ['owner' => $owner, 'payments' => $payments, 'mobile' => $mobile] = seedIssuesFiltersWorkspace();
     $this->actingAs($owner);
 
     $page = visit('/issues');
 
-    $page->click("@filter-chip-project-{$payments->id}");
+    selectFilterOption($page, 'filter-select-project', 'Payments');
     $page->assertQueryStringHas('project', $payments->id);
     $page->assertCount(ISSUE_ROWS, 3);
     $page->assertDontSee('Migrate API to eu-west-3');
 
     // The project filter is single-valued: picking another project replaces it.
-    $page->click("@filter-chip-project-{$mobile->id}");
+    selectFilterOption($page, 'filter-select-project', 'Mobile');
     $page->assertQueryStringHas('project', $mobile->id);
     $page->assertCount(ISSUE_ROWS, 2);
     $page->assertSee('Migrate API to eu-west-3');
     $page->assertDontSee('Webhook retry with backoff');
 
-    $page->click("@filter-chip-project-{$mobile->id}");
+    selectFilterOption($page, 'filter-select-project', 'All projects');
     $page->assertQueryStringMissing('project');
     $page->assertCount(ISSUE_ROWS, 5);
 
     $page->assertNoSmoke();
 });
 
-it('filters urgent and done issues with their chips', function () {
+it('filters by priority and category with their selects', function () {
     ['owner' => $owner] = seedIssuesFiltersWorkspace();
     $this->actingAs($owner);
 
     $page = visit('/issues');
 
-    $page->click('@filter-chip-urgent');
+    selectFilterOption($page, 'filter-select-priority', 'Urgent');
     $page->assertQueryStringHas('priority', 'urgent');
     $page->assertCount(ISSUE_ROWS, 1);
     $page->assertSee('Webhook retry with backoff');
 
-    $page->click('@filter-chip-urgent');
+    selectFilterOption($page, 'filter-select-priority', 'All priorities');
     $page->assertQueryStringMissing('priority');
 
-    $page->click('@filter-chip-done');
+    selectFilterOption($page, 'filter-select-category', 'Done');
     $page->assertQueryStringHas('category', 'done');
     $page->assertCount(ISSUE_ROWS, 1);
     $page->assertSee('Design color tokens');
@@ -234,18 +264,16 @@ it('filters urgent and done issues with their chips', function () {
     $page->assertNoSmoke();
 });
 
-it('reflects the URL filters on the chips and the search field', function () {
+it('reflects the URL filters on the selects and the search field', function () {
     ['owner' => $owner] = seedIssuesFiltersWorkspace();
     $this->actingAs($owner);
 
-    // Filters are shareable: a bookmarked URL restores chips and search.
+    // Filters are shareable: a bookmarked URL restores selects and search.
     $page = visit('/issues?category=in_progress&overdue=1&q=webhook');
 
     $page->assertCount(ISSUE_ROWS, 1);
-    $page->assertAriaAttribute('@filter-chip-in-progress', 'pressed', 'true');
-    $page->assertAriaAttribute('@filter-chip-overdue', 'pressed', 'true');
-    $page->assertAriaAttribute('@filter-chip-done', 'pressed', 'false');
-    $page->assertAriaAttribute('@filter-chip-mine', 'pressed', 'false');
+    $page->assertSeeIn('@filter-select-category', 'In progress');
+    $page->assertSeeIn('@filter-select-overdue', 'Overdue');
     $page->assertValue('@filter-search', 'webhook');
 
     $page->assertNoSmoke();

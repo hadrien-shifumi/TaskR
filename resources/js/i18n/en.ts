@@ -85,14 +85,16 @@ const en = {
         searchPlaceholder: "Search a title…",
         searchAria: "Search issues by title",
         unassigned: "Unassigned",
-        chips: {
+        filters: {
+            allIssues: "All issues",
+            allStatuses: "All statuses",
+            allPriorities: "All priorities",
+            allAssignees: "All assignees",
+            allProjects: "All projects",
             overdue: "Overdue",
-            urgent: "Urgent",
-            mine: "Mine",
-            project: "Project: {{name}}",
         },
         emptyFiltered: "No issues match these filters",
-        emptyFilteredHint: "Disable a filter chip or clear the search.",
+        emptyFilteredHint: "Disable a filter or clear the search.",
         empty: "No issues yet",
         emptyHint: "Use the “New issue” button to create the first one.",
         ulidNote:

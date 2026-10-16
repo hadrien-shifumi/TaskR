@@ -1,8 +1,7 @@
 import { CreateIssueDialog } from '@/components/create-issue-dialog';
 import { FilterBar } from '@/components/filter-bar';
-import { FilterChip } from '@/components/filter-chip';
+import { FilterSelect } from '@/components/filter-select';
 import { FlashBanner } from '@/components/flash-banner';
-import { Avatar } from '@/components/issue-badges';
 import { Button } from '@/components/ui/button';
 import {
     Table,
@@ -13,7 +12,6 @@ import {
 } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
 import { Head, router, usePage } from '@inertiajs/react';
-import { Clock, ListTodo } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { LabelRef, PageSharedProps, UserRef } from '@/types';
@@ -33,8 +31,14 @@ type PageProps = {
     templates: TemplateOption[];
 };
 
+/** All status categories offered by the category filter select. */
+const CATEGORY_OPTIONS = ['backlog', 'in_progress', 'done', 'cancelled'] as const;
+
+/** All priorities offered by the priority filter select. */
+const PRIORITY_OPTIONS = ['none', 'low', 'high', 'urgent'] as const;
+
 export default function Index() {
-    const { issues, total, totalUnfiltered, filters, projects, statuses, labels, templates } =
+    const { issues, total, totalUnfiltered, filters, projects, statuses, labels, members, templates } =
         usePage<PageProps>().props;
     const { auth } = usePage<PageSharedProps>().props;
     const { t } = useTranslation();
@@ -54,11 +58,6 @@ export default function Index() {
         router.get(route('issues.index'), next, { preserveState: true });
     };
 
-    /** Chip toggle: the filter is active when the URL param equals the chip value. */
-    const toggleFilter = (key: string, value: string) => () => {
-        setFilter(key, filters[key] === value ? '' : value);
-    };
-
     // Debounced title search: the query param follows the input with a beat.
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -69,8 +68,29 @@ export default function Index() {
         return () => clearTimeout(timer);
     }, [search]);
 
-    const myId = auth.user ? String(auth.user.id) : '';
     const hasActiveFilters = Object.keys(filters).length > 0;
+
+    const categoryOptions = CATEGORY_OPTIONS.map((category) => ({
+        value: category,
+        label: t(`statusCategory.${category}`),
+    }));
+
+    const priorityOptions = PRIORITY_OPTIONS.map((priority) => ({
+        value: priority,
+        label: t(`priority.${priority}`),
+    }));
+
+    const assigneeOptions = members.map((member) => ({
+        value: member.id,
+        label: member.name,
+    }));
+
+    const projectOptions = projects.map((project) => ({
+        value: project.id,
+        label: project.name,
+    }));
+
+    const overdueOptions = [{ value: '1', label: t('issuesPage.filters.overdue') }];
 
     return (
         <AppLayout
@@ -99,56 +119,46 @@ export default function Index() {
                 visible={issues.length}
                 total={totalUnfiltered}
             >
-                <FilterChip
-                    testId="filter-chip-in-progress"
-                    active={filters.category === 'in_progress'}
-                    onToggle={toggleFilter('category', 'in_progress')}
-                >
-                    <ListTodo aria-hidden className="size-3.25" />
-                    {t('statusCategory.in_progress')}
-                </FilterChip>
-                <FilterChip
-                    testId="filter-chip-done"
-                    active={filters.category === 'done'}
-                    onToggle={toggleFilter('category', 'done')}
-                >
-                    {t('statusCategory.done')}
-                </FilterChip>
-                <FilterChip
-                    testId="filter-chip-overdue"
-                    active={filters.overdue === '1'}
-                    onToggle={toggleFilter('overdue', '1')}
-                >
-                    <Clock aria-hidden className="size-3.25" />
-                    {t('issuesPage.chips.overdue')}
-                </FilterChip>
-                <FilterChip
-                    testId="filter-chip-urgent"
-                    active={filters.priority === 'urgent'}
-                    onToggle={toggleFilter('priority', 'urgent')}
-                >
-                    {t('issuesPage.chips.urgent')}
-                </FilterChip>
-                {auth.user ? (
-                    <FilterChip
-                        testId="filter-chip-mine"
-                        active={filters.assignee === myId}
-                        onToggle={toggleFilter('assignee', myId)}
-                    >
-                        <Avatar name={auth.user.name} />
-                        {t('issuesPage.chips.mine')}
-                    </FilterChip>
-                ) : null}
-                {projects.map((project) => (
-                    <FilterChip
-                        key={project.id}
-                        testId={`filter-chip-project-${project.id}`}
-                        active={filters.project === project.id}
-                        onToggle={toggleFilter('project', project.id)}
-                    >
-                        {t('issuesPage.chips.project', { name: project.name })}
-                    </FilterChip>
-                ))}
+                <FilterSelect
+                    testId="filter-select-category"
+                    value={filters.category ?? ''}
+                    options={categoryOptions}
+                    allLabel={t('issuesPage.filters.allStatuses')}
+                    onChange={(value) => setFilter('category', value)}
+                    className="h-7.5 w-36 text-[13px]"
+                />
+                <FilterSelect
+                    testId="filter-select-priority"
+                    value={filters.priority ?? ''}
+                    options={priorityOptions}
+                    allLabel={t('issuesPage.filters.allPriorities')}
+                    onChange={(value) => setFilter('priority', value)}
+                    className="h-7.5 w-32 text-[13px]"
+                />
+                <FilterSelect
+                    testId="filter-select-assignee"
+                    value={filters.assignee ?? ''}
+                    options={assigneeOptions}
+                    allLabel={t('issuesPage.filters.allAssignees')}
+                    onChange={(value) => setFilter('assignee', value)}
+                    className="h-7.5 w-36 text-[13px]"
+                />
+                <FilterSelect
+                    testId="filter-select-project"
+                    value={filters.project ?? ''}
+                    options={projectOptions}
+                    allLabel={t('issuesPage.filters.allProjects')}
+                    onChange={(value) => setFilter('project', value)}
+                    className="h-7.5 w-36 text-[13px]"
+                />
+                <FilterSelect
+                    testId="filter-select-overdue"
+                    value={filters.overdue ?? ''}
+                    options={overdueOptions}
+                    allLabel={t('issuesPage.filters.allIssues')}
+                    onChange={(value) => setFilter('overdue', value)}
+                    className="h-7.5 w-32 text-[13px]"
+                />
             </FilterBar>
 
             <div className="overflow-hidden rounded-xl border bg-card">

@@ -83,11 +83,13 @@ const fr: typeof en = {
         searchPlaceholder: "Rechercher un titre…",
         searchAria: "Rechercher des tickets par titre",
         unassigned: "Non assigné",
-        chips: {
+        filters: {
+            allIssues: "Tous les tickets",
+            allStatuses: "Tous les statuts",
+            allPriorities: "Toutes les priorités",
+            allAssignees: "Tous les assignés",
+            allProjects: "Tous les projets",
             overdue: "En retard",
-            urgent: "Urgent",
-            mine: "Les miens",
-            project: "Projet : {{name}}",
         },
         emptyFiltered: "Aucun ticket ne correspond à ces filtres",
         emptyFilteredHint: "Désactivez un filtre ou effacez la recherche.",
