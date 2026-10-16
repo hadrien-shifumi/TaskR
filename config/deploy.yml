@@ -14,21 +14,19 @@ image: taskr
 # secret). The deploy user is created by ansible/secure.yml.
 servers:
   web:
-    hosts:
-      - <%= ENV.fetch("KAMAL_WEB_HOSTS", "203.0.113.10").split(",") %>
-    options:
-      cpus: 2
+    hosts: <%= ENV.fetch("KAMAL_WEB_HOSTS", "203.0.113.10").split(",") %>
   worker:
-    hosts:
-      - <%= ENV.fetch("KAMAL_WEB_HOSTS", "203.0.113.10").split(",") %>
+    hosts: <%= ENV.fetch("KAMAL_WEB_HOSTS", "203.0.113.10").split(",") %>
     cmd: php artisan queue:work --sleep=3 --tries=3 --max-time=3600
-    options:
-      cpus: 1
+
+# SSH user created by ansible/secure.yml (root login is disabled).
+ssh:
+  user: deploy
 
 registry:
   # Scaleway Container Registry — namespace "taskr" in fr-par.
   # Login: username "nologin", password = a Scaleway secret key.
-  url: '<%= ENV.fetch("KAMAL_REGISTRY", "rg.fr-par.scw.cloud/taskr") %>'
+  server: <%= ENV.fetch("KAMAL_REGISTRY", "rg.fr-par.scw.cloud/taskr") %>
   username: nologin
   password:
     - KAMAL_REGISTRY_PASSWORD
@@ -80,22 +78,19 @@ env:
     QUEUE_CONNECTION: database
     CACHE_STORE: database
     SESSION_DRIVER: database
+    # Migrations run once at boot in the web container (entrypoint detects the
+    # role from the container command: octane → web, queue:work → worker).
+    RUN_MIGRATIONS: "true"
   secret:
     - APP_KEY
     - DB_PASSWORD
     - KNOWLEDGE_EMBEDDINGS_API_KEY
-  roles:
-    web:
-      clear:
-        ROLE: web
-        RUN_MIGRATIONS: "true"
-    worker:
-      clear:
-        ROLE: worker
 
 # Volumes persisted across deploys.
 volumes:
   - "taskr_storage:/app/storage"
 
-# Give Octane workers time to finish in-flight requests.
-stop_wait_time: 30
+# Boot roles in separate threads (works around the sequential boot path).
+boot:
+  parallel_roles: true
+

@@ -4,6 +4,19 @@ Runbook pour provisionner et déployer taskr sur les serveurs Scaleway.
 Ce document décrit les étapes à suivre **lorsque tu seras prêt** ; rien n'a été
 exécuté sur Scaleway à ce stade.
 
+## Ressources créées (profil **default**, org `f7b84a13`)
+
+| Ressource | ID / valeur |
+|---|---|
+| Projet | `6da8fcce-9a04-4921-96ee-7abfcccabd42` (Taskr) |
+| Serveur `taskr-web-1` | `a378833d-1a2d-49a9-b476-aac6ee90aed3` — PRO2-XXS, fr-par-1, SBS 20G, IP `78.232.48.187` |
+| Registry | `rg.fr-par.scw.cloud/taskr` (privé) — `fd115552-9600-4d8b-86f4-2a3da57e0905` |
+| BDD `taskr-db` | `97c26abf-9fcd-4471-8d04-523cad79a86f` — PostgreSQL 17, db-play2-pico, endpoint `163.172.169.53:26756`, pgvector 0.8.2 activé, ACL limitée à `78.232.48.187/32` |
+
+Le serveur est provisionné (user `deploy`, Docker 29, UFW 22/80/443, fail2ban,
+unattended-upgrades, chrony, swap) et sécurisé via `ansible-playbook secure.yml`.
+`.kamal/secrets` est rempli avec les vraies valeurs.
+
 ## Vue d'ensemble
 
 | Brique | Rôle |

@@ -1,4 +1,12 @@
 ---
+# Ubuntu uses systemd socket activation and does not create /run/sshd until
+# the daemon starts, which makes `sshd -t` validation fail. Create it first.
+- name: Ensure sshd privilege separation directory exists
+  ansible.builtin.file:
+    path: /run/sshd
+    state: directory
+    mode: "0755"
+
 - name: Harden sshd configuration
   ansible.builtin.lineinfile:
     path: /etc/ssh/sshd_config
