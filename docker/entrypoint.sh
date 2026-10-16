@@ -7,9 +7,9 @@ cd /app
 mkdir -p storage/framework/{cache/data,sessions,testing,views} storage/logs storage/app/private bootstrap/cache
 chown -R www-data:www-data storage bootstrap/cache
 
-# Role is inferred from the container command: Octane serves the app (web),
-# anything else (queue:work…) is a worker. Only the web role runs migrations.
-case "$1" in
+# Role is inferred from the full container command: Octane serves the app
+# (web), anything else (queue:work…) is a worker. Only web runs migrations.
+case "$*" in
     *octane*) ROLE=web ;;
     *) ROLE=worker ;;
 esac

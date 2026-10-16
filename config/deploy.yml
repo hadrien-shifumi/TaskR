@@ -18,6 +18,10 @@ servers:
   worker:
     hosts: <%= ENV.fetch("KAMAL_WEB_HOSTS", "203.0.113.10").split(",") %>
     cmd: php artisan queue:work --sleep=3 --tries=3 --max-time=3600
+    # The image ships an HTTP healthcheck (FrankenPHP admin port); a queue
+    # worker never serves HTTP, so it must be disabled for this role.
+    options:
+      no-healthcheck: true
 
 # SSH user created by ansible/secure.yml (root login is disabled).
 ssh:
