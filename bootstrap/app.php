@@ -16,11 +16,14 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->web(prepend: [
-            SetLocale::class,
-        ]);
-
+        // SetLocale must run AFTER the session middleware (it reads the
+        // authenticated user's persisted locale from the session), so it is
+        // appended — not prepended — immediately before the Inertia share.
+        // Prepended, it ran before StartSession: $request->user() was null on
+        // every fresh process and the locale fell back to the app default,
+        // making the client re-sync (blink + revert to English) on switch.
         $middleware->web(append: [
+            SetLocale::class,
             HandleInertiaRequests::class,
             ResolveCurrentWorkspace::class,
         ]);
