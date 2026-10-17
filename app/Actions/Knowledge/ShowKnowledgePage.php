@@ -27,14 +27,25 @@ class ShowKnowledgePage
      */
     public function handle(Workspace $workspace, ?KnowledgePage $selected = null): array
     {
+        $user = request()->user();
+        $scope = $user instanceof User
+            ? app(WorkspaceContext::class)->accessibleProjectIds($user)
+            : null;
+
+        // Out-of-scope detail pages fail exactly like non-existent ones.
+        if ($selected !== null && $user !== null) {
+            app(WorkspaceContext::class)->abortUnlessKnowledgePageAccessible($user, $selected);
+        }
+
         return [
-            'pages' => ListKnowledgePages::run($workspace),
+            'pages' => ListKnowledgePages::run($workspace, $user),
             'projects' => $workspace->projects()
+                ->when($scope !== null, fn ($query) => $query->whereIn('id', $scope))
                 ->orderBy('name')
                 ->get(['id', 'name'])
                 ->map(fn ($project): array => ['id' => $project->id, 'name' => $project->name])
                 ->all(),
-            'selected' => $selected !== null ? GetKnowledgePage::run($selected) : null,
+            'selected' => $selected !== null ? GetKnowledgePage::run($selected, $user) : null,
         ];
     }
 

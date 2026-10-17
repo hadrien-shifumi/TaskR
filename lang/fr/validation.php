@@ -73,6 +73,11 @@ return [
         'project_out_of_scope' => "Ce projet est en dehors de votre périmètre d'accès.",
     ],
 
+    'knowledge' => [
+        'project_out_of_scope' => 'Une page de connaissance doit rester rattachée à un projet de votre périmètre.',
+        'parent_out_of_scope' => "La page parente est en dehors de votre périmètre d'accès.",
+    ],
+
     'project_member' => [
         'single_owner' => 'Un projet ne peut avoir qu\'un seul propriétaire.',
         'cannot_remove_owner' => 'Le propriétaire du projet ne peut pas être retiré du roster.',

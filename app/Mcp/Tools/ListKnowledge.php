@@ -30,7 +30,7 @@ class ListKnowledge extends AgentTool
         $workspace = $this->resolveWorkspace($request);
 
         return Response::structured([
-            'pages' => ListKnowledgePages::run($workspace),
+            'pages' => ListKnowledgePages::run($workspace, $this->currentUser($request)),
         ]);
     }
 }

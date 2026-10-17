@@ -21,8 +21,15 @@ class DeleteKnowledgePage
         return $this->currentUserCanUseWorkspace();
     }
 
-    public function handle(KnowledgePage $page): void
+    public function handle(KnowledgePage $page, ?User $user = null): void
     {
+        // Out-of-scope pages fail exactly like non-existent ones.
+        // Without a resolvable user this is a trusted internal object run.
+        $user ??= request()->user();
+        if ($user !== null) {
+            app(WorkspaceContext::class)->abortUnlessKnowledgePageAccessible($user, $page);
+        }
+
         if ($page->children()->exists()) {
             abort(409, 'This page still has child pages. Move or delete them first.');
         }

@@ -3,6 +3,8 @@
 namespace App\Actions\Knowledge;
 
 use App\Models\KnowledgePage;
+use App\Models\User;
+use App\Support\WorkspaceContext;
 use Lorisleiva\Actions\Concerns\AsObject;
 
 class GetKnowledgePage
@@ -12,8 +14,15 @@ class GetKnowledgePage
     /**
      * @return array<string, mixed>
      */
-    public function handle(KnowledgePage $page): array
+    public function handle(KnowledgePage $page, ?User $user = null): array
     {
+        // Out-of-scope pages fail exactly like non-existent ones.
+        // Without a resolvable user this is a trusted internal object run.
+        $user ??= request()->user();
+        if ($user !== null) {
+            app(WorkspaceContext::class)->abortUnlessKnowledgePageAccessible($user, $page);
+        }
+
         $page->loadMissing('lastEditor');
 
         return [

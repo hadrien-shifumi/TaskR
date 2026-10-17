@@ -1,7 +1,11 @@
 <?php
 
 use App\Actions\Knowledge\CreateKnowledgePage;
+use App\Actions\Projects\CreateProject;
 use App\Models\KnowledgePage;
+use App\Models\Membership;
+use App\Models\ProjectMember;
+use App\Models\User;
 use App\Support\WorkspaceContext;
 
 it('walks a newcomer through the knowledge tree', function () {
@@ -91,4 +95,43 @@ it('returns the relevant page from semantic search', function () {
     $page->assertSee('Processus de règlement et invoices')
         ->assertSee('Le cycle de règlement des factures clients')
         ->assertNoSmoke();
+});
+
+it('hides out-of-scope and transverse pages from a guest on the knowledge tree', function () {
+    Queue::fake();
+    [$owner, $workspace] = setupBrowserWorkspace();
+    app(WorkspaceContext::class)->set($workspace);
+
+    $client = CreateProject::run($workspace, $owner, ['name' => 'Projet client']);
+    $internal = CreateProject::run($workspace, $owner, ['name' => 'Interne secret']);
+    CreateKnowledgePage::run($workspace, $owner, [
+        'title' => 'Page client', 'body' => 'Corps', 'project_id' => $client->id,
+    ]);
+    CreateKnowledgePage::run($workspace, $owner, [
+        'title' => 'Page interne', 'body' => 'Corps', 'project_id' => $internal->id,
+    ]);
+    CreateKnowledgePage::run($workspace, $owner, ['title' => 'Page transverse', 'body' => 'Corps']);
+
+    $guest = User::factory()->create();
+    Membership::create([
+        'user_id' => $guest->id,
+        'workspace_id' => $workspace->id,
+        'role' => 'guest',
+    ]);
+    ProjectMember::create([
+        'project_id' => $client->id,
+        'user_id' => $guest->id,
+        'role' => 'member',
+    ]);
+
+    $this->actingAs($guest);
+
+    $page = visit('/knowledge');
+
+    $page->assertSee('Page client')
+        ->assertDontSee('Page interne')
+        ->assertDontSee('Page transverse')
+        ->assertDontSee('Interne secret');
+
+    $page->assertNoSmoke();
 });

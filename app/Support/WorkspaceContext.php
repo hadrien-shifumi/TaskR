@@ -156,4 +156,17 @@ class WorkspaceContext
 
         return $this->canViewProject($user, $page->project);
     }
+
+    /**
+     * Anti-probing guard for a single knowledge page (detail, CRUD): an
+     * out-of-scope page must fail exactly like a non-existent one — 404 on
+     * the web, not_found through MCP. Transverse pages belong to full
+     * members only: a guest gets the same failure on them.
+     */
+    public function abortUnlessKnowledgePageAccessible(?User $user, KnowledgePage $page): void
+    {
+        if ($user === null || ! $this->canAccessKnowledgePage($user, $page)) {
+            throw (new ModelNotFoundException)->setModel(KnowledgePage::class, [$page->getKey()]);
+        }
+    }
 }

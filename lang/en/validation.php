@@ -7,6 +7,11 @@ return [
         'project_out_of_scope' => 'This project is outside your project scope.',
     ],
 
+    'knowledge' => [
+        'project_out_of_scope' => 'A knowledge page must stay attached to a project of your scope.',
+        'parent_out_of_scope' => 'The parent page is outside your project scope.',
+    ],
+
     'project_member' => [
         'single_owner' => 'A project can only have one owner.',
         'cannot_remove_owner' => 'The project owner cannot be removed from the roster.',
