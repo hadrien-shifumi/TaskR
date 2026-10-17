@@ -38,7 +38,7 @@ class SetLabels extends AgentTool
         $labelIds = $request->validate($action->rules())['label_ids'];
 
         return Response::structured([
-            'issue' => $this->presentIssue($action->handle($issue, $labelIds)),
+            'issue' => $this->presentIssue($action->handle($issue, $labelIds, $this->currentUser($request))),
         ]);
     }
 }

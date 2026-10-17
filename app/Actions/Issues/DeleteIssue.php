@@ -25,8 +25,15 @@ class DeleteIssue
     /**
      * Children become root issues (parent_id set to null by the FK).
      */
-    public function handle(Issue $issue): Issue
+    public function handle(Issue $issue, ?User $user = null): Issue
     {
+        // Out-of-scope issues fail exactly like non-existent ones.
+        // Without a resolvable user this is a trusted internal object run.
+        $user ??= request()->user();
+        if ($user !== null) {
+            app(WorkspaceContext::class)->abortUnlessIssueAccessible($user, $issue);
+        }
+
         $issue->delete();
 
         return $issue;

@@ -11,6 +11,7 @@ use App\Responders\Issues\IssueRedirectResponder;
 use App\Support\WorkspaceContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Lorisleiva\Actions\ActionRequest;
 use Lorisleiva\Actions\Concerns\AsController;
 use Lorisleiva\Actions\Concerns\AsObject;
@@ -48,8 +49,19 @@ class CreateIssue
     /**
      * @param  array<string, mixed>  $data
      */
-    public function handle(Workspace $workspace, array $data): Issue
+    public function handle(Workspace $workspace, array $data, ?User $user = null): Issue
     {
+        $user ??= request()->user();
+
+        // A guest can only create within their perimeter.
+        if ($user !== null
+            && app(WorkspaceContext::class)->accessibleProjectIds($user) !== null
+            && ! in_array($data['project_id'], app(WorkspaceContext::class)->accessibleProjectIds($user), true)) {
+            throw ValidationException::withMessages([
+                'project_id' => [__('validation.issue.project_out_of_scope')],
+            ]);
+        }
+
         $data = $this->applyTemplateDefaults($workspace, $data);
 
         $issue = Issue::create([

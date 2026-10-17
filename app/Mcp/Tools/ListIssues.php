@@ -63,6 +63,7 @@ class ListIssues extends AgentTool
             ],
             $input['limit'] ?? 25,
             $input['offset'] ?? 0,
+            $this->currentUser($request),
         );
 
         return Response::structured([

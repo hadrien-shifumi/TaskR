@@ -4,7 +4,9 @@ namespace App\Actions\TimeTracking;
 
 use App\Models\Issue;
 use App\Models\TimeEntry;
+use App\Models\User;
 use App\Responders\TimeTracking\TimeTrackingResponder;
+use App\Support\WorkspaceContext;
 use Illuminate\Http\RedirectResponse;
 use Lorisleiva\Actions\Concerns\AsController;
 use Lorisleiva\Actions\Concerns\AsObject;
@@ -27,8 +29,16 @@ class DeleteTimeEntry
         return request()->user()?->id === $entry->author_id;
     }
 
-    public function handle(TimeEntry $timeEntry): TimeEntry
+    public function handle(TimeEntry $timeEntry, ?User $user = null): TimeEntry
     {
+        // The underlying issue must stay in the actor's perimeter: a
+        // shrunken scope makes old objects fail like non-existent ones.
+        // Without a resolvable user this is a trusted internal object run.
+        $user ??= request()->user();
+        if ($user !== null) {
+            app(WorkspaceContext::class)->abortUnlessIssueAccessible($user, $timeEntry->issue);
+        }
+
         $timeEntry->delete();
 
         return $timeEntry;

@@ -38,7 +38,7 @@ class SetIssueEstimate extends AgentTool
         $estimatedHours = $request->validate($action->rules())['estimated_hours'] ?? null;
         $estimatedHours = $estimatedHours !== null ? (float) $estimatedHours : null;
 
-        $issue = $action->handle($issue, $estimatedHours);
+        $issue = $action->handle($issue, $estimatedHours, $this->currentUser($request));
 
         return Response::structured([
             'issue' => $this->presentIssue($issue),

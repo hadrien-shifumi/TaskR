@@ -34,7 +34,7 @@ class ListComments extends AgentTool
         $issue = Issue::query()->findOrFail($request->get('issue_id'));
 
         return Response::structured([
-            'comments' => ListCommentsAction::run($issue),
+            'comments' => ListCommentsAction::run($issue, $this->currentUser($request)),
         ]);
     }
 }

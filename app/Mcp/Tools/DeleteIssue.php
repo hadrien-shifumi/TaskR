@@ -34,7 +34,7 @@ class DeleteIssue extends AgentTool
         $issue = Issue::query()->findOrFail($request->get('issue_id'));
 
         return Response::structured([
-            'deleted' => DeleteIssueAction::run($issue) !== null,
+            'deleted' => DeleteIssueAction::run($issue, $this->currentUser($request)) !== null,
             'issueId' => $issue->id,
         ]);
     }

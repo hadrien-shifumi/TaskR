@@ -38,6 +38,9 @@ class CreateTimeEntry
      */
     public function handle(Issue $issue, User $author, ?array $data = null, ?float $hours = null, ?string $workedAt = null, ?string $note = null): TimeEntry
     {
+        // Out-of-scope issues fail exactly like non-existent ones.
+        app(WorkspaceContext::class)->abortUnlessIssueAccessible($author, $issue);
+
         // Support both calling conventions: handle($issue, $author, ['hours' => ..., ...])
         // and handle($issue, $author, null, $hours, $workedAt, $note)
         if ($data !== null) {

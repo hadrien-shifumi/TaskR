@@ -68,6 +68,11 @@ return [
         'role' => 'rôle',
     ],
 
+    'issue' => [
+        'parent_out_of_scope' => "Le ticket parent est en dehors de votre périmètre d'accès.",
+        'project_out_of_scope' => "Ce projet est en dehors de votre périmètre d'accès.",
+    ],
+
     'project_member' => [
         'single_owner' => 'Un projet ne peut avoir qu\'un seul propriétaire.',
         'cannot_remove_owner' => 'Le propriétaire du projet ne peut pas être retiré du roster.',

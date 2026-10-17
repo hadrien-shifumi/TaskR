@@ -45,7 +45,7 @@ class UpdateComment extends AgentTool
         $action = app(UpdateCommentAction::class);
         $body = $request->validate($action->rules())['body'];
 
-        $comment = $action->handle($comment, $body);
+        $comment = $action->handle($comment, $body, $this->currentUser($request));
 
         return Response::structured([
             'comment' => [

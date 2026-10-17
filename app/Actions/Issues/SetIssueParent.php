@@ -8,6 +8,7 @@ use App\Responders\Issues\IssueRedirectResponder;
 use App\Support\WorkspaceContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Lorisleiva\Actions\ActionRequest;
 use Lorisleiva\Actions\Concerns\AsController;
 use Lorisleiva\Actions\Concerns\AsObject;
@@ -36,16 +37,34 @@ class SetIssueParent
 
     /**
      * Soft hierarchy: any issue of the workspace can become the parent,
-     * except one of the issue's own descendants (cycle).
+     * except one of the issue's own descendants (cycle). A guest may
+     * only link within their perimeter.
      */
-    public function handle(Issue $issue, ?string $parentId): Issue
+    public function handle(Issue $issue, ?string $parentId, ?User $user = null): Issue
     {
+        // Out-of-scope issues fail exactly like non-existent ones.
+        // Without a resolvable user this is a trusted internal object run.
+        $user ??= request()->user();
+        if ($user !== null) {
+            app(WorkspaceContext::class)->abortUnlessIssueAccessible($user, $issue);
+        }
+
         if ($parentId !== null) {
             if ($parentId === $issue->id) {
                 abort(422, 'An issue cannot be its own parent.');
             }
 
-            if (in_array($issue->id, (new Issue)->withoutWorkspaceScope()->findOrFail($parentId)->ancestorIds(), true)) {
+            $parent = (new Issue)->withoutWorkspaceScope()->findOrFail($parentId);
+
+            if ($user !== null
+                && app(WorkspaceContext::class)->accessibleProjectIds($user) !== null
+                && ! app(WorkspaceContext::class)->canAccessIssue($user, $parent)) {
+                throw ValidationException::withMessages([
+                    'parent_id' => [__('validation.issue.parent_out_of_scope')],
+                ]);
+            }
+
+            if (in_array($issue->id, $parent->ancestorIds(), true)) {
                 abort(422, 'This parent would create a cycle in the hierarchy.');
             }
         }

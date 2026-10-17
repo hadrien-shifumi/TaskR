@@ -4,6 +4,7 @@ namespace App\Actions\Issues;
 
 use App\Models\Issue;
 use App\Models\IssueTemplate;
+use App\Models\User;
 use App\Models\Workspace;
 use App\Responders\Issues\IssuesPageResponder;
 use App\Support\WorkspaceContext;
@@ -30,16 +31,25 @@ class ShowIssuesPage
     {
         $view = $filters['view'] ?? 'list';
 
+        $user = request()->user();
+        $scope = $user instanceof User
+            ? app(WorkspaceContext::class)->accessibleProjectIds($user)
+            : null;
+
         $data = [
             ...ListIssues::run($workspace, $filters),
             'view' => $view,
             'filters' => array_filter($filters, fn ($value) => $value !== null && $value !== ''),
-            'projects' => $workspace->projects()->active()->orderBy('name')->get(['id', 'name']),
+            'projects' => $workspace->projects()
+                ->active()
+                ->when($scope !== null, fn ($query) => $query->whereIn('id', $scope))
+                ->orderBy('name')
+                ->get(['id', 'name']),
             'statuses' => $workspace->statuses()->get(['id', 'name', 'category']),
         ];
 
         if ($view === 'kanban') {
-            $data['projectBoards'] = $this->buildProjectBoards($workspace, $data['issues'], $filters);
+            $data['projectBoards'] = $this->buildProjectBoards($workspace, $data['issues'], $filters, $scope);
             unset($data['issues'], $data['total']);
         }
 
@@ -85,9 +95,10 @@ class ShowIssuesPage
      *
      * @param  array<int, array<string, mixed>>  $issues  Presented issues from ListIssues
      * @param  array<string, string|null>  $filters
+     * @param  list<string>|null  $scope  Project ids of the user's perimeter, null when unrestricted
      * @return array<int, array<string, mixed>>
      */
-    private function buildProjectBoards(Workspace $workspace, array $issues, array $filters = []): array
+    private function buildProjectBoards(Workspace $workspace, array $issues, array $filters = [], ?array $scope = null): array
     {
         $statuses = $workspace->statuses()->get();
 
@@ -99,6 +110,9 @@ class ShowIssuesPage
         $projectsQuery = $workspace->projects()->active()->orderBy('name');
         if (! empty($filters['project'])) {
             $projectsQuery->where('id', $filters['project']);
+        }
+        if ($scope !== null) {
+            $projectsQuery->whereIn('id', $scope);
         }
         $projects = $projectsQuery->get();
 

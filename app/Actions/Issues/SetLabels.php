@@ -40,8 +40,15 @@ class SetLabels
      *
      * @param  array<int, string>  $labelIds
      */
-    public function handle(Issue $issue, array $labelIds): Issue
+    public function handle(Issue $issue, array $labelIds, ?User $user = null): Issue
     {
+        // Out-of-scope issues fail exactly like non-existent ones.
+        // Without a resolvable user this is a trusted internal object run.
+        $user ??= request()->user();
+        if ($user !== null) {
+            app(WorkspaceContext::class)->abortUnlessIssueAccessible($user, $issue);
+        }
+
         $issue->labels()->sync($labelIds);
 
         return $issue->refresh();

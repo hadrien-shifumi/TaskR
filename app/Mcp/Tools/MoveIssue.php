@@ -38,7 +38,7 @@ class MoveIssue extends AgentTool
         $statusId = $request->validate($action->rules())['status_id'];
 
         return Response::structured([
-            'issue' => $this->presentIssue($action->handle($issue, $statusId)),
+            'issue' => $this->presentIssue($action->handle($issue, $statusId, $this->currentUser($request))),
         ]);
     }
 }

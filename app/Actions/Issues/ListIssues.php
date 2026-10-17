@@ -5,7 +5,9 @@ namespace App\Actions\Issues;
 use App\Enums\Priority;
 use App\Enums\StatusCategory;
 use App\Models\Issue;
+use App\Models\User;
 use App\Models\Workspace;
+use App\Support\WorkspaceContext;
 use Illuminate\Database\Eloquent\Builder;
 use Lorisleiva\Actions\Concerns\AsObject;
 
@@ -14,20 +16,30 @@ class ListIssues
     use AsObject;
 
     /**
-     * Filterable list across every project of the workspace, presented as
-     * plain arrays. Shared by the issues page and the MCP layer.
+     * Filterable list across every project of the workspace the user may
+     * see, presented as plain arrays. Shared by the issues page and the
+     * MCP layer. A guest only sees the issues of their perimeter, and the
+     * workspace-wide count never leaks: totalUnfiltered counts within the
+     * perimeter as well.
      *
      * @param  array<string, string|null>  $filters  project|status|category|priority|label|assignee|overdue|q
      * @return array{issues: array<int, array<string, mixed>>, total: int, totalUnfiltered: int}
      */
-    public function handle(Workspace $workspace, array $filters = [], ?int $limit = null, int $offset = 0): array
+    public function handle(Workspace $workspace, array $filters = [], ?int $limit = null, int $offset = 0, ?User $user = null): array
     {
+        $user ??= request()->user();
+
+        $scope = $user instanceof User
+            ? app(WorkspaceContext::class)->accessibleProjectIds($user)
+            : null;
+
         $query = Issue::query()
             ->with(['project', 'status', 'labels', 'assignees'])
+            ->when($scope !== null, fn (Builder $issues) => $issues->whereIn('project_id', $scope))
             ->orderByDesc('created_at');
 
-        // Workspace-wide count, before any filter: the issues page shows it
-        // next to the filtered count ("visible / total").
+        // Scope-wide count, before any other filter: the issues page shows
+        // it next to the filtered count ("visible / total").
         $totalUnfiltered = (clone $query)->toBase()->count();
 
         $this->applyFilters($query, $filters);
