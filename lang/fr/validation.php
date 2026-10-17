@@ -71,6 +71,8 @@ return [
     'project_member' => [
         'single_owner' => 'Un projet ne peut avoir qu\'un seul propriétaire.',
         'cannot_remove_owner' => 'Le propriétaire du projet ne peut pas être retiré du roster.',
+        'guest_cannot_own_project' => 'Un invité Guest ne peut pas être propriétaire d\'un projet.',
+        'cannot_remove_last_guest_project' => 'Un invité Guest doit conserver au moins un projet : retirez-le du workspace pour supprimer son accès.',
     ],
 
 ];

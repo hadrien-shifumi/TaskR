@@ -25,9 +25,19 @@ class AddProjectMember
         $user = request()->user();
         $project = request()->route('project');
 
-        return $user instanceof User
-            && $project instanceof Project
-            && $project->canManage($user);
+        if (! $user instanceof User
+            || ! $project instanceof Project
+            || ! $project->canManage($user)) {
+            return false;
+        }
+
+        // A guest's roster row is their access scope: only the workspace
+        // owner pilots guests. Project managers keep managing classic members.
+        $target = User::find(request()->input('user_id'));
+
+        return $target === null
+            || ! $project->workspace->isGuest($target)
+            || $project->workspace->hasOwner($user);
     }
 
     public function rules(): array
