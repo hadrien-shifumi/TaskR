@@ -18,7 +18,7 @@ class DeleteKnowledgePage
 
     public function authorize(): bool
     {
-        return $this->currentUserIsMember();
+        return $this->currentUserCanUseWorkspace();
     }
 
     public function handle(KnowledgePage $page): void
@@ -37,10 +37,10 @@ class DeleteKnowledgePage
         return $responder->deleted();
     }
 
-    protected function currentUserIsMember(): bool
+    protected function currentUserCanUseWorkspace(): bool
     {
         $user = request()->user();
 
-        return $user instanceof User && app(WorkspaceContext::class)->isMember($user);
+        return $user instanceof User && app(WorkspaceContext::class)->canUseWorkspace($user);
     }
 }

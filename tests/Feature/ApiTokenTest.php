@@ -100,6 +100,7 @@ class ApiTokenTest extends TestCase
         $alice = User::factory()->create();
         $bob = User::factory()->create();
         CreateWorkspace::run($alice, ['name' => 'WS']);
+        CreateWorkspace::run($bob, ['name' => 'Autre WS']);
         CreateApiToken::run($alice, ['name' => 'Agent Claude']);
 
         $tokenId = $alice->tokens()->firstOrFail()->id;

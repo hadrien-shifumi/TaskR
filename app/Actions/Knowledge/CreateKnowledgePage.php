@@ -21,7 +21,7 @@ class CreateKnowledgePage
 
     public function authorize(): bool
     {
-        return $this->currentUserIsMember();
+        return $this->currentUserCanUseWorkspace();
     }
 
     public function rules(): array
@@ -69,10 +69,10 @@ class CreateKnowledgePage
         return $responder->created($page);
     }
 
-    protected function currentUserIsMember(): bool
+    protected function currentUserCanUseWorkspace(): bool
     {
         $user = request()->user();
 
-        return $user instanceof User && app(WorkspaceContext::class)->isMember($user);
+        return $user instanceof User && app(WorkspaceContext::class)->canUseWorkspace($user);
     }
 }

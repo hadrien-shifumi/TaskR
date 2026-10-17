@@ -3,6 +3,7 @@
 namespace App\Actions\Auth;
 
 use App\Models\User;
+use App\Support\WorkspaceContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Lorisleiva\Actions\Concerns\AsController;
@@ -12,6 +13,13 @@ class RevokeApiToken
 {
     use AsController;
     use AsObject;
+
+    public function authorize(): bool
+    {
+        $user = request()->user();
+
+        return $user instanceof User && app(WorkspaceContext::class)->isFullMember($user);
+    }
 
     /**
      * Deletes one of the user's own tokens. Tokens owned by anyone

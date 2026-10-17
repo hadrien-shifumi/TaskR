@@ -22,7 +22,7 @@ class CreateProject
 
     public function authorize(): bool
     {
-        return $this->currentUserIsMember();
+        return $this->currentUserCanUseWorkspace();
     }
 
     public function rules(): array
@@ -70,11 +70,11 @@ class CreateProject
         return $responder->created($project);
     }
 
-    protected function currentUserIsMember(): bool
+    protected function currentUserCanUseWorkspace(): bool
     {
         $user = request()->user();
 
-        return $user instanceof User && app(WorkspaceContext::class)->isMember($user);
+        return $user instanceof User && app(WorkspaceContext::class)->canUseWorkspace($user);
     }
 
     protected function currentWorkspace(): ?Workspace

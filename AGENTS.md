@@ -15,6 +15,10 @@ Before relying on a package's API, confirm its installed version:
 
 This project has domain-specific skills available in `**/skills/**`. You MUST activate the relevant skill whenever you work in that domain—don't wait until you're stuck.
 
+## TDD Discipline
+
+Every behavior change follows the red/green loop defined in `.vibe/skills/tdd/SKILL.md`: test plan first, failing test before implementation, Unit+Feature green before claiming done, and the Browser (E2E) suite only at the final gate via `composer test:e2e`. The `.vibe/hooks.toml` hooks run the suites after edits and refuse to end a turn while red — do not fight them, and never claim success without an observed green run.
+
 ## Conventions
 
 - You must follow all existing code conventions used in this application. When creating or editing a file, check sibling files for the correct structure, approach, and naming.
