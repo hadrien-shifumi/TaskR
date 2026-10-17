@@ -33,7 +33,7 @@ class GetProjectHealth extends AgentTool
 
         $project = Project::query()->findOrFail($request->get('project_id'));
 
-        $health = GetProjectHealthAction::run($project);
+        $health = GetProjectHealthAction::run($project, $this->currentUser($request));
 
         return Response::structured([
             'health' => $health->toArray(),

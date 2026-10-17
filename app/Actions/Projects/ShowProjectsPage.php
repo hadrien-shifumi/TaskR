@@ -3,6 +3,7 @@
 namespace App\Actions\Projects;
 
 use App\Models\Project;
+use App\Models\User;
 use App\Models\Workspace;
 use App\Responders\Projects\ProjectsPageResponder;
 use App\Support\ProjectHealth;
@@ -24,9 +25,18 @@ class ShowProjectsPage
      */
     public function handle(Workspace $workspace): array
     {
-        $projects = $workspace->projects()
-            ->orderBy('name')
-            ->get();
+        $query = $workspace->projects();
+
+        // A guest only sees the projects of their roster, active or archived.
+        $user = request()->user();
+        if ($user instanceof User) {
+            $scope = app(WorkspaceContext::class)->accessibleProjectIds($user);
+            if ($scope !== null) {
+                $query->whereIn('id', $scope);
+            }
+        }
+
+        $projects = $query->orderBy('name')->get();
 
         $healthByProject = $this->getProjectHealth->handleForProjects($projects->all());
 

@@ -37,6 +37,9 @@ class ShowProjectBoard
      */
     public function handle(Project $project, bool $parentsOnly = false, array $filters = []): array
     {
+        // Out-of-scope projects fail exactly like non-existent ones.
+        app(WorkspaceContext::class)->abortUnlessProjectAccessible(request()->user(), $project);
+
         $workspace = app(WorkspaceContext::class)->getOrFail();
         $currentUser = request()->user();
 
