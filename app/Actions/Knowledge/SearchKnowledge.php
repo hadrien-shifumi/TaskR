@@ -12,6 +12,7 @@ use App\Support\WorkspaceContext;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Lorisleiva\Actions\ActionRequest;
 use Lorisleiva\Actions\Concerns\AsController;
 use Lorisleiva\Actions\Concerns\AsObject;
@@ -51,8 +52,22 @@ class SearchKnowledge
      *
      * @throws EmbeddingsNotConfigured
      */
-    public function handle(Workspace $workspace, string $query, ?string $projectId = null, int $limit = 10): array
+    public function handle(Workspace $workspace, string $query, ?string $projectId = null, int $limit = 10, ?User $user = null): array
     {
+        $user ??= request()->user();
+
+        // A guest searches strictly within their perimeter: transverse
+        // pages and other projects' pages never surface in the results.
+        $scope = $user instanceof User
+            ? app(WorkspaceContext::class)->accessibleProjectIds($user)
+            : null;
+
+        if ($scope !== null && $projectId !== null && ! in_array($projectId, $scope, true)) {
+            throw ValidationException::withMessages([
+                'project_id' => [__('validation.knowledge.project_out_of_scope')],
+            ]);
+        }
+
         if (! $this->embeddings->enabled()) {
             throw new EmbeddingsNotConfigured;
         }
@@ -60,7 +75,7 @@ class SearchKnowledge
         $vector = $this->embeddings->embed($query);
 
         if (DB::connection()->getDriverName() === 'pgsql') {
-            return $this->pgsqlRankedQuery($vector, $projectId)
+            return $this->pgsqlRankedQuery($vector, $projectId, $scope)
                 ->limit($limit)
                 ->get()
                 ->map(fn ($row): array => [
@@ -76,6 +91,7 @@ class SearchKnowledge
         return KnowledgePage::query()
             ->whereNotNull('embedding')
             ->when($projectId !== null, fn (Builder $builder) => $builder->where('project_id', $projectId))
+            ->when($scope !== null, fn (Builder $builder) => $builder->whereIn('project_id', $scope))
             ->get()
             ->map(fn (KnowledgePage $page): array => [
                 'page' => $page,
@@ -102,7 +118,7 @@ class SearchKnowledge
         try {
             $payload = array_merge(ShowKnowledgePage::run($workspace), [
                 'query' => $data['q'],
-                'results' => $this->handle($workspace, $data['q'], $data['project_id'] ?? null, (int) ($data['limit'] ?? 10)),
+                'results' => $this->handle($workspace, $data['q'], $data['project_id'] ?? null, (int) ($data['limit'] ?? 10), $request->user()),
             ]);
         } catch (EmbeddingsNotConfigured) {
             $payload = array_merge(ShowKnowledgePage::run($workspace), [
@@ -122,7 +138,11 @@ class SearchKnowledge
      * @param  array<int, float>  $vector
      * @return Builder<KnowledgePage>
      */
-    protected function pgsqlRankedQuery(array $vector, ?string $projectId = null): Builder
+    /**
+     * @param  array<int, float>  $vector
+     * @param  list<string>|null  $scope
+     */
+    protected function pgsqlRankedQuery(array $vector, ?string $projectId = null, ?array $scope = null): Builder
     {
         /** @var string $encoded */
         $encoded = json_encode($vector) ?: '[]';
@@ -130,6 +150,7 @@ class SearchKnowledge
         return KnowledgePage::query()
             ->whereNotNull('embedding')
             ->when($projectId !== null, fn (Builder $query) => $query->where('project_id', $projectId))
+            ->when($scope !== null, fn (Builder $query) => $query->whereIn('project_id', $scope))
             ->selectRaw('knowledge_pages.id, knowledge_pages.title, knowledge_pages.body, knowledge_pages.project_id, 1 - (embedding <=> ?::vector) as similarity', [$encoded])
             ->orderByRaw('embedding <=> ?::vector', [$encoded]);
     }

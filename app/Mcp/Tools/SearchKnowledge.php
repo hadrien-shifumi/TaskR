@@ -48,6 +48,7 @@ class SearchKnowledge extends AgentTool
                 $input['query'],
                 $input['project_id'] ?? null,
                 $input['limit'] ?? 10,
+                $this->currentUser($request),
             ),
         ]);
     }
