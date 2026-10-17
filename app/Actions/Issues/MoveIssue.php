@@ -37,8 +37,15 @@ class MoveIssue
     /**
      * Any status of the workspace is reachable; no transition constraints.
      */
-    public function handle(Issue $issue, string $statusId): Issue
+    public function handle(Issue $issue, string $statusId, ?User $user = null): Issue
     {
+        // Out-of-scope issues fail exactly like non-existent ones.
+        // Without a resolvable user this is a trusted internal object run.
+        $user ??= request()->user();
+        if ($user !== null) {
+            app(WorkspaceContext::class)->abortUnlessIssueAccessible($user, $issue);
+        }
+
         $issue->update(['status_id' => $statusId]);
 
         return $issue->refresh();

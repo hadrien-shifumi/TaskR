@@ -38,7 +38,7 @@ class SetIssueParent extends AgentTool
         $parentId = $request->validate($action->rules())['parent_id'] ?? null;
 
         return Response::structured([
-            'issue' => $this->presentIssue($action->handle($issue, $parentId)),
+            'issue' => $this->presentIssue($action->handle($issue, $parentId, $this->currentUser($request))),
         ]);
     }
 }

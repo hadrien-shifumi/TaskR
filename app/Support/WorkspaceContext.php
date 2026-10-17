@@ -133,6 +133,18 @@ class WorkspaceContext
     }
 
     /**
+     * Anti-probing guard for a single-issue surface (detail page, CRUD,
+     * comments, time entries): an out-of-scope issue must fail exactly
+     * like a non-existent one — 404 on the web, not_found through MCP.
+     */
+    public function abortUnlessIssueAccessible(?User $user, Issue $issue): void
+    {
+        if ($user === null || ! $this->canAccessIssue($user, $issue)) {
+            throw (new ModelNotFoundException)->setModel(Issue::class, [$issue->getKey()]);
+        }
+    }
+
+    /**
      * Workspace-level pages (no project) are reserved to full members;
      * project pages follow the user's project scope.
      */

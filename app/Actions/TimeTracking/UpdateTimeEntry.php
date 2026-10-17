@@ -4,7 +4,9 @@ namespace App\Actions\TimeTracking;
 
 use App\Models\Issue;
 use App\Models\TimeEntry;
+use App\Models\User;
 use App\Responders\TimeTracking\TimeTrackingResponder;
+use App\Support\WorkspaceContext;
 use Illuminate\Http\RedirectResponse;
 use Lorisleiva\Actions\ActionRequest;
 use Lorisleiva\Actions\Concerns\AsController;
@@ -40,8 +42,16 @@ class UpdateTimeEntry
     /**
      * @param  array<string, mixed>  $data
      */
-    public function handle(TimeEntry $timeEntry, array $data): TimeEntry
+    public function handle(TimeEntry $timeEntry, array $data, ?User $user = null): TimeEntry
     {
+        // The underlying issue must stay in the actor's perimeter: a
+        // shrunken scope makes old objects fail like non-existent ones.
+        // Without a resolvable user this is a trusted internal object run.
+        $user ??= request()->user();
+        if ($user !== null) {
+            app(WorkspaceContext::class)->abortUnlessIssueAccessible($user, $timeEntry->issue);
+        }
+
         $timeEntry->update([
             'hours' => (float) $data['hours'],
             'worked_at' => $data['worked_at'] ?? $timeEntry->worked_at,

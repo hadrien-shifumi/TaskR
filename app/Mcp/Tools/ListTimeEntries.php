@@ -34,7 +34,7 @@ class ListTimeEntries extends AgentTool
         $issue = Issue::query()->findOrFail($request->get('issue_id'));
 
         return Response::structured([
-            'timeEntries' => ListTimeEntriesAction::run($issue),
+            'timeEntries' => ListTimeEntriesAction::run($issue, $this->currentUser($request)),
         ]);
     }
 }

@@ -4,7 +4,9 @@ namespace App\Actions\Comments;
 
 use App\Models\Comment;
 use App\Models\Issue;
+use App\Models\User;
 use App\Responders\Comments\CommentRedirectResponder;
+use App\Support\WorkspaceContext;
 use Illuminate\Http\RedirectResponse;
 use Lorisleiva\Actions\ActionRequest;
 use Lorisleiva\Actions\Concerns\AsController;
@@ -30,8 +32,16 @@ class UpdateComment
         ];
     }
 
-    public function handle(Comment $comment, string $body): Comment
+    public function handle(Comment $comment, string $body, ?User $user = null): Comment
     {
+        // The underlying issue must stay in the actor's perimeter: a
+        // shrunken scope makes old objects fail like non-existent ones.
+        // Without a resolvable user this is a trusted internal object run.
+        $user ??= request()->user();
+        if ($user !== null) {
+            app(WorkspaceContext::class)->abortUnlessIssueAccessible($user, $comment->issue);
+        }
+
         $comment->update(['body' => $body]);
 
         return $comment->refresh();

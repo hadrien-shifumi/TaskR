@@ -47,7 +47,7 @@ class UpdateTimeEntry extends AgentTool
         $action = app(UpdateTimeEntryAction::class);
         $data = $request->validate($action->rules());
 
-        $entry = $action->handle($timeEntry, $data);
+        $entry = $action->handle($timeEntry, $data, $this->currentUser($request));
 
         return Response::structured([
             'timeEntry' => [

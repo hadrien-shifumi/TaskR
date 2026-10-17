@@ -26,11 +26,23 @@ class SetAssignees
 
     public function rules(): array
     {
+        $issue = request()->route('issue');
+
+        $assigneeRule = Rule::exists('memberships', 'user_id')
+            ->where('workspace_id', app(WorkspaceContext::class)->id());
+
+        // A guest can only assign the people of the issue's project roster.
+        $user = request()->user();
+        if ($issue instanceof Issue
+            && $user !== null
+            && app(WorkspaceContext::class)->accessibleProjectIds($user) !== null) {
+            $assigneeRule = Rule::exists('project_members', 'user_id')
+                ->where('project_id', $issue->project_id);
+        }
+
         return [
             'assignees' => ['present', 'array'],
-            'assignees.*' => [
-                Rule::exists('memberships', 'user_id')->where('workspace_id', app(WorkspaceContext::class)->id()),
-            ],
+            'assignees.*' => [$assigneeRule],
         ];
     }
 
@@ -39,8 +51,15 @@ class SetAssignees
      *
      * @param  array<int, string>  $userIds
      */
-    public function handle(Issue $issue, array $userIds): Issue
+    public function handle(Issue $issue, array $userIds, ?User $user = null): Issue
     {
+        // Out-of-scope issues fail exactly like non-existent ones.
+        // Without a resolvable user this is a trusted internal object run.
+        $user ??= request()->user();
+        if ($user !== null) {
+            app(WorkspaceContext::class)->abortUnlessIssueAccessible($user, $issue);
+        }
+
         $issue->assignees()->sync($userIds);
 
         return $issue->refresh();

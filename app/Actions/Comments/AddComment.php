@@ -33,6 +33,9 @@ class AddComment
 
     public function handle(Issue $issue, User $author, string $body): Comment
     {
+        // Out-of-scope issues fail exactly like non-existent ones.
+        app(WorkspaceContext::class)->abortUnlessIssueAccessible($author, $issue);
+
         return $issue->comments()->create([
             'author_id' => $author->getKey(),
             'body' => $body,

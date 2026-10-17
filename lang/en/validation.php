@@ -2,6 +2,11 @@
 
 return [
 
+    'issue' => [
+        'parent_out_of_scope' => 'The parent issue is outside your project scope.',
+        'project_out_of_scope' => 'This project is outside your project scope.',
+    ],
+
     'project_member' => [
         'single_owner' => 'A project can only have one owner.',
         'cannot_remove_owner' => 'The project owner cannot be removed from the roster.',

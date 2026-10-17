@@ -41,7 +41,7 @@ class DeleteComment extends AgentTool
             throw new AuthorizationException('You are not the author of this comment.');
         }
 
-        DeleteCommentAction::run($comment);
+        DeleteCommentAction::run($comment, $this->currentUser($request));
 
         return Response::structured([
             'deleted' => true,

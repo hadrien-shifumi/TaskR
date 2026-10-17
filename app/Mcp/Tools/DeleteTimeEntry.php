@@ -41,7 +41,7 @@ class DeleteTimeEntry extends AgentTool
             throw new AuthorizationException('You are not the author of this time entry.');
         }
 
-        DeleteTimeEntryAction::run($timeEntry);
+        DeleteTimeEntryAction::run($timeEntry, $this->currentUser($request));
 
         return Response::structured([
             'deleted' => true,

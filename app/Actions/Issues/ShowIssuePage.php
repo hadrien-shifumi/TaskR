@@ -3,6 +3,7 @@
 namespace App\Actions\Issues;
 
 use App\Models\Issue;
+use App\Models\User;
 use App\Models\Workspace;
 use App\Responders\Issues\IssuePageResponder;
 use App\Support\WorkspaceContext;
@@ -21,6 +22,12 @@ class ShowIssuePage
      */
     public function handle(Workspace $workspace, Issue $issue): array
     {
+        // Out-of-scope issues fail exactly like non-existent ones.
+        $user = request()->user();
+        if ($user !== null) {
+            app(WorkspaceContext::class)->abortUnlessIssueAccessible($user, $issue);
+        }
+
         $issue->load(['project', 'status', 'labels', 'assignees', 'timeEntries.author', 'creator']);
         $issue->loadCount('comments');
 
@@ -90,10 +97,7 @@ class ShowIssuePage
             'statuses' => $workspace->statuses()->get(['id', 'name', 'category']),
             'members' => $workspace->members()->orderBy('name')->get(['users.id', 'users.name']),
             'labels' => $workspace->labels()->orderBy('name')->get(['id', 'name', 'color']),
-            'candidates' => Issue::query()
-                ->whereKeyNot($issue->id)
-                ->orderBy('title')
-                ->get(['id', 'title']),
+            'candidates' => $this->candidateParents($issue, $user),
         ];
     }
 
@@ -102,5 +106,26 @@ class ShowIssuePage
         $workspace = app(WorkspaceContext::class)->getOrFail();
 
         return $responder->toResponse($request, $this->handle($workspace, $issue));
+    }
+
+    /**
+     * Candidate parents: every issue of the workspace, minus the issue
+     * itself. A guest only sees the issues of their perimeter — parent
+     * candidates included, or the hierarchy would leak hidden titles.
+     *
+     * @return array<int, Issue>
+     */
+    private function candidateParents(Issue $issue, ?User $user): array
+    {
+        $scope = $user !== null
+            ? app(WorkspaceContext::class)->accessibleProjectIds($user)
+            : null;
+
+        return Issue::query()
+            ->whereKeyNot($issue->id)
+            ->when($scope !== null, fn ($query) => $query->whereIn('project_id', $scope))
+            ->orderBy('title')
+            ->get(['id', 'title'])
+            ->all();
     }
 }

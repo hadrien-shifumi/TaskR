@@ -41,7 +41,7 @@ class UpdateIssue extends AgentTool
         $data = $request->validate($action->rules());
 
         return Response::structured([
-            'issue' => $this->presentIssue($action->handle($issue, $data)),
+            'issue' => $this->presentIssue($action->handle($issue, $data, $this->currentUser($request))),
         ]);
     }
 }

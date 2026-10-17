@@ -30,8 +30,15 @@ class SetIssueEstimate
         ];
     }
 
-    public function handle(Issue $issue, ?float $estimatedHours): Issue
+    public function handle(Issue $issue, ?float $estimatedHours, ?User $user = null): Issue
     {
+        // Out-of-scope issues fail exactly like non-existent ones.
+        // Without a resolvable user this is a trusted internal object run.
+        $user ??= request()->user();
+        if ($user !== null) {
+            app(WorkspaceContext::class)->abortUnlessIssueAccessible($user, $issue);
+        }
+
         $issue->update(['estimated_hours' => $estimatedHours]);
 
         return $issue->refresh();

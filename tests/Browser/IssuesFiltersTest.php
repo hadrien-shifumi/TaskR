@@ -5,6 +5,7 @@ use App\Actions\Projects\CreateProject;
 use App\Models\Issue;
 use App\Models\Membership;
 use App\Models\Project;
+use App\Models\ProjectMember;
 use App\Models\Status;
 use App\Models\User;
 use App\Models\Workspace;
@@ -322,6 +323,38 @@ it('strikes through cancelled issues without linking them', function () {
     // Regular issues keep their title link and no strike-through.
     $page->assertPresent("[data-test=\"issue-row-{$webhook->id}\"] a");
     $page->assertAttributeDoesntContain("@issue-title-{$webhook->id}", 'class', 'line-through');
+
+    $page->assertNoSmoke();
+});
+
+it('hides out-of-scope issues from a guest on the tickets page', function () {
+    [$owner, $workspace] = setupBrowserWorkspace();
+    app(WorkspaceContext::class)->set($workspace);
+
+    $client = CreateProject::run($workspace, $owner, ['name' => 'Projet client']);
+    $internal = CreateProject::run($workspace, $owner, ['name' => 'Interne secret']);
+    CreateIssue::run($workspace, ['project_id' => $client->id, 'title' => 'Ticket visible']);
+    CreateIssue::run($workspace, ['project_id' => $internal->id, 'title' => 'Ticket cache']);
+
+    $guest = User::factory()->create();
+    Membership::create([
+        'user_id' => $guest->id,
+        'workspace_id' => $workspace->id,
+        'role' => 'guest',
+    ]);
+    ProjectMember::create([
+        'project_id' => $client->id,
+        'user_id' => $guest->id,
+        'role' => 'member',
+    ]);
+
+    $this->actingAs($guest);
+
+    $page = visit('/issues');
+
+    $page->assertSee('Ticket visible')
+        ->assertDontSee('Ticket cache')
+        ->assertDontSee('Interne secret');
 
     $page->assertNoSmoke();
 });

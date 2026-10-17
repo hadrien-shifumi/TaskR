@@ -60,10 +60,10 @@ class CommentTest extends TestCase
 
     public function test_comments_are_chronological(): void
     {
-        [, , $issue] = $this->setupIssue();
+        [$owner, $member, $issue] = $this->setupIssue();
 
-        AddComment::run($issue, User::factory()->create(), 'Premier');
-        AddComment::run($issue, User::factory()->create(), 'Deuxieme');
+        AddComment::run($issue, $owner, 'Premier');
+        AddComment::run($issue, $member, 'Deuxieme');
 
         $this->actingAs(User::first())
             ->get("/issues/{$issue->id}")

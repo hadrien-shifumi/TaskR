@@ -38,7 +38,7 @@ class SetAssignees extends AgentTool
         $assignees = $request->validate($action->rules())['assignees'];
 
         return Response::structured([
-            'issue' => $this->presentIssue($action->handle($issue, $assignees)),
+            'issue' => $this->presentIssue($action->handle($issue, $assignees, $this->currentUser($request))),
         ]);
     }
 }
