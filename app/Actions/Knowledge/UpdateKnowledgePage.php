@@ -9,6 +9,7 @@ use App\Responders\Knowledge\KnowledgeRedirectResponder;
 use App\Support\WorkspaceContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Lorisleiva\Actions\ActionRequest;
 use Lorisleiva\Actions\Concerns\AsController;
 use Lorisleiva\Actions\Concerns\AsObject;
@@ -47,6 +48,31 @@ class UpdateKnowledgePage
      */
     public function handle(KnowledgePage $page, User $editor, array $data): KnowledgePage
     {
+        // Out-of-scope pages fail exactly like non-existent ones.
+        app(WorkspaceContext::class)->abortUnlessKnowledgePageAccessible($editor, $page);
+
+        // A guest works strictly within their perimeter: the page keeps a
+        // project of the perimeter and an accessible parent.
+        $scope = app(WorkspaceContext::class)->accessibleProjectIds($editor);
+        if ($scope !== null) {
+            $projectId = $data['project_id'] ?? null;
+            if ($projectId === null || ! in_array($projectId, $scope, true)) {
+                throw ValidationException::withMessages([
+                    'project_id' => [__('validation.knowledge.project_out_of_scope')],
+                ]);
+            }
+
+            $parentId = $data['parent_id'] ?? null;
+            if ($parentId !== null) {
+                $parent = (new KnowledgePage)->withoutWorkspaceScope()->find($parentId);
+                if ($parent === null || ! app(WorkspaceContext::class)->canAccessKnowledgePage($editor, $parent)) {
+                    throw ValidationException::withMessages([
+                        'parent_id' => [__('validation.knowledge.parent_out_of_scope')],
+                    ]);
+                }
+            }
+        }
+
         $parentId = $data['parent_id'] ?? null;
 
         if ($parentId !== null) {

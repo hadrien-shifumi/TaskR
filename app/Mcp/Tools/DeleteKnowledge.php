@@ -33,7 +33,7 @@ class DeleteKnowledge extends AgentTool
 
         $page = KnowledgePage::query()->findOrFail($request->get('page_id'));
 
-        DeleteKnowledgePageAction::run($page);
+        DeleteKnowledgePageAction::run($page, $this->currentUser($request));
 
         return Response::structured([
             'deleted' => true,

@@ -34,7 +34,7 @@ class GetKnowledge extends AgentTool
         $page = KnowledgePage::query()->findOrFail($request->get('page_id'));
 
         return Response::structured([
-            'page' => GetKnowledgePage::run($page),
+            'page' => GetKnowledgePage::run($page, $this->currentUser($request)),
         ]);
     }
 }
