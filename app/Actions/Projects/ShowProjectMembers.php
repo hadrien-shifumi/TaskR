@@ -31,6 +31,9 @@ class ShowProjectMembers
      */
     public function handle(Project $project): array
     {
+        // Out-of-scope projects fail exactly like non-existent ones.
+        app(WorkspaceContext::class)->abortUnlessProjectAccessible(request()->user(), $project);
+
         $user = request()->user();
         $workspace = $project->workspace;
 

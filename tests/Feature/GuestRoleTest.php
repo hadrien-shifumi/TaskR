@@ -6,6 +6,7 @@ use App\Actions\Projects\CreateProject;
 use App\Actions\Workspaces\CreateWorkspace;
 use App\Enums\WorkspaceRole;
 use App\Models\Membership;
+use App\Models\ProjectMember;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Support\WorkspaceContext;
@@ -59,6 +60,14 @@ class GuestRoleTest extends TestCase
         [$owner, $workspace] = $this->setupWorkspace();
         $guest = $this->addUser($workspace, 'guest');
         $project = CreateProject::run($workspace, $owner, ['name' => 'Site vitrine']);
+
+        // The board is only reachable within the guest's scope: onboard
+        // them onto the project roster first.
+        ProjectMember::create([
+            'project_id' => $project->id,
+            'user_id' => $guest->id,
+            'role' => 'member',
+        ]);
 
         $this->actingAs($guest)
             ->get(route('projects.board', $project))

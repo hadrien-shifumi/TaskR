@@ -2,7 +2,9 @@
 
 use App\Actions\Issues\CreateIssue;
 use App\Actions\Projects\CreateProject;
+use App\Models\Membership;
 use App\Models\Project;
+use App\Models\ProjectMember;
 use App\Models\Status;
 use App\Models\User;
 use App\Models\Workspace;
@@ -194,6 +196,35 @@ it('refuses to delete a project that still has issues and offers archiving inste
 
     app(WorkspaceContext::class)->set($workspace);
     expect($active->fresh()->isArchived())->toBeTrue();
+
+    $page->assertNoSmoke();
+});
+
+it('hides out-of-scope projects from a guest on the projects page', function () {
+    [$owner, $workspace] = setupBrowserWorkspace();
+    app(WorkspaceContext::class)->set($workspace);
+
+    $inScope = CreateProject::run($workspace, $owner, ['name' => 'Projet client']);
+    $outOfScope = CreateProject::run($workspace, $owner, ['name' => 'Interne secret']);
+
+    $guest = User::factory()->create();
+    Membership::create([
+        'user_id' => $guest->id,
+        'workspace_id' => $workspace->id,
+        'role' => 'guest',
+    ]);
+    ProjectMember::create([
+        'project_id' => $inScope->id,
+        'user_id' => $guest->id,
+        'role' => 'member',
+    ]);
+
+    $this->actingAs($guest);
+
+    $page = visit('/projects');
+
+    $page->assertSee('Projet client')
+        ->assertDontSee('Interne secret');
 
     $page->assertNoSmoke();
 });

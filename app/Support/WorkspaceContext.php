@@ -9,6 +9,7 @@ use App\Models\Project;
 use App\Models\ProjectMember;
 use App\Models\User;
 use App\Models\Workspace;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 /**
  * Holds the workspace resolved for the current request (or null).
@@ -107,6 +108,19 @@ class WorkspaceContext
         $scope = $this->accessibleProjectIds($user);
 
         return $scope === null || in_array($project->getKey(), $scope, true);
+    }
+
+    /**
+     * Anti-probing guard for a single-project surface (board, health,
+     * members): an out-of-scope project must fail exactly like a
+     * non-existent one — 404 on the web, not_found through MCP — never a
+     * 403 that would confirm the project exists.
+     */
+    public function abortUnlessProjectAccessible(?User $user, Project $project): void
+    {
+        if ($user === null || ! $this->canViewProject($user, $project)) {
+            throw (new ModelNotFoundException)->setModel(Project::class, [$project->getKey()]);
+        }
     }
 
     public function canAccessIssue(User $user, Issue $issue): bool

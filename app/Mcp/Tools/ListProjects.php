@@ -30,7 +30,7 @@ class ListProjects extends AgentTool
         $workspace = $this->resolveWorkspace($request);
 
         return Response::structured([
-            'projects' => ListProjectsAction::run($workspace),
+            'projects' => ListProjectsAction::run($workspace, $this->currentUser($request)),
         ]);
     }
 }
