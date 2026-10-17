@@ -21,7 +21,7 @@ Every behavior change goes through this loop, no exception. The `tdd-guard` plug
 Before writing any code:
 
 - Restate the spec as a numbered list of test cases (`test_...` names) — one per behavior or acceptance criterion, including edge cases and rejections. Write the list in the conversation first.
-- For workspace-scoped resources, apply the required coverage checklist from `.opencode/skills/taskr-backend/references/testing.md` (minimal create, full create, cross-workspace isolation, validation rejection, guarded delete, list filtering).
+- For workspace-scoped resources, apply the required coverage checklist from `../../../.vibe/skills/taskr-backend` (minimal create, full create, cross-workspace isolation, validation rejection, guarded delete, list filtering).
 
 ### 2. Red
 

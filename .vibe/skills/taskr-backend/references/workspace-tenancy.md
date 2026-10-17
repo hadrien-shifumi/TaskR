@@ -4,7 +4,7 @@ How isolation works end to end. Do not bypass any layer; each one covers a gap t
 
 ## Request flow
 
-1. `bootstrap/app.php` registers `ResolveCurrentWorkspace` under the `workspace` alias and prepends it **before** `SubstituteBindings` — the global scope must know the workspace before route model binding runs, or scoped models 404.
+1. `../../../../bootstrap/app.php` registers `ResolveCurrentWorkspace` under the `workspace` alias and prepends it **before** `SubstituteBindings` — the global scope must know the workspace before route model binding runs, or scoped models 404.
 2. `ResolveCurrentWorkspace`: authenticated user only. Resolves from `session('workspace_id')` while the membership is still valid, otherwise falls back to the user's first workspace by name (null when member of none), stores the choice back in session.
 3. `WorkspaceContext` is a singleton holding `?Workspace`. Access:
    - `get(): ?Workspace` — nullable, for validation rules.

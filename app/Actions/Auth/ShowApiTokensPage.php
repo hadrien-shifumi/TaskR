@@ -4,6 +4,7 @@ namespace App\Actions\Auth;
 
 use App\Models\User;
 use App\Responders\Auth\TokensPageResponder;
+use App\Support\WorkspaceContext;
 use Illuminate\Http\Request;
 use Lorisleiva\Actions\Concerns\AsController;
 use Lorisleiva\Actions\Concerns\AsObject;
@@ -13,6 +14,13 @@ class ShowApiTokensPage
 {
     use AsController;
     use AsObject;
+
+    public function authorize(): bool
+    {
+        $user = request()->user();
+
+        return $user instanceof User && app(WorkspaceContext::class)->isFullMember($user);
+    }
 
     /**
      * Lists the personal access tokens of the given user (name and dates

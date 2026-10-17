@@ -21,7 +21,7 @@ class MoveIssue
     {
         $user = request()->user();
 
-        return $user instanceof User && app(WorkspaceContext::class)->isMember($user);
+        return $user instanceof User && app(WorkspaceContext::class)->canUseWorkspace($user);
     }
 
     public function rules(): array

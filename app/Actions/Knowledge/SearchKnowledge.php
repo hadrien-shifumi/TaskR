@@ -26,7 +26,7 @@ class SearchKnowledge
 
     public function authorize(): bool
     {
-        return $this->currentUserIsMember();
+        return $this->currentUserCanUseWorkspace();
     }
 
     public function rules(): array
@@ -178,10 +178,10 @@ class SearchKnowledge
         return rtrim($space === false ? $cut : mb_substr($cut, 0, $space)).' …';
     }
 
-    protected function currentUserIsMember(): bool
+    protected function currentUserCanUseWorkspace(): bool
     {
         $user = request()->user();
 
-        return $user instanceof User && app(WorkspaceContext::class)->isMember($user);
+        return $user instanceof User && app(WorkspaceContext::class)->canUseWorkspace($user);
     }
 }

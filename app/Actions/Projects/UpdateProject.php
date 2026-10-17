@@ -22,7 +22,7 @@ class UpdateProject
 
     public function authorize(): bool
     {
-        return $this->currentUserIsMember();
+        return $this->currentUserCanUseWorkspace();
     }
 
     /**
@@ -76,11 +76,11 @@ class UpdateProject
         return $responder->updated($project);
     }
 
-    protected function currentUserIsMember(): bool
+    protected function currentUserCanUseWorkspace(): bool
     {
         $user = request()->user();
 
-        return $user instanceof User && app(WorkspaceContext::class)->isMember($user);
+        return $user instanceof User && app(WorkspaceContext::class)->canUseWorkspace($user);
     }
 
     protected function currentWorkspace(): ?Workspace
