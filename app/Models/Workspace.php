@@ -98,4 +98,9 @@ class Workspace extends BaseModel
     {
         return $this->roleOf($user) === WorkspaceRole::Owner;
     }
+
+    public function isGuest(User $user): bool
+    {
+        return $this->roleOf($user) === WorkspaceRole::Guest;
+    }
 }
