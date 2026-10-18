@@ -56,6 +56,7 @@ const fr: typeof en = {
             owner: "propriétaire",
             manager: "gestionnaire",
             member: "membre",
+            guest: "invité guest",
         },
     },
 
@@ -372,6 +373,11 @@ const fr: typeof en = {
             memberRole: "membre",
             memberSuffix:
                 ", vous avez accès aux projets, tickets, commentaires et à la saisie de temps de l'espace de travail. La gestion des statuts et des membres reste réservée aux propriétaires.",
+            guestPrefix: "En tant qu'",
+            guestRole: "invité guest",
+            guestSuffix:
+                ", vous n'accéderez qu'aux projets listés ci-dessous — leurs tickets, commentaires et la saisie de temps.",
+            scopeLabel: "Projets du périmètre",
             invitationEmail: "Email de l'invitation",
             accept: "Accepter l'invitation",
             decline: "Refuser",
@@ -504,12 +510,17 @@ const fr: typeof en = {
             "Annuler l'invitation de {{email}} ? Le lien d'acceptation cessera de fonctionner.",
         noMembers: "Aucun membre pour le moment.",
         notePrefix:
-            "Les invitations sont réservées aux propriétaires. Les invités rejoignent l'espace en tant que",
+            "Les invitations sont réservées aux propriétaires. Un",
         memberWord: "membre",
-        noteSuffix: "après acceptation.",
-        inviteTitle: "Inviter un membre",
-        inviteDescriptionPrefix: "Le rôle est toujours",
-        inviteDescriptionSuffix: "— deux rôles uniquement.",
+        noteSuffix: "accède à tout l'espace ; un guest est restreint à son périmètre.",
+        inviteTitle: "Inviter",
+        inviteDescriptionPrefix: "Un",
+        inviteDescriptionSuffix:
+            "accède à tout l'espace ; un guest est restreint aux projets choisis.",
+        roleLabel: "Rôle",
+        scopeLabel: "Périmètre du guest",
+        scopeHint: "Choisissez au moins un projet.",
+        noProjects: "Aucun projet actif — créez-en un avant d'inviter un guest.",
     },
 
     templatesPage: {

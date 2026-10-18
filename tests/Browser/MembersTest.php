@@ -1,10 +1,64 @@
 <?php
 
+use App\Actions\Projects\CreateProject;
 use App\Actions\Workspaces\InviteMember;
+use App\Enums\WorkspaceRole;
 use App\Models\Invitation;
+use App\Models\InvitationProject;
 use App\Models\Membership;
 use App\Models\User;
 use App\Support\WorkspaceContext;
+
+it('lets an owner invite a guest with a project scope from the members settings', function () {
+    [$owner, $workspace] = setupBrowserWorkspace();
+    app(WorkspaceContext::class)->set($workspace);
+    $project = CreateProject::run($workspace, $owner, ['name' => 'Projet client']);
+    $this->actingAs($owner);
+
+    $page = visit('/settings/members');
+
+    // Scenario "Inviter un guest rattache a un projet": role select, project
+    // chip toggle, then submit. The pending row shows the guest role and the
+    // announced scope.
+    $page->click('button:has-text("Invite")')
+        ->fill('invite-email', 'client@example.com')
+        ->click('#invite-role')
+        ->click('[role="option"]:has-text("guest")')
+        ->click('button:has-text("Projet client")')
+        ->click('button[type="submit"]');
+
+    app(WorkspaceContext::class)->set($workspace);
+    $dbg = Invitation::withoutWorkspaceScope()
+        ->where('workspace_id', $workspace->id)
+        ->where('email', 'client@example.com')
+        ->first();
+    $page->assertSee('Invitation created for client@example.com');
+
+    var_dump('FETCHED PROPS >>>', substr((string) $page->script(
+        '() => fetch("/settings/members", { headers: { "X-Inertia": "true", "X-Inertia-Version": "" }, credentials: "same-origin" }).then(function (r) { return r.text(); })'
+    ), 0, 1100));
+
+    $page->navigate('/settings/members');
+    $page->assertSee('client@example.com');
+
+    var_dump('LOADED RESOURCES >>>', (string) $page->script(
+        '() => performance.getEntriesByType("resource").map(function (r) { return r.name; }).filter(function (n) { return n.indexOf("assets") !== -1; }).join(" || ")'
+    ));
+
+    $page->assertSee('Projet client');
+
+    app(WorkspaceContext::class)->set($workspace);
+    $invitation = Invitation::withoutWorkspaceScope()
+        ->where('workspace_id', $workspace->id)
+        ->where('email', 'client@example.com')
+        ->firstOrFail();
+
+    expect($invitation->role)->toBe(WorkspaceRole::Guest)
+        ->and(InvitationProject::query()->where('invitation_id', $invitation->id)->pluck('project_id')->all())
+        ->toBe([$project->id]);
+
+    $page->assertNoSmoke();
+});
 
 it('lets an owner resend and cancel a pending invitation from the members settings', function () {
     [$owner, $workspace] = setupBrowserWorkspace();

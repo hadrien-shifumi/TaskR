@@ -58,6 +58,7 @@ const en = {
             owner: "owner",
             manager: "manager",
             member: "member",
+            guest: "guest",
         },
     },
 
@@ -370,6 +371,11 @@ const en = {
             memberRole: "member",
             memberSuffix:
                 "you get access to the projects, issues, comments and time logging of the workspace. Managing statuses and members stays reserved for owners.",
+            guestPrefix: "As a",
+            guestRole: "guest",
+            guestSuffix:
+                ", you will only access the projects listed below — their issues, comments and time logging.",
+            scopeLabel: "Scope projects",
             invitationEmail: "Invitation email",
             accept: "Accept the invitation",
             decline: "Decline",
@@ -497,12 +503,17 @@ const en = {
         cancelInvitation: "Cancel invitation…",
         cancelConfirm: "Cancel the invitation for {{email}}? The acceptance link will stop working.",
         noMembers: "No members yet.",
-        notePrefix: "Invitations are reserved for owners. Invitees join the workspace as",
+        notePrefix: "Invitations are reserved for owners. A",
         memberWord: "member",
-        noteSuffix: "after accepting.",
-        inviteTitle: "Invite a member",
-        inviteDescriptionPrefix: "The role is always",
-        inviteDescriptionSuffix: "— two roles only.",
+        noteSuffix: "sees the whole workspace; a guest is restricted to their scope.",
+        inviteTitle: "Invite",
+        inviteDescriptionPrefix: "A",
+        inviteDescriptionSuffix:
+            "sees the whole workspace; a guest is restricted to the chosen projects.",
+        roleLabel: "Role",
+        scopeLabel: "Guest scope",
+        scopeHint: "Pick at least one project.",
+        noProjects: "No active project — create one before inviting a guest.",
     },
 
     templatesPage: {

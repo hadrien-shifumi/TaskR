@@ -19,6 +19,11 @@ return [
         'cannot_remove_last_guest_project' => 'A guest must keep at least one project: remove them from the workspace to revoke their access.',
     ],
 
+    'invitation' => [
+        'guest_requires_projects' => 'A guest must be attached to at least one project.',
+        'member_cannot_carry_projects' => 'A member invitation carries no project scope.',
+    ],
+
     'attributes' => [
         'user_id' => 'member',
         'role' => 'role',

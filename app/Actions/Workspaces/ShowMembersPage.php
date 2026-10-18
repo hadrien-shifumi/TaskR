@@ -24,9 +24,11 @@ class ShowMembersPage
     }
 
     /**
-     * Present the members of the workspace and their pending invitations.
+     * Present the members of the workspace, their pending invitations with
+     * the invited role and guest scope, and the active projects available
+     * to the invite dialog.
      *
-     * @return array{members: array<int, array<string, mixed>>, invitations: array<int, array<string, mixed>>}
+     * @return array{members: array<int, array<string, mixed>>, invitations: array<int, array<string, mixed>>, projects: array<int, array<string, mixed>>}
      */
     public function handle(Workspace $workspace): array
     {
@@ -47,13 +49,27 @@ class ShowMembersPage
 
         $invitations = $workspace->invitations()
             ->whereNull('accepted_at')
+            ->with('projects')
             ->orderBy('created_at')
             ->get()
             ->map(fn ($invitation) => [
                 'id' => $invitation->id,
                 'email' => $invitation->email,
+                'role' => $invitation->role->value,
+                'projects' => $invitation->projects()->orderBy('name')->pluck('name')->all(),
                 'status' => $invitation->isExpired() ? 'expired' : 'sent',
                 'invitedAt' => $invitation->created_at?->toISOString(),
+            ])
+            ->values()
+            ->all();
+
+        $projects = $workspace->projects()
+            ->whereNull('archived_at')
+            ->orderBy('name')
+            ->get()
+            ->map(fn ($project) => [
+                'id' => $project->id,
+                'name' => $project->name,
             ])
             ->values()
             ->all();
@@ -61,6 +77,7 @@ class ShowMembersPage
         return [
             'members' => $members,
             'invitations' => $invitations,
+            'projects' => $projects,
         ];
     }
 

@@ -14,6 +14,7 @@ type PageProps = {
         inviterName: string;
         email: string;
         role: string;
+        projects: string[];
         acceptUrl: string;
     };
 };
@@ -23,6 +24,7 @@ type PageProps = {
 export default function AcceptInvitation() {
     const { invitation } = usePage<PageProps>().props;
     const { t } = useTranslation();
+    const isGuest = invitation.role === 'guest';
 
     return (
         <GuestLayout>
@@ -37,15 +39,45 @@ export default function AcceptInvitation() {
                         <strong className="font-medium text-foreground">{invitation.workspaceName}</strong>{' '}
                         {t('auth.invitation.asRole')}{' '}
                         <Badge variant="secondary" className="rounded-full bg-secondary text-muted-foreground">
-                            {invitation.role}
+                            {t(`layout.roles.${invitation.role}`)}
                         </Badge>
                         .
                     </p>
 
                     <Banner variant="info" className="mb-4 rounded-md text-[13px]">
-                        {t('auth.invitation.memberPrefix')} <strong>{t('auth.invitation.memberRole')}</strong>{' '}
-                        {t('auth.invitation.memberSuffix')}
+                        {isGuest ? (
+                            <>
+                                {t('auth.invitation.guestPrefix')}{' '}
+                                <strong>{t('auth.invitation.guestRole')}</strong>
+                                {t('auth.invitation.guestSuffix')}
+                            </>
+                        ) : (
+                            <>
+                                {t('auth.invitation.memberPrefix')}{' '}
+                                <strong>{t('auth.invitation.memberRole')}</strong>
+                                {t('auth.invitation.memberSuffix')}
+                            </>
+                        )}
                     </Banner>
+
+                    {isGuest && invitation.projects.length > 0 ? (
+                        <div className="grid gap-1.5 mb-4">
+                            <Label htmlFor="invitation-projects">
+                                {t('auth.invitation.scopeLabel')}
+                            </Label>
+                            <div className="flex flex-wrap gap-2">
+                                {invitation.projects.map((project) => (
+                                    <Badge
+                                        key={project}
+                                        variant="secondary"
+                                        className="rounded-full bg-secondary text-muted-foreground"
+                                    >
+                                        {project}
+                                    </Badge>
+                                ))}
+                            </div>
+                        </div>
+                    ) : null}
 
                     <form className="grid gap-3" onSubmit={(e) => { e.preventDefault(); }}>
                         <div className="grid gap-1.5">
