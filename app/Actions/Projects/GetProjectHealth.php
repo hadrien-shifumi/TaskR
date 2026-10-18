@@ -82,7 +82,11 @@ class GetProjectHealth
         // Out-of-scope projects fail exactly like non-existent ones.
         app(WorkspaceContext::class)->abortUnlessProjectAccessible($user, $project);
 
-        $canSeeGlobalKpis = $user !== null && $project->canManage($user);
+        // Global KPIs go to project managers — a guest stays on the
+        // contributor view ("Ma charge") even when roster-manager.
+        $canSeeGlobalKpis = $user !== null
+            && $project->canManage($user)
+            && ! $project->workspace->isGuest($user);
 
         $health = $canSeeGlobalKpis ? $this->handle($project) : null;
 

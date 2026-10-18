@@ -137,3 +137,51 @@ it('requires a title in the home quick dialog', function () {
 
     $page->assertNoSmoke();
 });
+
+it('scopes the guest home dashboard to their perimeter', function () {
+    [$owner, $workspace] = setupBrowserWorkspace();
+    app(WorkspaceContext::class)->set($workspace);
+
+    $inScope = \App\Actions\Projects\CreateProject::run($workspace, $owner, ['name' => 'Projet client']);
+    $outOfScope = \App\Actions\Projects\CreateProject::run($workspace, $owner, ['name' => 'Interne secret']);
+
+    $backlog = \App\Models\Status::withoutWorkspaceScope()
+        ->where('workspace_id', $workspace->id)
+        ->where('category', 'backlog')
+        ->firstOrFail();
+
+    CreateIssue::run($workspace, [
+        'project_id' => $inScope->id,
+        'title' => 'Livraison client',
+        'status_id' => $backlog->id,
+    ]);
+    $residual = CreateIssue::run($workspace, [
+        'project_id' => $outOfScope->id,
+        'title' => 'Ticket confidentiel',
+        'status_id' => $backlog->id,
+    ]);
+
+    $guest = \App\Models\User::factory()->create();
+    \App\Models\Membership::create([
+        'user_id' => $guest->id,
+        'workspace_id' => $workspace->id,
+        'role' => 'guest',
+    ]);
+    \App\Models\ProjectMember::create([
+        'project_id' => $inScope->id,
+        'user_id' => $guest->id,
+        'role' => 'member',
+    ]);
+    $residual->assignees()->attach($guest);
+
+    $this->actingAs($guest);
+
+    $page = visit('/');
+
+    // Cartes de santé et compteurs : uniquement le périmètre du guest.
+    $page->assertSee('Projet client')
+        ->assertDontSee('Interne secret')
+        // Assignation résiduelle hors périmètre : jamais exposée.
+        ->assertDontSee('Ticket confidentiel')
+        ->assertNoSmoke();
+});
