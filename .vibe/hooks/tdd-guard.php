@@ -362,7 +362,8 @@ $isNewFile = str_contains($tool, 'write');
 
 // Final-gate enforcement: no E2E while the dev loop is red or stale.
 if ($event === 'pre_tool') {
-    if ($tool === 'bash' && isE2eCommand((string) ($input['command'] ?? ''))) {
+    // Tool names may be namespaced by the runtime (e.g. "file_system.bash").
+    if (str_contains($tool, 'bash') && isE2eCommand((string) ($input['command'] ?? ''))) {
         if (in_array($state['phase'] ?? '', ['red', 'regression'], true) || ! empty($state['dirty'])) {
             deny('E2E is the final gate: the Unit+Feature suites are red or stale. Bring `composer test` to green first, then run `composer test:e2e` once.');
         }
@@ -375,7 +376,7 @@ if ($event !== 'post_tool') {
 }
 
 // The agent ran tests through bash: trust the output it just saw.
-if ($tool === 'bash') {
+if (str_contains($tool, 'bash')) {
     recordBashRun($state, (string) ($input['command'] ?? ''), (string) ($payload['tool_output_text'] ?? ''), ($payload['tool_status'] ?? '') === 'failure');
     saveState($payload, $state);
     exit(0);
@@ -392,6 +393,17 @@ $rel = ltrim(str_replace($root, '', $absPath), '/');
 $state['dirty'] = true;
 
 if (preg_match(TEST_FILE, $path)) {
+    if (preg_match('~(^|/)tests/Browser/~', $path)) {
+        // Browser (E2E) files need the Playwright server and are excluded
+        // from the dev loop by design: running them under plain phpunit
+        // fails (exit 255) and would record a phantom RED verdict. The
+        // dirty flag stands; the next dev-suite run clears it.
+        saveState($payload, $state);
+        addContext(block([
+            'Browser (E2E) file '.$rel.' - excluded from the dev loop; covered by `composer test:e2e` at the final gate.',
+        ]));
+    }
+
     $run = runPhpunit($root, [$absPath]);
     $verdict = summarize($run['code'], $run['out']);
     // A green single file only clears the red-test phase, never a suite regression.
