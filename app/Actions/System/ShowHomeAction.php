@@ -22,12 +22,20 @@ class ShowHomeAction
     /**
      * Workspace dashboard: coherent counters with the other screens, the
      * health of every active project, and the issues assigned to the user.
+     * A guest gets the same dashboard computed on their perimeter only.
      *
      * @return array<string, mixed>
      */
     public function handle(Workspace $workspace, User $user): array
     {
-        $projects = $workspace->projects()->orderBy('name')->get();
+        // null = unrestricted scope (owner or member); a guest's scope is
+        // its roster, so every derived counter and card follows it.
+        $scope = app(WorkspaceContext::class)->accessibleProjectIds($user);
+
+        $projects = $workspace->projects()
+            ->when($scope !== null, fn ($query) => $query->whereIn('id', $scope))
+            ->orderBy('name')
+            ->get();
         $healthMap = app(GetProjectHealth::class)->handleForProjects($projects->all());
 
         $totalIssues = 0;
@@ -46,6 +54,7 @@ class ShowHomeAction
 
             if ($project->archived_at !== null) {
                 $archivedProjects++;
+
                 continue;
             }
 
@@ -57,21 +66,28 @@ class ShowHomeAction
             ];
         }
 
+        $hoursThisWeekQuery = TimeEntry::query()
+            ->where('workspace_id', $workspace->id)
+            ->whereBetween('worked_at', [now()->startOfWeek(), now()->endOfWeek()]);
+
+        if ($scope !== null) {
+            // A guest's week counts only the time logged on their perimeter's issues.
+            $hoursThisWeekQuery->whereHas('issue', fn ($issue) => $issue->whereIn('project_id', $scope));
+        }
+
         return [
             'appName' => (string) config('app.name'),
             'stats' => [
                 'totalIssues' => $totalIssues,
                 'openIssues' => $openIssues,
                 'overdueIssues' => $overdueIssues,
-                'loggedHoursThisWeek' => (float) TimeEntry::query()
-                    ->where('workspace_id', $workspace->id)
-                    ->whereBetween('worked_at', [now()->startOfWeek(), now()->endOfWeek()])
-                    ->sum('hours'),
+                'loggedHoursThisWeek' => (float) $hoursThisWeekQuery->sum('hours'),
                 'activeProjects' => $activeProjects,
                 'archivedProjects' => $archivedProjects,
             ],
             'projects' => $projectCards,
             'myIssues' => $workspace->issues()
+                ->when($scope !== null, fn ($query) => $query->whereIn('project_id', $scope))
                 ->whereHas('assignees', fn ($assignees) => $assignees->whereKey($user->getKey()))
                 ->with(['project', 'status'])
                 ->orderByDesc('created_at')
