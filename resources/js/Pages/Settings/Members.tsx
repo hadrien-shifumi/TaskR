@@ -30,6 +30,13 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { Head, router, useForm, usePage } from '@inertiajs/react';
 import { MoreHorizontal, Send, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
@@ -41,20 +48,28 @@ interface MemberRow {
     id: number;
     name: string;
     email: string;
-    role: 'owner' | 'member';
+    role: 'owner' | 'member' | 'guest';
     joinedAt: string | null;
 }
 
 interface InvitationRow {
     id: string;
     email: string;
+    role: 'member' | 'guest';
+    projects: string[];
     status: 'sent' | 'expired';
     invitedAt: string | null;
+}
+
+interface ProjectOption {
+    id: string;
+    name: string;
 }
 
 type PageProps = {
     members: MemberRow[];
     invitations: InvitationRow[];
+    projects: ProjectOption[];
 };
 
 function formatJoined(date: string | null): string {
@@ -65,13 +80,26 @@ const MENU_TRIGGER_CLASS =
     'grid size-6.5 place-items-center rounded-md text-muted-foreground outline-none hover:bg-accent hover:text-foreground';
 
 export default function Members() {
-    const { members, invitations } = usePage<PageProps>().props;
+    const { members, invitations, projects } = usePage<PageProps>().props;
     const { workspace, auth } = usePage<PageSharedProps>().props;
     const { t } = useTranslation();
     const isOwner = workspace?.role === 'owner';
     const [inviting, setInviting] = useState(false);
 
-    const inviteForm = useForm({ email: '' });
+    const inviteForm = useForm<{ email: string; role: 'member' | 'guest'; project_ids: string[] }>({
+        email: '',
+        role: 'member',
+        project_ids: [],
+    });
+
+    const toggleProject = (id: string) => {
+        inviteForm.setData(
+            'project_ids',
+            inviteForm.data.project_ids.includes(id)
+                ? inviteForm.data.project_ids.filter((p) => p !== id)
+                : [...inviteForm.data.project_ids, id],
+        );
+    };
 
     const submitInvite = (e: React.FormEvent) => {
         e.preventDefault();
@@ -179,12 +207,17 @@ export default function Members() {
                                             <p className="font-medium text-muted-foreground">
                                                 {invitation.email}
                                             </p>
+                                            {invitation.projects.length > 0 ? (
+                                                <p className="truncate text-xs text-muted-foreground">
+                                                    {invitation.projects.join(' · ')}
+                                                </p>
+                                            ) : null}
                                         </div>
                                     </div>
                                 </TableCell>
                                 <TableCell>
                                     <Badge variant="secondary" className="rounded-full bg-secondary text-muted-foreground">
-                                        {t('layout.roles.member')}
+                                        {t(`layout.roles.${invitation.role}`)}
                                     </Badge>
                                 </TableCell>
                                 <TableCell>
@@ -273,6 +306,68 @@ export default function Members() {
                                 <p className="text-sm text-destructive">{inviteForm.errors.email}</p>
                             ) : null}
                         </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="invite-role">{t('membersPage.roleLabel')}</Label>
+                            <Select
+                                value={inviteForm.data.role}
+                                onValueChange={(v) => {
+                                    if (v !== 'member' && v !== 'guest') return;
+                                    inviteForm.setData('role', v);
+                                    if (v === 'member') {
+                                        inviteForm.setData('project_ids', []);
+                                    }
+                                }}
+                            >
+                                <SelectTrigger
+                                    id="invite-role"
+                                    className="w-full"
+                                    aria-invalid={inviteForm.errors.role ? true : undefined}
+                                >
+                                    <SelectValue>
+                                        {t(`layout.roles.${inviteForm.data.role}`)}
+                                    </SelectValue>
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="member">{t('layout.roles.member')}</SelectItem>
+                                    <SelectItem value="guest">{t('layout.roles.guest')}</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        {inviteForm.data.role === 'guest' ? (
+                            <div className="grid gap-2">
+                                <Label>{t('membersPage.scopeLabel')}</Label>
+                                <p className="text-sm text-muted-foreground">
+                                    {t('membersPage.scopeHint')}
+                                </p>
+                                <div className="flex flex-wrap gap-2">
+                                    {projects.map((project) => {
+                                        const selected = inviteForm.data.project_ids.includes(project.id);
+                                        return (
+                                            <Button
+                                                key={project.id}
+                                                type="button"
+                                                size="sm"
+                                                variant={selected ? 'default' : 'outline'}
+                                                aria-pressed={selected}
+                                                onClick={() => toggleProject(project.id)}
+                                            >
+                                                {project.name}
+                                            </Button>
+                                        );
+                                    })}
+                                </div>
+                                {projects.length === 0 ? (
+                                    <p className="text-sm text-muted-foreground">
+                                        {t('membersPage.noProjects')}
+                                    </p>
+                                ) : null}
+                                {inviteForm.errors.project_ids ? (
+                                    <p className="text-sm text-destructive">
+                                        {inviteForm.errors.project_ids}
+                                    </p>
+                                ) : null}
+                            </div>
+                        ) : null}
                         <DialogFooter>
                             <Button type="submit" disabled={inviteForm.processing}>
                                 {t('membersPage.invite')}
