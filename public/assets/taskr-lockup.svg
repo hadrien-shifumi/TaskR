@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 64" width="600" height="128">
   <g fill="none" stroke-width="8" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M16 11 32 26 48 11" stroke="#0F172A"/>
-    <path d="M16 53 32 38 48 53" stroke="#4F46E5"/>
+    <path d="M16 11 32 26 48 11" stroke="#0E1217"/>
+    <path d="M16 53 32 38 48 53" stroke="#026FD7"/>
   </g>
-  <text x="68" y="45" font-family="Inter, 'Segoe UI', system-ui, -apple-system, sans-serif" font-size="37" font-weight="800" letter-spacing="-0.5" fill="#0F172A">Task<tspan fill="#4F46E5">R</tspan></text>
+  <text x="68" y="45" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif" font-size="37" font-weight="800" letter-spacing="-0.5" fill="#0E1217">Task<tspan fill="#026FD7">R</tspan></text>
 </svg>
