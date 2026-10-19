@@ -33,6 +33,34 @@ it('opens an issue in the board modal and closes back onto the board', function 
     $page->assertNoSmoke();
 });
 
+it('copies the issue identifier from the board modal', function () {
+    [$owner, $workspace, $project] = setupBrowserWorkspace(withProject: true);
+    app(WorkspaceContext::class)->set($workspace);
+    $backlog = $workspace->statuses()->where('name', 'Backlog')->firstOrFail();
+    $issue = CreateIssue::run($workspace, [
+        'project_id' => $project->id,
+        'title' => 'Identifiant copiable',
+        'status_id' => $backlog->id,
+    ]);
+    $this->actingAs($owner);
+
+    $page = visit("/projects/{$project->id}/board");
+    $page->click("[data-test=\"board-card-{$issue->id}\"] a");
+
+    // The modal header mirrors the fiche pagebar: short mono identifier
+    // with a copy action.
+    $page->assertSeeIn('[data-test="issue-detail-dialog"]', substr($issue->id, 0, 7));
+
+    $page->script('window.__copied = null');
+    $page->script('navigator.clipboard.writeText = (text) => { window.__copied = text; return Promise.resolve(); }');
+    $page->click('[data-test="issue-detail-dialog"] [data-test="copy-identifier"]');
+
+    $page->assertSee('Copied');
+    expect($page->script('window.__copied'))->toBe($issue->id);
+
+    $page->assertNoSmoke();
+});
+
 it('navigates between child and parent issues inside the modal', function () {
     [$owner, $workspace, $project] = setupBrowserWorkspace(withProject: true);
     app(WorkspaceContext::class)->set($workspace);
