@@ -2,9 +2,9 @@
 
 namespace App\Actions\Projects;
 
+use App\Actions\Concerns\AuthorizesWorkspaceAccess;
 use App\Models\Project;
 use App\Models\User;
-use App\Models\Workspace;
 use App\Responders\Projects\ProjectRedirectResponder;
 use App\Support\WorkspaceContext;
 use Illuminate\Http\RedirectResponse;
@@ -17,6 +17,7 @@ class UpdateProject
 {
     use AsController;
     use AsObject;
+    use AuthorizesWorkspaceAccess;
 
     protected ?Project $projectForRules = null;
 
@@ -82,17 +83,5 @@ class UpdateProject
         $project = $this->handle($project, $request->validated(), $request->user());
 
         return $responder->updated($project);
-    }
-
-    protected function currentUserCanUseWorkspace(): bool
-    {
-        $user = request()->user();
-
-        return $user instanceof User && app(WorkspaceContext::class)->canUseWorkspace($user);
-    }
-
-    protected function currentWorkspace(): ?Workspace
-    {
-        return app(WorkspaceContext::class)->get();
     }
 }

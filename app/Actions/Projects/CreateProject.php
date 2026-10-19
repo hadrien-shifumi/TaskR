@@ -2,6 +2,7 @@
 
 namespace App\Actions\Projects;
 
+use App\Actions\Concerns\AuthorizesWorkspaceAccess;
 use App\Enums\ProjectRole;
 use App\Models\Project;
 use App\Models\User;
@@ -20,6 +21,7 @@ class CreateProject
 {
     use AsController;
     use AsObject;
+    use AuthorizesWorkspaceAccess;
 
     public function authorize(): bool
     {
@@ -76,17 +78,5 @@ class CreateProject
         $project = $this->handle($this->currentWorkspace(), $user, $request->validated());
 
         return $responder->created($project);
-    }
-
-    protected function currentUserCanUseWorkspace(): bool
-    {
-        $user = request()->user();
-
-        return $user instanceof User && app(WorkspaceContext::class)->canUseWorkspace($user);
-    }
-
-    protected function currentWorkspace(): ?Workspace
-    {
-        return app(WorkspaceContext::class)->get();
     }
 }

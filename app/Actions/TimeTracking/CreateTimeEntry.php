@@ -2,6 +2,7 @@
 
 namespace App\Actions\TimeTracking;
 
+use App\Actions\Concerns\AuthorizesWorkspaceAccess;
 use App\Models\Issue;
 use App\Models\TimeEntry;
 use App\Models\User;
@@ -16,12 +17,11 @@ class CreateTimeEntry
 {
     use AsController;
     use AsObject;
+    use AuthorizesWorkspaceAccess;
 
     public function authorize(): bool
     {
-        $user = request()->user();
-
-        return $user instanceof User && app(WorkspaceContext::class)->canUseWorkspace($user);
+        return $this->currentUserCanUseWorkspace();
     }
 
     public function rules(): array

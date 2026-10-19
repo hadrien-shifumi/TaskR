@@ -2,6 +2,7 @@
 
 namespace App\Actions\Projects;
 
+use App\Actions\Concerns\AuthorizesWorkspaceAccess;
 use App\Enums\StatusCategory;
 use App\Models\Project;
 use App\Models\User;
@@ -20,12 +21,11 @@ class GetProjectHealth
 {
     use AsController;
     use AsObject;
+    use AuthorizesWorkspaceAccess;
 
     public function authorize(): bool
     {
-        $user = request()->user();
-
-        return $user instanceof User && app(WorkspaceContext::class)->canUseWorkspace($user);
+        return $this->currentUserCanUseWorkspace();
     }
 
     /**

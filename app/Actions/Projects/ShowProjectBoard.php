@@ -2,6 +2,7 @@
 
 namespace App\Actions\Projects;
 
+use App\Actions\Concerns\AuthorizesWorkspaceAccess;
 use App\Actions\Issues\ShowIssuePage;
 use App\Models\Issue;
 use App\Models\IssueTemplate;
@@ -19,12 +20,11 @@ class ShowProjectBoard
 {
     use AsController;
     use AsObject;
+    use AuthorizesWorkspaceAccess;
 
     public function authorize(): bool
     {
-        $user = request()->user();
-
-        return $user instanceof User && app(WorkspaceContext::class)->canUseWorkspace($user);
+        return $this->currentUserCanUseWorkspace();
     }
 
     /**
