@@ -7,6 +7,10 @@
 #   - a Scaleway managed PostgreSQL database (pgvector enabled) exists
 #   - .kamal/secrets is filled in
 
+# Load .kamal/secrets into ENV so the ERB ENV.fetch() calls below resolve
+# without having to source the file in the shell first.
+<% require "dotenv"; Dotenv.load(".kamal/secrets") %>
+
 service: taskr
 image: taskr
 

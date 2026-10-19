@@ -1,5 +1,5 @@
 ---
-name: TDD
+name: tdd
 description: Mandatory test-first workflow — plan the tests before coding, prove them red, implement in passes until Unit+Feature are green, and treat the Browser (E2E) suite as a final gate only. Use for every feature, bug fix, or behavior change, backend or frontend.
 ---
 

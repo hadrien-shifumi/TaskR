@@ -1,5 +1,5 @@
 ---
-name: Taskr Backend
+name: taskr-backend
 description: Conventions for taskr backend code — Laravel actions as controllers, responders, workspace multi-tenancy, ULID models, scoped validation, migrations, and feature tests. Use for any PHP change under app/, database/, routes/, or tests/.
 ---
 

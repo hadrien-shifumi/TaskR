@@ -118,23 +118,18 @@ cp .kamal/secrets.example .kamal/secrets   # gitignoré — à remplir
 Renseigner dans `.kamal/secrets` : IP serveur, domaine, secret key registry,
 `APP_KEY`, identifiants BDD, clé API embeddings.
 
-**Important** : `.kamal/secrets` n'alimente que les secrets *déclarés* dans
-`deploy.yml` (`registry.password`, `env.secret`). Les variables lues via ERB
-(`ENV.fetch("KAMAL_...")` : hosts, proxy, BDD, arch) doivent être présentes
-dans l'environnement du shell, sinon les fallbacks factices s'appliquent
-silencieusement (ex. `203.0.113.10` → `Net::SSH::ConnectionTimeout`).
-Toujours lancer kamal ainsi :
+**Important** : `deploy.yml` charge `.kamal/secrets` via dotenv (`Dotenv.load`)
+en tête de fichier, donc les variables ERB (`ENV.fetch("KAMAL_...")` : hosts,
+proxy, BDD, arch) sont résolues automatiquement — pas besoin de sourcer le
+fichier dans le shell. Vérifier la configuration avec :
 
 ```bash
-set -a; . ./.kamal/secrets; set +a
 kamal config               # valide la configuration (vérifier :hosts !)
 ```
 
 ## 6. Déployer
 
 ```bash
-set -a; . ./.kamal/secrets; set +a
-kamal setup      # premier déploiement (proxy + app)
 kamal deploy     # déploiements suivants
 kamal app logs -f
 ```
