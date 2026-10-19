@@ -40,6 +40,7 @@ class CommentTest extends TestCase
         [$owner, $member, $issue] = $this->setupIssue();
 
         $this->actingAs($member)
+            ->from(route('issues.show', $issue->id))
             ->post("/issues/{$issue->id}/comments", ['body' => 'Premier retour'])
             ->assertRedirect(route('issues.show', $issue->id));
 

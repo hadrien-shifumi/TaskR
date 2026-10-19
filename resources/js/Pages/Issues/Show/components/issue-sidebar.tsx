@@ -32,6 +32,8 @@ type IssueSidebarProps = {
     members: UserRef[];
     labels: LabelRef[];
     candidates: { id: string; title: string }[];
+    /** Builds the parent link href — lets the board modal route in place. */
+    buildIssueHref?: (issueId: string) => string;
 };
 
 type PropRowProps = {
@@ -73,7 +75,7 @@ function PropAction({ children, ...props }: React.ComponentProps<'button'>) {
  * Maquette issue-properties: sticky card with the prop list — status,
  * priority, assignees, labels, due date, estimation, parent.
  */
-export function IssueSidebar({ issue, statuses, members, labels, candidates }: IssueSidebarProps) {
+export function IssueSidebar({ issue, statuses, members, labels, candidates, buildIssueHref }: IssueSidebarProps) {
     const { t } = useTranslation();
     const [datesOpen, setDatesOpen] = useState(false);
     const [parentOpen, setParentOpen] = useState(false);
@@ -359,7 +361,10 @@ export function IssueSidebar({ issue, statuses, members, labels, candidates }: I
                     >
                         {issue.parent ? (
                             <Link
-                                href={route('issues.show', issue.parent.id)}
+                                href={
+                                    buildIssueHref?.(issue.parent.id) ??
+                                    route('issues.show', issue.parent.id)
+                                }
                                 className="text-[13px] text-primary hover:underline"
                             >
                                 {issue.parent.title}

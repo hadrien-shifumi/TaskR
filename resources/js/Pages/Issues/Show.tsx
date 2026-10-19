@@ -1,6 +1,4 @@
 import { FlashBanner } from '@/components/flash-banner';
-import { PriorityBadge, StatusBadge } from '@/components/issue-badges';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
@@ -10,23 +8,18 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import AppLayout from '@/layouts/app-layout';
-import { Head, Link, router, usePage } from '@inertiajs/react';
-import { ArrowLeft, Check, Copy, CornerDownRight, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { Head, router, usePage } from '@inertiajs/react';
+import { ArrowLeft, Check, Copy, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { LabelRef, UserRef } from '@/types';
-import { CommentsSection } from './Show/components/comments-section';
 import { DeleteIssueDialog } from './Show/components/delete-issue-dialog';
-import { DescriptionSection } from './Show/components/description-section';
 import { EditIssueDialog } from './Show/components/edit-issue-dialog';
-import { formatDate } from './Show/components/format';
-import { IssueSidebar } from './Show/components/issue-sidebar';
-import { SectionHead } from './Show/components/section-head';
-import { TimeEntriesSection } from './Show/components/time-entries-section';
-import type { CommentItem, IssueDetail, TimeEntry } from './Show/types';
+import { IssueDetail } from './Show/issue-detail';
+import type { CommentItem, IssueDetail as IssueDetailType, TimeEntry } from './Show/types';
 
 type PageProps = {
-    issue: IssueDetail;
+    issue: IssueDetailType;
     comments: CommentItem[];
     timeEntries: TimeEntry[];
     statuses: { id: string; name: string; category: string }[];
@@ -103,92 +96,15 @@ export default function Show() {
 
             <FlashBanner />
 
-            <div className="grid items-start gap-7 lg:grid-cols-[1fr_280px]">
-                <div className="min-w-0 space-y-7">
-                    <div>
-                        <p className="mb-2.5 text-[13px] text-muted-foreground">
-                            <Link
-                                href={route('projects.health', issue.project.id)}
-                                className="underline underline-offset-2 hover:text-foreground"
-                            >
-                                {issue.project.name}
-                            </Link>
-                            {issue.createdAt ? (
-                                <>
-                                    {' '}
-                                    · {t('issueShow.opened', { date: formatDate(issue.createdAt) })}
-                                    {issue.creatorName ? <> {t('issueShow.by', { name: issue.creatorName })}</> : null}
-                                </>
-                            ) : null}
-                        </p>
-                        <h1 className="text-[26px] leading-[1.2] font-semibold tracking-[-0.02em]">
-                            {issue.title}
-                        </h1>
-                        <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                            <StatusBadge name={issue.status.name} category={issue.status.category} />
-                            <PriorityBadge priority={issue.priority} />
-                            {issue.dueDate ? (
-                                <Badge
-                                    variant="secondary"
-                                    className={`rounded-full ${
-                                        issue.overdue
-                                            ? 'bg-destructive/10 text-destructive'
-                                            : 'bg-secondary text-muted-foreground'
-                                    }`}
-                                >
-                                    {t('issueShow.due', { date: formatDate(issue.dueDate) })}
-                                    {issue.overdue ? t('issueShow.overdueSuffix') : ''}
-                                </Badge>
-                            ) : null}
-                        </div>
-                    </div>
-
-                    <DescriptionSection issue={issue} />
-
-                    <section>
-                        <SectionHead title={t('issueShow.childIssues')} count={issue.children.length} />
-                        {issue.children.length > 0 ? (
-                            <ul className="divide-y">
-                                {issue.children.map((child) => (
-                                    <li key={child.id}>
-                                        <Link
-                                            href={route('issues.show', child.id)}
-                                            className="flex items-center gap-2 py-2.25 text-sm hover:text-primary"
-                                        >
-                                            <CornerDownRight
-                                                className="size-3.5 shrink-0 text-muted-foreground"
-                                                aria-hidden
-                                            />
-                                            <span className="min-w-0 flex-1 truncate font-medium">
-                                                {child.title}
-                                            </span>
-                                            {child.statusName ? (
-                                                <Badge variant="outline" className="rounded-full text-muted-foreground">
-                                                    {child.statusName}
-                                                </Badge>
-                                            ) : null}
-                                        </Link>
-                                    </li>
-                                ))}
-                            </ul>
-                        ) : (
-                            <p className="text-sm text-muted-foreground">{t('issueShow.noChildIssues')}</p>
-                        )}
-                    </section>
-
-                    <TimeEntriesSection issue={issue} timeEntries={timeEntries} />
-
-                    <CommentsSection issueId={issue.id} comments={comments} />
-                </div>
-
-                <IssueSidebar
-                    issue={issue}
-                    statuses={statuses}
-                    members={members}
-                    labels={labels}
-                    candidates={candidates}
-                />
-            </div>
+            <IssueDetail
+                issue={issue}
+                comments={comments}
+                timeEntries={timeEntries}
+                statuses={statuses}
+                members={members}
+                labels={labels}
+                candidates={candidates}
+            />
 
             <EditIssueDialog issue={issue} open={editingTitle} onClose={() => setEditingTitle(false)} />
             <DeleteIssueDialog

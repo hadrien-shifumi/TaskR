@@ -30,6 +30,7 @@ import type { HealthData, LabelRef, UserRef } from '@/types';
 import type { TemplateOption } from '@/Pages/Issues/Index/types';
 import { formatShortDate, formatDate } from '@/lib/format-date';
 import { BoardCreateIssueDialog } from './Board/create-issue-dialog';
+import { boardIssueUrl, IssueDetailDialog, type IssueDetailPayload } from './Board/issue-detail-dialog';
 
 interface BoardIssue {
     id: string;
@@ -73,10 +74,12 @@ type PageProps = {
     labels?: LabelRef[];
     templates?: TemplateOption[];
     members?: UserRef[];
+    /** Present when the URL carries an `?issue=` param: the modal is open. */
+    issueDetail?: IssueDetailPayload | null;
 };
 
 export default function Board() {
-    const { project, health, columns, parentsOnly, filters, projectPeople, currentUserId, labels, templates, members } =
+    const { project, health, columns, parentsOnly, filters, projectPeople, currentUserId, labels, templates, members, issueDetail } =
         usePage<PageProps>().props;
     const { t } = useTranslation();
     const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -290,7 +293,7 @@ export default function Board() {
                                     }`}
                                 >
                                     <Link
-                                        href={route('issues.show', issue.id)}
+                                        href={boardIssueUrl(project.id, filters, parentsOnly, issue.id)}
                                         className={`text-[13.5px] leading-snug font-medium hover:text-primary ${
                                             column.category === 'cancelled'
                                                 ? 'font-normal text-muted-foreground line-through'
@@ -377,6 +380,15 @@ export default function Board() {
                 members={members ?? []}
                 defaultStatusId={createDefaultStatusId}
             />
+
+            {issueDetail ? (
+                <IssueDetailDialog
+                    projectId={project.id}
+                    filters={filters}
+                    parentsOnly={parentsOnly}
+                    detail={issueDetail}
+                />
+            ) : null}
         </AppLayout>
     );
 }

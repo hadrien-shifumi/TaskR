@@ -48,6 +48,7 @@ class TimeTrackingTest extends TestCase
         [, $member, $issue] = $this->setupIssue();
 
         $this->actingAs($member)
+            ->from(route('issues.show', $issue->id))
             ->post(route('issues.estimate', $issue->id), ['estimated_hours' => 3.5])
             ->assertRedirect(route('issues.show', $issue->id));
 
@@ -64,6 +65,7 @@ class TimeTrackingTest extends TestCase
         SetIssueEstimate::run($issue, 8.0);
 
         $this->actingAs($member)
+            ->from(route('issues.show', $issue->id))
             ->post(route('issues.estimate', $issue->id), ['estimated_hours' => null])
             ->assertRedirect(route('issues.show', $issue->id));
 
@@ -100,6 +102,7 @@ class TimeTrackingTest extends TestCase
         [, $member, $issue] = $this->setupIssue();
 
         $this->actingAs($member)
+            ->from(route('issues.show', $issue->id))
             ->post(route('issues.time-entries.store', $issue->id), [
                 'hours' => 4,
                 'worked_at' => '2026-10-14',
