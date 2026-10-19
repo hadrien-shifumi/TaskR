@@ -31,14 +31,12 @@ class GetProjectHealth
     /**
      * Compute health indicators for a single project.
      *
-     * The scope guard only fires when a user is resolvable (explicitly
-     * passed, e.g. by the MCP tool, or the current request): internal
-     * computation calls (formula tests, the projects page batch) pass no
-     * user and skip it.
+     * The scope guard only fires when a user is explicitly passed (HTTP
+     * and MCP callers always do); internal computation calls (formula
+     * tests, the projects page batch) pass no user and skip it.
      */
     public function handle(Project $project, ?User $user = null): ProjectHealth
     {
-        $user ??= request()->user();
         if ($user instanceof User) {
             app(WorkspaceContext::class)->abortUnlessProjectAccessible($user, $project);
         }
@@ -88,7 +86,7 @@ class GetProjectHealth
             && $project->canManage($user)
             && ! $project->workspace->isGuest($user);
 
-        $health = $canSeeGlobalKpis ? $this->handle($project) : null;
+        $health = $canSeeGlobalKpis ? $this->handle($project, $user) : null;
 
         $myWorkload = $user !== null ? $this->computeWorkloadFor($project, $user) : null;
 

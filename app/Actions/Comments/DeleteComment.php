@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Responders\Comments\CommentRedirectResponder;
 use App\Support\WorkspaceContext;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Lorisleiva\Actions\Concerns\AsController;
 use Lorisleiva\Actions\Concerns\AsObject;
 
@@ -28,8 +29,8 @@ class DeleteComment
     {
         // The underlying issue must stay in the actor's perimeter: a
         // shrunken scope makes old objects fail like non-existent ones.
-        // Without a resolvable user this is a trusted internal object run.
-        $user ??= request()->user();
+        // Without an explicit user this is a trusted internal object run:
+        // HTTP and MCP callers always pass the actor.
         if ($user !== null) {
             app(WorkspaceContext::class)->abortUnlessIssueAccessible($user, $comment->issue);
         }
@@ -39,10 +40,10 @@ class DeleteComment
         return $comment;
     }
 
-    public function asController(Issue $issue, string $commentId, CommentRedirectResponder $responder): RedirectResponse
+    public function asController(Request $request, Issue $issue, string $commentId, CommentRedirectResponder $responder): RedirectResponse
     {
         $comment = $issue->comments()->findOrFail($commentId);
-        $this->handle($comment);
+        $this->handle($comment, $request->user());
 
         return $responder->deleted($comment);
     }

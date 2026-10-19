@@ -1,26 +1,39 @@
-// tdd-guard — keeps the agent honest about red/green.
+// tdd-guard — red/green feedback loop for OpenCode.
 //
-// After every edit/write on a test file (*Test.php under tests/), runs that
-// file. After every edit/write on source (app/, routes/, database/, config/,
-// resources/js, resources/views) or on tests/ support files, runs the Unit +
-// Feature suites only — the Browser suite (E2E) is too slow for the dev loop
-// and belongs to the final gate (`composer test:e2e`), matching the composer
-// `test` / `test:e2e` scripts. Appends the verdict to the tool result.
+// Three enforcement layers, mirroring the Vibe hooks:
 //
-// Informational only: it never blocks an edit. The TDD skill defines the
-// workflow; this plugin supplies the feedback loop that makes it real.
+// 1. tool.execute.before (bash): refuses E2E runs (`composer test:e2e`,
+//    `--testsuite=Browser`, tests/Browser) while the dev suites are red or
+//    stale — E2E is the final gate, never part of the dev loop.
+//
+// 2. tool.execute.after (edit/write on tests/ or source): runs PHPUnit — the
+//    edited file only when it is a test, the Unit+Feature suites when it is
+//    source or test support code — and appends the verdict to the tool
+//    result. Informational only: it never blocks an edit.
+//
+// 3. tool.execute.after (bash): watches manual test runs (`composer test`,
+//    `artisan test`, phpunit/pest) and records the outcome so the turn gate
+//    can judge the turn.
+//
+// 4. Turn gate (session.idle event): refuses to end an assistant turn while
+//    the suites are red or a run is pending.
+//
+// Per-session state lives in a JSON file keyed by session ID. The TDD skill
+// defines the workflow; this plugin supplies the feedback loop that makes it
+// real.
 
 import { execFile } from "node:child_process"
-import { existsSync } from "node:fs"
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs"
+import { homedir } from "node:os"
 import path from "node:path"
 
 const PHPUNIT_TIMEOUT_MS = 120_000
 const MAX_OUTPUT_BYTES = 16 * 1024 * 1024
 
 // phpunit.xml sets these with <env> only when they are absent, so any value
-// inherited from the host process (e.g. Bun auto-loading the project .env)
-// would silently override the testing profile — including DB_DATABASE. Strip
-// them all: phpunit.xml is the single source of truth for test runs.
+// inherited from the host process would silently override the testing profile
+// — including DB_DATABASE. Strip them all: phpunit.xml is the single source
+// of truth for test runs.
 const LARAVEL_ENV_PREFIX =
   /^(APP_|DB_|SESSION_|CACHE_|QUEUE_|MAIL_|BROADCAST_|REDIS_|MEMCACHED_|FILESYSTEM_|AWS_|LOG_|BCRYPT_|VITE_|TELESCOPE_|PULSE_|NIGHTWATCH_)/
 
@@ -40,9 +53,64 @@ const SOURCE_FILE = /(^|\/)(app|routes|database|config|resources\/js|resources\/
 // automatic run — it is the final gate, not the feedback loop.
 const DEV_SUITES = "Unit,Feature"
 
+// ---------------------------------------------------------------------------
+// Per-session state (mirrors .vibe/hooks/tdd-guard.php + tdd-gate.php)
+// ---------------------------------------------------------------------------
+
+type Phase = "green" | "red" | "regression" | "unknown"
+
+type TddState = {
+  phase: Phase
+  phase_at: number
+  dirty: boolean
+  e2e_at?: number
+}
+
+function stateDir(): string {
+  return path.join(homedir(), ".cache", "opencode-tdd")
+}
+
+function statePath(sessionId: string): string {
+  const safe = sessionId.replace(/[^A-Za-z0-9_-]/g, "")
+  return path.join(stateDir(), `${safe || "default"}.json`)
+}
+
+function loadState(sessionId: string): TddState {
+  try {
+    const raw = readFileSync(statePath(sessionId), "utf-8")
+    const parsed = JSON.parse(raw)
+    return {
+      phase: parsed.phase ?? "unknown",
+      phase_at: parsed.phase_at ?? 0,
+      dirty: parsed.dirty ?? false,
+      e2e_at: parsed.e2e_at,
+    }
+  } catch {
+    return { phase: "unknown", phase_at: 0, dirty: false }
+  }
+}
+
+function saveState(sessionId: string, state: TddState): void {
+  try {
+    mkdirSync(stateDir(), { recursive: true })
+    writeFileSync(statePath(sessionId), JSON.stringify(state))
+  } catch {
+    // State persistence must never break the tool flow.
+  }
+}
+
+function recordVerdict(state: TddState, phase: Phase, clearDirty: boolean): void {
+  state.phase = phase
+  state.phase_at = Date.now()
+  if (clearDirty) state.dirty = false
+}
+
+// ---------------------------------------------------------------------------
+// PHPUnit runner
+// ---------------------------------------------------------------------------
+
 let projectRoot: string | null = null
 let chain: Promise<unknown> = Promise.resolve()
-let lastDevSuiteStatus: "green" | "red" | "unknown" = "unknown"
 
 function findRoot(start: string): string | null {
   let dir = path.dirname(start)
@@ -76,6 +144,10 @@ function phpunit(root: string, args: string[]): Promise<{ code: number; out: str
   return task
 }
 
+// ---------------------------------------------------------------------------
+// Verdict summarization (mirrors summarize() in tdd-guard.php)
+// ---------------------------------------------------------------------------
+
 type Verdict = { state: "green" | "red" | "empty" | "error"; summary: string; failures: string[] }
 
 function firstLine(text: string, re: RegExp): string | null {
@@ -103,24 +175,33 @@ function fromRunnerJson(out: string): Verdict | null {
 }
 
 export function summarize(code: number, out: string): Verdict {
-  const json = fromRunnerJson(out)
+  // Strip ANSI color codes (phpunit.xml sets colors="true")
+  const clean = out.replace(/\x1b\[[0-9;?]*[a-zA-Z]/g, "")
+  const json = fromRunnerJson(clean)
   if (json) return json
   if (code === 0) {
-    return { state: "green", summary: firstLine(out, /^OK\b.*$/m) ?? "all tests passed", failures: [] }
+    return { state: "green", summary: firstLine(clean, /^OK\b.*$/m) ?? "all tests passed", failures: [] }
   }
-  if (/No tests (?:found|executed)/.test(out)) {
+  if (code === 124) {
+    return { state: "error", summary: `test run exceeded ${PHPUNIT_TIMEOUT_MS / 1000}s and was killed`, failures: [] }
+  }
+  if (/No tests (?:found|executed)/.test(clean)) {
     return { state: "empty", summary: "no tests executed in this scope", failures: [] }
   }
-  const fatal = firstLine(out, /^.*PHP (?:Parse|Fatal) error:.*$/m)
+  const fatal = firstLine(clean, /^.*PHP (?:Parse|Fatal) error:.*$/m)
   if (fatal) return { state: "error", summary: fatal, failures: [] }
   return {
     state: "red",
-    summary: firstLine(out, /^Tests:.*$/m) ?? `exit code ${code}`,
-    failures: [...out.matchAll(/^\d+\)\s+\S+/gm)].map((m) => m[0].replace(/^\d+\)\s+/, "")).slice(0, 3),
+    summary: firstLine(clean, /^Tests:.*$/m) ?? `exit code ${code}`,
+    failures: [...clean.matchAll(/^\d+\)\s+\S+/gm)].map((m) => m[0].replace(/^\d+\)\s+/, "")).slice(0, 3),
   }
 }
 
-export function inject(target: unknown, text: string): void {
+// ---------------------------------------------------------------------------
+// Output injection (appends a verdict block to the tool result)
+// ---------------------------------------------------------------------------
+
+function inject(target: unknown, text: string): void {
   try {
     if (!target || typeof target !== "object") return
     const t = target as Record<string, any>
@@ -148,7 +229,92 @@ function block(lines: string[]): string {
   return ["── tdd-guard ──", ...lines, "───────────────"].join("\n")
 }
 
-async function guard(tool: string, args: Record<string, unknown> | undefined, result: unknown): Promise<void> {
+// ---------------------------------------------------------------------------
+// Command classification (mirrors tdd-guard.php)
+// ---------------------------------------------------------------------------
+
+function isE2eCommand(command: string): boolean {
+  return /composer\s+(?:run\s+)?test:e2e|--testsuite(?:=|\s+)Browser|tests\/Browser\/|artisan\s+test\b[^\n]*Browser/.test(command)
+}
+
+function isDevTestCommand(command: string): boolean {
+  return /vendor\/bin\/(?:phpunit|pest)|composer\s+(?:run\s+)?test\b|artisan\s+test\b/.test(command)
+}
+
+// A narrow run targets one file or filter and cannot clear a suite verdict.
+function isNarrowRun(command: string): boolean {
+  return /--filter\b|tests\/\S+|artisan\s+test\s+--compact\s+\S/.test(command)
+}
+
+// ---------------------------------------------------------------------------
+// Record bash test runs (mirrors recordBashRun in tdd-guard.php)
+// ---------------------------------------------------------------------------
+
+function recordBashRun(state: TddState, command: string, outputText: string, toolFailed: boolean): void {
+  if (isE2eCommand(command)) {
+    state.e2e_at = Date.now()
+    return
+  }
+  if (!isDevTestCommand(command)) return
+
+  const verdict = summarize(toolFailed ? 1 : 0, outputText)
+  if (verdict.state === "empty" || verdict.state === "error") return
+
+  if (isNarrowRun(command)) {
+    // Narrow runs cannot prove the suites: green changes nothing, red is red.
+    if (verdict.state === "red") recordVerdict(state, "red", false)
+    return
+  }
+
+  recordVerdict(state, verdict.state === "green" ? "green" : "regression", true)
+}
+
+// ---------------------------------------------------------------------------
+// Guard logic (edit/write → run tests)
+// ---------------------------------------------------------------------------
+
+function testFileLines(verdict: Verdict, rel: string, isNewFile: boolean): string[] {
+  const lines: string[] = []
+  if (verdict.state === "green") {
+    lines.push(`🟢 GREEN — ${rel} (${verdict.summary})`)
+    if (isNewFile) {
+      lines.push("⚠️ brand-new test passed immediately: the behavior already exists, or the test asserts nothing. A new TDD test must fail first.")
+    }
+  } else if (verdict.state === "empty") {
+    lines.push(`⚪ ${rel}: ${verdict.summary} — empty skeleton?`)
+  } else if (verdict.state === "error") {
+    lines.push(`⛔ ${rel}: ${verdict.summary}`)
+  } else {
+    lines.push(`🔴 RED — ${rel} (${verdict.summary})`)
+    lines.push(...verdict.failures.map((f) => `   ✗ ${f}`))
+    lines.push("Expected while the behavior does not exist yet — write the minimal implementation that turns this green.")
+  }
+  return lines
+}
+
+function suiteLines(verdict: Verdict): string[] {
+  const lines: string[] = []
+  if (verdict.state === "green") {
+    lines.push(`🟢 Unit+Feature GREEN (${verdict.summary})`)
+    lines.push("Browser (E2E) excluded from the dev loop — run `composer test:e2e` once at the final gate.")
+  } else if (verdict.state === "red") {
+    lines.push(`🔴 Unit+Feature RED — ${verdict.summary}`)
+    lines.push(...verdict.failures.map((f) => `   ✗ ${f}`))
+    lines.push("The task is not done while this is red.")
+  } else if (verdict.state === "error") {
+    lines.push(`⛔ Unit+Feature cannot run: ${verdict.summary}`)
+  } else {
+    lines.push(`⚪ ${verdict.summary}`)
+  }
+  return lines
+}
+
+async function guardEditWrite(
+  tool: string,
+  args: Record<string, unknown> | undefined,
+  result: unknown,
+  sessionId: string,
+): Promise<void> {
   if (tool !== "edit" && tool !== "write") return
   const raw = args?.path ?? args?.filePath ?? args?.file_path
   if (typeof raw !== "string" || raw === "") return
@@ -161,66 +327,181 @@ async function guard(tool: string, args: Record<string, unknown> | undefined, re
   if (!root) return
 
   const rel = path.relative(root, raw).replace(/\\/g, "/")
-  const lines: string[] = []
+  const state = loadState(sessionId)
+  state.dirty = true
+  const isNewFile = tool === "write"
 
   if (isTestFile) {
-    const { code, out } = await phpunit(root, [raw])
-    const v = summarize(code, out)
-    if (v.state === "green") {
-      lines.push(`🟢 GREEN — ${rel} (${v.summary})`)
-      if (tool === "write") {
-        lines.push(
-          "⚠️ brand-new test passed immediately: the behavior already exists, or the test asserts nothing. A new TDD test must fail first.",
-        )
-      }
-    } else if (v.state === "empty") {
-      lines.push(`⚪ ${rel}: ${v.summary} — empty skeleton?`)
-    } else if (v.state === "error") {
-      lines.push(`⛔ ${rel}: ${v.summary}`)
-    } else {
-      lines.push(`🔴 RED — ${rel} (${v.summary})`)
-      lines.push(...v.failures.map((f) => `   ✗ ${f}`))
-      lines.push("Expected while the behavior does not exist yet — write the minimal implementation that turns this green.")
+    // Browser (E2E) files are excluded from the dev loop by design.
+    if (/(^|\/)tests\/Browser\//.test(norm)) {
+      saveState(sessionId, state)
+      inject(result, block([
+        `🌐 Browser (E2E) file ${rel} — excluded from the dev loop; covered by \`composer test:e2e\` at the final gate.`,
+      ]))
+      return
     }
-    if (lastDevSuiteStatus === "red" && v.state !== "green") {
+
+    const { code, out } = await phpunit(root, [raw])
+    const verdict = summarize(code, out)
+    // A green single file only clears the red-test phase, never a suite regression.
+    if (verdict.state === "red") {
+      recordVerdict(state, "red", false)
+    } else if (verdict.state === "green" && state.phase !== "regression") {
+      recordVerdict(state, "green", true)
+    }
+    const lines = testFileLines(verdict, rel, isNewFile)
+    if (state.phase === "regression" && verdict.state !== "green") {
       lines.push("⚠️ the Unit+Feature suites were RED at their last run — fix the code rather than adjusting the test, unless the test itself is wrong.")
     }
+    saveState(sessionId, state)
+    inject(result, block(lines))
   } else {
     const { code, out } = await phpunit(root, ["--testsuite", DEV_SUITES])
-    const v = summarize(code, out)
-    if (v.state === "green") {
-      lastDevSuiteStatus = "green"
-      lines.push(`🟢 Unit+Feature GREEN (${v.summary})`)
-      lines.push("Browser (E2E) excluded from the dev loop — run `composer test:e2e` once at the final gate.")
-    } else if (v.state === "red") {
-      lastDevSuiteStatus = "red"
-      lines.push(`🔴 Unit+Feature RED — ${v.summary}`)
-      lines.push(...v.failures.map((f) => `   ✗ ${f}`))
-      lines.push("The task is not done while this is red.")
-    } else if (v.state === "error") {
-      lines.push(`⛔ Unit+Feature cannot run: ${v.summary}`)
-    } else {
-      lines.push(`⚪ ${v.summary}`)
-    }
+    const verdict = summarize(code, out)
+    recordVerdict(
+      state,
+      verdict.state === "green" ? "green" : verdict.state === "red" ? "regression" : state.phase,
+      verdict.state === "green",
+    )
+    saveState(sessionId, state)
+    inject(result, block(suiteLines(verdict)))
   }
-
-  inject(result, block(lines))
 }
 
+// ---------------------------------------------------------------------------
+// Pre-tool E2E gate (mirrors the pre_tool branch in tdd-guard.php)
+// ---------------------------------------------------------------------------
+
+function guardBashBefore(tool: string, args: Record<string, unknown> | undefined, sessionId: string): void {
+  if (!tool.includes("bash")) return
+  const command = String(args?.command ?? "")
+  if (!isE2eCommand(command)) return
+
+  const state = loadState(sessionId)
+  if (state.phase === "red" || state.phase === "regression" || state.dirty) {
+    throw new Error(
+      "tdd-e2e-gate: E2E is the final gate — the Unit+Feature suites are red or stale. " +
+        "Bring `composer test` to green first, then run `composer test:e2e` once.",
+    )
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Post-tool bash watcher (records manual test runs)
+// ---------------------------------------------------------------------------
+
+function guardBashAfter(
+  tool: string,
+  args: Record<string, unknown> | undefined,
+  event: any,
+  sessionId: string,
+): void {
+  if (!tool.includes("bash")) return
+  const command = String(args?.command ?? "")
+  const outputText = String(event?.result?.output ?? event?.output ?? "")
+  const toolFailed = event?.result?.metadata?.error === true || event?.error === true
+  const state = loadState(sessionId)
+  recordBashRun(state, command, outputText, toolFailed)
+  saveState(sessionId, state)
+}
+
+// ---------------------------------------------------------------------------
+// Turn gate (mirrors tdd-gate.php)
+// ---------------------------------------------------------------------------
+
+async function turnGate(ctx: any, sessionId: string): Promise<void> {
+  const state = loadState(sessionId)
+  const phase = state.phase
+
+  if (phase === "regression") {
+    await ctx.client.session.prompt({
+      sessionID: sessionId,
+      text: "tdd-gate: Unit+Feature are RED at their last run — the task is not done. Continue the implementation pass and rerun `composer test` until green.",
+    })
+    return
+  }
+
+  if (phase === "red") {
+    await ctx.client.session.prompt({
+      sessionID: sessionId,
+      text: "tdd-gate: tests were written and are RED (normal TDD phase), but nothing is green yet. Do the minimal implementation pass and rerun the tests. Only stop at red if the user explicitly asked for the test plan alone — in that case, restate that and stop.",
+    })
+    return
+  }
+
+  if (state.dirty) {
+    await ctx.client.session.prompt({
+      sessionID: sessionId,
+      text: "tdd-gate: code or tests were edited since the last test run. Rerun the covering scope (`composer test` or the narrowest test file) before finishing this turn.",
+    })
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Plugin entrypoints
+// ---------------------------------------------------------------------------
+
 // OpenCode v1 entrypoint: server(ctx) -> hooks.
-export const TddGuardPlugin = async (): Promise<
+export const TddGuardPlugin = async (ctx: any): Promise<
   Record<string, (input: any, output: any) => Promise<void>>
 > => ({
+  "tool.execute.before": async (input, output) => {
+    const sessionId = String(input?.sessionID ?? input?.session_id ?? "default")
+    guardBashBefore(String(input?.tool ?? ""), input?.args ?? output?.args, sessionId)
+  },
   "tool.execute.after": async (input, output) => {
-    await guard(String(input?.tool ?? ""), input?.args, { output })
+    const tool = String(input?.tool ?? "")
+    const sessionId = String(input?.sessionID ?? input?.session_id ?? "default")
+    const args = input?.args ?? {}
+    if (tool.includes("bash")) {
+      guardBashAfter(tool, args, output, sessionId)
+      return
+    }
+    await guardEditWrite(tool, args, output, sessionId)
+  },
+  event: async (event) => {
+    if (event.type === "session.idle") {
+      const sessionId = String(event.sessionID ?? event.session_id ?? "default")
+      await turnGate(ctx, sessionId)
+    }
   },
 })
 
 // OpenCode v2 entrypoint.
 const setup = async (ctx: any) => {
-  await ctx.tool.hook("execute.after", async (event: any) => {
-    await guard(String(event?.tool ?? ""), event?.input ?? event?.args ?? {}, event)
+  // Pre-tool: block E2E while the dev loop is red or stale.
+  await ctx.tool.hook("execute.before", async (event: any) => {
+    const sessionId = String(event?.sessionID ?? event?.session_id ?? "default")
+    guardBashBefore(String(event?.tool ?? ""), event?.input ?? event?.args ?? {}, sessionId)
   })
+
+  // Post-tool: run tests after edits, watch bash test runs.
+  await ctx.tool.hook("execute.after", async (event: any) => {
+    const tool = String(event?.tool ?? "")
+    const sessionId = String(event?.sessionID ?? event?.session_id ?? "default")
+    const args = event?.input ?? event?.args ?? {}
+    if (tool.includes("bash")) {
+      guardBashAfter(tool, args, event, sessionId)
+      return
+    }
+    await guardEditWrite(tool, args, event, sessionId)
+  })
+
+  // Turn gate: refuse to end the turn while the TDD loop is open.
+  const controller = new AbortController()
+  void (async () => {
+    try {
+      for await (const event of ctx.event.subscribe({ signal: controller.signal })) {
+        if (event.type === "session.idle") {
+          const sessionId = String((event as any).sessionID ?? (event as any).session_id ?? "default")
+          await turnGate(ctx, sessionId)
+        }
+      }
+    } catch {
+      // Stream aborted on unload.
+    }
+  })()
+  return () => controller.abort()
 }
 
 export default { id: "tdd-guard", server: TddGuardPlugin, setup }

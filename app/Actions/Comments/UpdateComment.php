@@ -36,8 +36,8 @@ class UpdateComment
     {
         // The underlying issue must stay in the actor's perimeter: a
         // shrunken scope makes old objects fail like non-existent ones.
-        // Without a resolvable user this is a trusted internal object run.
-        $user ??= request()->user();
+        // Without an explicit user this is a trusted internal object run:
+        // HTTP and MCP callers always pass the actor.
         if ($user !== null) {
             app(WorkspaceContext::class)->abortUnlessIssueAccessible($user, $comment->issue);
         }
@@ -50,7 +50,7 @@ class UpdateComment
     public function asController(ActionRequest $request, Issue $issue, string $commentId, CommentRedirectResponder $responder): RedirectResponse
     {
         $comment = $this->resolveComment($issue, $commentId);
-        $comment = $this->handle($comment, $request->validated('body'));
+        $comment = $this->handle($comment, $request->validated('body'), $request->user());
 
         return $responder->updated($comment);
     }

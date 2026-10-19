@@ -27,8 +27,6 @@ class ListIssues
      */
     public function handle(Workspace $workspace, array $filters = [], ?int $limit = null, int $offset = 0, ?User $user = null): array
     {
-        $user ??= request()->user();
-
         $scope = $user instanceof User
             ? app(WorkspaceContext::class)->accessibleProjectIds($user)
             : null;

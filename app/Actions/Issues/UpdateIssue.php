@@ -40,8 +40,8 @@ class UpdateIssue
     public function handle(Issue $issue, array $data, ?User $user = null): Issue
     {
         // Out-of-scope issues fail exactly like non-existent ones.
-        // Without a resolvable user this is a trusted internal object run.
-        $user ??= request()->user();
+        // Without an explicit user this is a trusted internal object run:
+        // HTTP and MCP callers always pass the actor.
         if ($user !== null) {
             app(WorkspaceContext::class)->abortUnlessIssueAccessible($user, $issue);
         }
@@ -58,7 +58,7 @@ class UpdateIssue
 
     public function asController(ActionRequest $request, Issue $issue, IssueRedirectResponder $responder): RedirectResponse
     {
-        $issue = $this->handle($issue, $request->validated());
+        $issue = $this->handle($issue, $request->validated(), $request->user());
 
         return $responder->updated($issue);
     }

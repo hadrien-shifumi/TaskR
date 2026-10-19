@@ -29,12 +29,13 @@ class ShowProjectMembers
      *
      * @return array{project: array<string, mixed>, members: array<int, array<string, mixed>>, availableMembers: array<int, array<string, mixed>>, canManage: bool}
      */
-    public function handle(Project $project): array
+    public function handle(Project $project, ?User $user = null): array
     {
         // Out-of-scope projects fail exactly like non-existent ones.
-        app(WorkspaceContext::class)->abortUnlessProjectAccessible(request()->user(), $project);
+        // Without an explicit user this is a trusted internal object run:
+        // HTTP and MCP callers always pass the actor.
+        app(WorkspaceContext::class)->abortUnlessProjectAccessible($user, $project);
 
-        $user = request()->user();
         $workspace = $project->workspace;
 
         $members = $project->projectMembers()
@@ -78,6 +79,6 @@ class ShowProjectMembers
 
     public function asController(Request $request, Project $project, ProjectMemberPageResponder $responder): Response
     {
-        return $responder->toResponse($request, $this->handle($project));
+        return $responder->toResponse($request, $this->handle($project, $request->user()));
     }
 }

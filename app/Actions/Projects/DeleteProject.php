@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Responders\Projects\ProjectRedirectResponder;
 use App\Support\WorkspaceContext;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Lorisleiva\Actions\Concerns\AsController;
 use Lorisleiva\Actions\Concerns\AsObject;
 
@@ -25,7 +26,8 @@ class DeleteProject
     public function handle(Project $project, ?User $user = null): Project
     {
         // Out-of-scope projects fail exactly like non-existent ones.
-        $user ??= request()->user();
+        // Without an explicit user this is a trusted internal object run:
+        // HTTP and MCP callers always pass the actor.
         if ($user instanceof User) {
             app(WorkspaceContext::class)->abortUnlessProjectAccessible($user, $project);
         }
@@ -41,9 +43,9 @@ class DeleteProject
         return $project;
     }
 
-    public function asController(Project $project, ProjectRedirectResponder $responder): RedirectResponse
+    public function asController(Request $request, Project $project, ProjectRedirectResponder $responder): RedirectResponse
     {
-        $this->handle($project, request()->user());
+        $this->handle($project, $request->user());
 
         return $responder->deleted();
     }

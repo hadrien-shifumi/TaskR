@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Responders\Workspaces\RemoveMemberResponder;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Lorisleiva\Actions\Concerns\AsController;
 use Lorisleiva\Actions\Concerns\AsObject;
@@ -53,9 +54,9 @@ class RemoveMember
         });
     }
 
-    public function asController(Workspace $workspace, User $user, RemoveMemberResponder $responder): RedirectResponse
+    public function asController(Request $request, Workspace $workspace, User $user, RemoveMemberResponder $responder): RedirectResponse
     {
-        $this->handle($workspace, $user, request()->user());
+        $this->handle($workspace, $user, $request->user());
 
         return $responder->removed($user);
     }

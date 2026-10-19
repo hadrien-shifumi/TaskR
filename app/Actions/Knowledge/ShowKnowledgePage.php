@@ -25,14 +25,15 @@ class ShowKnowledgePage
     /**
      * @return array{pages: array<int, array<string, mixed>>, projects: array<int, array<string, mixed>>, selected: array<string, mixed>|null}
      */
-    public function handle(Workspace $workspace, ?KnowledgePage $selected = null): array
+    public function handle(Workspace $workspace, ?KnowledgePage $selected = null, ?User $user = null): array
     {
-        $user = request()->user();
         $scope = $user instanceof User
             ? app(WorkspaceContext::class)->accessibleProjectIds($user)
             : null;
 
         // Out-of-scope detail pages fail exactly like non-existent ones.
+        // Without an explicit user this is a trusted internal object run:
+        // HTTP and MCP callers always pass the actor.
         if ($selected !== null && $user !== null) {
             app(WorkspaceContext::class)->abortUnlessKnowledgePageAccessible($user, $selected);
         }
@@ -51,7 +52,7 @@ class ShowKnowledgePage
 
     public function asController(Request $request, KnowledgePageResponder $responder, ?KnowledgePage $page = null): Response
     {
-        $data = $this->handle(app(WorkspaceContext::class)->getOrFail(), $page);
+        $data = $this->handle(app(WorkspaceContext::class)->getOrFail(), $page, $request->user());
 
         return $responder->toResponse($request, $data);
     }

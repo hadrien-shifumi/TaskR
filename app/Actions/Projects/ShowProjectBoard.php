@@ -36,13 +36,14 @@ class ShowProjectBoard
      * @param  array{assignee?: string|null}  $filters
      * @return array{project: array<string, mixed>, health: array<string, mixed>, columns: array<int, array<string, mixed>>, parentsOnly: bool, filters: array<string, string>, projectPeople: array<int, array<string, mixed>>, currentUserId: int|null, labels: array<int, mixed>, members: array<int, mixed>, templates: array<int, mixed>}
      */
-    public function handle(Project $project, bool $parentsOnly = false, array $filters = []): array
+    public function handle(Project $project, bool $parentsOnly = false, array $filters = [], ?User $user = null): array
     {
         // Out-of-scope projects fail exactly like non-existent ones.
-        app(WorkspaceContext::class)->abortUnlessProjectAccessible(request()->user(), $project);
+        // Without an explicit user this is a trusted internal object run:
+        // HTTP and MCP callers always pass the actor.
+        app(WorkspaceContext::class)->abortUnlessProjectAccessible($user, $project);
 
         $workspace = app(WorkspaceContext::class)->getOrFail();
-        $currentUser = request()->user();
 
         $assigneeId = ! empty($filters['assignee']) ? (int) $filters['assignee'] : null;
 
@@ -67,11 +68,11 @@ class ShowProjectBoard
                 'createdAt' => $project->created_at?->toISOString(),
             ],
             // Health feeds the pagebar badge and the projection meta.
-            'health' => GetProjectHealth::run($project)->toArray(),
+            'health' => GetProjectHealth::run($project, $user)->toArray(),
             'parentsOnly' => $parentsOnly,
             'filters' => array_filter($filters, fn ($value) => $value !== null && $value !== ''),
             'projectPeople' => $projectPeople,
-            'currentUserId' => $currentUser?->id,
+            'currentUserId' => $user?->id,
             // Creation options for the board's full issue dialog (mirrors ShowIssuesPage).
             'labels' => $workspace->labels()->orderBy('name')->get(['id', 'name', 'color']),
             'members' => $workspace->members()->orderBy('name')->get(['users.id', 'users.name']),
@@ -111,6 +112,7 @@ class ShowProjectBoard
             [
                 'assignee' => $request->query('assignee'),
             ],
+            $request->user(),
         );
 
         // A `?issue=` param opens the issue detail in the board's modal: the
@@ -120,7 +122,7 @@ class ShowProjectBoard
         // issue surface.
         $issueId = $request->query('issue');
         $data['issueDetail'] = is_string($issueId) && $issueId !== ''
-            ? ShowIssuePage::run(app(WorkspaceContext::class)->getOrFail(), Issue::findOrFail($issueId))
+            ? ShowIssuePage::run(app(WorkspaceContext::class)->getOrFail(), Issue::findOrFail($issueId), $request->user())
             : null;
 
         return $responder->toResponse($request, $data);

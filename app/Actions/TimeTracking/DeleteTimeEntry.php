@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Responders\TimeTracking\TimeTrackingResponder;
 use App\Support\WorkspaceContext;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Lorisleiva\Actions\Concerns\AsController;
 use Lorisleiva\Actions\Concerns\AsObject;
 
@@ -33,8 +34,8 @@ class DeleteTimeEntry
     {
         // The underlying issue must stay in the actor's perimeter: a
         // shrunken scope makes old objects fail like non-existent ones.
-        // Without a resolvable user this is a trusted internal object run.
-        $user ??= request()->user();
+        // Without an explicit user this is a trusted internal object run:
+        // HTTP and MCP callers always pass the actor.
         if ($user !== null) {
             app(WorkspaceContext::class)->abortUnlessIssueAccessible($user, $timeEntry->issue);
         }
@@ -44,10 +45,10 @@ class DeleteTimeEntry
         return $timeEntry;
     }
 
-    public function asController(Issue $issue, string $timeEntryId, TimeTrackingResponder $responder): RedirectResponse
+    public function asController(Request $request, Issue $issue, string $timeEntryId, TimeTrackingResponder $responder): RedirectResponse
     {
         $timeEntry = $issue->timeEntries()->findOrFail($timeEntryId);
-        $this->handle($timeEntry);
+        $this->handle($timeEntry, $request->user());
 
         return $responder->entryDeleted($timeEntry);
     }
