@@ -1,6 +1,7 @@
 import GuestLayout from '@/layouts/guest-layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
@@ -16,6 +17,7 @@ export default function Login() {
     const { data, setData, post, processing, errors } = useForm({
         email: '',
         password: '',
+        remember: false,
         redirect,
     });
 
@@ -81,6 +83,16 @@ export default function Login() {
                                 aria-invalid={errors.password ? true : undefined}
                             />
                             {errors.password ? <p className="text-sm text-destructive">{errors.password}</p> : null}
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Checkbox
+                                id="remember"
+                                checked={data.remember}
+                                onCheckedChange={(checked) => setData('remember', checked === true)}
+                            />
+                            <Label htmlFor="remember" className="text-sm font-normal">
+                                {t('auth.login.remember')}
+                            </Label>
                         </div>
                         {/* The maquette sits the submit button 4px under the last field. */}
                         <Button type="submit" size="lg" className="-mt-2 w-full" disabled={processing}>
