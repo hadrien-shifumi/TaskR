@@ -14,10 +14,15 @@ class IssueRedirectResponder
             ->with('status', __('flash.issue.created'));
     }
 
+    /**
+     * Issue mutations come from the full issue page or from the board's issue
+     * modal (?issue= param): stay in the caller's context so the modal never
+     * drops the user back to the bare issue page.
+     */
     public function updated(Issue $issue): RedirectResponse
     {
         return redirect()
-            ->route('issues.show', $issue)
+            ->back()
             ->with('status', __('flash.issue.updated'));
     }
 
