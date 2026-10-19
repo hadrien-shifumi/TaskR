@@ -351,6 +351,7 @@ const fr: typeof en = {
             subtitle: "Accédez à vos espaces de travail.",
             email: "Email",
             password: "Mot de passe",
+            remember: "Se souvenir de moi",
             submit: "Se connecter",
         },
         register: {
