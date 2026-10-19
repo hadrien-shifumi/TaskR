@@ -210,6 +210,8 @@ const fr: typeof en = {
         summaryEstimated: "Estimé",
         summaryRemaining: "Restant",
         hoursLeft: "{{hours}} restantes",
+        estimateExceeded: "Estimation dépassée",
+        consumptionLabel: "Temps consommé vs estimation",
         deleteConfirm: "Supprimer cette saisie de temps ?",
         editBy: "Modifier la saisie de {{name}}",
         deleteBy: "Supprimer la saisie de {{name}}",

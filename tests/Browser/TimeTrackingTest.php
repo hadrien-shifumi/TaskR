@@ -67,3 +67,35 @@ it('shows no edit actions on another member time entry', function () {
 
     $page->assertNoSmoke();
 });
+
+it('shows estimate exceeded instead of negative remaining, with a consumption bar', function () {
+    [$owner, $workspace, $project] = setupBrowserWorkspace(withProject: true);
+    app(WorkspaceContext::class)->set($workspace);
+    $issue = CreateIssue::run($workspace, ['project_id' => $project->id, 'title' => 'Page de profil']);
+    SetIssueEstimate::run($issue, 4.0);
+    CreateTimeEntry::run($issue, $owner, ['hours' => 1]);
+    $this->actingAs($owner);
+
+    $page = visit('/issues/'.$issue->id);
+
+    // Scenario "Consommation à 25%": 1h logged on a 4h estimate — bar filled
+    // to 25%, remaining still expressed as hours left.
+    $page->assertSeeIn('@summary-remaining', '3h left')
+        ->assertAriaAttribute('@time-progress', 'valuenow', '25')
+        ->assertAttributeContains('@time-progress-fill', 'class', 'bg-primary');
+
+    // Scenario "Surconsommation": logging past the estimate replaces the
+    // absurd "-1h left" with a plain "Estimate exceeded" in red, and the
+    // consumption bar caps at 100% and turns destructive.
+    $page->click('@log-time')
+        ->fill('@log-time-hours', '5')
+        ->click('@entry-submit');
+
+    $page->assertSeeIn('@summary-remaining', 'Estimate exceeded')
+        ->assertDontSee('h left')
+        ->assertAriaAttribute('@time-progress', 'valuenow', '100')
+        ->assertAttributeContains('@time-progress-fill', 'class', 'bg-destructive')
+        ->assertAttributeContains('@summary-remaining-value', 'class', 'text-destructive');
+
+    $page->assertNoSmoke();
+});

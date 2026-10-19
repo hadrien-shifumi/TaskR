@@ -45,15 +45,33 @@ export function TimeEntriesSection({ issue, timeEntries }: TimeEntriesSectionPro
         router.delete(route('issues.time-entries.destroy', [issue.id, entryId]));
     };
 
+    const consumption =
+        issue.estimatedHours !== null && issue.estimatedHours > 0
+            ? issue.loggedHours / issue.estimatedHours
+            : null;
+
     const summary = [
-        { label: t('timeEntries.summaryLogged'), value: formatHours(issue.loggedHours), danger: false },
-        { label: t('timeEntries.summaryEstimated'), value: formatHours(issue.estimatedHours), danger: false },
         {
+            id: 'logged',
+            label: t('timeEntries.summaryLogged'),
+            value: formatHours(issue.loggedHours),
+            danger: false,
+        },
+        {
+            id: 'estimated',
+            label: t('timeEntries.summaryEstimated'),
+            value: formatHours(issue.estimatedHours),
+            danger: false,
+        },
+        {
+            id: 'remaining',
             label: t('timeEntries.summaryRemaining'),
             value:
-                issue.remainingHours !== null
-                    ? t('timeEntries.hoursLeft', { hours: formatHours(issue.remainingHours) })
-                    : '—',
+                issue.remainingHours === null
+                    ? '—'
+                    : issue.remainingHours < 0
+                      ? t('timeEntries.estimateExceeded')
+                      : t('timeEntries.hoursLeft', { hours: formatHours(issue.remainingHours) }),
             danger: issue.remainingHours !== null && issue.remainingHours < 0,
         },
     ];
@@ -74,12 +92,14 @@ export function TimeEntriesSection({ issue, timeEntries }: TimeEntriesSectionPro
                 {summary.map((cell, index) => (
                     <div
                         key={cell.label}
+                        data-test={`summary-${cell.id}`}
                         className={`flex-1 px-4 py-3 ${index > 0 ? 'border-l border-border' : ''}`}
                     >
                         <p className="font-mono text-[11px] tracking-[0.04em] text-muted-foreground uppercase">
                             {cell.label}
                         </p>
                         <p
+                            data-test={`summary-${cell.id}-value`}
                             className={`mt-0.5 font-mono text-[18px] font-semibold tabular-nums ${
                                 cell.danger ? 'text-destructive' : ''
                             }`}
@@ -89,6 +109,24 @@ export function TimeEntriesSection({ issue, timeEntries }: TimeEntriesSectionPro
                     </div>
                 ))}
             </div>
+
+            {consumption !== null ? (
+                <div
+                    data-test="time-progress"
+                    role="progressbar"
+                    aria-label={t('timeEntries.consumptionLabel')}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-valuenow={Math.round(Math.min(100, consumption * 100))}
+                    className="mb-1 h-1.5 overflow-hidden rounded-full bg-muted"
+                >
+                    <div
+                        data-test="time-progress-fill"
+                        className={`h-full rounded-full ${consumption > 1 ? 'bg-destructive' : 'bg-primary'}`}
+                        style={{ width: `${Math.min(100, consumption * 100)}%` }}
+                    />
+                </div>
+            ) : null}
 
             <ul className="divide-y">
                 {timeEntries.map((entry) => (

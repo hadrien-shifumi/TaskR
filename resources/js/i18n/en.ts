@@ -211,6 +211,8 @@ const en = {
         summaryEstimated: "Estimated",
         summaryRemaining: "Remaining",
         hoursLeft: "{{hours}} left",
+        estimateExceeded: "Estimate exceeded",
+        consumptionLabel: "Time consumed vs estimate",
         deleteConfirm: "Delete this time entry?",
         editBy: "Edit time entry by {{name}}",
         deleteBy: "Delete time entry by {{name}}",
