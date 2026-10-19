@@ -22,8 +22,14 @@ class DeleteProject
         return $user instanceof User && app(WorkspaceContext::class)->canUseWorkspace($user);
     }
 
-    public function handle(Project $project): Project
+    public function handle(Project $project, ?User $user = null): Project
     {
+        // Out-of-scope projects fail exactly like non-existent ones.
+        $user ??= request()->user();
+        if ($user instanceof User) {
+            app(WorkspaceContext::class)->abortUnlessProjectAccessible($user, $project);
+        }
+
         $usage = $project->issuesCount();
 
         if ($usage > 0) {
@@ -37,7 +43,7 @@ class DeleteProject
 
     public function asController(Project $project, ProjectRedirectResponder $responder): RedirectResponse
     {
-        $this->handle($project);
+        $this->handle($project, request()->user());
 
         return $responder->deleted();
     }

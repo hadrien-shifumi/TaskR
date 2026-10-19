@@ -4,6 +4,8 @@ namespace App\Mcp\Tools;
 
 use App\Actions\Workspaces\ShowMembersPage as ShowMembersPageAction;
 use App\Mcp\Support\AgentTool;
+use App\Support\WorkspaceContext;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
@@ -12,7 +14,7 @@ use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Attributes\Name;
 
 #[Name('list_members')]
-#[Description('List the members of a workspace and their pending invitations.')]
+#[Description('List the members of a workspace and their pending invitations. Full members only: a guest gets forbidden.')]
 class ListMembers extends AgentTool
 {
     /**
@@ -28,6 +30,12 @@ class ListMembers extends AgentTool
     protected function execute(Request $request): Response|ResponseFactory
     {
         $workspace = $this->resolveWorkspace($request);
+
+        // The members directory is reserved to full members: the web page
+        // refuses guests, the tool mirrors it.
+        if (! app(WorkspaceContext::class)->isFullMember($this->currentUser($request))) {
+            throw new AuthorizationException('Only full members can list members.');
+        }
 
         $result = ShowMembersPageAction::run($workspace);
 

@@ -7,10 +7,12 @@ use App\Models\Invitation;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Responders\Workspaces\InviteMemberResponder;
+use App\Support\WorkspaceContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Validator;
 use Lorisleiva\Actions\ActionRequest;
 use Lorisleiva\Actions\Concerns\AsController;
@@ -33,7 +35,9 @@ class InviteMember
 
     public function rules(): array
     {
-        $workspace = request()->route('workspace');
+        // HTTP resolves the workspace from the route binding, agent tools
+        // from the request-scoped WorkspaceContext.
+        $workspace = request()->route('workspace') ?? app(WorkspaceContext::class)->get();
 
         return [
             'email' => ['required', 'string', 'email', 'max:255'],
@@ -74,8 +78,24 @@ class InviteMember
     public function handle(Workspace $workspace, array $data): Invitation
     {
         $role = $data['role'] ?? WorkspaceRole::Member->value;
+        $projectIds = array_values($data['project_ids'] ?? []);
 
-        return DB::transaction(function () use ($workspace, $data, $role): Invitation {
+        // Object-level mirror of the HTTP cross-field rules: protects every
+        // call site (web, MCP, tests) from a scope-less guest or a scoped
+        // member invitation.
+        if ($role === WorkspaceRole::Guest->value && $projectIds === []) {
+            throw ValidationException::withMessages([
+                'project_ids' => __('validation.invitation.guest_requires_projects'),
+            ]);
+        }
+
+        if ($role !== WorkspaceRole::Guest->value && $projectIds !== []) {
+            throw ValidationException::withMessages([
+                'project_ids' => __('validation.invitation.member_cannot_carry_projects'),
+            ]);
+        }
+
+        return DB::transaction(function () use ($workspace, $data, $projectIds, $role): Invitation {
             $invitation = Invitation::withoutWorkspaceScope()->create([
                 'workspace_id' => $workspace->id,
                 'email' => $data['email'],
@@ -85,7 +105,7 @@ class InviteMember
             ]);
 
             if ($role === WorkspaceRole::Guest->value) {
-                $invitation->attachScope($data['project_ids']);
+                $invitation->attachScope($projectIds);
             }
 
             return $invitation;

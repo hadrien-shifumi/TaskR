@@ -12,7 +12,7 @@ use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Attributes\Name;
 
 #[Name('create_project')]
-#[Description('Create a project in a workspace. Returns the created project with its ULID.')]
+#[Description('Create a project in a workspace. Returns the created project with its ULID. Full members only: guests cannot create projects.')]
 class CreateProject extends AgentTool
 {
     /**

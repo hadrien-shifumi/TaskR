@@ -33,7 +33,7 @@ class DeleteProject extends AgentTool
 
         $project = Project::query()->findOrFail($request->get('project_id'));
 
-        DeleteProjectAction::run($project);
+        DeleteProjectAction::run($project, $this->currentUser($request));
 
         return Response::structured([
             'deleted' => true,

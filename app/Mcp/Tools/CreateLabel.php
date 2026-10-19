@@ -4,6 +4,8 @@ namespace App\Mcp\Tools;
 
 use App\Actions\Labels\CreateLabel as CreateLabelAction;
 use App\Mcp\Support\AgentTool;
+use App\Support\WorkspaceContext;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
@@ -12,7 +14,7 @@ use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Attributes\Name;
 
 #[Name('create_label')]
-#[Description('Create a label in a workspace. Name must be unique per workspace.')]
+#[Description('Create a label in a workspace. Name must be unique per workspace. Full members only: a guest gets forbidden.')]
 class CreateLabel extends AgentTool
 {
     /**
@@ -30,6 +32,12 @@ class CreateLabel extends AgentTool
     protected function execute(Request $request): Response|ResponseFactory
     {
         $workspace = $this->resolveWorkspace($request);
+
+        // Label management is reserved to full members: the web page
+        // refuses guests, the tool mirrors it.
+        if (! app(WorkspaceContext::class)->isFullMember($this->currentUser($request))) {
+            throw new AuthorizationException('Only full members can manage labels.');
+        }
 
         $action = app(CreateLabelAction::class);
         $data = $request->validate($action->rules());

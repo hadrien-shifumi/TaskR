@@ -24,6 +24,8 @@ class InviteMember extends AgentTool
         return [
             'workspace_id' => $schema->string()->description('ULID of the workspace')->required(),
             'email' => $schema->string()->description('Email address of the person to invite')->required(),
+            'role' => $schema->string()->enum(['member', 'guest'])->description('Invited role: member (full workspace) or guest (restricted to project_ids)'),
+            'project_ids' => $schema->array($schema->string())->description('Guest scope: at least one project ULID of the workspace (required for guests, forbidden for members)'),
         ];
     }
 

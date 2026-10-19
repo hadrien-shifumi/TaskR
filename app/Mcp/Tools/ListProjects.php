@@ -12,7 +12,7 @@ use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Attributes\Name;
 
 #[Name('list_projects')]
-#[Description('List the projects of a workspace (id, name, description, target date, archived date).')]
+#[Description('List the projects of a workspace (id, name, description, target date, archived date). For a guest, only the projects of their perimeter.')]
 class ListProjects extends AgentTool
 {
     /**

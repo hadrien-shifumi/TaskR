@@ -33,7 +33,7 @@ class ArchiveProject extends AgentTool
 
         $project = Project::query()->findOrFail($request->get('project_id'));
 
-        $project = ArchiveProjectAction::run($project);
+        $project = ArchiveProjectAction::run($project, $this->currentUser($request));
 
         return Response::structured([
             'project' => [
