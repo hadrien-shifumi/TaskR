@@ -54,10 +54,10 @@ class SearchKnowledge
      */
     public function handle(Workspace $workspace, string $query, ?string $projectId = null, int $limit = 10, ?User $user = null): array
     {
-        $user ??= request()->user();
-
         // A guest searches strictly within their perimeter: transverse
         // pages and other projects' pages never surface in the results.
+        // Without an explicit user this is a trusted internal object run:
+        // HTTP and MCP callers always pass the actor.
         $scope = $user instanceof User
             ? app(WorkspaceContext::class)->accessibleProjectIds($user)
             : null;
@@ -116,12 +116,12 @@ class SearchKnowledge
         $data = $request->validated();
 
         try {
-            $payload = array_merge(ShowKnowledgePage::run($workspace), [
+            $payload = array_merge(ShowKnowledgePage::run($workspace, null, $request->user()), [
                 'query' => $data['q'],
                 'results' => $this->handle($workspace, $data['q'], $data['project_id'] ?? null, (int) ($data['limit'] ?? 10), $request->user()),
             ]);
         } catch (EmbeddingsNotConfigured) {
-            $payload = array_merge(ShowKnowledgePage::run($workspace), [
+            $payload = array_merge(ShowKnowledgePage::run($workspace, null, $request->user()), [
                 'query' => $data['q'],
                 'searchUnavailable' => true,
             ]);

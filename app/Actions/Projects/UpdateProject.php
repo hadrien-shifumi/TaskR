@@ -62,7 +62,8 @@ class UpdateProject
     {
         // Out-of-scope projects fail exactly like non-existent ones; a
         // project of the perimeter stays editable by its guests.
-        $user ??= request()->user();
+        // Without an explicit user this is a trusted internal object run:
+        // HTTP and MCP callers always pass the actor.
         if ($user instanceof User) {
             app(WorkspaceContext::class)->abortUnlessProjectAccessible($user, $project);
         }

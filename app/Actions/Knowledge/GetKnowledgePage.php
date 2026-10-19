@@ -17,8 +17,8 @@ class GetKnowledgePage
     public function handle(KnowledgePage $page, ?User $user = null): array
     {
         // Out-of-scope pages fail exactly like non-existent ones.
-        // Without a resolvable user this is a trusted internal object run.
-        $user ??= request()->user();
+        // Without an explicit user this is a trusted internal object run:
+        // HTTP and MCP callers always pass the actor.
         if ($user !== null) {
             app(WorkspaceContext::class)->abortUnlessKnowledgePageAccessible($user, $page);
         }

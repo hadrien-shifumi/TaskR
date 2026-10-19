@@ -27,17 +27,16 @@ class ShowIssuesPage
      * @param  array<string, string|null>  $filters  view|project|status|category|priority|label|assignee|overdue|q
      * @return array<string, mixed>
      */
-    public function handle(Workspace $workspace, array $filters = []): array
+    public function handle(Workspace $workspace, array $filters = [], ?User $user = null): array
     {
         $view = $filters['view'] ?? 'list';
 
-        $user = request()->user();
         $scope = $user instanceof User
             ? app(WorkspaceContext::class)->accessibleProjectIds($user)
             : null;
 
         $data = [
-            ...ListIssues::run($workspace, $filters),
+            ...ListIssues::run($workspace, $filters, null, 0, $user),
             'view' => $view,
             'filters' => array_filter($filters, fn ($value) => $value !== null && $value !== ''),
             'projects' => $workspace->projects()
@@ -70,7 +69,7 @@ class ShowIssuesPage
             'assignee' => $request->query('assignee'),
             'overdue' => $request->query('overdue'),
             'q' => $request->query('q'),
-        ]);
+        ], $request->user());
 
         $data['labels'] = $workspace->labels()->orderBy('name')->get(['id', 'name', 'color']);
         $data['members'] = $workspace->members()->orderBy('name')->get(['users.id', 'users.name']);

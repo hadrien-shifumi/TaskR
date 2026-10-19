@@ -18,12 +18,13 @@ class ShowIssuePage
     use AsObject;
 
     /**
-     * @return array<string, mixed>
+     * @param  array<string, mixed>
      */
-    public function handle(Workspace $workspace, Issue $issue): array
+    public function handle(Workspace $workspace, Issue $issue, ?User $user = null): array
     {
         // Out-of-scope issues fail exactly like non-existent ones.
-        $user = request()->user();
+        // Without an explicit user this is a trusted internal object run:
+        // HTTP and MCP callers always pass the actor.
         if ($user !== null) {
             app(WorkspaceContext::class)->abortUnlessIssueAccessible($user, $issue);
         }
@@ -105,7 +106,7 @@ class ShowIssuePage
     {
         $workspace = app(WorkspaceContext::class)->getOrFail();
 
-        return $responder->toResponse($request, $this->handle($workspace, $issue));
+        return $responder->toResponse($request, $this->handle($workspace, $issue, $request->user()));
     }
 
     /**

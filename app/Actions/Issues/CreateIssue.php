@@ -51,9 +51,9 @@ class CreateIssue
      */
     public function handle(Workspace $workspace, array $data, ?User $user = null): Issue
     {
-        $user ??= request()->user();
-
-        // A guest can only create within their perimeter.
+        // A guest can only create within their perimeter. Without an
+        // explicit user this is a trusted internal object run: HTTP and
+        // MCP callers always pass the actor.
         if ($user !== null
             && app(WorkspaceContext::class)->accessibleProjectIds($user) !== null
             && ! in_array($data['project_id'], app(WorkspaceContext::class)->accessibleProjectIds($user), true)) {
@@ -90,7 +90,7 @@ class CreateIssue
         $data = $request->validated();
         $data['created_by'] ??= $request->user()?->getKey();
 
-        $issue = $this->handle($this->currentWorkspace(), $data);
+        $issue = $this->handle($this->currentWorkspace(), $data, $request->user());
 
         return $responder->created($issue);
     }

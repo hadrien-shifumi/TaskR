@@ -46,8 +46,8 @@ class UpdateTimeEntry
     {
         // The underlying issue must stay in the actor's perimeter: a
         // shrunken scope makes old objects fail like non-existent ones.
-        // Without a resolvable user this is a trusted internal object run.
-        $user ??= request()->user();
+        // Without an explicit user this is a trusted internal object run:
+        // HTTP and MCP callers always pass the actor.
         if ($user !== null) {
             app(WorkspaceContext::class)->abortUnlessIssueAccessible($user, $timeEntry->issue);
         }
@@ -64,7 +64,7 @@ class UpdateTimeEntry
     public function asController(ActionRequest $request, Issue $issue, string $timeEntryId, TimeTrackingResponder $responder): RedirectResponse
     {
         $timeEntry = $this->resolveEntry($issue, $timeEntryId);
-        $timeEntry = $this->handle($timeEntry, $request->validated());
+        $timeEntry = $this->handle($timeEntry, $request->validated(), $request->user());
 
         return $responder->entryUpdated($timeEntry);
     }

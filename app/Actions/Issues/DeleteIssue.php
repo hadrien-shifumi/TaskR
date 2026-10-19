@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Responders\Issues\IssueRedirectResponder;
 use App\Support\WorkspaceContext;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Lorisleiva\Actions\Concerns\AsController;
 use Lorisleiva\Actions\Concerns\AsObject;
 
@@ -28,8 +29,8 @@ class DeleteIssue
     public function handle(Issue $issue, ?User $user = null): Issue
     {
         // Out-of-scope issues fail exactly like non-existent ones.
-        // Without a resolvable user this is a trusted internal object run.
-        $user ??= request()->user();
+        // Without an explicit user this is a trusted internal object run:
+        // HTTP and MCP callers always pass the actor.
         if ($user !== null) {
             app(WorkspaceContext::class)->abortUnlessIssueAccessible($user, $issue);
         }
@@ -39,9 +40,9 @@ class DeleteIssue
         return $issue;
     }
 
-    public function asController(Issue $issue, IssueRedirectResponder $responder): RedirectResponse
+    public function asController(Request $request, Issue $issue, IssueRedirectResponder $responder): RedirectResponse
     {
-        $this->handle($issue);
+        $this->handle($issue, $request->user());
 
         return $responder->deleted();
     }

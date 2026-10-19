@@ -23,12 +23,11 @@ class ShowProjectsPage
     /**
      * @return array{projects: array{active: array<array-key, array<string, mixed>>, archived: array<array-key, array<string, mixed>>}}
      */
-    public function handle(Workspace $workspace): array
+    public function handle(Workspace $workspace, ?User $user = null): array
     {
         $query = $workspace->projects();
 
         // A guest only sees the projects of their roster, active or archived.
-        $user = request()->user();
         if ($user instanceof User) {
             $scope = app(WorkspaceContext::class)->accessibleProjectIds($user);
             if ($scope !== null) {
@@ -56,7 +55,7 @@ class ShowProjectsPage
     {
         $workspace = app(WorkspaceContext::class)->getOrFail();
 
-        return $responder->toResponse($request, $this->handle($workspace));
+        return $responder->toResponse($request, $this->handle($workspace, $request->user()));
     }
 
     /**

@@ -24,8 +24,8 @@ class DeleteKnowledgePage
     public function handle(KnowledgePage $page, ?User $user = null): void
     {
         // Out-of-scope pages fail exactly like non-existent ones.
-        // Without a resolvable user this is a trusted internal object run.
-        $user ??= request()->user();
+        // Without an explicit user this is a trusted internal object run:
+        // HTTP and MCP callers always pass the actor.
         if ($user !== null) {
             app(WorkspaceContext::class)->abortUnlessKnowledgePageAccessible($user, $page);
         }
@@ -39,7 +39,7 @@ class DeleteKnowledgePage
 
     public function asController(ActionRequest $request, KnowledgePage $page, KnowledgeRedirectResponder $responder): RedirectResponse
     {
-        $this->handle($page);
+        $this->handle($page, $request->user());
 
         return $responder->deleted();
     }
