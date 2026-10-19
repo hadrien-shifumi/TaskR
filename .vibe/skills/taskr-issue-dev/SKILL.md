@@ -1,5 +1,5 @@
 ---
-name: TaskR Issue Dev
+name: taskr-issue-dev
 description: Mandatory lifecycle for every TaskR issue — research the ticket in the knowledge base and the code before implementing, post a plan comment before coding, post a completion comment when done, log the time spent from the issue's first comment to now, and reconcile the knowledge base. Enforced by the issue-dev hooks. Use whenever a task is a TaskR issue.
 ---
 

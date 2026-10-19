@@ -1,5 +1,5 @@
 ---
-name: Taskr Frontend
+name: taskr-frontend
 description: Conventions for taskr frontend code — Inertia v3 pages, React 19 + TypeScript, useForm/router patterns, shadcn components on Base UI, Tailwind v4 tokens, ziggy named routes. Use for any change under resources/js/ or resources/views/.
 ---
 
