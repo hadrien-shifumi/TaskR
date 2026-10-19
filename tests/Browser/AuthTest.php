@@ -71,6 +71,28 @@ it('shows an inline error and marks the invalid field on a failed login', functi
         ->assertNoSmoke();
 });
 
+it('keeps the user connected when remember me is checked', function () {
+    [$owner] = setupBrowserWorkspace();
+    $owner->update(['remember_token' => null]);
+
+    $page = visit('/login');
+
+    $page->assertSee('Remember me');
+
+    // Base UI keeps the visible control on the rendered span (data-slot from the
+    // shadcn primitive) and hides the native input it toggles.
+    $page->fill('email', $owner->email)
+        ->fill('password', 'password')
+        ->click('[data-slot="checkbox"]')
+        ->click('button[type="submit"]');
+
+    $page->assertPathIs('/')
+        ->assertSee('WS')
+        ->assertNoSmoke();
+
+    expect($owner->refresh()->remember_token)->not->toBeNull();
+});
+
 it('accepts an invitation through the landing page and login', function () {
     [, $workspace] = setupBrowserWorkspace();
     $newcomer = User::factory()->create(['email' => 'newcomer@example.com']);
