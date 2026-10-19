@@ -346,6 +346,7 @@ const en = {
             subtitle: "Access your workspaces.",
             email: "Email",
             password: "Password",
+            remember: "Remember me",
             submit: "Log in",
         },
         register: {
