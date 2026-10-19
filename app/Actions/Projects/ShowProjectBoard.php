@@ -2,6 +2,7 @@
 
 namespace App\Actions\Projects;
 
+use App\Actions\Issues\ShowIssuePage;
 use App\Models\Issue;
 use App\Models\IssueTemplate;
 use App\Models\Project;
@@ -104,13 +105,25 @@ class ShowProjectBoard
 
     public function asController(Request $request, Project $project, ProjectBoardResponder $responder): Response
     {
-        return $responder->toResponse($request, $this->handle(
+        $data = $this->handle(
             $project,
             $request->boolean('parents'),
             [
                 'assignee' => $request->query('assignee'),
             ],
-        ));
+        );
+
+        // A `?issue=` param opens the issue detail in the board's modal: the
+        // payload mirrors ShowIssuePage's so the modal reuses the fiche
+        // component. Accessibility (guest perimeter, cross-workspace) is
+        // enforced by ShowIssuePage itself; unknown ids 404 like any other
+        // issue surface.
+        $issueId = $request->query('issue');
+        $data['issueDetail'] = is_string($issueId) && $issueId !== ''
+            ? ShowIssuePage::run(app(WorkspaceContext::class)->getOrFail(), Issue::findOrFail($issueId))
+            : null;
+
+        return $responder->toResponse($request, $data);
     }
 
     /**
