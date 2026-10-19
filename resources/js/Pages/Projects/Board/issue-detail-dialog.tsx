@@ -1,3 +1,4 @@
+import { CopyIssueIdButton } from '@/Pages/Issues/Show/components/copy-issue-id-button';
 import { IssueDetail } from '@/Pages/Issues/Show/issue-detail';
 import type {
     CommentItem,
@@ -73,6 +74,15 @@ export function IssueDetailDialog({ projectId, filters, parentsOnly, detail }: I
                 className="max-h-[88vh] gap-0 overflow-y-auto p-0 sm:max-w-5xl"
             >
                 <div className="p-6">
+                    <div className="flex items-center gap-1.5 pb-4">
+                        <span
+                            data-test="issue-ulid"
+                            className="font-mono text-xs text-muted-foreground tabular-nums"
+                        >
+                            {detail.issue.id.slice(0, 7)}
+                        </span>
+                        <CopyIssueIdButton issueId={detail.issue.id} />
+                    </div>
                     <IssueDetail
                         issue={detail.issue}
                         comments={detail.comments}

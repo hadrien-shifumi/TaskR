@@ -9,10 +9,11 @@ import {
 } from '@/components/ui/dropdown-menu';
 import AppLayout from '@/layouts/app-layout';
 import { Head, router, usePage } from '@inertiajs/react';
-import { ArrowLeft, Check, Copy, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { ArrowLeft, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { LabelRef, UserRef } from '@/types';
+import { CopyIssueIdButton } from './Show/components/copy-issue-id-button';
 import { DeleteIssueDialog } from './Show/components/delete-issue-dialog';
 import { EditIssueDialog } from './Show/components/edit-issue-dialog';
 import { IssueDetail } from './Show/issue-detail';
@@ -33,14 +34,6 @@ export default function Show() {
     const { t } = useTranslation();
     const [editingTitle, setEditingTitle] = useState(false);
     const [deleting, setDeleting] = useState(false);
-    const [copied, setCopied] = useState(false);
-
-    const copyId = () => {
-        navigator.clipboard?.writeText(issue.id).then(() => {
-            setCopied(true);
-            setTimeout(() => setCopied(false), 1500);
-        });
-    };
 
     return (
         <AppLayout
@@ -64,10 +57,7 @@ export default function Show() {
             }
             actions={
                 <>
-                    <Button variant="ghost" size="sm" data-test="copy-identifier" onClick={copyId}>
-                        {copied ? <Check className="size-3.5" aria-hidden /> : <Copy className="size-3.5" aria-hidden />}
-                        {copied ? t('issueShow.copied') : t('issueShow.copyIdentifier')}
-                    </Button>
+                    <CopyIssueIdButton issueId={issue.id} />
                     <DropdownMenu>
                         <DropdownMenuTrigger
                             aria-label={t('issueShow.issueActions')}
