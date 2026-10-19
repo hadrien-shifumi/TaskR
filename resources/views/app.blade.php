@@ -4,6 +4,7 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
+        <link rel="icon" type="image/svg+xml" href="{{ asset('assets/taskr-app-icon.svg') }}">
         <title>{{ config('app.name', 'Taskr') }}</title>
         <link rel="preconnect" href="https://fonts.bunny.net">
         @if (Vite::isRunningHot())

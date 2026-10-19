@@ -103,9 +103,12 @@ export default function AppLayout({
         <div className="grid min-h-dvh grid-cols-1 bg-background lg:grid-cols-[232px_1fr]">
             <aside className="flex gap-1 overflow-x-auto border-b bg-sidebar px-3.5 py-2.5 text-sidebar-foreground max-lg:items-center lg:sticky lg:top-0 lg:h-dvh lg:flex-col lg:gap-1 lg:overflow-y-auto lg:border-b-0 lg:border-r lg:px-3 lg:py-0">
                 <div className="flex items-center gap-2.5 px-2 pt-4 pb-3.5 max-lg:p-0">
-                    <span className="grid size-6.5 shrink-0 place-items-center rounded-[7px] bg-primary text-sm font-bold text-primary-foreground">
-                        T
-                    </span>
+                    <img
+                        src="/assets/taskr-app-icon.svg"
+                        alt=""
+                        aria-hidden
+                        className="size-6.5 shrink-0 rounded-[7px]"
+                    />
                     <span className="text-[15px] font-semibold tracking-tight">
                         Taskr
                     </span>
