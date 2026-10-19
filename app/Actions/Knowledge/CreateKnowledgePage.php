@@ -2,6 +2,7 @@
 
 namespace App\Actions\Knowledge;
 
+use App\Actions\Concerns\AuthorizesWorkspaceAccess;
 use App\Jobs\VectorizeKnowledgePage;
 use App\Models\KnowledgePage;
 use App\Models\User;
@@ -19,6 +20,7 @@ class CreateKnowledgePage
 {
     use AsController;
     use AsObject;
+    use AuthorizesWorkspaceAccess;
 
     public function authorize(): bool
     {
@@ -90,12 +92,5 @@ class CreateKnowledgePage
         );
 
         return $responder->created($page);
-    }
-
-    protected function currentUserCanUseWorkspace(): bool
-    {
-        $user = request()->user();
-
-        return $user instanceof User && app(WorkspaceContext::class)->canUseWorkspace($user);
     }
 }

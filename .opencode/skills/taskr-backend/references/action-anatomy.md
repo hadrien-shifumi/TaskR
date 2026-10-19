@@ -27,7 +27,7 @@ class CreateIssue
 
     public function authorize(): bool
     {
-        return $this->currentUserIsMember();
+        return $this->currentUserCanUseWorkspace();
     }
 
     public function rules(): array
@@ -60,11 +60,12 @@ class CreateIssue
         return $responder->created($issue);
     }
 
-    protected function currentUserIsMember(): bool
+    protected function currentUserIsOwner(): bool
     {
         $user = request()->user();
+        $workspace = $this->currentWorkspace();
 
-        return $user instanceof User && app(WorkspaceContext::class)->isMember($user);
+        return $user instanceof User && $workspace !== null && $workspace->hasOwner($user);
     }
 
     protected function currentWorkspace(): ?Workspace
@@ -77,8 +78,7 @@ class CreateIssue
 Notes:
 
 - `handle()` never reads request state (`request()`, `request()->user()`, `request()->route()`): the acting user is always an explicit `?User $user = null` argument. Null means a trusted internal object run — perimeter guards are skipped; HTTP and MCP callers always pass the actor (`$request->user()` / `$this->currentUser($request)`).
-- `authorize()` may inline the check (`MoveIssue`) or use the protected helpers (`CreateIssue`). Both exist; keep helpers when several methods need them.
-- Owner-only variant (see `InviteMember`): `$workspace->hasOwner($user)` where `$workspace = request()->route('workspace')`.
+- Membership authorization comes from the shared trait `App\Actions\Concerns\AuthorizesWorkspaceAccess`: `currentUserCanUseWorkspace()` for belonging (guests included), `currentUserIsFullMember()` for full-member surfaces, plus the `currentWorkspace()` accessor. Owner-only variant (see `InviteMember`): `$workspace->hasOwner($user)` where `$workspace = request()->route('workspace')`.
 - Cycle/consistency rules that depend on persisted state belong in `handle()` and throw `ValidationException::withMessages(...)` (see `SetIssueParent`), not in `rules()`.
 
 ## List page action

@@ -2,6 +2,7 @@
 
 namespace App\Actions\Projects;
 
+use App\Actions\Concerns\AuthorizesWorkspaceAccess;
 use App\Models\Project;
 use App\Models\User;
 use App\Models\Workspace;
@@ -16,12 +17,11 @@ class ShowProjectMembers
 {
     use AsController;
     use AsObject;
+    use AuthorizesWorkspaceAccess;
 
     public function authorize(): bool
     {
-        $user = request()->user();
-
-        return $user instanceof User && app(WorkspaceContext::class)->canUseWorkspace($user);
+        return $this->currentUserCanUseWorkspace();
     }
 
     /**

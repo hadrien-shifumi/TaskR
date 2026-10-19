@@ -2,6 +2,7 @@
 
 namespace App\Actions\Issues;
 
+use App\Actions\Concerns\AuthorizesWorkspaceAccess;
 use App\Enums\Priority;
 use App\Models\Issue;
 use App\Models\IssueTemplate;
@@ -20,6 +21,7 @@ class CreateIssue
 {
     use AsController;
     use AsObject;
+    use AuthorizesWorkspaceAccess;
 
     public function authorize(): bool
     {
@@ -95,13 +97,6 @@ class CreateIssue
         return $responder->created($issue);
     }
 
-    protected function currentUserCanUseWorkspace(): bool
-    {
-        $user = request()->user();
-
-        return $user instanceof User && app(WorkspaceContext::class)->canUseWorkspace($user);
-    }
-
     /**
      * Non-blocking template pre-fill: for description, priority and labels, an
      * absent key falls back to the template default; any explicitly provided
@@ -136,10 +131,5 @@ class CreateIssue
         }
 
         return $data;
-    }
-
-    protected function currentWorkspace(): ?Workspace
-    {
-        return app(WorkspaceContext::class)->get();
     }
 }

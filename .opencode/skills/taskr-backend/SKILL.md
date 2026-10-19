@@ -12,6 +12,7 @@ Stack: Laravel 13, PHP 8.3+, `lorisleiva/laravel-actions` v2, Inertia (server si
 ```
 app/
 ├── Actions/<Domain>/<VerbEntity>.php   # HTTP controller + domain logic (AsController, often AsObject)
+├── Actions/Concerns/AuthorizesWorkspaceAccess.php  # shared authorize() helpers (membership, full member, workspace)
 ├── Responders/<Domain>/                # PageResponder (Inertia::render) + RedirectResponder (redirect + flash)
 ├── Models/                             # BaseModel (ULID) + Concerns/BelongsToWorkspace + Scopes/WorkspaceScope
 ├── Enums/                              # Priority, StatusCategory, WorkspaceRole (string-backed, TitleCase)
@@ -36,7 +37,7 @@ Domains: `Auth`, `Comments`, `Issues`, `Labels`, `Projects`, `Statuses`, `System
 
 6. **Workspace isolation is not optional.** Every business model extends `BaseModel`, uses `BelongsToWorkspace`, and has a `workspace_id` ULID FK. The global `WorkspaceScope` filters every query; cross-workspace IDs must 404 naturally via binding, and validation must scope every relational ID: `Rule::exists('projects', 'id')->where('workspace_id', $workspace?->id)`. See [references/workspace-tenancy.md](references/workspace-tenancy.md).
 
-7. **Authorization lives in `authorize()`** using `WorkspaceContext`: `isMember($user)` for member actions, `hasOwner($user)` for owner-only actions (invite, delete workspace). No policies, no gates.
+7. **Authorization lives in `authorize()`** via the shared trait `App\Actions\Concerns\AuthorizesWorkspaceAccess`: `currentUserCanUseWorkspace()` for member actions (guests included), `currentUserIsFullMember()` for full-member-only surfaces, `currentUserIsOwner()` (local helper) for owner-only actions like invite or delete workspace. No policies, no gates.
 
 8. **Migrations:** ULID primary keys (`$table->ulid('id')->primary()`), `workspace_id` FK `cascadeOnDelete`, `restrictOnDelete` for reference data in use (statuses), composite indexes leading with `workspace_id`, driver-conditional CHECK constraints (PostgreSQL only — SQLite tests cannot `ALTER TABLE ADD CONSTRAINT`). Self-referencing FKs are added after table creation.
 

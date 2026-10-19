@@ -2,6 +2,7 @@
 
 namespace App\Actions\Issues;
 
+use App\Actions\Concerns\AuthorizesWorkspaceAccess;
 use App\Models\Issue;
 use App\Models\User;
 use App\Responders\Issues\IssueRedirectResponder;
@@ -16,12 +17,11 @@ class SetAssignees
 {
     use AsController;
     use AsObject;
+    use AuthorizesWorkspaceAccess;
 
     public function authorize(): bool
     {
-        $user = request()->user();
-
-        return $user instanceof User && app(WorkspaceContext::class)->canUseWorkspace($user);
+        return $this->currentUserCanUseWorkspace();
     }
 
     public function rules(): array

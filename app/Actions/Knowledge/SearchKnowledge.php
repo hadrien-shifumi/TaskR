@@ -2,6 +2,7 @@
 
 namespace App\Actions\Knowledge;
 
+use App\Actions\Concerns\AuthorizesWorkspaceAccess;
 use App\Models\KnowledgePage;
 use App\Models\User;
 use App\Models\Workspace;
@@ -22,6 +23,7 @@ class SearchKnowledge
 {
     use AsController;
     use AsObject;
+    use AuthorizesWorkspaceAccess;
 
     public function __construct(private Embeddings $embeddings) {}
 
@@ -197,12 +199,5 @@ class SearchKnowledge
         $space = mb_strrpos($cut, ' ');
 
         return rtrim($space === false ? $cut : mb_substr($cut, 0, $space)).' …';
-    }
-
-    protected function currentUserCanUseWorkspace(): bool
-    {
-        $user = request()->user();
-
-        return $user instanceof User && app(WorkspaceContext::class)->canUseWorkspace($user);
     }
 }

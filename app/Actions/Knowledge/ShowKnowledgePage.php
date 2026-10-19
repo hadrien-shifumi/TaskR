@@ -2,6 +2,7 @@
 
 namespace App\Actions\Knowledge;
 
+use App\Actions\Concerns\AuthorizesWorkspaceAccess;
 use App\Models\KnowledgePage;
 use App\Models\User;
 use App\Models\Workspace;
@@ -16,6 +17,7 @@ class ShowKnowledgePage
 {
     use AsController;
     use AsObject;
+    use AuthorizesWorkspaceAccess;
 
     public function authorize(): bool
     {
@@ -55,12 +57,5 @@ class ShowKnowledgePage
         $data = $this->handle(app(WorkspaceContext::class)->getOrFail(), $page, $request->user());
 
         return $responder->toResponse($request, $data);
-    }
-
-    protected function currentUserCanUseWorkspace(): bool
-    {
-        $user = request()->user();
-
-        return $user instanceof User && app(WorkspaceContext::class)->canUseWorkspace($user);
     }
 }

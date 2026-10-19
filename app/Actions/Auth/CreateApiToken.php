@@ -2,8 +2,8 @@
 
 namespace App\Actions\Auth;
 
+use App\Actions\Concerns\AuthorizesWorkspaceAccess;
 use App\Models\User;
-use App\Support\WorkspaceContext;
 use Illuminate\Http\RedirectResponse;
 use Laravel\Sanctum\NewAccessToken;
 use Lorisleiva\Actions\ActionRequest;
@@ -14,12 +14,11 @@ class CreateApiToken
 {
     use AsController;
     use AsObject;
+    use AuthorizesWorkspaceAccess;
 
     public function authorize(): bool
     {
-        $user = request()->user();
-
-        return $user instanceof User && app(WorkspaceContext::class)->isFullMember($user);
+        return $this->currentUserIsFullMember();
     }
 
     public function rules(): array

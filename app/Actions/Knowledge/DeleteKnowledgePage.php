@@ -2,6 +2,7 @@
 
 namespace App\Actions\Knowledge;
 
+use App\Actions\Concerns\AuthorizesWorkspaceAccess;
 use App\Models\KnowledgePage;
 use App\Models\User;
 use App\Responders\Knowledge\KnowledgeRedirectResponder;
@@ -15,6 +16,7 @@ class DeleteKnowledgePage
 {
     use AsController;
     use AsObject;
+    use AuthorizesWorkspaceAccess;
 
     public function authorize(): bool
     {
@@ -42,12 +44,5 @@ class DeleteKnowledgePage
         $this->handle($page, $request->user());
 
         return $responder->deleted();
-    }
-
-    protected function currentUserCanUseWorkspace(): bool
-    {
-        $user = request()->user();
-
-        return $user instanceof User && app(WorkspaceContext::class)->canUseWorkspace($user);
     }
 }

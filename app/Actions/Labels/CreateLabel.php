@@ -2,8 +2,8 @@
 
 namespace App\Actions\Labels;
 
+use App\Actions\Concerns\AuthorizesWorkspaceAccess;
 use App\Models\Label;
-use App\Models\User;
 use App\Models\Workspace;
 use App\Responders\Issues\LabelRedirectResponder;
 use App\Support\WorkspaceContext;
@@ -17,12 +17,11 @@ class CreateLabel
 {
     use AsController;
     use AsObject;
+    use AuthorizesWorkspaceAccess;
 
     public function authorize(): bool
     {
-        $user = request()->user();
-
-        return $user instanceof User && app(WorkspaceContext::class)->isFullMember($user);
+        return $this->currentUserIsFullMember();
     }
 
     public function rules(): array

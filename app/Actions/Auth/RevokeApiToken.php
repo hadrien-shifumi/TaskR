@@ -2,8 +2,8 @@
 
 namespace App\Actions\Auth;
 
+use App\Actions\Concerns\AuthorizesWorkspaceAccess;
 use App\Models\User;
-use App\Support\WorkspaceContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Lorisleiva\Actions\Concerns\AsController;
@@ -13,12 +13,11 @@ class RevokeApiToken
 {
     use AsController;
     use AsObject;
+    use AuthorizesWorkspaceAccess;
 
     public function authorize(): bool
     {
-        $user = request()->user();
-
-        return $user instanceof User && app(WorkspaceContext::class)->isFullMember($user);
+        return $this->currentUserIsFullMember();
     }
 
     /**

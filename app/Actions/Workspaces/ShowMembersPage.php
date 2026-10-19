@@ -2,7 +2,7 @@
 
 namespace App\Actions\Workspaces;
 
-use App\Models\User;
+use App\Actions\Concerns\AuthorizesWorkspaceAccess;
 use App\Models\Workspace;
 use App\Responders\Workspaces\MembersPageResponder;
 use App\Support\WorkspaceContext;
@@ -15,12 +15,11 @@ class ShowMembersPage
 {
     use AsController;
     use AsObject;
+    use AuthorizesWorkspaceAccess;
 
     public function authorize(): bool
     {
-        $user = request()->user();
-
-        return $user instanceof User && app(WorkspaceContext::class)->isFullMember($user);
+        return $this->currentUserIsFullMember();
     }
 
     /**

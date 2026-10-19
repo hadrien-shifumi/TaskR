@@ -2,9 +2,9 @@
 
 namespace App\Actions\Auth;
 
+use App\Actions\Concerns\AuthorizesWorkspaceAccess;
 use App\Models\User;
 use App\Responders\Auth\TokensPageResponder;
-use App\Support\WorkspaceContext;
 use Illuminate\Http\Request;
 use Lorisleiva\Actions\Concerns\AsController;
 use Lorisleiva\Actions\Concerns\AsObject;
@@ -14,12 +14,11 @@ class ShowApiTokensPage
 {
     use AsController;
     use AsObject;
+    use AuthorizesWorkspaceAccess;
 
     public function authorize(): bool
     {
-        $user = request()->user();
-
-        return $user instanceof User && app(WorkspaceContext::class)->isFullMember($user);
+        return $this->currentUserIsFullMember();
     }
 
     /**
