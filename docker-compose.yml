@@ -1,0 +1,78 @@
+services:
+  app:
+    build: .
+    container_name: taskr-app
+    ports:
+      - "8080:8080"
+    env_file: .env
+    environment:
+      # Inside the compose network the database is reached by service name.
+      DB_HOST: postgres
+      DB_PORT: 5432
+      APP_URL: http://localhost:8080
+      # The entrypoint only runs migrations for the web role (octane command).
+      RUN_MIGRATIONS: "true"
+    volumes:
+      - ./storage:/app/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "php artisan octane:status || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
+
+  worker:
+    build: .
+    container_name: taskr-worker
+    # Anything other than the octane command is treated as a worker by the entrypoint.
+    command: ["php", "artisan", "queue:work", "--sleep=3", "--tries=3", "--max-time=3600"]
+    env_file: .env
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      APP_URL: http://localhost:8080
+    volumes:
+      - ./storage:/app/storage
+    depends_on:
+      app:
+        # The web role runs the migrations; the worker starts once the app is up.
+        condition: service_healthy
+    # The image healthcheck targets Octane, which only runs in the web role.
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f 'queue:work' || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    restart: unless-stopped
+
+  postgres:
+    image: pgvector/pgvector:pg18
+    container_name: taskr-postgres
+    ports:
+      # 5433 on the host, matching DB_PORT in .env, so host-run artisan
+      # commands (php artisan test, migrate, tinker) hit the same database.
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: taskr
+    volumes:
+      # pg18 images expect the mount at /var/lib/postgresql (data lives in a
+      # major-version subdirectory), not /var/lib/postgresql/data.
+      - taskr-pgdata:/var/lib/postgresql
+      # Runs only when the data volume is initialized from scratch.
+      - ./docker/postgres-init.sql:/docker-entrypoint-initdb.d/10-pgvector.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d taskr"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  taskr-pgdata:
