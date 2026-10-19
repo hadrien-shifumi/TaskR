@@ -39,7 +39,7 @@ class UpdateProject extends AgentTool
         $action = app(UpdateProjectAction::class)->forProject($project);
         $data = $request->validate($action->rules());
 
-        $project = $action->handle($project, $data);
+        $project = $action->handle($project, $data, $this->currentUser($request));
 
         return Response::structured([
             'project' => [

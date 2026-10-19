@@ -58,8 +58,15 @@ class UpdateProject
     /**
      * @param  array{name: string, description?: string|null, target_date?: string|null}  $data
      */
-    public function handle(Project $project, array $data): Project
+    public function handle(Project $project, array $data, ?User $user = null): Project
     {
+        // Out-of-scope projects fail exactly like non-existent ones; a
+        // project of the perimeter stays editable by its guests.
+        $user ??= request()->user();
+        if ($user instanceof User) {
+            app(WorkspaceContext::class)->abortUnlessProjectAccessible($user, $project);
+        }
+
         $project->update([
             'name' => $data['name'],
             'description' => $data['description'] ?? null,
@@ -71,7 +78,7 @@ class UpdateProject
 
     public function asController(ActionRequest $request, Project $project, ProjectRedirectResponder $responder): RedirectResponse
     {
-        $project = $this->handle($project, $request->validated());
+        $project = $this->handle($project, $request->validated(), $request->user());
 
         return $responder->updated($project);
     }

@@ -41,7 +41,10 @@ class ProjectIssues extends Resource implements HasUriTemplate
 
             $project = Project::query()->findOrFail($request->get('project_id'));
 
-            $result = ListIssues::run($workspace, ['project' => $project->id]);
+            // Out-of-scope projects fail exactly like non-existent ones.
+            app(WorkspaceContext::class)->abortUnlessProjectAccessible($user, $project);
+
+            $result = ListIssues::run($workspace, ['project' => $project->id], 25, 0, $user);
 
             return Response::structured(['issues' => $result['issues']]);
         } catch (AuthorizationException $exception) {

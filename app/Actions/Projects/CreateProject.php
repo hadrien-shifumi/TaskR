@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Responders\Projects\ProjectRedirectResponder;
 use App\Support\WorkspaceContext;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -44,6 +45,13 @@ class CreateProject
      */
     public function handle(Workspace $workspace, User $creator, array $data): Project
     {
+        // A guest can never be a project owner: the roster pilotage is
+        // owner-of-the-workspace only, so guests do not create projects.
+        if (app(WorkspaceContext::class)->id() === $workspace->id
+            && $workspace->isGuest($creator)) {
+            throw new AuthorizationException('Guests cannot create projects.');
+        }
+
         return DB::transaction(function () use ($creator, $data): Project {
             $project = Project::create([
                 'name' => $data['name'],

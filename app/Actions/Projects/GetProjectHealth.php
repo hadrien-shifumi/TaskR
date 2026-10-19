@@ -130,7 +130,7 @@ class GetProjectHealth
     /**
      * Compute workload for a single user on a project.
      */
-    private function computeWorkloadFor(Project $project, User $user): PersonWorkload
+    public function computeWorkloadFor(Project $project, User $user): PersonWorkload
     {
         $workspaceId = app(WorkspaceContext::class)->id();
 

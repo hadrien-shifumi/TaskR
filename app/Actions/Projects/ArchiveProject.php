@@ -25,8 +25,15 @@ class ArchiveProject
     /**
      * Toggle archive state: archiving is always reversible.
      */
-    public function handle(Project $project): Project
+    public function handle(Project $project, ?User $user = null): Project
     {
+        // Out-of-scope projects fail exactly like non-existent ones; a
+        // project of the perimeter stays archivable by its guests.
+        $user ??= request()->user();
+        if ($user instanceof User) {
+            app(WorkspaceContext::class)->abortUnlessProjectAccessible($user, $project);
+        }
+
         $project->update([
             'archived_at' => $project->isArchived() ? null : now(),
         ]);
@@ -36,7 +43,7 @@ class ArchiveProject
 
     public function asController(Project $project, ProjectRedirectResponder $responder): RedirectResponse
     {
-        $project = $this->handle($project);
+        $project = $this->handle($project, request()->user());
 
         return $project->isArchived()
             ? $responder->archived($project)
