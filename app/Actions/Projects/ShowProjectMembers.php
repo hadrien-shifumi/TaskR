@@ -6,6 +6,8 @@ use App\Actions\Concerns\AuthorizesWorkspaceAccess;
 use App\Models\Project;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Presenters\Projects\ProjectMemberPresenter;
+use App\Presenters\Projects\ProjectPresenter;
 use App\Responders\Projects\ProjectMemberPageResponder;
 use App\Support\WorkspaceContext;
 use Illuminate\Http\Request;
@@ -42,13 +44,7 @@ class ShowProjectMembers
             ->with('user')
             ->orderBy('created_at')
             ->get()
-            ->map(fn ($pm) => [
-                'id' => $pm->user->id,
-                'name' => $pm->user->name,
-                'email' => $pm->user->email,
-                'role' => $pm->role->value,
-                'joinedAt' => $pm->created_at?->toISOString(),
-            ])
+            ->map(fn ($pm) => ProjectMemberPresenter::rosterMember($pm))
             ->values()
             ->all();
 
@@ -58,19 +54,12 @@ class ShowProjectMembers
             ->whereNotIn('users.id', $rosterUserIds)
             ->orderBy('name')
             ->get(['users.id', 'users.name', 'users.email'])
-            ->map(fn ($u) => [
-                'id' => $u->id,
-                'name' => $u->name,
-                'email' => $u->email,
-            ])
+            ->map(fn ($u) => ProjectMemberPresenter::contact($u))
             ->values()
             ->all();
 
         return [
-            'project' => [
-                'id' => $project->id,
-                'name' => $project->name,
-            ],
+            'project' => ProjectPresenter::option($project),
             'members' => $members,
             'availableMembers' => $availableMembers,
             'canManage' => $user instanceof User && $project->canManage($user),

@@ -4,6 +4,7 @@ namespace App\Actions\TimeTracking;
 
 use App\Models\Issue;
 use App\Models\User;
+use App\Presenters\TimeTracking\TimeEntryPresenter;
 use App\Support\WorkspaceContext;
 use Lorisleiva\Actions\Concerns\AsObject;
 
@@ -28,14 +29,7 @@ class ListTimeEntries
             ->with('author')
             ->orderByDesc('worked_at')
             ->get()
-            ->map(fn ($entry) => [
-                'id' => $entry->id,
-                'authorId' => $entry->author_id,
-                'authorName' => $entry->author?->name,
-                'workedAt' => $entry->worked_at->toDateString(),
-                'hours' => (float) $entry->hours,
-                'note' => $entry->note,
-            ])
+            ->map(fn ($entry) => TimeEntryPresenter::present($entry))
             ->values()
             ->all();
     }

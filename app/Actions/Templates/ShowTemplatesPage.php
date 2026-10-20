@@ -2,8 +2,9 @@
 
 namespace App\Actions\Templates;
 
-use App\Models\IssueTemplate;
 use App\Models\Workspace;
+use App\Presenters\Labels\LabelPresenter;
+use App\Presenters\Templates\TemplatePresenter;
 use App\Responders\Templates\TemplatesPageResponder;
 use App\Support\WorkspaceContext;
 use Illuminate\Http\Request;
@@ -25,10 +26,10 @@ class ShowTemplatesPage
             'templates' => $workspace->issueTemplates()
                 ->with('labels')
                 ->get()
-                ->map(fn (IssueTemplate $template) => $this->present($template))
+                ->map(fn ($template) => TemplatePresenter::present($template))
                 ->values()
                 ->all(),
-            'labels' => $workspace->labels()->orderBy('name')->get(['id', 'name', 'color']),
+            'labels' => $workspace->labels()->orderBy('name')->get()->map(fn ($label) => LabelPresenter::present($label))->all(),
         ];
     }
 
@@ -37,19 +38,5 @@ class ShowTemplatesPage
         $workspace = app(WorkspaceContext::class)->getOrFail();
 
         return $responder->toResponse($request, $this->handle($workspace));
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function present(IssueTemplate $template): array
-    {
-        return [
-            'id' => $template->id,
-            'name' => $template->name,
-            'description' => $template->description,
-            'priority' => $template->priority?->value,
-            'labels' => $template->labels->map(fn ($label) => ['id' => $label->id, 'name' => $label->name])->values()->all(),
-        ];
     }
 }

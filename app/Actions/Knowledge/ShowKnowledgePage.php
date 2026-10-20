@@ -6,6 +6,7 @@ use App\Actions\Concerns\AuthorizesWorkspaceAccess;
 use App\Models\KnowledgePage;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Presenters\Projects\ProjectPresenter;
 use App\Responders\Knowledge\KnowledgePageResponder;
 use App\Support\WorkspaceContext;
 use Illuminate\Http\Request;
@@ -45,8 +46,8 @@ class ShowKnowledgePage
             'projects' => $workspace->projects()
                 ->when($scope !== null, fn ($query) => $query->whereIn('id', $scope))
                 ->orderBy('name')
-                ->get(['id', 'name'])
-                ->map(fn ($project): array => ['id' => $project->id, 'name' => $project->name])
+                ->get()
+                ->map(fn ($project) => ProjectPresenter::option($project))
                 ->all(),
             'selected' => $selected !== null ? GetKnowledgePage::run($selected, $user) : null,
         ];

@@ -3,6 +3,7 @@
 namespace App\Actions\Labels;
 
 use App\Models\Workspace;
+use App\Presenters\Labels\LabelPresenter;
 use Lorisleiva\Actions\Concerns\AsObject;
 
 class ListLabels
@@ -17,11 +18,7 @@ class ListLabels
         return $workspace->labels()
             ->orderBy('name')
             ->get()
-            ->map(fn ($label) => [
-                'id' => $label->id,
-                'name' => $label->name,
-                'color' => $label->color,
-            ])
+            ->map(fn ($label) => LabelPresenter::present($label))
             ->values()
             ->all();
     }

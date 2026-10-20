@@ -5,6 +5,12 @@ namespace App\Actions\Issues;
 use App\Models\Issue;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Presenters\Comments\CommentPresenter;
+use App\Presenters\Issues\IssuePresenter;
+use App\Presenters\Labels\LabelPresenter;
+use App\Presenters\Projects\ProjectMemberPresenter;
+use App\Presenters\Statuses\StatusPresenter;
+use App\Presenters\TimeTracking\TimeEntryPresenter;
 use App\Responders\Issues\IssuePageResponder;
 use App\Support\WorkspaceContext;
 use Illuminate\Http\Request;
@@ -52,52 +58,12 @@ class ShowIssuePage
             ->values();
 
         return [
-            'issue' => [
-                'id' => $issue->id,
-                'title' => $issue->title,
-                'description' => $issue->description,
-                'createdAt' => $issue->created_at?->toISOString(),
-                'creatorName' => $issue->creator?->name,
-                'project' => ['id' => $issue->project->id, 'name' => $issue->project->name],
-                'status' => ['id' => $issue->status->id, 'name' => $issue->status->name, 'category' => $issue->status->category->value],
-                'priority' => $issue->priority->value,
-                'dueDate' => $issue->due_date?->toISOString(),
-                'overdue' => $issue->isOverdue(),
-                'estimatedHours' => $issue->estimated_hours !== null ? (float) $issue->estimated_hours : null,
-                'loggedHours' => $issue->logged_hours,
-                'remainingHours' => $issue->remaining_hours,
-                'assignees' => $issue->assignees->map(fn ($user) => ['id' => $user->id, 'name' => $user->name])->values()->all(),
-                'labels' => $issue->labels->map(fn ($label) => ['id' => $label->id, 'name' => $label->name, 'color' => $label->color])->values()->all(),
-                'parent' => $parent ? [
-                    'id' => $parent->id,
-                    'title' => $parent->title,
-                    'statusName' => $parent->status?->name,
-                ] : null,
-                'children' => $children->map(fn (Issue $child) => [
-                    'id' => $child->id,
-                    'title' => $child->title,
-                    'statusName' => $child->status?->name,
-                    'assignees' => $child->assignees->map(fn ($user) => ['id' => $user->id, 'name' => $user->name])->values()->all(),
-                ])->values()->all(),
-            ],
-            'comments' => $comments->map(fn ($comment) => [
-                'id' => $comment->id,
-                'body' => $comment->body,
-                'authorId' => $comment->author_id,
-                'authorName' => $comment->author?->name ?? 'Unknown',
-                'createdAt' => $comment->created_at?->toISOString(),
-            ])->values()->all(),
-            'timeEntries' => $timeEntries->map(fn ($entry) => [
-                'id' => $entry->id,
-                'authorId' => $entry->author_id,
-                'authorName' => $entry->author?->name ?? 'Unknown',
-                'workedAt' => $entry->worked_at?->toISOString(),
-                'hours' => (float) $entry->hours,
-                'note' => $entry->note,
-            ])->values()->all(),
-            'statuses' => $workspace->statuses()->get(['id', 'name', 'category']),
-            'members' => $workspace->members()->orderBy('name')->get(['users.id', 'users.name']),
-            'labels' => $workspace->labels()->orderBy('name')->get(['id', 'name', 'color']),
+            'issue' => IssuePresenter::detail($issue, $parent, $children),
+            'comments' => $comments->map(fn ($comment) => CommentPresenter::detail($comment))->values()->all(),
+            'timeEntries' => $timeEntries->map(fn ($entry) => TimeEntryPresenter::detail($entry))->values()->all(),
+            'statuses' => $workspace->statuses()->get()->map(fn ($status) => StatusPresenter::option($status))->all(),
+            'members' => $workspace->members()->orderBy('name')->get()->map(fn ($member) => ProjectMemberPresenter::person($member))->all(),
+            'labels' => $workspace->labels()->orderBy('name')->get()->map(fn ($label) => LabelPresenter::present($label))->all(),
             'candidates' => $this->candidateParents($issue, $user),
         ];
     }
@@ -114,7 +80,7 @@ class ShowIssuePage
      * itself. A guest only sees the issues of their perimeter — parent
      * candidates included, or the hierarchy would leak hidden titles.
      *
-     * @return array<int, Issue>
+     * @return array<int, array{id: string, title: string}>
      */
     private function candidateParents(Issue $issue, ?User $user): array
     {
@@ -127,6 +93,7 @@ class ShowIssuePage
             ->when($scope !== null, fn ($query) => $query->whereIn('project_id', $scope))
             ->orderBy('title')
             ->get(['id', 'title'])
+            ->map(fn (Issue $candidate) => ['id' => $candidate->id, 'title' => $candidate->title])
             ->all();
     }
 }

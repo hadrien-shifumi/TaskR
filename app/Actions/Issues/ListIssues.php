@@ -7,6 +7,7 @@ use App\Enums\StatusCategory;
 use App\Models\Issue;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Presenters\Issues\IssuePresenter;
 use App\Support\WorkspaceContext;
 use Illuminate\Database\Eloquent\Builder;
 use Lorisleiva\Actions\Concerns\AsObject;
@@ -52,7 +53,7 @@ class ListIssues
             $query->limit($limit);
         }
 
-        $issues = $query->get()->map(fn (Issue $issue) => $this->present($issue))->values()->all();
+        $issues = $query->get()->map(fn (Issue $issue) => IssuePresenter::card($issue))->values()->all();
 
         return [
             'issues' => $issues,
@@ -97,23 +98,5 @@ class ListIssues
         if (($filters['overdue'] ?? null) === '1' || ($filters['overdue'] ?? null) === 'true') {
             $query->overdue();
         }
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function present(Issue $issue): array
-    {
-        return [
-            'id' => $issue->id,
-            'title' => $issue->title,
-            'project' => ['id' => $issue->project->id, 'name' => $issue->project->name],
-            'status' => ['id' => $issue->status->id, 'name' => $issue->status->name, 'category' => $issue->status->category->value],
-            'priority' => $issue->priority->value,
-            'dueDate' => $issue->due_date?->toISOString(),
-            'overdue' => $issue->isOverdue(),
-            'assignees' => $issue->assignees->map(fn ($user) => ['id' => $user->id, 'name' => $user->name])->values()->all(),
-            'labels' => $issue->labels->map(fn ($label) => ['id' => $label->id, 'name' => $label->name, 'color' => $label->color])->values()->all(),
-        ];
     }
 }

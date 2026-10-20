@@ -4,6 +4,7 @@ namespace App\Actions\Auth;
 
 use App\Actions\Concerns\AuthorizesWorkspaceAccess;
 use App\Models\User;
+use App\Presenters\Auth\TokenPresenter;
 use App\Responders\Auth\TokensPageResponder;
 use Illuminate\Http\Request;
 use Lorisleiva\Actions\Concerns\AsController;
@@ -33,12 +34,7 @@ class ShowApiTokensPage
             'tokens' => $user->tokens()
                 ->orderByDesc('created_at')
                 ->get()
-                ->map(fn ($token) => [
-                    'id' => $token->id,
-                    'name' => $token->name,
-                    'createdAt' => $token->created_at->toISOString(),
-                    'lastUsedAt' => $token->last_used_at?->toISOString(),
-                ])
+                ->map(fn ($token) => TokenPresenter::present($token))
                 ->values()
                 ->all(),
         ];

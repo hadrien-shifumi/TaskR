@@ -4,6 +4,7 @@ namespace App\Actions\Comments;
 
 use App\Models\Issue;
 use App\Models\User;
+use App\Presenters\Comments\CommentPresenter;
 use App\Support\WorkspaceContext;
 use Lorisleiva\Actions\Concerns\AsObject;
 
@@ -28,13 +29,7 @@ class ListComments
             ->with('author')
             ->orderBy('created_at')
             ->get()
-            ->map(fn ($comment) => [
-                'id' => $comment->id,
-                'authorId' => $comment->author_id,
-                'authorName' => $comment->author?->name,
-                'body' => $comment->body,
-                'createdAt' => $comment->created_at->toISOString(),
-            ])
+            ->map(fn ($comment) => CommentPresenter::present($comment))
             ->values()
             ->all();
     }

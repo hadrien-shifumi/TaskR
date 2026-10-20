@@ -5,6 +5,7 @@ namespace App\Actions\Knowledge;
 use App\Models\KnowledgePage;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Presenters\Knowledge\KnowledgePresenter;
 use App\Support\WorkspaceContext;
 use Lorisleiva\Actions\Concerns\AsObject;
 
@@ -30,13 +31,7 @@ class ListKnowledgePages
             ->when($scope !== null, fn ($query) => $query->whereIn('project_id', $scope))
             ->orderBy('title')
             ->get()
-            ->map(fn (KnowledgePage $page): array => [
-                'id' => $page->id,
-                'title' => $page->title,
-                'parentId' => $page->parent_id,
-                'projectId' => $page->project_id,
-                'updatedAt' => $page->updated_at?->toISOString(),
-            ])
+            ->map(fn (KnowledgePage $page): array => KnowledgePresenter::listItem($page))
             ->all();
     }
 }

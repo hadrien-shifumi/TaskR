@@ -2,10 +2,14 @@
 
 namespace App\Actions\Issues;
 
-use App\Models\Issue;
-use App\Models\IssueTemplate;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Presenters\Issues\IssuePresenter;
+use App\Presenters\Labels\LabelPresenter;
+use App\Presenters\Projects\ProjectMemberPresenter;
+use App\Presenters\Projects\ProjectPresenter;
+use App\Presenters\Statuses\StatusPresenter;
+use App\Presenters\Templates\TemplatePresenter;
 use App\Responders\Issues\IssuesPageResponder;
 use App\Support\WorkspaceContext;
 use Illuminate\Http\Request;
@@ -43,8 +47,10 @@ class ShowIssuesPage
                 ->active()
                 ->when($scope !== null, fn ($query) => $query->whereIn('id', $scope))
                 ->orderBy('name')
-                ->get(['id', 'name']),
-            'statuses' => $workspace->statuses()->get(['id', 'name', 'category']),
+                ->get()
+                ->map(fn ($project) => ProjectPresenter::option($project))
+                ->all(),
+            'statuses' => $workspace->statuses()->get()->map(fn ($status) => StatusPresenter::option($status))->all(),
         ];
 
         if ($view === 'kanban') {
@@ -71,18 +77,12 @@ class ShowIssuesPage
             'q' => $request->query('q'),
         ], $request->user());
 
-        $data['labels'] = $workspace->labels()->orderBy('name')->get(['id', 'name', 'color']);
-        $data['members'] = $workspace->members()->orderBy('name')->get(['users.id', 'users.name']);
+        $data['labels'] = $workspace->labels()->orderBy('name')->get()->map(fn ($label) => LabelPresenter::present($label))->all();
+        $data['members'] = $workspace->members()->orderBy('name')->get()->map(fn ($member) => ProjectMemberPresenter::person($member))->all();
         $data['templates'] = $workspace->issueTemplates()
             ->with('labels')
             ->get()
-            ->map(fn (IssueTemplate $template) => [
-                'id' => $template->id,
-                'name' => $template->name,
-                'description' => $template->description,
-                'priority' => $template->priority?->value,
-                'labels' => $template->labels->map(fn ($label) => ['id' => $label->id, 'name' => $label->name])->values()->all(),
-            ])
+            ->map(fn ($template) => TemplatePresenter::present($template))
             ->all();
 
         return $responder->toResponse($request, $data);
@@ -132,7 +132,7 @@ class ShowIssuesPage
                             'issuesCount' => $issuesByStatus->get($status->id, collect())->count(),
                             'issues' => $issuesByStatus
                                 ->get($status->id, collect())
-                                ->map(fn (array $issue) => $this->presentKanbanIssue($issue))
+                                ->map(fn (array $issue) => IssuePresenter::kanbanCard($issue))
                                 ->values()
                                 ->all(),
                         ])
@@ -142,24 +142,5 @@ class ShowIssuesPage
             })
             ->values()
             ->all();
-    }
-
-    /**
-     * Present an issue for a kanban card (same shape as ListIssues, minus project).
-     *
-     * @param  array<string, mixed>  $issue
-     * @return array<string, mixed>
-     */
-    private function presentKanbanIssue(array $issue): array
-    {
-        return [
-            'id' => $issue['id'],
-            'title' => $issue['title'],
-            'priority' => $issue['priority'],
-            'dueDate' => $issue['dueDate'],
-            'overdue' => $issue['overdue'],
-            'assignees' => $issue['assignees'],
-            'labels' => $issue['labels'],
-        ];
     }
 }
