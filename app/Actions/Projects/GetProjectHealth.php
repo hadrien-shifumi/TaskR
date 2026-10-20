@@ -6,6 +6,8 @@ use App\Actions\Concerns\AuthorizesWorkspaceAccess;
 use App\Enums\StatusCategory;
 use App\Models\Project;
 use App\Models\User;
+use App\Presenters\Issues\IssuePresenter;
+use App\Presenters\Projects\ProjectPresenter;
 use App\Responders\Projects\ProjectHealthResponder;
 use App\Support\PersonWorkload;
 use App\Support\ProjectHealth;
@@ -95,13 +97,7 @@ class GetProjectHealth
             : null;
 
         return $responder->toResponse($request, [
-            'project' => [
-                'id' => $project->id,
-                'name' => $project->name,
-                'description' => $project->description,
-                'targetDate' => $project->target_date?->toDateString(),
-                'createdAt' => $project->created_at?->toISOString(),
-            ],
+            'project' => ProjectPresenter::summary($project),
             'health' => $health?->toArray(),
             'canSeeGlobalKpis' => $canSeeGlobalKpis,
             'myWorkload' => $myWorkload?->toArray(),
@@ -113,14 +109,7 @@ class GetProjectHealth
                 ->whereNotIn('statuses.category', [StatusCategory::Done->value, StatusCategory::Cancelled->value])
                 ->orderBy('issues.due_date')
                 ->get(['issues.id', 'issues.title', 'issues.priority', 'issues.due_date', 'statuses.name as statusName', 'statuses.category as statusCategory'])
-                ->map(fn ($issue) => [
-                    'id' => $issue->id,
-                    'title' => $issue->title,
-                    'priority' => $issue->priority instanceof \BackedEnum ? $issue->priority->value : (string) $issue->priority,
-                    'dueDate' => $issue->due_date?->toDateString(),
-                    'statusName' => $issue->statusName,
-                    'statusCategory' => $issue->statusCategory instanceof \BackedEnum ? $issue->statusCategory->value : (string) $issue->statusCategory,
-                ])
+                ->map(fn ($issue) => IssuePresenter::lateIssue($issue))
                 ->all() : [],
         ]);
     }

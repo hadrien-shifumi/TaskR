@@ -3,6 +3,7 @@
 namespace App\Actions\Statuses;
 
 use App\Models\Workspace;
+use App\Presenters\Statuses\StatusPresenter;
 use Lorisleiva\Actions\Concerns\AsObject;
 
 class ListStatuses
@@ -18,12 +19,7 @@ class ListStatuses
     {
         return $workspace->statuses()
             ->get()
-            ->map(fn ($status) => [
-                'id' => $status->id,
-                'name' => $status->name,
-                'category' => $status->category->value,
-                'position' => $status->position,
-            ])
+            ->map(fn ($status) => StatusPresenter::present($status))
             ->values()
             ->all();
     }

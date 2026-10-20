@@ -3,6 +3,7 @@
 namespace App\Actions\Statuses;
 
 use App\Models\Workspace;
+use App\Presenters\Statuses\StatusPresenter;
 use App\Responders\Statuses\StatusesPageResponder;
 use App\Support\WorkspaceContext;
 use Illuminate\Http\Request;
@@ -25,14 +26,7 @@ class ShowStatusesPage
                 ->withCount('issues')
                 ->with(['issues:id,status_id'])
                 ->get()
-                ->map(fn ($status) => [
-                    'id' => $status->id,
-                    'name' => $status->name,
-                    'category' => $status->category->value,
-                    'position' => $status->position,
-                    'issuesCount' => $status->issues_count,
-                    'issueIds' => $status->issues->map(fn ($issue) => $issue->id)->values()->all(),
-                ])
+                ->map(fn ($status) => StatusPresenter::managedList($status))
                 ->values()
                 ->all(),
         ];

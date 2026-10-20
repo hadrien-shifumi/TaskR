@@ -5,9 +5,13 @@ namespace App\Actions\Projects;
 use App\Actions\Concerns\AuthorizesWorkspaceAccess;
 use App\Actions\Issues\ShowIssuePage;
 use App\Models\Issue;
-use App\Models\IssueTemplate;
 use App\Models\Project;
 use App\Models\User;
+use App\Presenters\Issues\IssuePresenter;
+use App\Presenters\Labels\LabelPresenter;
+use App\Presenters\Projects\ProjectMemberPresenter;
+use App\Presenters\Projects\ProjectPresenter;
+use App\Presenters\Templates\TemplatePresenter;
 use App\Responders\Projects\ProjectBoardResponder;
 use App\Support\WorkspaceContext;
 use Illuminate\Database\Eloquent\Builder;
@@ -60,13 +64,7 @@ class ShowProjectBoard
         $projectPeople = $this->computeProjectPeople($project);
 
         return [
-            'project' => [
-                'id' => $project->id,
-                'name' => $project->name,
-                'description' => $project->description,
-                'targetDate' => $project->target_date?->toDateString(),
-                'createdAt' => $project->created_at?->toISOString(),
-            ],
+            'project' => ProjectPresenter::summary($project),
             // Health feeds the pagebar badge and the projection meta.
             'health' => GetProjectHealth::run($project, $user)->toArray(),
             'parentsOnly' => $parentsOnly,
@@ -74,18 +72,12 @@ class ShowProjectBoard
             'projectPeople' => $projectPeople,
             'currentUserId' => $user?->id,
             // Creation options for the board's full issue dialog (mirrors ShowIssuesPage).
-            'labels' => $workspace->labels()->orderBy('name')->get(['id', 'name', 'color']),
-            'members' => $workspace->members()->orderBy('name')->get(['users.id', 'users.name']),
+            'labels' => $workspace->labels()->orderBy('name')->get()->map(fn ($label) => LabelPresenter::present($label))->all(),
+            'members' => $workspace->members()->orderBy('name')->get()->map(fn ($member) => ProjectMemberPresenter::person($member))->all(),
             'templates' => $workspace->issueTemplates()
                 ->with('labels')
                 ->get()
-                ->map(fn (IssueTemplate $template) => [
-                    'id' => $template->id,
-                    'name' => $template->name,
-                    'description' => $template->description,
-                    'priority' => $template->priority?->value,
-                    'labels' => $template->labels->map(fn ($label) => ['id' => $label->id, 'name' => $label->name])->values()->all(),
-                ])
+                ->map(fn ($template) => TemplatePresenter::present($template))
                 ->all(),
             'columns' => $workspace->statuses()
                 ->get()
@@ -95,7 +87,7 @@ class ShowProjectBoard
                     'category' => $status->category->value,
                     'issuesCount' => $issues->get($status->id)?->count() ?? 0,
                     'issues' => ($issues->get($status->id) ?? collect())
-                        ->map(fn (Issue $issue) => $this->presentIssue($issue))
+                        ->map(fn (Issue $issue) => IssuePresenter::boardCard($issue))
                         ->values()
                         ->all(),
                 ])
@@ -157,25 +149,7 @@ class ShowProjectBoard
             ->whereIn('id', $allUserIds)
             ->orderBy('name')
             ->get(['id', 'name'])
-            ->map(fn ($user) => ['id' => $user->id, 'name' => $user->name])
+            ->map(fn ($user) => ProjectMemberPresenter::person($user))
             ->all();
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function presentIssue(Issue $issue): array
-    {
-        return [
-            'id' => $issue->id,
-            'title' => $issue->title,
-            'priority' => $issue->priority->value,
-            'dueDate' => $issue->due_date?->toDateString(),
-            'overdue' => $issue->isOverdue(),
-            'assignees' => $issue->assignees
-                ->map(fn ($user) => ['id' => $user->id, 'name' => $user->name])
-                ->values()
-                ->all(),
-        ];
     }
 }

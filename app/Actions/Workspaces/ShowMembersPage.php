@@ -4,6 +4,8 @@ namespace App\Actions\Workspaces;
 
 use App\Actions\Concerns\AuthorizesWorkspaceAccess;
 use App\Models\Workspace;
+use App\Presenters\Projects\ProjectPresenter;
+use App\Presenters\Workspaces\MemberPresenter;
 use App\Responders\Workspaces\MembersPageResponder;
 use App\Support\WorkspaceContext;
 use Illuminate\Http\Request;
@@ -36,13 +38,7 @@ class ShowMembersPage
             ->orderBy('created_at')
             ->orderBy('user_id')
             ->get()
-            ->map(fn ($membership) => [
-                'id' => $membership->user->id,
-                'name' => $membership->user->name,
-                'email' => $membership->user->email,
-                'role' => $membership->role->value,
-                'joinedAt' => $membership->created_at?->toISOString(),
-            ])
+            ->map(fn ($membership) => MemberPresenter::membership($membership))
             ->values()
             ->all();
 
@@ -51,14 +47,7 @@ class ShowMembersPage
             ->with('projects')
             ->orderBy('created_at')
             ->get()
-            ->map(fn ($invitation) => [
-                'id' => $invitation->id,
-                'email' => $invitation->email,
-                'role' => $invitation->role->value,
-                'projects' => $invitation->projects()->orderBy('name')->pluck('name')->all(),
-                'status' => $invitation->isExpired() ? 'expired' : 'sent',
-                'invitedAt' => $invitation->created_at?->toISOString(),
-            ])
+            ->map(fn ($invitation) => MemberPresenter::invitation($invitation))
             ->values()
             ->all();
 
@@ -66,10 +55,7 @@ class ShowMembersPage
             ->whereNull('archived_at')
             ->orderBy('name')
             ->get()
-            ->map(fn ($project) => [
-                'id' => $project->id,
-                'name' => $project->name,
-            ])
+            ->map(fn ($project) => ProjectPresenter::option($project))
             ->values()
             ->all();
 

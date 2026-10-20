@@ -5,8 +5,8 @@ namespace App\Actions\Projects;
 use App\Models\Project;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Presenters\Projects\ProjectPresenter;
 use App\Responders\Projects\ProjectsPageResponder;
-use App\Support\ProjectHealth;
 use App\Support\WorkspaceContext;
 use Illuminate\Http\Request;
 use Lorisleiva\Actions\Concerns\AsController;
@@ -42,10 +42,10 @@ class ShowProjectsPage
         return [
             'projects' => [
                 'active' => $projects->reject->isArchived()
-                    ->map(fn (Project $project) => $this->present($project, $healthByProject[$project->id] ?? null))
+                    ->map(fn (Project $project) => ProjectPresenter::pageCard($project, $healthByProject[$project->id] ?? null))
                     ->values()->all(),
                 'archived' => $projects->filter->isArchived()
-                    ->map(fn (Project $project) => $this->present($project, $healthByProject[$project->id] ?? null))
+                    ->map(fn (Project $project) => ProjectPresenter::pageCard($project, $healthByProject[$project->id] ?? null))
                     ->values()->all(),
             ],
         ];
@@ -56,20 +56,5 @@ class ShowProjectsPage
         $workspace = app(WorkspaceContext::class)->getOrFail();
 
         return $responder->toResponse($request, $this->handle($workspace, $request->user()));
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function present(Project $project, ?ProjectHealth $health): array
-    {
-        return [
-            'id' => $project->id,
-            'name' => $project->name,
-            'description' => $project->description,
-            'targetDate' => $project->target_date?->toDateString(),
-            'archivedAt' => $project->archived_at?->toISOString(),
-            'health' => $health?->toArray(),
-        ];
     }
 }

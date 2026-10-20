@@ -3,10 +3,11 @@
 namespace App\Actions\System;
 
 use App\Actions\Projects\GetProjectHealth;
-use App\Models\Issue;
 use App\Models\TimeEntry;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Presenters\Issues\IssuePresenter;
+use App\Presenters\Projects\ProjectPresenter;
 use App\Responders\System\HomeResponder;
 use App\Support\WorkspaceContext;
 use Illuminate\Http\Request;
@@ -59,11 +60,7 @@ class ShowHomeAction
             }
 
             $activeProjects++;
-            $projectCards[] = [
-                'id' => $project->id,
-                'name' => $project->name,
-                'health' => $health->toArray(),
-            ];
+            $projectCards[] = ProjectPresenter::homeCard($project, $health);
         }
 
         $hoursThisWeekQuery = TimeEntry::query()
@@ -93,16 +90,7 @@ class ShowHomeAction
                 ->orderByDesc('created_at')
                 ->limit(6)
                 ->get()
-                ->map(fn (Issue $issue) => [
-                    'id' => $issue->id,
-                    'title' => $issue->title,
-                    'projectName' => $issue->project->name,
-                    'statusName' => $issue->status->name,
-                    'statusCategory' => $issue->status->category->value,
-                    'priority' => $issue->priority->value,
-                    'dueDate' => $issue->due_date?->toDateString(),
-                    'overdue' => $issue->isOverdue(),
-                ])
+                ->map(fn ($issue) => IssuePresenter::homeCard($issue))
                 ->values()
                 ->all(),
         ];

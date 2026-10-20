@@ -4,6 +4,7 @@ namespace App\Actions\Knowledge;
 
 use App\Models\KnowledgePage;
 use App\Models\User;
+use App\Presenters\Knowledge\KnowledgePresenter;
 use App\Support\WorkspaceContext;
 use Lorisleiva\Actions\Concerns\AsObject;
 
@@ -25,14 +26,6 @@ class GetKnowledgePage
 
         $page->loadMissing('lastEditor');
 
-        return [
-            'id' => $page->id,
-            'title' => $page->title,
-            'body' => $page->body,
-            'parentId' => $page->parent_id,
-            'projectId' => $page->project_id,
-            'lastEditor' => $page->lastEditor?->name,
-            'updatedAt' => $page->updated_at?->toISOString(),
-        ];
+        return KnowledgePresenter::detail($page);
     }
 }

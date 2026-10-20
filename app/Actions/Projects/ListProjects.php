@@ -2,9 +2,9 @@
 
 namespace App\Actions\Projects;
 
-use App\Models\Project;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Presenters\Projects\ProjectPresenter;
 use App\Support\WorkspaceContext;
 use Lorisleiva\Actions\Concerns\AsObject;
 
@@ -29,13 +29,7 @@ class ListProjects
             ->when($scope !== null, fn ($query) => $query->whereIn('id', $scope))
             ->orderBy('name')
             ->get()
-            ->map(fn (Project $project) => [
-                'id' => $project->id,
-                'name' => $project->name,
-                'description' => $project->description,
-                'targetDate' => $project->target_date?->toISOString(),
-                'archivedAt' => $project->archived_at?->toISOString(),
-            ])
+            ->map(fn ($project) => ProjectPresenter::listItem($project))
             ->values()
             ->all();
     }

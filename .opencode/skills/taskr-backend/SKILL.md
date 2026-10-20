@@ -14,6 +14,7 @@ app/
 ├── Actions/<Domain>/<VerbEntity>.php   # HTTP controller + domain logic (AsController, often AsObject)
 ├── Actions/Concerns/AuthorizesWorkspaceAccess.php  # shared authorize() helpers (membership, full member, workspace)
 ├── Responders/<Domain>/                # PageResponder (Inertia::render) + RedirectResponder (redirect + flash)
+├── Presenters/<Domain>/                # Static model→camelCase array shapes shared by pages and MCP
 ├── Models/                             # BaseModel (ULID) + Concerns/BelongsToWorkspace + Scopes/WorkspaceScope
 ├── Enums/                              # Priority, StatusCategory, WorkspaceRole (string-backed, TitleCase)
 ├── Support/WorkspaceContext.php        # Request-scoped current workspace singleton
@@ -33,7 +34,7 @@ Domains: `Auth`, `Comments`, `Issues`, `Labels`, `Projects`, `Statuses`, `System
 
 4. **Responders own the HTTP response.** Actions never call `Inertia::render`, `redirect()`, or `back()` directly. Two kinds: `*PageResponder::toResponse()` renders `Inertia::render('Domain/Name', $data)`; `*RedirectResponder` methods (`created`, `updated`, `deleted`) redirect to a named route with `->with('status', '<Entity> <verb>.')`.
 
-5. **Presentation happens in the Action**, as plain arrays with camelCase keys for the frontend (`dueDate`, `statusName`). Load relations with `with([...])`, map in a private `present()` method. Never pass Eloquent models or collections to Inertia.
+5. **Presentation happens in Presenters** (`app/Presenters/<Domain>/<Entity>Presenter.php`): static methods, one per shape (`card()`, `boardCard()`, `option()`, `detail()`…), returning plain arrays with camelCase keys for the frontend (`dueDate`, `statusName`). Actions keep the querying (`with([...])`, filters, scoping) and delegate every model→array mapping to a presenter. Never pass Eloquent models or collections to Inertia.
 
 6. **Workspace isolation is not optional.** Every business model extends `BaseModel`, uses `BelongsToWorkspace`, and has a `workspace_id` ULID FK. The global `WorkspaceScope` filters every query; cross-workspace IDs must 404 naturally via binding, and validation must scope every relational ID: `Rule::exists('projects', 'id')->where('workspace_id', $workspace?->id)`. See [references/workspace-tenancy.md](references/workspace-tenancy.md).
 
