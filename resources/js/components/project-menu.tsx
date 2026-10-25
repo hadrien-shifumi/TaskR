@@ -51,6 +51,10 @@ export function ProjectMenu({ project, issuesCount }: ProjectMenuProps) {
                             <Archive aria-hidden />
                             {t('projectMenu.archive')}
                         </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => router.get(route('projects.archives', project.id))}>
+                            <Archive aria-hidden />
+                            {t('projectMenu.issueArchives')}
+                        </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
                             variant="destructive"

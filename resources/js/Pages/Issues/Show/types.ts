@@ -17,6 +17,7 @@ export type IssueDetail = {
     assignees: UserRef[];
     labels: LabelRef[];
     parent: { id: string; title: string; statusName: string | null } | null;
+    archivedAt: string | null;
     children: {
         id: string;
         title: string;

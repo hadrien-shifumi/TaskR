@@ -7,6 +7,8 @@ return [
         'updated' => 'Ticket mis à jour.',
         'moved' => 'Ticket déplacé.',
         'deleted' => 'Ticket supprimé.',
+        'archived' => 'Ticket archivé.',
+        'unarchived' => 'Ticket désarchivé.',
     ],
 
     'label' => [
@@ -64,6 +66,7 @@ return [
         'archived' => 'Projet « :name » archivé.',
         'restored' => 'Projet « :name » restauré.',
         'deleted' => 'Projet supprimé.',
+        'completed_archived' => ':count ticket(s) archivé(s).',
     ],
 
     'project_member' => [

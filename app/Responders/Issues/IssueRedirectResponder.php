@@ -43,4 +43,15 @@ class IssueRedirectResponder
             ->route('issues.index')
             ->with('status', __('flash.issue.deleted'));
     }
+
+    /**
+     * Archive toggles come from the issue page, the board modal or the
+     * project archives: stay in the caller's context.
+     */
+    public function archived(Issue $issue): RedirectResponse
+    {
+        return redirect()
+            ->back()
+            ->with('status', $issue->isArchived() ? __('flash.issue.archived') : __('flash.issue.unarchived'));
+    }
 }

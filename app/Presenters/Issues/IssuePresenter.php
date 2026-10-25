@@ -30,6 +30,7 @@ class IssuePresenter
             'overdue' => $issue->isOverdue(),
             'assignees' => self::assignees($issue),
             'labels' => $issue->labels->map(fn ($label) => ['id' => $label->id, 'name' => $label->name, 'color' => $label->color])->values()->all(),
+            'archivedAt' => $issue->archived_at?->toISOString(),
         ];
     }
 
@@ -115,6 +116,7 @@ class IssuePresenter
             'labels' => $issue->labels->map(fn ($label) => ['id' => $label->id, 'name' => $label->name, 'color' => $label->color])->values()->all(),
             'parent' => $parent !== null ? self::parentSummary($parent) : null,
             'children' => collect($children)->map(fn (Issue $child) => self::childSummary($child))->values()->all(),
+            'archivedAt' => $issue->archived_at?->toISOString(),
         ];
     }
 

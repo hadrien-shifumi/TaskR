@@ -133,6 +133,8 @@ const fr: typeof en = {
         issueActions: "Actions du ticket",
         editTitle: "Modifier le titre…",
         deleteIssue: "Supprimer le ticket…",
+        archiveIssue: "Archiver",
+        unarchiveIssue: "Désarchiver",
         opened: "ouvert le {{date}}",
         by: "par {{name}}",
         due: "échéance {{date}}",
@@ -248,6 +250,7 @@ const fr: typeof en = {
 
     projectBoard: {
         backToProjects: "Retour aux projets",
+        archiveCompleted: "Archiver les terminés",
         issuesTarget: "{{count}} tickets · cible : {{date}}",
         overdueSuffix: " · en retard",
         parentsOnly: "Parents seuls",
@@ -430,11 +433,30 @@ const fr: typeof en = {
         actionsFor: "Actions pour {{name}}",
         edit: "Modifier…",
         archive: "Archiver…",
+        issueArchives: "Archives des tickets",
         delete: "Supprimer…",
     },
 
     labelPicker: {
         noLabels: "Aucune étiquette dans cet espace pour le moment.",
+    },
+
+    projectArchives: {
+        title: "Archives — {{name}}",
+        headTitle: "Archives — {{name}}",
+        backToBoard: "Retour au board",
+        intro: "{{count}} ticket(s) archivé(s) dans ce projet.",
+        archivedOn: "archivé le {{date}}",
+        unarchive: "Désarchiver",
+        empty: "Aucun ticket archivé dans ce projet pour l'instant.",
+    },
+
+    archiveCompleted: {
+        title: "Archiver les tickets terminés ?",
+        confirm: "{{count}} ticket(s) done ou annulé(s) seront archivés. Ils restent consultables dans les archives et désarchivables.",
+        nothingToDo: "Aucun ticket terminé ou annulé à archiver.",
+        confirmButton: "Archiver",
+        cancel: "Annuler",
     },
 
     deleteProject: {

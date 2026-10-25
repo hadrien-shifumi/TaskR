@@ -85,6 +85,7 @@ class ShowHomeAction
             'projects' => $projectCards,
             'myIssues' => $workspace->issues()
                 ->when($scope !== null, fn ($query) => $query->whereIn('project_id', $scope))
+                ->unarchived()
                 ->whereHas('assignees', fn ($assignees) => $assignees->whereKey($user->getKey()))
                 ->with(['project', 'status'])
                 ->orderByDesc('created_at')

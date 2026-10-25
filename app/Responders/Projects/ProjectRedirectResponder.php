@@ -35,6 +35,13 @@ class ProjectRedirectResponder
             ->with('status', __('flash.project.restored', ['name' => $project->name]));
     }
 
+    public function completedArchived(Project $project, int $count): RedirectResponse
+    {
+        return redirect()
+            ->route('projects.board', $project)
+            ->with('status', __('flash.project.completed_archived', ['count' => $count]));
+    }
+
     public function deleted(): RedirectResponse
     {
         return redirect()

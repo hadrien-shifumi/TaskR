@@ -104,6 +104,7 @@ class GetProjectHealth
             'teamWorkload' => array_map(fn ($w) => $w->toArray(), $teamWorkload ?? []),
             'lateIssues' => $canSeeGlobalKpis ? $project->issues()
                 ->join('statuses', 'statuses.id', '=', 'issues.status_id')
+                ->whereNull('issues.archived_at')
                 ->whereNotNull('issues.due_date')
                 ->where('issues.due_date', '<', now()->toDateString())
                 ->whereNotIn('statuses.category', [StatusCategory::Done->value, StatusCategory::Cancelled->value])
@@ -126,6 +127,7 @@ class GetProjectHealth
             ->join('issue_assignees', 'issue_assignees.issue_id', '=', 'issues.id')
             ->where('issues.workspace_id', $workspaceId)
             ->where('issues.project_id', $project->id)
+            ->whereNull('issues.archived_at')
             ->where('issue_assignees.user_id', $user->id);
 
         $totalIssues = (clone $baseQuery)->count();
@@ -264,6 +266,7 @@ class GetProjectHealth
         return \DB::table('issues')
             ->join('statuses', 'statuses.id', '=', 'issues.status_id')
             ->where('issues.workspace_id', $workspaceId)
+            ->whereNull('issues.archived_at')
             ->whereIn('issues.project_id', $projectIds);
     }
 

@@ -12,7 +12,7 @@ use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Attributes\Name;
 
 #[Name('list_issues')]
-#[Description('List the issues of a workspace with optional filters. Use list_projects, list_statuses and list_labels to discover filter values.')]
+#[Description('List the issues of a workspace with optional filters. By default archived issues are excluded; pass archived=include for all issues, archived=only for the archive. Use list_projects, list_statuses and list_labels to discover filter values.')]
 class ListIssues extends AgentTool
 {
     /**
@@ -29,6 +29,7 @@ class ListIssues extends AgentTool
             'label' => $schema->string()->description('Filter by label ULID'),
             'assignee' => $schema->string()->description('Filter by assigned user id'),
             'overdue' => $schema->boolean()->description('Only overdue issues when true'),
+            'archived' => $schema->string()->enum(['exclude', 'include', 'only'])->description('Archive window: exclude (default) shows only active issues, include shows all, only shows just the archived ones'),
             'limit' => $schema->integer()->description('Page size (1-100, default 25)'),
             'offset' => $schema->integer()->description('Items to skip (default 0)'),
         ];
@@ -46,6 +47,7 @@ class ListIssues extends AgentTool
             'label' => ['nullable', 'ulid'],
             'assignee' => ['nullable', 'integer'],
             'overdue' => ['nullable', 'boolean'],
+            'archived' => ['nullable', 'in:exclude,include,only'],
             'limit' => ['nullable', 'integer', 'min:1', 'max:100'],
             'offset' => ['nullable', 'integer', 'min:0'],
         ]);
@@ -60,6 +62,7 @@ class ListIssues extends AgentTool
                 'label' => $input['label'] ?? null,
                 'assignee' => $input['assignee'] ?? null,
                 'overdue' => isset($input['overdue']) && $input['overdue'] ? '1' : null,
+                'archived' => $input['archived'] ?? 'exclude',
             ],
             $input['limit'] ?? 25,
             $input['offset'] ?? 0,

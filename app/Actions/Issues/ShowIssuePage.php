@@ -59,6 +59,7 @@ class ShowIssuePage
 
         return [
             'issue' => IssuePresenter::detail($issue, $parent, $children),
+            'isOwner' => $user !== null && $workspace->hasOwner($user),
             'comments' => $comments->map(fn ($comment) => CommentPresenter::detail($comment))->values()->all(),
             'timeEntries' => $timeEntries->map(fn ($entry) => TimeEntryPresenter::detail($entry))->values()->all(),
             'statuses' => $workspace->statuses()->get()->map(fn ($status) => StatusPresenter::option($status))->all(),
@@ -89,6 +90,7 @@ class ShowIssuePage
             : null;
 
         return Issue::query()
+            ->unarchived()
             ->whereKeyNot($issue->id)
             ->when($scope !== null, fn ($query) => $query->whereIn('project_id', $scope))
             ->orderBy('title')

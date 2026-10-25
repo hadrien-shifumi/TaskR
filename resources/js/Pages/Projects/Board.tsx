@@ -23,13 +23,14 @@ import {
 } from '@/components/ui/select';
 import AppLayout from '@/layouts/app-layout';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { ArrowLeft, MoveRight, Plus, User } from 'lucide-react';
+import { ArrowLeft, Archive, MoveRight, Plus, User } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { HealthData, LabelRef, UserRef } from '@/types';
+import type { HealthData, LabelRef, PageSharedProps, UserRef } from '@/types';
 import type { TemplateOption } from '@/Pages/Issues/Index/types';
 import { formatShortDate, formatDate } from '@/lib/format-date';
 import { BoardCreateIssueDialog } from './Board/create-issue-dialog';
+import { ArchiveCompletedDialog } from './Board/archive-completed-dialog';
 import { boardIssueUrl, IssueDetailDialog, type IssueDetailPayload } from './Board/issue-detail-dialog';
 
 interface BoardIssue {
@@ -76,12 +77,17 @@ type PageProps = {
     members?: UserRef[];
     /** Present when the URL carries an `?issue=` param: the modal is open. */
     issueDetail?: IssueDetailPayload | null;
+    /** Owner-only archive controls visibility. */
+    isOwner: boolean;
 };
 
 export default function Board() {
-    const { project, health, columns, parentsOnly, filters, projectPeople, currentUserId, labels, templates, members, issueDetail } =
+    const { project, health, columns, parentsOnly, filters, projectPeople, currentUserId, labels, templates, members, issueDetail, isOwner } =
         usePage<PageProps>().props;
+    const { workspace } = usePage<PageSharedProps>().props;
     const { t } = useTranslation();
+    const owner = isOwner || workspace?.role === 'owner';
+    const [archivingCompleted, setArchivingCompleted] = useState(false);
     const [draggingId, setDraggingId] = useState<string | null>(null);
     const [overColumn, setOverColumn] = useState<string | null>(null);
     const [moveError, setMoveError] = useState<string | null>(null);
@@ -189,6 +195,17 @@ export default function Board() {
                         </SelectContent>
                     </Select>
                     <ProjectViewSwitcher projectId={project.id} active="board" />
+                    {owner ? (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            data-test="archive-completed"
+                            onClick={() => setArchivingCompleted(true)}
+                        >
+                            <Archive className="size-3.5" aria-hidden />
+                            {t('projectBoard.archiveCompleted')}
+                        </Button>
+                    ) : null}
                     <Button
                         variant={parentsOnly ? 'default' : 'outline'}
                         size="sm"
@@ -364,6 +381,16 @@ export default function Board() {
             <p className="mt-2 text-sm text-muted-foreground">
                 {t('projectBoard.orderNote')}
             </p>
+
+            {owner && archivingCompleted ? (
+                <ArchiveCompletedDialog
+                    project={project}
+                    completedCount={columns
+                        .filter((column) => column.category === 'done' || column.category === 'cancelled')
+                        .reduce((sum, column) => sum + column.issuesCount, 0)}
+                    onClose={() => setArchivingCompleted(false)}
+                />
+            ) : null}
 
             <BoardCreateIssueDialog
                 key={createDefaultStatusId ?? 'new'}

@@ -23,7 +23,7 @@ class ListIssues
      * workspace-wide count never leaks: totalUnfiltered counts within the
      * perimeter as well.
      *
-     * @param  array<string, string|null>  $filters  project|status|category|priority|label|assignee|overdue|q
+     * @param  array<string, string|null>  $filters  project|status|category|priority|label|assignee|overdue|q|archived
      * @return array{issues: array<int, array<string, mixed>>, total: int, totalUnfiltered: int}
      */
     public function handle(Workspace $workspace, array $filters = [], ?int $limit = null, int $offset = 0, ?User $user = null): array
@@ -36,6 +36,8 @@ class ListIssues
             ->with(['project', 'status', 'labels', 'assignees'])
             ->when($scope !== null, fn (Builder $issues) => $issues->whereIn('project_id', $scope))
             ->orderByDesc('created_at');
+
+        $this->applyArchivedFilter($query, $filters['archived'] ?? 'exclude');
 
         // Scope-wide count, before any other filter: the issues page shows
         // it next to the filtered count ("visible / total").
@@ -60,6 +62,28 @@ class ListIssues
             'total' => $total,
             'totalUnfiltered' => $totalUnfiltered,
         ];
+    }
+
+    /**
+     * The archived filter is a three-state window over the archive:
+     * exclude (default, active issues only), include (everything),
+     * only (the archive itself).
+     *
+     * @param  string|null  $archived  exclude|include|only
+     */
+    private function applyArchivedFilter(Builder $query, ?string $archived): void
+    {
+        if ($archived === 'include') {
+            return;
+        }
+
+        if ($archived === 'only') {
+            $query->archived();
+
+            return;
+        }
+
+        $query->unarchived();
     }
 
     /**

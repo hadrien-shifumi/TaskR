@@ -53,6 +53,7 @@ class ShowProjectBoard
 
         $issues = $project->issues()
             ->with(['assignees'])
+            ->unarchived()
             ->when($parentsOnly, fn ($query) => $query->whereNull('parent_id'))
             ->when($assigneeId !== null, fn (Builder $query) => $query->whereHas('assignees', fn (Builder $q) => $q->where('users.id', $assigneeId)))
             ->orderBy('created_at')
@@ -65,6 +66,7 @@ class ShowProjectBoard
 
         return [
             'project' => ProjectPresenter::summary($project),
+            'isOwner' => $user !== null && $workspace->hasOwner($user),
             // Health feeds the pagebar badge and the projection meta.
             'health' => GetProjectHealth::run($project, $user)->toArray(),
             'parentsOnly' => $parentsOnly,

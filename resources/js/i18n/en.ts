@@ -135,6 +135,8 @@ const en = {
         issueActions: "Issue actions",
         editTitle: "Edit title…",
         deleteIssue: "Delete issue…",
+        archiveIssue: "Archive",
+        unarchiveIssue: "Unarchive",
         opened: "opened {{date}}",
         by: "by {{name}}",
         due: "due {{date}}",
@@ -248,6 +250,7 @@ const en = {
 
     projectBoard: {
         backToProjects: "Back to projects",
+        archiveCompleted: "Archive completed",
         issuesTarget: "{{count}} issues · target: {{date}}",
         overdueSuffix: " · overdue",
         parentsOnly: "Parents only",
@@ -427,11 +430,30 @@ const en = {
         actionsFor: "Actions for {{name}}",
         edit: "Edit…",
         archive: "Archive…",
+        issueArchives: "Issue archives",
         delete: "Delete…",
     },
 
     labelPicker: {
         noLabels: "No labels in this workspace yet.",
+    },
+
+    projectArchives: {
+        title: "Archives — {{name}}",
+        headTitle: "Archives — {{name}}",
+        backToBoard: "Back to the board",
+        intro: "{{count}} archived issue(s) in this project.",
+        archivedOn: "archived on {{date}}",
+        unarchive: "Unarchive",
+        empty: "No archived issues in this project yet.",
+    },
+
+    archiveCompleted: {
+        title: "Archive completed issues?",
+        confirm: "{{count}} done or cancelled issue(s) will be archived. They stay consultable in the archives and can be unarchived.",
+        nothingToDo: "No done or cancelled issue to archive.",
+        confirmButton: "Archive",
+        cancel: "Cancel",
     },
 
     deleteProject: {

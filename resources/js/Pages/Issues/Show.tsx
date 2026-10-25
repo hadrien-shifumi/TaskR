@@ -9,10 +9,10 @@ import {
 } from '@/components/ui/dropdown-menu';
 import AppLayout from '@/layouts/app-layout';
 import { Head, router, usePage } from '@inertiajs/react';
-import { ArrowLeft, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { ArrowLeft, Archive, ArchiveRestore, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { LabelRef, UserRef } from '@/types';
+import type { LabelRef, PageSharedProps, UserRef } from '@/types';
 import { CopyIssueIdButton } from './Show/components/copy-issue-id-button';
 import { DeleteIssueDialog } from './Show/components/delete-issue-dialog';
 import { EditIssueDialog } from './Show/components/edit-issue-dialog';
@@ -27,11 +27,17 @@ type PageProps = {
     members: UserRef[];
     labels: LabelRef[];
     candidates: { id: string; title: string }[];
+    isOwner: boolean;
 };
 
 export default function Show() {
-    const { issue, comments, timeEntries, statuses, members, labels, candidates } = usePage<PageProps>().props;
+    const { issue, comments, timeEntries, statuses, members, labels, candidates, isOwner } = usePage<PageProps>().props;
+    const { workspace } = usePage<PageSharedProps>().props;
     const { t } = useTranslation();
+    const owner = isOwner || workspace?.role === 'owner';
+    const archiveAction = () => {
+        router.post(route('issues.archive', issue.id));
+    };
     const [editingTitle, setEditingTitle] = useState(false);
     const [deleting, setDeleting] = useState(false);
 
@@ -72,6 +78,19 @@ export default function Show() {
                                     <Pencil aria-hidden />
                                     {t('issueShow.editTitle')}
                                 </DropdownMenuItem>
+                                {owner && (issue.status.category === 'done' || issue.status.category === 'cancelled') ? (
+                                    issue.archivedAt ? (
+                                        <DropdownMenuItem onClick={archiveAction}>
+                                            <ArchiveRestore aria-hidden />
+                                            {t('issueShow.unarchiveIssue')}
+                                        </DropdownMenuItem>
+                                    ) : (
+                                        <DropdownMenuItem onClick={archiveAction}>
+                                            <Archive aria-hidden />
+                                            {t('issueShow.archiveIssue')}
+                                        </DropdownMenuItem>
+                                    )
+                                ) : null}
                                 <DropdownMenuItem variant="destructive" onClick={() => setDeleting(true)}>
                                     <Trash2 aria-hidden />
                                     {t('issueShow.deleteIssue')}
