@@ -253,6 +253,13 @@ const fr: typeof en = {
         issuesTarget: "{{count}} tickets · cible : {{date}}",
         overdueSuffix: " · en retard",
         parentsOnly: "Parents seuls",
+        archiveCompleted: "Archiver les terminées",
+        archiveCompletedTitle: "Archiver les tickets terminés",
+        archiveCompletedDescription:
+            "Archive toutes les issues done et cancelled de ce board — seuls les sous-arbres fermés, le travail en cours reste en place.",
+        archiveCompletedCounts: "{{done}} terminées · {{cancelled}} annulées",
+        archiveCompletedConfirm: "Archiver",
+        archiveCompletedCancel: "Annuler",
         headTitle: "Kanban — {{name}}",
         macroIntro:
             "Vue macro — les sous-tâches sont masquées. Les colonnes suivent les statuts de l'espace : glissez une carte pour changer son statut, les transitions sont toujours libres.",

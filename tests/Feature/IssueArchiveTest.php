@@ -283,4 +283,85 @@ class IssueArchiveTest extends TestCase
                     ->where('issue.archivedAt', $archivedAt)
             );
     }
+
+    public function test_owner_can_mass_archive_completed_issues_by_project(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspace();
+        $firstDone = $this->createIssue($workspace, $project, StatusCategory::Done);
+        $secondDone = $this->createIssue($workspace, $project, StatusCategory::Done);
+        $cancelled = $this->createIssue($workspace, $project, StatusCategory::Cancelled);
+        $backlog = $this->createIssue($workspace, $project, StatusCategory::Backlog);
+
+        $this->actingAs($owner)
+            ->post("/projects/{$project->id}/issues/archive-completed")
+            ->assertRedirect()
+            ->assertSessionHas('status', __('flash.project.issuesArchived', ['count' => 3]));
+
+        $this->assertNotNull($firstDone->fresh()->archived_at);
+        $this->assertNotNull($secondDone->fresh()->archived_at);
+        $this->assertNotNull($cancelled->fresh()->archived_at);
+        $this->assertNull($backlog->fresh()->archived_at);
+    }
+
+    public function test_mass_archive_cascades_through_the_unitary_toggle(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspace();
+        $parent = $this->createIssue($workspace, $project, StatusCategory::Done);
+        $child = $this->createIssue($workspace, $project, StatusCategory::Done, ['parent_id' => $parent->id]);
+
+        $this->actingAs($owner)
+            ->post("/projects/{$project->id}/issues/archive-completed")
+            ->assertRedirect()
+            ->assertSessionHas('status', __('flash.project.issuesArchived', ['count' => 1]));
+
+        $this->assertNotNull($parent->fresh()->archived_at);
+        $this->assertNotNull($child->fresh()->archived_at);
+    }
+
+    public function test_mass_archive_skips_subtrees_with_open_children(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspace();
+        $parent = $this->createIssue($workspace, $project, StatusCategory::Done);
+        $this->createIssue($workspace, $project, StatusCategory::InProgress, ['parent_id' => $parent->id]);
+        $standalone = $this->createIssue($workspace, $project, StatusCategory::Done);
+
+        $this->actingAs($owner)
+            ->post("/projects/{$project->id}/issues/archive-completed")
+            ->assertRedirect()
+            ->assertSessionHas('status', __('flash.project.issuesArchived', ['count' => 1]));
+
+        $this->assertNull($parent->fresh()->archived_at);
+        $this->assertNotNull($standalone->fresh()->archived_at);
+    }
+
+    public function test_member_cannot_mass_archive_completed_issues(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspace();
+        $member = $this->memberOf($workspace);
+        $issue = $this->createIssue($workspace, $project, StatusCategory::Done);
+
+        $this->actingAs($member)
+            ->post("/projects/{$project->id}/issues/archive-completed")
+            ->assertForbidden();
+
+        $this->assertNull($issue->fresh()->archived_at);
+    }
+
+    public function test_mass_archive_only_touches_the_target_project(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspace();
+        $otherProject = $workspace->projects()->create([
+            'workspace_id' => $workspace->id,
+            'name' => 'Autre projet',
+        ]);
+        $here = $this->createIssue($workspace, $project, StatusCategory::Done);
+        $there = $this->createIssue($workspace, $otherProject, StatusCategory::Done);
+
+        $this->actingAs($owner)
+            ->post("/projects/{$project->id}/issues/archive-completed")
+            ->assertRedirect();
+
+        $this->assertNotNull($here->fresh()->archived_at);
+        $this->assertNull($there->fresh()->archived_at);
+    }
 }
