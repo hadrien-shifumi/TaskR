@@ -111,6 +111,8 @@ class IssuePresenter
             'estimatedHours' => $issue->estimated_hours !== null ? (float) $issue->estimated_hours : null,
             'loggedHours' => $issue->logged_hours,
             'remainingHours' => $issue->remaining_hours,
+            'isArchived' => $issue->isArchived(),
+            'archivedAt' => $issue->archived_at?->toISOString(),
             'assignees' => self::assignees($issue),
             'labels' => $issue->labels->map(fn ($label) => ['id' => $label->id, 'name' => $label->name, 'color' => $label->color])->values()->all(),
             'parent' => $parent !== null ? self::parentSummary($parent) : null,

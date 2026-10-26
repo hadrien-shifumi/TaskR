@@ -7,6 +7,8 @@ return [
         'updated' => 'Issue updated.',
         'moved' => 'Issue moved.',
         'deleted' => 'Issue deleted.',
+        'archived' => 'Issue archived.',
+        'unarchived' => 'Issue restored.',
     ],
 
     'label' => [

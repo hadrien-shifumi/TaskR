@@ -133,6 +133,8 @@ const fr: typeof en = {
         issueActions: "Actions du ticket",
         editTitle: "Modifier le titre…",
         deleteIssue: "Supprimer le ticket…",
+        archiveIssue: "Archiver le ticket…",
+        unarchiveIssue: "Désarchiver le ticket…",
         opened: "ouvert le {{date}}",
         by: "par {{name}}",
         due: "échéance {{date}}",

@@ -135,6 +135,8 @@ const en = {
         issueActions: "Issue actions",
         editTitle: "Edit title…",
         deleteIssue: "Delete issue…",
+        archiveIssue: "Archive issue…",
+        unarchiveIssue: "Unarchive issue…",
         opened: "opened {{date}}",
         by: "by {{name}}",
         due: "due {{date}}",

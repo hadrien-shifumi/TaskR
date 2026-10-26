@@ -12,6 +12,7 @@ use App\Actions\Auth\UpdateUserLocale;
 use App\Actions\Comments\AddComment;
 use App\Actions\Comments\DeleteComment;
 use App\Actions\Comments\UpdateComment;
+use App\Actions\Issues\ArchiveIssue;
 use App\Actions\Issues\CreateIssue;
 use App\Actions\Issues\DeleteIssue;
 use App\Actions\Issues\MoveIssue;
@@ -125,6 +126,7 @@ Route::middleware(['auth', 'workspace'])->group(function (): void {
     Route::post('/issues/{issue}/parent', SetIssueParent::class)->name('issues.parent');
     Route::post('/issues/{issue}/assignees', SetAssignees::class)->name('issues.assignees');
     Route::post('/issues/{issue}/labels', SetLabels::class)->name('issues.labels');
+    Route::post('/issues/{issue}/archive', ArchiveIssue::class)->name('issues.archive');
 
     Route::post('/issues/{issue}/comments', AddComment::class)->name('comments.store');
     Route::match(['put', 'patch'], '/issues/{issue}/comments/{comment}', UpdateComment::class)
