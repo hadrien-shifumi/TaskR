@@ -89,6 +89,7 @@ class ShowIssuePage
             : null;
 
         return Issue::query()
+            ->unarchived()
             ->whereKeyNot($issue->id)
             ->when($scope !== null, fn ($query) => $query->whereIn('project_id', $scope))
             ->orderBy('title')

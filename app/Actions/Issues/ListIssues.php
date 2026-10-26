@@ -37,6 +37,16 @@ class ListIssues
             ->when($scope !== null, fn (Builder $issues) => $issues->whereIn('project_id', $scope))
             ->orderByDesc('created_at');
 
+        // Archived visibility: excluded by default (every active view), or
+        // explicitly included / listed only. Applied before the unfiltered
+        // count: the "total" shown next to filters is the active total.
+        $archived = $filters['archived'] ?? 'exclude';
+        if ($archived === 'only') {
+            $query->archived();
+        } elseif ($archived !== 'include') {
+            $query->unarchived();
+        }
+
         // Scope-wide count, before any other filter: the issues page shows
         // it next to the filtered count ("visible / total").
         $totalUnfiltered = (clone $query)->toBase()->count();
