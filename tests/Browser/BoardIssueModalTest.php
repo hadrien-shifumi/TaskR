@@ -99,3 +99,51 @@ it('navigates between child and parent issues inside the modal', function () {
 
     $page->assertNoSmoke();
 });
+
+it('keeps the close button pinned to the modal top while the content scrolls', function () {
+    [$owner, $workspace, $project] = setupBrowserWorkspace(withProject: true);
+    app(WorkspaceContext::class)->set($workspace);
+    $backlog = $workspace->statuses()->where('name', 'Backlog')->firstOrFail();
+    $issue = CreateIssue::run($workspace, [
+        'project_id' => $project->id,
+        'title' => 'Fiche interminable',
+        'description' => str_repeat("Paragraphe assez long pour forcer le defilement de la fiche en modal.\n\n", 60),
+        'status_id' => $backlog->id,
+    ]);
+    $this->actingAs($owner);
+
+    $page = visit("/projects/{$project->id}/board");
+    $page->click("[data-test=\"board-card-{$issue->id}\"] a");
+    $page->assertSeeIn('[data-test="issue-detail-dialog"] h1', 'Fiche interminable');
+
+    // Scroll the modal's actual scrollable area to the bottom, then measure
+    // the close button against the panel's top edge: it must stay pinned
+    // there instead of being carried away with the scrolling content.
+    $probe = <<<'JS'
+        (() => {
+            const panel = document.querySelector('[data-test="issue-detail-dialog"]');
+            const scrollable = [panel, ...panel.querySelectorAll('div')].find((el) => {
+                const style = getComputedStyle(el);
+                return (style.overflowY === 'auto' || style.overflowY === 'scroll')
+                    && el.scrollHeight > el.clientHeight;
+            });
+            if (!scrollable) {
+                return { scrolled: false, pinned: null };
+            }
+            scrollable.scrollTop = scrollable.scrollHeight;
+            const panelRect = panel.getBoundingClientRect();
+            const buttonRect = panel.querySelector('[data-slot="dialog-close"]').getBoundingClientRect();
+            return {
+                scrolled: scrollable.scrollTop > 0,
+                pinned: buttonRect.top >= panelRect.top - 1 && buttonRect.bottom <= panelRect.top + 60,
+            };
+        })()
+        JS;
+
+    $result = $page->script($probe);
+
+    expect($result['scrolled'])->toBeTrue('the modal content must actually scroll for this probe to mean anything');
+    expect($result['pinned'])->toBeTrue('the close button must stay pinned to the top of the modal while its content scrolls');
+
+    $page->assertNoSmoke();
+});
