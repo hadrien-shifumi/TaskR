@@ -14,6 +14,8 @@ export type IssueDetail = {
     estimatedHours: number | null;
     loggedHours: number;
     remainingHours: number | null;
+    isArchived: boolean;
+    archivedAt: string | null;
     assignees: UserRef[];
     labels: LabelRef[];
     parent: { id: string; title: string; statusName: string | null } | null;
