@@ -27,12 +27,14 @@ class Issue extends BaseModel
         'due_date',
         'estimated_hours',
         'created_by',
+        'archived_at',
     ];
 
     protected $casts = [
         'priority' => Priority::class,
         'due_date' => 'date',
         'estimated_hours' => 'decimal:2',
+        'archived_at' => 'datetime',
     ];
 
     /**
@@ -145,5 +147,20 @@ class Issue extends BaseModel
         return $query
             ->whereNotNull('due_date')
             ->whereDate('due_date', '<', now());
+    }
+
+    public function scopeUnarchived(Builder $query): Builder
+    {
+        return $query->whereNull('archived_at');
+    }
+
+    public function scopeArchived(Builder $query): Builder
+    {
+        return $query->whereNotNull('archived_at');
+    }
+
+    public function isArchived(): bool
+    {
+        return $this->archived_at !== null;
     }
 }
