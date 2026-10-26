@@ -71,9 +71,9 @@ export function IssueDetailDialog({ projectId, filters, parentsOnly, detail }: I
         >
             <DialogContent
                 data-test="issue-detail-dialog"
-                className="max-h-[88vh] gap-0 overflow-y-auto p-0 sm:max-w-5xl"
+                className="flex max-h-[88vh] flex-col gap-0 p-0 sm:max-w-5xl"
             >
-                <div className="p-6">
+                <div data-test="issue-detail-scroll" className="min-h-0 flex-1 overflow-y-auto p-6">
                     <div className="flex items-center gap-1.5 pb-4">
                         <span
                             data-test="issue-ulid"
