@@ -102,6 +102,7 @@ class IssuePresenter
             'title' => $issue->title,
             'description' => $issue->description,
             'createdAt' => $issue->created_at?->toISOString(),
+            'updatedAt' => $issue->updated_at?->toISOString(),
             'creatorName' => $issue->creator?->name,
             'project' => ['id' => $issue->project->id, 'name' => $issue->project->name],
             'status' => ['id' => $issue->status->id, 'name' => $issue->status->name, 'category' => $issue->status->category->value],
