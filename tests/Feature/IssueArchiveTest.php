@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Actions\Issues\ListIssues;
+use App\Actions\Projects\GetProjectHealth;
 use App\Actions\Workspaces\CreateWorkspace;
 use App\Enums\StatusCategory;
 use App\Models\Issue;
@@ -363,5 +365,115 @@ class IssueArchiveTest extends TestCase
 
         $this->assertNotNull($here->fresh()->archived_at);
         $this->assertNull($there->fresh()->archived_at);
+    }
+
+    public function test_archived_issues_are_excluded_from_the_issues_list(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspace();
+        $active = $this->createIssue($workspace, $project, StatusCategory::Backlog);
+        $archived = $this->createIssue($workspace, $project, StatusCategory::Done);
+        $archived->update(['archived_at' => now()]);
+
+        $response = $this->actingAs($owner)->get('/issues');
+
+        $response->assertInertia(
+            fn (AssertableInertia $page) => $page
+                ->has('issues', 1)
+                ->where('issues.0.title', $active->title)
+        );
+    }
+
+    public function test_list_issues_archived_param_composes_with_filters(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspace();
+        $active = $this->createIssue($workspace, $project, StatusCategory::Backlog);
+        $archived = $this->createIssue($workspace, $project, StatusCategory::Done);
+        $archived->update(['archived_at' => now()]);
+
+        $default = ListIssues::run($workspace);
+        $this->assertTrue(collect($default['issues'])->pluck('title')->contains($active->title));
+        $this->assertFalse(collect($default['issues'])->pluck('title')->contains($archived->title));
+        $this->assertSame(1, $default['total']);
+        $this->assertSame(1, $default['totalUnfiltered']);
+
+        $included = ListIssues::run($workspace, ['archived' => 'include']);
+        $this->assertCount(2, $included['issues']);
+        $this->assertSame(2, $included['total']);
+        $this->assertSame(2, $included['totalUnfiltered']);
+
+        $only = ListIssues::run($workspace, ['archived' => 'only']);
+        $this->assertSame([$archived->title], collect($only['issues'])->pluck('title')->all());
+        $this->assertSame(1, $only['total']);
+    }
+
+    public function test_archived_issues_leave_the_project_board(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspace();
+        $active = $this->createIssue($workspace, $project, StatusCategory::Backlog);
+        $done = $this->createIssue($workspace, $project, StatusCategory::Done);
+        $done->update(['archived_at' => now()]);
+
+        $this->actingAs($owner)
+            ->get("/projects/{$project->id}/board")
+            ->assertOk()
+            ->assertInertia(
+                fn (AssertableInertia $page) => $page
+                    ->has('columns', 4)
+                    ->has('columns.0.issues', 1)
+                    ->has('columns.2.issues', 0)
+            );
+    }
+
+    public function test_archived_issues_leave_project_health(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspace();
+        $active = $this->createIssue($workspace, $project, StatusCategory::Backlog, [
+            'estimated_hours' => 2,
+        ]);
+        $archived = $this->createIssue($workspace, $project, StatusCategory::Done, [
+            'estimated_hours' => 5,
+        ]);
+        $archived->update(['archived_at' => now()]);
+
+        $health = GetProjectHealth::run($project);
+
+        $this->assertSame(1, $health->totalIssues);
+        $this->assertSame(1, $health->issuesByCategory['backlog']);
+        $this->assertSame(0, $health->issuesByCategory['done']);
+        $this->assertEquals(2, $health->estimatedHours);
+    }
+
+    public function test_archived_issues_leave_home_my_issues(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspace();
+        $active = $this->createIssue($workspace, $project, StatusCategory::InProgress);
+        $active->assignees()->attach($owner);
+        $archived = $this->createIssue($workspace, $project, StatusCategory::Done);
+        $archived->assignees()->attach($owner);
+        $archived->update(['archived_at' => now()]);
+
+        $response = $this->actingAs($owner)->get('/');
+
+        $response->assertInertia(
+            fn (AssertableInertia $page) => $page
+                ->has('myIssues', 1)
+                ->where('myIssues.0.title', $active->title)
+        );
+    }
+
+    public function test_archived_issues_leave_parent_candidates(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspace();
+        $issue = $this->createIssue($workspace, $project, StatusCategory::Backlog);
+        $archived = $this->createIssue($workspace, $project, StatusCategory::Done);
+        $archived->update(['archived_at' => now()]);
+
+        $this->actingAs($owner)
+            ->get("/issues/{$issue->id}")
+            ->assertOk()
+            ->assertInertia(
+                fn (AssertableInertia $page) => $page
+                    ->has('candidates', 0)
+            );
     }
 }
