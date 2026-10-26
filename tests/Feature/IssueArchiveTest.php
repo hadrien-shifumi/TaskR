@@ -476,4 +476,81 @@ class IssueArchiveTest extends TestCase
                     ->has('candidates', 0)
             );
     }
+
+    public function test_archives_view_lists_project_archived_issues_by_recency(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspace();
+        $oldest = $this->createIssue($workspace, $project, StatusCategory::Done);
+        $oldest->update(['archived_at' => now()->subDays(3)]);
+        $newest = $this->createIssue($workspace, $project, StatusCategory::Cancelled);
+        $newest->update(['archived_at' => now()]);
+        $middle = $this->createIssue($workspace, $project, StatusCategory::Done);
+        $middle->update(['archived_at' => now()->subDay()]);
+        $active = $this->createIssue($workspace, $project, StatusCategory::Backlog);
+
+        $this->actingAs($owner)
+            ->get("/projects/{$project->id}/archives")
+            ->assertOk()
+            ->assertInertia(
+                fn (AssertableInertia $page) => $page
+                    ->has('issues', 3)
+                    ->where('issues.0.id', $newest->id)
+                    ->where('issues.1.id', $middle->id)
+                    ->where('issues.2.id', $oldest->id)
+            );
+    }
+
+    public function test_archives_view_only_shows_the_target_project_issues(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspace();
+        $otherProject = $workspace->projects()->create([
+            'workspace_id' => $workspace->id,
+            'name' => 'Autre projet',
+        ]);
+        $here = $this->createIssue($workspace, $project, StatusCategory::Done);
+        $here->update(['archived_at' => now()]);
+        $there = $this->createIssue($workspace, $otherProject, StatusCategory::Done);
+        $there->update(['archived_at' => now()]);
+
+        $this->actingAs($owner)
+            ->get("/projects/{$project->id}/archives")
+            ->assertOk()
+            ->assertInertia(
+                fn (AssertableInertia $page) => $page
+                    ->has('issues', 1)
+                    ->where('issues.0.id', $here->id)
+            );
+    }
+
+    public function test_members_can_view_the_archives_list(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspace();
+        $member = $this->memberOf($workspace);
+        $issue = $this->createIssue($workspace, $project, StatusCategory::Done);
+        $issue->update(['archived_at' => now()]);
+
+        $this->actingAs($member)
+            ->get("/projects/{$project->id}/archives")
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page->where('canUnarchive', false));
+
+        $this->actingAs($owner)
+            ->get("/projects/{$project->id}/archives")
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page->where('canUnarchive', true));
+    }
+
+    public function test_archives_view_is_scoped_by_workspace(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspace();
+        $issue = $this->createIssue($workspace, $project, StatusCategory::Done);
+        $issue->update(['archived_at' => now()]);
+
+        $intruder = User::factory()->create();
+        CreateWorkspace::run($intruder, ['name' => 'Theirs']);
+
+        $this->actingAs($intruder)
+            ->get("/projects/{$project->id}/archives")
+            ->assertNotFound();
+    }
 }

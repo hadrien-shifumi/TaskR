@@ -436,7 +436,23 @@ const en = {
         actionsFor: "Actions for {{name}}",
         edit: "Edit…",
         archive: "Archive…",
+        issueArchives: "Issue archives",
         delete: "Delete…",
+    },
+
+    projectArchives: {
+        title: "Archives — {{name}}",
+        headTitle: "Archives — {{name}}",
+        backToBoard: "Back to the board",
+        intro:
+            "Archived issues of this project, most recently archived first. They left every active view; unarchiving brings a closed subtree back.",
+        empty: "No archived issue in this project yet.",
+        issue: "Issue",
+        status: "Status",
+        priority: "Priority",
+        assignees: "Assignees",
+        archivedAt: "Archived on",
+        unarchive: "Unarchive",
     },
 
     labelPicker: {

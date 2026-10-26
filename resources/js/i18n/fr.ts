@@ -439,7 +439,23 @@ const fr: typeof en = {
         actionsFor: "Actions pour {{name}}",
         edit: "Modifier…",
         archive: "Archiver…",
+        issueArchives: "Archives des tickets",
         delete: "Supprimer…",
+    },
+
+    projectArchives: {
+        title: "Archives — {{name}}",
+        headTitle: "Archives — {{name}}",
+        backToBoard: "Retour au board",
+        intro:
+            "Les issues archivées de ce projet, les plus récemment archivées en premier. Elles ont quitté toutes les vues actives ; le désarchivage ramène un sous-arbre fermé.",
+        empty: "Aucune issue archivée dans ce projet pour le moment.",
+        issue: "Ticket",
+        status: "Statut",
+        priority: "Priorité",
+        assignees: "Assignés",
+        archivedAt: "Archivé le",
+        unarchive: "Désarchiver",
     },
 
     labelPicker: {
