@@ -11,6 +11,7 @@ use App\Mcp\Tools\ArchiveProject as ArchiveProjectTool;
 use App\Mcp\Tools\CreateLabel;
 use App\Mcp\Tools\CreateProject as CreateProjectTool;
 use App\Mcp\Tools\DeleteProject as DeleteProjectTool;
+use App\Mcp\Tools\GetIssue;
 use App\Mcp\Tools\GetProjectHealth;
 use App\Mcp\Tools\InviteMember;
 use App\Mcp\Tools\ListLabels;
@@ -27,7 +28,9 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Support\WorkspaceContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Testing\TestResponse;
+use ReflectionClass;
 use Tests\TestCase;
 
 class McpGuestScopeTest extends TestCase
@@ -308,5 +311,72 @@ class McpGuestScopeTest extends TestCase
         TaskrServer::actingAs($guest)->tool(ListTemplates::class, [
             'workspace_id' => $workspace->id,
         ])->assertOk();
+    }
+
+    // ── GetIssue : périmètre guest et refus sans fuite ────────────────
+
+    public function test_guest_mcp_get_issue_in_scope_returns_full_body(): void
+    {
+        [$owner, $workspace, $inScope, , $guest] = $this->setupScopedGuest();
+        app(WorkspaceContext::class)->set($workspace);
+        $issue = CreateIssue::run($workspace, [
+            'project_id' => $inScope->id,
+            'title' => 'Visible spec',
+            'description' => 'The specification body an agent needs.',
+        ], $owner);
+
+        $result = TaskrServer::actingAs($guest)->tool(GetIssue::class, [
+            'workspace_id' => $workspace->id,
+            'issue_id' => $issue->id,
+        ])->assertOk()->payload();
+
+        $this->assertSame($issue->id, $result['issue']['id']);
+        $this->assertSame('The specification body an agent needs.', $result['issue']['description']);
+        $this->assertSame('Visible spec', $result['issue']['title']);
+    }
+
+    public function test_guest_mcp_get_issue_out_of_scope_is_not_found(): void
+    {
+        [$owner, $workspace, , $outOfScope, $guest] = $this->setupScopedGuest();
+        app(WorkspaceContext::class)->set($workspace);
+        $issue = CreateIssue::run($workspace, [
+            'project_id' => $outOfScope->id,
+            'title' => 'Secret spec',
+            'description' => 'Classified specification body.',
+        ], $owner);
+
+        $response = TaskrServer::actingAs($guest)->tool(GetIssue::class, [
+            'workspace_id' => $workspace->id,
+            'issue_id' => $issue->id,
+        ]);
+
+        $this->assertSame('not_found', $response->payload()['error']);
+        $response->assertDontSee('Classified specification body.');
+    }
+
+    public function test_guest_mcp_get_issue_refused_for_non_member_without_leak(): void
+    {
+        [$owner, $workspace] = $this->setupScopedGuest();
+
+        $intruder = User::factory()->create();
+        CreateWorkspace::run($intruder, ['name' => 'Theirs']);
+
+        TaskrServer::actingAs($intruder)
+            ->tool(GetIssue::class, ['workspace_id' => $workspace->id, 'issue_id' => (string) str()->ulid()])
+            ->assertHasErrors(['You are not a member of this workspace.']);
+
+        // A non-existent workspace yields the same refusal: no existence leak.
+        TaskrServer::actingAs($intruder)
+            ->tool(GetIssue::class, ['workspace_id' => (string) str()->ulid(), 'issue_id' => (string) str()->ulid()])
+            ->assertHasErrors(['You are not a member of this workspace.']);
+    }
+
+    public function test_get_issue_description_states_the_guest_perimeter_rule(): void
+    {
+        $attributes = (new ReflectionClass(GetIssue::class))->getAttributes(Description::class);
+
+        $this->assertCount(1, $attributes);
+        $this->assertStringContainsStringIgnoringCase('guest', $attributes[0]->newInstance()->value);
+        $this->assertStringContainsStringIgnoringCase('perimeter', $attributes[0]->newInstance()->value);
     }
 }

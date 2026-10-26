@@ -12,7 +12,7 @@ use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Attributes\Name;
 
 #[Name('create_workspace')]
-#[Description('Create a new workspace. The authenticated user becomes its owner. Default statuses are created automatically.')]
+#[Description('Create a new workspace. The authenticated user becomes its owner. Default statuses are created automatically. Pass with_agent_labels=true to also seed the agent factory qualification labels (agent-ready/agent-failed); off by default.')]
 class CreateWorkspace extends AgentTool
 {
     /**
@@ -22,6 +22,7 @@ class CreateWorkspace extends AgentTool
     {
         return [
             'name' => $schema->string()->description('Workspace name (max 255 chars)')->required(),
+            'with_agent_labels' => $schema->boolean()->description('Seed the agent factory qualification labels (agent-ready green, agent-failed red). Default false: nothing is imposed.'),
         ];
     }
 
@@ -29,6 +30,10 @@ class CreateWorkspace extends AgentTool
     {
         $action = app(CreateWorkspaceAction::class);
         $data = $request->validate($action->rules());
+
+        if ($request->get('with_agent_labels') === true) {
+            $data['agent_labels'] = true;
+        }
 
         $workspace = $action->handle($this->currentUser($request), $data);
 
