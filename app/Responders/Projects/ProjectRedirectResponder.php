@@ -41,4 +41,15 @@ class ProjectRedirectResponder
             ->route('projects.index')
             ->with('status', __('flash.project.deleted'));
     }
+
+    /**
+     * Mass issue archiving happens from a project board: stay on the
+     * caller's context and report how many root issues were archived.
+     */
+    public function issuesArchived(int $count): RedirectResponse
+    {
+        return redirect()
+            ->back()
+            ->with('status', __('flash.project.issuesArchived', ['count' => $count]));
+    }
 }

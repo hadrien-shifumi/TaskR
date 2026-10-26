@@ -253,6 +253,13 @@ const en = {
         issuesTarget: "{{count}} issues · target: {{date}}",
         overdueSuffix: " · overdue",
         parentsOnly: "Parents only",
+        archiveCompleted: "Archive completed",
+        archiveCompletedTitle: "Archive completed issues",
+        archiveCompletedDescription:
+            "Archives every done and cancelled issue of this board — closed subtrees only, open work stays in place.",
+        archiveCompletedCounts: "{{done}} done · {{cancelled}} cancelled",
+        archiveCompletedConfirm: "Archive",
+        archiveCompletedCancel: "Cancel",
         headTitle: "Board — {{name}}",
         macroIntro:
             "Macro view — subtasks are hidden. Columns follow the workspace statuses: drag a card to change its status, transitions are always free.",

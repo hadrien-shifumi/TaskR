@@ -12,6 +12,7 @@ use App\Actions\Auth\UpdateUserLocale;
 use App\Actions\Comments\AddComment;
 use App\Actions\Comments\DeleteComment;
 use App\Actions\Comments\UpdateComment;
+use App\Actions\Issues\ArchiveCompletedIssues;
 use App\Actions\Issues\ArchiveIssue;
 use App\Actions\Issues\CreateIssue;
 use App\Actions\Issues\DeleteIssue;
@@ -115,6 +116,7 @@ Route::middleware(['auth', 'workspace'])->group(function (): void {
     Route::delete('/projects/{project}/members/{member}', RemoveProjectMember::class)->name('projects.members.destroy');
     Route::match(['put', 'patch'], '/projects/{project}', UpdateProject::class)->name('projects.update');
     Route::post('/projects/{project}/archive', ArchiveProject::class)->name('projects.archive');
+    Route::post('/projects/{project}/issues/archive-completed', ArchiveCompletedIssues::class)->name('projects.issues.archive-completed');
     Route::delete('/projects/{project}', DeleteProject::class)->name('projects.destroy');
 
     Route::get('/issues', ShowIssuesPage::class)->name('issues.index');
