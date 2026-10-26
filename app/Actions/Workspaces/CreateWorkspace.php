@@ -22,11 +22,12 @@ class CreateWorkspace
     {
         return [
             'name' => ['required', 'string', 'max:255'],
+            'agent_labels' => ['nullable', 'boolean'],
         ];
     }
 
     /**
-     * @param  array{name: string}  $data
+     * @param  array{name: string, agent_labels?: bool}  $data
      */
     public function handle(User $owner, array $data): Workspace
     {
@@ -40,8 +41,30 @@ class CreateWorkspace
 
             $this->createDefaultStatuses($workspace);
 
+            // Optional workspace template: seed the agent factory's
+            // qualification labels. Off by default — the convention is
+            // never imposed, the factory opts in when scripting a
+            // workspace (MCP create_workspace with_agent_labels).
+            if (($data['agent_labels'] ?? false) === true) {
+                $this->createAgentQualificationLabels($workspace);
+            }
+
             return $workspace;
         });
+    }
+
+    /**
+     * The agent factory's conventional qualification labels, as created
+     * by the bot itself (see the knowledge page "Usine de développement :
+     * labels de qualification agent"): agent-ready opens the
+     * specification gate, agent-failed traces a factory failure.
+     */
+    private function createAgentQualificationLabels(Workspace $workspace): void
+    {
+        $workspace->labels()->createMany([
+            ['name' => 'agent-ready', 'color' => 'green'],
+            ['name' => 'agent-failed', 'color' => 'red'],
+        ]);
     }
 
     /**
