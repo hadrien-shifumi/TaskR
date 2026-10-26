@@ -6,6 +6,8 @@ use App\Actions\Issues\ListIssues;
 use App\Actions\Projects\GetProjectHealth;
 use App\Actions\Workspaces\CreateWorkspace;
 use App\Enums\StatusCategory;
+use App\Mcp\Servers\TaskrServer;
+use App\Mcp\Tools\ListIssues as ListIssuesTool;
 use App\Models\Issue;
 use App\Models\Membership;
 use App\Models\Project;
@@ -552,5 +554,56 @@ class IssueArchiveTest extends TestCase
         $this->actingAs($intruder)
             ->get("/projects/{$project->id}/archives")
             ->assertNotFound();
+    }
+
+    public function test_mcp_list_issues_excludes_archived_by_default(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspace();
+        $active = $this->createIssue($workspace, $project, StatusCategory::Backlog);
+        $archived = $this->createIssue($workspace, $project, StatusCategory::Done);
+        $archived->update(['archived_at' => now()]);
+
+        $result = TaskrServer::actingAs($owner)
+            ->tool(ListIssuesTool::class, ['workspace_id' => $workspace->id])
+            ->assertOk()
+            ->payload();
+
+        $titles = collect($result['issues'])->pluck('title');
+
+        $this->assertTrue($titles->contains($active->title));
+        $this->assertFalse($titles->contains($archived->title));
+        $this->assertSame(1, $result['total']);
+    }
+
+    public function test_mcp_list_issues_archived_include_and_only(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspace();
+        $active = $this->createIssue($workspace, $project, StatusCategory::Backlog);
+        $archived = $this->createIssue($workspace, $project, StatusCategory::Done);
+        $archived->update(['archived_at' => now()]);
+
+        $included = TaskrServer::actingAs($owner)
+            ->tool(ListIssuesTool::class, ['workspace_id' => $workspace->id, 'archived' => 'include'])
+            ->assertOk()
+            ->payload();
+        $this->assertCount(2, $included['issues']);
+        $this->assertSame(2, $included['total']);
+
+        $only = TaskrServer::actingAs($owner)
+            ->tool(ListIssuesTool::class, ['workspace_id' => $workspace->id, 'archived' => 'only'])
+            ->assertOk()
+            ->payload();
+        $this->assertSame([$archived->title], collect($only['issues'])->pluck('title')->all());
+        $this->assertSame(1, $only['total']);
+    }
+
+    public function test_mcp_list_issues_archived_rejects_unknown_values(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspace();
+        $this->createIssue($workspace, $project, StatusCategory::Backlog);
+
+        TaskrServer::actingAs($owner)
+            ->tool(ListIssuesTool::class, ['workspace_id' => $workspace->id, 'archived' => 'all'])
+            ->assertHasErrors(['archived']);
     }
 }
