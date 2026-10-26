@@ -5,11 +5,12 @@ import {
     DropdownMenuContent,
     DropdownMenuGroup,
     DropdownMenuItem,
+    DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import AppLayout from '@/layouts/app-layout';
 import { Head, router, usePage } from '@inertiajs/react';
-import { ArrowLeft, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { ArchiveRestore, Archive, ArrowLeft, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { LabelRef, UserRef } from '@/types';
@@ -27,13 +28,24 @@ type PageProps = {
     members: UserRef[];
     labels: LabelRef[];
     candidates: { id: string; title: string }[];
+    workspace?: { role?: string } | null;
 };
 
 export default function Show() {
-    const { issue, comments, timeEntries, statuses, members, labels, candidates } = usePage<PageProps>().props;
+    const { issue, comments, timeEntries, statuses, members, labels, candidates, workspace } = usePage<PageProps>().props;
     const { t } = useTranslation();
     const [editingTitle, setEditingTitle] = useState(false);
     const [deleting, setDeleting] = useState(false);
+
+    // Archiving is an owner-only workspace management action, reserved to
+    // closed issues (done or cancelled); unarchiving applies when archived.
+    const canToggleArchive =
+        workspace?.role === 'owner' &&
+        (issue.isArchived || issue.status.category === 'done' || issue.status.category === 'cancelled');
+
+    const toggleArchive = () => {
+        router.post(route('issues.archive', issue.id));
+    };
 
     return (
         <AppLayout
@@ -72,6 +84,21 @@ export default function Show() {
                                     <Pencil aria-hidden />
                                     {t('issueShow.editTitle')}
                                 </DropdownMenuItem>
+                                {canToggleArchive ? (
+                                    <>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem
+                                            data-test="issue-archive-toggle"
+                                            onClick={toggleArchive}
+                                        >
+                                            {issue.isArchived ? <ArchiveRestore aria-hidden /> : <Archive aria-hidden />}
+                                            {issue.isArchived
+                                                ? t('issueShow.unarchiveIssue')
+                                                : t('issueShow.archiveIssue')}
+                                        </DropdownMenuItem>
+                                    </>
+                                ) : null}
+                                <DropdownMenuSeparator />
                                 <DropdownMenuItem variant="destructive" onClick={() => setDeleting(true)}>
                                     <Trash2 aria-hidden />
                                     {t('issueShow.deleteIssue')}

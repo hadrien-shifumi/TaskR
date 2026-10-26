@@ -7,6 +7,8 @@ return [
         'updated' => 'Issue updated.',
         'moved' => 'Issue moved.',
         'deleted' => 'Issue deleted.',
+        'archived' => 'Issue archived.',
+        'unarchived' => 'Issue restored.',
     ],
 
     'label' => [
@@ -64,6 +66,7 @@ return [
         'archived' => 'Project ":name" archived.',
         'restored' => 'Project ":name" restored.',
         'deleted' => 'Project deleted.',
+        'issuesArchived' => ':count issues archived.',
     ],
 
     'project_member' => [

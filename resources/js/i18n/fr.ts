@@ -133,6 +133,8 @@ const fr: typeof en = {
         issueActions: "Actions du ticket",
         editTitle: "Modifier le titre…",
         deleteIssue: "Supprimer le ticket…",
+        archiveIssue: "Archiver le ticket…",
+        unarchiveIssue: "Désarchiver le ticket…",
         opened: "ouvert le {{date}}",
         by: "par {{name}}",
         due: "échéance {{date}}",
@@ -251,6 +253,13 @@ const fr: typeof en = {
         issuesTarget: "{{count}} tickets · cible : {{date}}",
         overdueSuffix: " · en retard",
         parentsOnly: "Parents seuls",
+        archiveCompleted: "Archiver les terminées",
+        archiveCompletedTitle: "Archiver les tickets terminés",
+        archiveCompletedDescription:
+            "Archive toutes les issues done et cancelled de ce board — seuls les sous-arbres fermés, le travail en cours reste en place.",
+        archiveCompletedCounts: "{{done}} terminées · {{cancelled}} annulées",
+        archiveCompletedConfirm: "Archiver",
+        archiveCompletedCancel: "Annuler",
         headTitle: "Kanban — {{name}}",
         macroIntro:
             "Vue macro — les sous-tâches sont masquées. Les colonnes suivent les statuts de l'espace : glissez une carte pour changer son statut, les transitions sont toujours libres.",
@@ -430,7 +439,23 @@ const fr: typeof en = {
         actionsFor: "Actions pour {{name}}",
         edit: "Modifier…",
         archive: "Archiver…",
+        issueArchives: "Archives des tickets",
         delete: "Supprimer…",
+    },
+
+    projectArchives: {
+        title: "Archives — {{name}}",
+        headTitle: "Archives — {{name}}",
+        backToBoard: "Retour au board",
+        intro:
+            "Les issues archivées de ce projet, les plus récemment archivées en premier. Elles ont quitté toutes les vues actives ; le désarchivage ramène un sous-arbre fermé.",
+        empty: "Aucune issue archivée dans ce projet pour le moment.",
+        issue: "Ticket",
+        status: "Statut",
+        priority: "Priorité",
+        assignees: "Assignés",
+        archivedAt: "Archivé le",
+        unarchive: "Désarchiver",
     },
 
     labelPicker: {

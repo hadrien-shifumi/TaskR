@@ -135,6 +135,8 @@ const en = {
         issueActions: "Issue actions",
         editTitle: "Edit title…",
         deleteIssue: "Delete issue…",
+        archiveIssue: "Archive issue…",
+        unarchiveIssue: "Unarchive issue…",
         opened: "opened {{date}}",
         by: "by {{name}}",
         due: "due {{date}}",
@@ -251,6 +253,13 @@ const en = {
         issuesTarget: "{{count}} issues · target: {{date}}",
         overdueSuffix: " · overdue",
         parentsOnly: "Parents only",
+        archiveCompleted: "Archive completed",
+        archiveCompletedTitle: "Archive completed issues",
+        archiveCompletedDescription:
+            "Archives every done and cancelled issue of this board — closed subtrees only, open work stays in place.",
+        archiveCompletedCounts: "{{done}} done · {{cancelled}} cancelled",
+        archiveCompletedConfirm: "Archive",
+        archiveCompletedCancel: "Cancel",
         headTitle: "Board — {{name}}",
         macroIntro:
             "Macro view — subtasks are hidden. Columns follow the workspace statuses: drag a card to change its status, transitions are always free.",
@@ -427,7 +436,23 @@ const en = {
         actionsFor: "Actions for {{name}}",
         edit: "Edit…",
         archive: "Archive…",
+        issueArchives: "Issue archives",
         delete: "Delete…",
+    },
+
+    projectArchives: {
+        title: "Archives — {{name}}",
+        headTitle: "Archives — {{name}}",
+        backToBoard: "Back to the board",
+        intro:
+            "Archived issues of this project, most recently archived first. They left every active view; unarchiving brings a closed subtree back.",
+        empty: "No archived issue in this project yet.",
+        issue: "Issue",
+        status: "Status",
+        priority: "Priority",
+        assignees: "Assignees",
+        archivedAt: "Archived on",
+        unarchive: "Unarchive",
     },
 
     labelPicker: {
