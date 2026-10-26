@@ -19,6 +19,7 @@ use App\Mcp\Tools\DeleteProject;
 use App\Mcp\Tools\DeleteStatus;
 use App\Mcp\Tools\DeleteTemplate;
 use App\Mcp\Tools\DeleteTimeEntry;
+use App\Mcp\Tools\GetIssue;
 use App\Mcp\Tools\GetKnowledge;
 use App\Mcp\Tools\GetProjectHealth;
 use App\Mcp\Tools\InviteMember;
@@ -82,6 +83,7 @@ class TaskrServer extends Server
         GetProjectHealth::class,
         // Issues
         ListIssues::class,
+        GetIssue::class,
         CreateIssue::class,
         UpdateIssue::class,
         DeleteIssue::class,
