@@ -23,13 +23,14 @@ import {
 } from '@/components/ui/select';
 import AppLayout from '@/layouts/app-layout';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { ArrowLeft, MoveRight, Plus, User } from 'lucide-react';
+import { Archive, ArrowLeft, MoveRight, Plus, User } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { HealthData, LabelRef, UserRef } from '@/types';
 import type { TemplateOption } from '@/Pages/Issues/Index/types';
 import { formatShortDate, formatDate } from '@/lib/format-date';
 import { BoardCreateIssueDialog } from './Board/create-issue-dialog';
+import { ArchiveCompletedDialog } from './Board/archive-completed-dialog';
 import { boardIssueUrl, IssueDetailDialog, type IssueDetailPayload } from './Board/issue-detail-dialog';
 
 interface BoardIssue {
@@ -76,11 +77,25 @@ type PageProps = {
     members?: UserRef[];
     /** Present when the URL carries an `?issue=` param: the modal is open. */
     issueDetail?: IssueDetailPayload | null;
+    /** Shared by HandleInertiaRequests — drives the owner-only archive button. */
+    workspace?: { role?: string } | null;
 };
 
 export default function Board() {
-    const { project, health, columns, parentsOnly, filters, projectPeople, currentUserId, labels, templates, members, issueDetail } =
-        usePage<PageProps>().props;
+    const {
+        project,
+        health,
+        columns,
+        parentsOnly,
+        filters,
+        projectPeople,
+        currentUserId,
+        labels,
+        templates,
+        members,
+        issueDetail,
+        workspace,
+    } = usePage<PageProps>().props;
     const { t } = useTranslation();
     const [draggingId, setDraggingId] = useState<string | null>(null);
     const [overColumn, setOverColumn] = useState<string | null>(null);
@@ -88,6 +103,20 @@ export default function Board() {
     const [creating, setCreating] = useState(false);
     /** Status preselected in the creation dialog (column "+" button). */
     const [createDefaultStatusId, setCreateDefaultStatusId] = useState<string | null>(null);
+    const [archivingCompleted, setArchivingCompleted] = useState(false);
+
+    const completedCounts = columns.reduce(
+        (counts, column) => {
+            if (column.category === 'done' || column.category === 'cancelled') {
+                counts[column.category] += column.issues.length;
+            }
+
+            return counts;
+        },
+        { done: 0, cancelled: 0 },
+    );
+    const completedTotal = completedCounts.done + completedCounts.cancelled;
+    const canArchiveCompleted = workspace?.role === 'owner' && completedTotal > 0;
 
     /** Sets the assignee filter via URL query param (preserveState). */
     const setAssigneeFilter = (value: string) => {
@@ -202,6 +231,17 @@ export default function Board() {
                     >
                         {t('projectBoard.parentsOnly')}
                     </Button>
+                    {canArchiveCompleted ? (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            data-test="board-archive-completed"
+                            onClick={() => setArchivingCompleted(true)}
+                        >
+                            <Archive className="size-3.5" aria-hidden />
+                            {t('projectBoard.archiveCompleted')}
+                        </Button>
+                    ) : null}
                     <ProjectMenu project={project} issuesCount={health.totalIssues} />
                     <Button
                         size="sm"
@@ -379,6 +419,13 @@ export default function Board() {
                 templates={templates ?? []}
                 members={members ?? []}
                 defaultStatusId={createDefaultStatusId}
+            />
+            <ArchiveCompletedDialog
+                projectId={project.id}
+                open={archivingCompleted}
+                doneCount={completedCounts.done}
+                cancelledCount={completedCounts.cancelled}
+                onClose={() => setArchivingCompleted(false)}
             />
 
             {issueDetail ? (

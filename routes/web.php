@@ -12,6 +12,8 @@ use App\Actions\Auth\UpdateUserLocale;
 use App\Actions\Comments\AddComment;
 use App\Actions\Comments\DeleteComment;
 use App\Actions\Comments\UpdateComment;
+use App\Actions\Issues\ArchiveCompletedIssues;
+use App\Actions\Issues\ArchiveIssue;
 use App\Actions\Issues\CreateIssue;
 use App\Actions\Issues\DeleteIssue;
 use App\Actions\Issues\MoveIssue;
@@ -33,6 +35,7 @@ use App\Actions\Projects\CreateProject;
 use App\Actions\Projects\DeleteProject;
 use App\Actions\Projects\GetProjectHealth;
 use App\Actions\Projects\RemoveProjectMember;
+use App\Actions\Projects\ShowProjectArchives;
 use App\Actions\Projects\ShowProjectBoard;
 use App\Actions\Projects\ShowProjectMembers;
 use App\Actions\Projects\ShowProjectsPage;
@@ -108,12 +111,14 @@ Route::middleware(['auth', 'workspace'])->group(function (): void {
     Route::post('/projects', CreateProject::class)->name('projects.store');
     Route::get('/projects/{project}/health', GetProjectHealth::class)->name('projects.health');
     Route::get('/projects/{project}/board', ShowProjectBoard::class)->name('projects.board');
+    Route::get('/projects/{project}/archives', ShowProjectArchives::class)->name('projects.archives');
     Route::get('/projects/{project}/members', ShowProjectMembers::class)->name('projects.members.index');
     Route::post('/projects/{project}/members', AddProjectMember::class)->name('projects.members.store');
     Route::match(['put', 'patch'], '/projects/{project}/members/{member}', UpdateProjectMemberRole::class)->name('projects.members.update');
     Route::delete('/projects/{project}/members/{member}', RemoveProjectMember::class)->name('projects.members.destroy');
     Route::match(['put', 'patch'], '/projects/{project}', UpdateProject::class)->name('projects.update');
     Route::post('/projects/{project}/archive', ArchiveProject::class)->name('projects.archive');
+    Route::post('/projects/{project}/issues/archive-completed', ArchiveCompletedIssues::class)->name('projects.issues.archive-completed');
     Route::delete('/projects/{project}', DeleteProject::class)->name('projects.destroy');
 
     Route::get('/issues', ShowIssuesPage::class)->name('issues.index');
@@ -125,6 +130,7 @@ Route::middleware(['auth', 'workspace'])->group(function (): void {
     Route::post('/issues/{issue}/parent', SetIssueParent::class)->name('issues.parent');
     Route::post('/issues/{issue}/assignees', SetAssignees::class)->name('issues.assignees');
     Route::post('/issues/{issue}/labels', SetLabels::class)->name('issues.labels');
+    Route::post('/issues/{issue}/archive', ArchiveIssue::class)->name('issues.archive');
 
     Route::post('/issues/{issue}/comments', AddComment::class)->name('comments.store');
     Route::match(['put', 'patch'], '/issues/{issue}/comments/{comment}', UpdateComment::class)

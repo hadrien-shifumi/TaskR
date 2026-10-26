@@ -7,6 +7,8 @@ return [
         'updated' => 'Ticket mis à jour.',
         'moved' => 'Ticket déplacé.',
         'deleted' => 'Ticket supprimé.',
+        'archived' => 'Ticket archivé.',
+        'unarchived' => 'Ticket restauré.',
     ],
 
     'label' => [
