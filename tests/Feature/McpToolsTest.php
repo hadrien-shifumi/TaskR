@@ -13,6 +13,7 @@ use App\Mcp\Tools\ArchiveProject;
 use App\Mcp\Tools\CreateIssue;
 use App\Mcp\Tools\CreateProject as CreateProjectTool;
 use App\Mcp\Tools\DeleteIssue;
+use App\Mcp\Tools\GetIssue;
 use App\Mcp\Tools\ListComments;
 use App\Mcp\Tools\ListIssues;
 use App\Mcp\Tools\ListLabels;
@@ -59,7 +60,7 @@ class McpToolsTest extends TestCase
     {
         TaskrServer::tools()->assertRegistered([
             ListWorkspacesTool::class, ListProjects::class, CreateProjectTool::class, UpdateProjectTool::class, ArchiveProject::class,
-            ListIssues::class, CreateIssue::class, UpdateIssue::class,
+            ListIssues::class, GetIssue::class, CreateIssue::class, UpdateIssue::class,
             DeleteIssue::class, MoveIssue::class,
             SetIssueParent::class, SetAssignees::class, SetLabels::class,
             AddComment::class, ListComments::class,
