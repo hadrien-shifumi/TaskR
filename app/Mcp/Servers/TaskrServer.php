@@ -5,6 +5,7 @@ namespace App\Mcp\Servers;
 use App\Mcp\Resources\ProjectIssues;
 use App\Mcp\Tools\AddComment;
 use App\Mcp\Tools\ArchiveProject;
+use App\Mcp\Tools\CompareKnowledgeVersions;
 use App\Mcp\Tools\CreateIssue;
 use App\Mcp\Tools\CreateKnowledge;
 use App\Mcp\Tools\CreateLabel;
@@ -19,6 +20,7 @@ use App\Mcp\Tools\DeleteProject;
 use App\Mcp\Tools\DeleteStatus;
 use App\Mcp\Tools\DeleteTemplate;
 use App\Mcp\Tools\DeleteTimeEntry;
+use App\Mcp\Tools\ForceDeleteKnowledge;
 use App\Mcp\Tools\GetIssue;
 use App\Mcp\Tools\GetKnowledge;
 use App\Mcp\Tools\GetProjectHealth;
@@ -26,6 +28,8 @@ use App\Mcp\Tools\InviteMember;
 use App\Mcp\Tools\ListComments;
 use App\Mcp\Tools\ListIssues;
 use App\Mcp\Tools\ListKnowledge;
+use App\Mcp\Tools\ListKnowledgeTrash;
+use App\Mcp\Tools\ListKnowledgeVersions;
 use App\Mcp\Tools\ListLabels;
 use App\Mcp\Tools\ListMembers;
 use App\Mcp\Tools\ListProjects;
@@ -37,6 +41,8 @@ use App\Mcp\Tools\LogTime;
 use App\Mcp\Tools\MoveIssue;
 use App\Mcp\Tools\RemoveMember;
 use App\Mcp\Tools\ReorderStatuses;
+use App\Mcp\Tools\RestoreKnowledge;
+use App\Mcp\Tools\RestoreKnowledgeVersion;
 use App\Mcp\Tools\SearchKnowledge;
 use App\Mcp\Tools\SetAssignees;
 use App\Mcp\Tools\SetIssueEstimate;
@@ -117,6 +123,12 @@ class TaskrServer extends Server
         CreateKnowledge::class,
         UpdateKnowledge::class,
         DeleteKnowledge::class,
+        ListKnowledgeTrash::class,
+        RestoreKnowledge::class,
+        ForceDeleteKnowledge::class,
+        ListKnowledgeVersions::class,
+        RestoreKnowledgeVersion::class,
+        CompareKnowledgeVersions::class,
         // Templates
         ListTemplates::class,
         CreateTemplate::class,

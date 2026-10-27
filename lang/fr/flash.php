@@ -84,6 +84,9 @@ return [
         'created' => 'Page « :title » créée.',
         'updated' => 'Page « :title » mise à jour.',
         'deleted' => 'Page supprimée.',
+        'restored' => '« :title » a été restaurée depuis la corbeille.',
+        'force_deleted' => 'La page a été définitivement supprimée.',
+        'version_restored' => '« :title » a été restaurée à une version antérieure.',
     ],
 
     'joined_workspace' => 'Vous avez rejoint :name.',

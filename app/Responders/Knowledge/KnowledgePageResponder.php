@@ -15,4 +15,20 @@ class KnowledgePageResponder
     {
         return Inertia::render('Knowledge/Index', $data)->toResponse($request);
     }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    public function trash(Request $request, array $data): Response
+    {
+        return Inertia::render('Knowledge/Trash', $data)->toResponse($request);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    public function versions(Request $request, array $data): Response
+    {
+        return Inertia::render('Knowledge/Versions', $data)->toResponse($request);
+    }
 }

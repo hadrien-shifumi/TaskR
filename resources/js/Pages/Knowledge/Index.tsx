@@ -23,7 +23,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
-import { BookOpen, Pencil, Plus, Search, Trash2 } from 'lucide-react';
+import { BookOpen, History, Pencil, Plus, Search, Trash2, TriangleAlert, X } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { PageSharedProps } from '@/types';
@@ -58,6 +58,12 @@ interface SearchResult {
     excerpt: string;
     score: number;
     projectId: string | null;
+}
+
+interface ConflictInfo {
+    lastEditor: string | null;
+    lastEditorId: number;
+    updatedAt: string;
 }
 
 type PageProps = {
@@ -119,6 +125,8 @@ export default function KnowledgeIndex() {
     const [creating, setCreating] = useState(false);
     const [editing, setEditing] = useState(false);
     const [deleting, setDeleting] = useState(false);
+    const [conflict, setConflict] = useState<ConflictInfo | null>(null);
+    const [baseUpdatedAt, setBaseUpdatedAt] = useState<string | null>(null);
 
     const createForm = useForm({ ...emptyForm });
     const editForm = useForm({ ...emptyForm });
@@ -140,11 +148,34 @@ export default function KnowledgeIndex() {
         });
     };
 
-    const submitEdit = (e: React.FormEvent) => {
-        e.preventDefault();
+    const submitEdit = (forceOverwrite = false) => {
         if (!selected) return;
+
+        editForm.transform((data) => ({
+            title: data.title,
+            body: data.body,
+            project_id: data.project_id || null,
+            parent_id: data.parent_id || null,
+            base_updated_at: baseUpdatedAt,
+            force_overwrite: forceOverwrite,
+        }));
+
         editForm.patch(route('knowledge.update', selected.id), {
-            onSuccess: () => setEditing(false),
+            onSuccess: () => {
+                setEditing(false);
+                setConflict(null);
+                setBaseUpdatedAt(null);
+            },
+            onError: (errors) => {
+                // 409 conflict: Inertia passes the JSON body to onError.
+                const conflictData = (errors as Record<string, unknown>)?.conflict as
+                    | ConflictInfo
+                    | undefined;
+                if (conflictData) {
+                    setConflict(conflictData);
+                }
+                // 422 validation errors are set automatically in editForm.errors.
+            },
         });
     };
 
@@ -345,9 +376,56 @@ export default function KnowledgeIndex() {
                     ) : null}
 
                     {selected ? (
-                        <article
-                            className={`overflow-hidden rounded-xl border bg-card ${results !== undefined ? 'mt-6' : ''}`}
-                        >
+                        <div className={results !== undefined ? 'mt-6' : ''}>
+                            {conflict ? (
+                                <div
+                                    role="alert"
+                                    className="mb-4 flex items-start gap-2.5 rounded-lg border border-warning/35 bg-warning/10 px-3.5 py-3 text-sm"
+                                >
+                                    <TriangleAlert
+                                        className="mt-0.5 size-4 shrink-0 text-warning"
+                                        aria-hidden
+                                    />
+                                    <div className="min-w-0 flex-1">
+                                        <p className="font-medium">
+                                            {t('knowledge.conflict.title')}
+                                        </p>
+                                        <p className="mt-1 text-muted-foreground">
+                                            {t('knowledge.conflict.description', {
+                                                editor: conflict.lastEditor ?? 'unknown',
+                                            })}
+                                        </p>
+                                        <div className="mt-3 flex gap-2">
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => submitEdit(true)}
+                                            >
+                                                {t('knowledge.conflict.overwrite')}
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => {
+                                                    setConflict(null);
+                                                    router.reload({ only: ['selected'] });
+                                                }}
+                                            >
+                                                {t('knowledge.conflict.reload')}
+                                            </Button>
+                                        </div>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setConflict(null)}
+                                        className="text-muted-foreground transition-colors hover:text-foreground"
+                                        aria-label={t('knowledge.conflict.dismiss')}
+                                    >
+                                        <X className="size-4" aria-hidden />
+                                    </button>
+                                </div>
+                            ) : null}
+                            <article className="overflow-hidden rounded-xl border bg-card">
                             <header className="flex flex-wrap items-center gap-x-2.5 gap-y-2 border-b px-5 py-3.5">
                                 <h2 className="text-base font-semibold tracking-tight">{selected.title}</h2>
                                 {selected.projectId ? (
@@ -359,7 +437,19 @@ export default function KnowledgeIndex() {
                                     <Button
                                         variant="ghost"
                                         size="sm"
+                                        onClick={() =>
+                                            router.get(route('knowledge.versions', selected.id))
+                                        }
+                                    >
+                                        <History aria-hidden />
+                                        {t('knowledge.versions.button')}
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
                                         onClick={() => {
+                                            setBaseUpdatedAt(selected.updatedAt);
+                                            setConflict(null);
                                             setEditing(true);
                                             editForm.setData({
                                                 title: selected.title,
@@ -392,7 +482,8 @@ export default function KnowledgeIndex() {
                             <div className="px-5 py-5">
                                 <MarkdownView value={selected.body} />
                             </div>
-                        </article>
+                            </article>
+                        </div>
                     ) : results === undefined ? (
                         <div className="rounded-xl border border-dashed px-4 py-10 text-center">
                             <BookOpen className="mx-auto size-5 text-muted-foreground" aria-hidden />
@@ -483,7 +574,10 @@ export default function KnowledgeIndex() {
                 submitLabel={t('common.save')}
                 processing={editForm.processing}
                 contentClassName="max-h-[90vh] overflow-y-auto sm:max-w-2xl"
-                onSubmit={submitEdit}
+                onSubmit={(e) => {
+                    e.preventDefault();
+                    submitEdit(false);
+                }}
             >
                 <div className="grid gap-2">
                     <Label htmlFor="edit-knowledge-title">{t('issues.fields.title')}</Label>

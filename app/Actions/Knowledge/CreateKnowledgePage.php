@@ -5,11 +5,13 @@ namespace App\Actions\Knowledge;
 use App\Actions\Concerns\AuthorizesWorkspaceAccess;
 use App\Jobs\VectorizeKnowledgePage;
 use App\Models\KnowledgePage;
+use App\Models\KnowledgePageVersion;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Responders\Knowledge\KnowledgeRedirectResponder;
 use App\Support\WorkspaceContext;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Lorisleiva\Actions\ActionRequest;
@@ -70,13 +72,26 @@ class CreateKnowledgePage
             }
         }
 
-        $page = KnowledgePage::create([
-            'project_id' => $data['project_id'] ?? null,
-            'parent_id' => $data['parent_id'] ?? null,
-            'title' => $data['title'],
-            'body' => $data['body'],
-            'last_editor_id' => $editor->id,
-        ]);
+        $page = DB::transaction(function () use ($data, $editor): KnowledgePage {
+            $page = KnowledgePage::create([
+                'project_id' => $data['project_id'] ?? null,
+                'parent_id' => $data['parent_id'] ?? null,
+                'title' => $data['title'],
+                'body' => $data['body'],
+                'last_editor_id' => $editor->id,
+            ]);
+
+            // Create the initial version (v1) atomically with the page.
+            KnowledgePageVersion::create([
+                'page_id' => $page->id,
+                'title' => $page->title,
+                'body' => $page->body,
+                'editor_id' => $editor->id,
+                'created_at' => $page->created_at,
+            ]);
+
+            return $page;
+        });
 
         VectorizeKnowledgePage::dispatch($page);
 

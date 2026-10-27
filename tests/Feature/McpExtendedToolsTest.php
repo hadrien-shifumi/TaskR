@@ -151,7 +151,17 @@ class McpExtendedToolsTest extends TestCase
         ])->assertOk()->payload();
 
         $this->assertTrue($result['deleted']);
-        $this->assertDatabaseMissing('knowledge_pages', ['id' => $page->id]);
+
+        // AgentTool clears the workspace context after each call.
+        app(WorkspaceContext::class)->set($workspace);
+
+        // Soft delete: the row remains with deleted_at set, hidden from
+        // default queries, with trash metadata recorded.
+        $this->assertNull(KnowledgePage::find($page->id));
+        $trashed = KnowledgePage::withTrashed()->findOrFail($page->id);
+        $this->assertNotNull($trashed->deleted_at);
+        $this->assertSame($owner->id, (int) $trashed->deleted_by_id);
+        $this->assertSame('manual', $trashed->deleted_reason);
     }
 
     public function test_delete_knowledge_fails_when_page_has_children(): void

@@ -10,6 +10,7 @@ return [
     'knowledge' => [
         'project_out_of_scope' => 'A knowledge page must stay attached to a project of your scope.',
         'parent_out_of_scope' => 'The parent page is outside your project scope.',
+        'conflict_detected' => 'This page was modified by :editor while you were editing.',
     ],
 
     'project_member' => [

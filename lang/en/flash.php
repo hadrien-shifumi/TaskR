@@ -85,6 +85,9 @@ return [
         'created' => 'Page ":title" created.',
         'updated' => 'Page ":title" updated.',
         'deleted' => 'Page deleted.',
+        'restored' => 'Page ":title" has been restored from the trash.',
+        'force_deleted' => 'The page has been permanently deleted.',
+        'version_restored' => '« :title » has been restored to a previous version.',
     ],
 
     'joined_workspace' => 'You joined :name.',

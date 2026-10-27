@@ -255,7 +255,13 @@ class KnowledgePageTest extends TestCase
             ->delete("/knowledge/{$page->id}")
             ->assertRedirect(route('knowledge.index'));
 
-        $this->assertDatabaseMissing('knowledge_pages', ['id' => $page->id]);
+        // Soft delete: page is hidden from default queries but still exists
+        // with trash metadata (who deleted it and why).
+        $this->assertNull(KnowledgePage::find($page->id));
+        $trashed = KnowledgePage::withTrashed()->findOrFail($page->id);
+        $this->assertNotNull($trashed->deleted_at);
+        $this->assertSame($owner->id, (int) $trashed->deleted_by_id);
+        $this->assertSame('manual', $trashed->deleted_reason);
     }
 
     public function test_knowledge_index_renders_tree_and_reader(): void

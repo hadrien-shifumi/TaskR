@@ -625,6 +625,51 @@ const fr: typeof en = {
         body: "Corps",
         parentPage: "Page parente",
         parentFallback: "Parente",
+        trash: {
+            title: "Corbeille",
+            nav: "Corbeille",
+            description:
+                "Les pages déplacées dans la corbeille sont supprimées définitivement après 30 jours.",
+            empty: "La corbeille est vide.",
+            emptyHint: "Les pages supprimées apparaîtront ici.",
+            columnTitle: "Titre",
+            columnProject: "Projet",
+            columnDeletedBy: "Supprimée par",
+            columnDeletedAt: "Supprimée le",
+            columnReason: "Raison",
+            columnActions: "Actions",
+            transverse: "Transverse",
+            reasonManual: "Manuelle",
+            reasonCascade: "Suppression projet",
+            restore: "Restaurer",
+            restoreTitle: "Restaurer cette page ?",
+            restoreDescription:
+                "La page réapparaîtra dans l'arborescence de la base de connaissances.",
+            forceDelete: "Supprimer définitivement",
+            forceDeleteTitle: "Supprimer définitivement cette page ?",
+            forceDeleteDescription:
+                "Cette action est irréversible. La page et son historique seront définitivement supprimés.",
+        },
+        versions: {
+            button: "Historique",
+            title: "Historique des versions",
+            description:
+                "Historique des modifications de « {title} ». Restaurer une version crée une nouvelle version.",
+            editedBy: "Modifié par {editor}",
+            restore: "Restaurer",
+            restoreTitle: "Restaurer cette version ?",
+            restoreDescription:
+                "Le contenu de la page sera mis à jour pour correspondre à cette version. Une nouvelle version sera créée pour capturer cette restauration.",
+            noVersions: "Pas encore de versions.",
+        },
+        conflict: {
+            title: "Cette page a été modifiée pendant votre édition",
+            description:
+                "{editor} a enregistré des modifications sur cette page. Vos modifications n'ont pas été enregistrées.",
+            overwrite: "Écraser leurs modifications",
+            reload: "Recharger et fusionner",
+            dismiss: "Ignorer",
+        },
     },
 };
 

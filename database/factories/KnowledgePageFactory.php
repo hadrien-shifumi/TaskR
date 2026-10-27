@@ -34,4 +34,16 @@ class KnowledgePageFactory extends Factory
             'embedded_at' => now(),
         ]);
     }
+
+    /**
+     * Mark the page as soft-deleted (in trash).
+     */
+    public function trashed(?User $deletedBy = null, ?string $reason = null): static
+    {
+        return $this->state([
+            'deleted_at' => now(),
+            'deleted_by_id' => $deletedBy?->id,
+            'deleted_reason' => $reason,
+        ]);
+    }
 }

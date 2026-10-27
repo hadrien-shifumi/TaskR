@@ -3,6 +3,7 @@
 namespace App\Presenters\Knowledge;
 
 use App\Models\KnowledgePage;
+use App\Models\KnowledgePageVersion;
 
 class KnowledgePresenter
 {
@@ -38,6 +39,39 @@ class KnowledgePresenter
             'projectId' => $page->project_id,
             'lastEditor' => $page->lastEditor?->name,
             'updatedAt' => $page->updated_at?->toISOString(),
+        ];
+    }
+
+    /**
+     * Trashed page row for the trash list.
+     *
+     * @return array{id: string, title: string, deletedAt: string|null, deletedBy: string|null, deletedReason: string|null, projectId: string|null, projectName: string|null}
+     */
+    public static function trashedItem(KnowledgePage $page): array
+    {
+        return [
+            'id' => $page->id,
+            'title' => $page->title,
+            'deletedAt' => $page->deleted_at?->toISOString(),
+            'deletedBy' => $page->deletedBy?->name,
+            'deletedReason' => $page->deleted_reason,
+            'projectId' => $page->project_id,
+            'projectName' => $page->project?->name,
+        ];
+    }
+
+    /**
+     * Version item for the history list.
+     *
+     * @return array{id: string, title: string, editor: string|null, createdAt: string|null}
+     */
+    public static function versionItem(KnowledgePageVersion $version): array
+    {
+        return [
+            'id' => $version->id,
+            'title' => $version->title,
+            'editor' => $version->editor?->name,
+            'createdAt' => $version->created_at?->toISOString(),
         ];
     }
 }

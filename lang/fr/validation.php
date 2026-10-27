@@ -76,6 +76,7 @@ return [
     'knowledge' => [
         'project_out_of_scope' => 'Une page de connaissance doit rester rattachée à un projet de votre périmètre.',
         'parent_out_of_scope' => "La page parente est en dehors de votre périmètre d'accès.",
+        'conflict_detected' => 'Cette page a été modifiée par :editor pendant votre édition.',
     ],
 
     'project_member' => [

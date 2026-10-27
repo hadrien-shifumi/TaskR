@@ -5,6 +5,7 @@ use App\Models\KnowledgePage;
 use App\Support\WebpConverter;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Schedule;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
@@ -44,3 +45,6 @@ Artisan::command('images:webp {input : Path to the source JPG or PNG} {--sizes=1
 
     return 0;
 })->purpose('Convert a JPG/PNG to optimized webp size variants, or generate the site icon set with --icon');
+
+// Purge knowledge trash daily at 3 AM.
+Schedule::command('knowledge:purge-trash')->dailyAt('03:00');
