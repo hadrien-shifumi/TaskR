@@ -23,6 +23,7 @@ import {
     LogOut,
     Plus,
     SlidersHorizontal,
+    Trash2,
 } from "lucide-react";
 import type { PageSharedProps } from "@/types";
 import { LanguageSwitcher } from "@/components/language-switcher";
@@ -62,6 +63,12 @@ const NAV_ITEMS = [
         icon: BookOpen,
     },
     {
+        label: "knowledge.trash.nav",
+        route: "knowledge.trash",
+        prefix: "/knowledge/trash",
+        icon: Trash2,
+    },
+    {
         label: "nav.settings",
         route: "settings.statuses",
         prefix: "/settings",
@@ -83,8 +90,15 @@ export default function AppLayout({
     const { url } = usePage();
     const { t } = useTranslation();
 
-    const isActive = (prefix: string) =>
-        prefix === "/" ? url === "/" : url.startsWith(prefix);
+    const isActive = (item: (typeof NAV_ITEMS)[number]) => {
+        if (item.prefix === "/") return url === "/";
+        // Knowledge stays active on its sub-pages, except the trash
+        // which has its own nav entry.
+        if (item.route === "knowledge.index") {
+            return url.startsWith("/knowledge") && !url.startsWith("/knowledge/trash");
+        }
+        return url.startsWith(item.prefix);
+    };
 
     const [creatingWorkspace, setCreatingWorkspace] = useState(false);
     const workspaceForm = useForm({ name: "" });
@@ -217,7 +231,7 @@ export default function AppLayout({
                                 key={item.label}
                                 href={route(item.route)}
                                 aria-current={
-                                    isActive(item.prefix) ? "page" : undefined
+                                    isActive(item) ? "page" : undefined
                                 }
                                 className="flex items-center gap-2.5 rounded-lg px-2.5 py-1.75 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground aria-[current=page]:bg-secondary aria-[current=page]:font-medium aria-[current=page]:text-foreground max-lg:px-2.5 max-lg:py-2"
                             >

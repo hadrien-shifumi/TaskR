@@ -610,6 +610,51 @@ const en = {
         body: "Body",
         parentPage: "Parent page",
         parentFallback: "Parent",
+        trash: {
+            title: "Trash",
+            nav: "Trash",
+            description:
+                "Pages moved to trash are permanently deleted after 30 days.",
+            empty: "The trash is empty.",
+            emptyHint: "Deleted pages will appear here.",
+            columnTitle: "Title",
+            columnProject: "Project",
+            columnDeletedBy: "Deleted by",
+            columnDeletedAt: "Deleted on",
+            columnReason: "Reason",
+            columnActions: "Actions",
+            transverse: "Cross-workspace",
+            reasonManual: "Manual",
+            reasonCascade: "Project deletion",
+            restore: "Restore",
+            restoreTitle: "Restore this page?",
+            restoreDescription:
+                "The page will reappear in the knowledge tree.",
+            forceDelete: "Delete permanently",
+            forceDeleteTitle: "Permanently delete this page?",
+            forceDeleteDescription:
+                "This action is irreversible. The page and its history will be permanently deleted.",
+        },
+        versions: {
+            button: "History",
+            title: "Version history",
+            description:
+                'History of changes for "{title}". Restoring a version creates a new version.',
+            editedBy: "Edited by {editor}",
+            restore: "Restore",
+            restoreTitle: "Restore this version?",
+            restoreDescription:
+                "The page content will be updated to match this version. A new version will be created to capture this restoration.",
+            noVersions: "No versions yet.",
+        },
+        conflict: {
+            title: "This page was modified while you were editing",
+            description:
+                "{editor} saved changes to this page. Your changes have not been saved.",
+            overwrite: "Overwrite their changes",
+            reload: "Reload and merge",
+            dismiss: "Dismiss",
+        },
     },
 };
 

@@ -80,7 +80,9 @@ class McpKnowledgeToolsTest extends TestCase
             fn (string $tool): bool => str_contains($tool, 'Knowledge'),
         );
 
-        $this->assertCount(6, $knowledgeTools);
+        // 6 base tools + 3 trash tools (ListKnowledgeTrash, RestoreKnowledge, ForceDeleteKnowledge)
+        // + 3 versioning tools (ListKnowledgeVersions, RestoreKnowledgeVersion, CompareKnowledgeVersions).
+        $this->assertCount(12, $knowledgeTools);
     }
 
     public function test_list_then_get_knowledge_immersion_flow(): void

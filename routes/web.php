@@ -25,8 +25,13 @@ use App\Actions\Issues\ShowIssuesPage;
 use App\Actions\Issues\UpdateIssue;
 use App\Actions\Knowledge\CreateKnowledgePage;
 use App\Actions\Knowledge\DeleteKnowledgePage;
+use App\Actions\Knowledge\ForceDeleteKnowledgePage;
+use App\Actions\Knowledge\RestoreKnowledgePage;
+use App\Actions\Knowledge\RestoreKnowledgePageVersion;
 use App\Actions\Knowledge\SearchKnowledge;
 use App\Actions\Knowledge\ShowKnowledgePage;
+use App\Actions\Knowledge\ShowKnowledgeTrash;
+use App\Actions\Knowledge\ShowKnowledgeVersions;
 use App\Actions\Knowledge\UpdateKnowledgePage;
 use App\Actions\Labels\CreateLabel;
 use App\Actions\Projects\AddProjectMember;
@@ -150,6 +155,21 @@ Route::middleware(['auth', 'workspace'])->group(function (): void {
     Route::get('/knowledge', ShowKnowledgePage::class)->name('knowledge.index');
     Route::get('/knowledge/search', SearchKnowledge::class)->name('knowledge.search');
     Route::post('/knowledge', CreateKnowledgePage::class)->name('knowledge.store');
+
+    // Trash — declared before /knowledge/{page} so "trash" is not captured
+    // as a page id. Restore and force-delete use ->withTrashed() so the
+    // implicit model binding resolves soft-deleted pages.
+    Route::get('/knowledge/trash', ShowKnowledgeTrash::class)->name('knowledge.trash');
+    Route::post('/knowledge/{page}/restore', RestoreKnowledgePage::class)
+        ->withTrashed()->name('knowledge.restore');
+    Route::delete('/knowledge/{page}/force', ForceDeleteKnowledgePage::class)
+        ->withTrashed()->name('knowledge.force-delete');
+
+    // Versioning — history page and version restore.
+    Route::get('/knowledge/{page}/versions', ShowKnowledgeVersions::class)->name('knowledge.versions');
+    Route::post('/knowledge/{page}/versions/{version}/restore', RestoreKnowledgePageVersion::class)
+        ->scopeBindings()->name('knowledge.versions.restore');
+
     Route::get('/knowledge/{page}', ShowKnowledgePage::class)->name('knowledge.show');
     Route::match(['put', 'patch'], '/knowledge/{page}', UpdateKnowledgePage::class)->name('knowledge.update');
     Route::delete('/knowledge/{page}', DeleteKnowledgePage::class)->name('knowledge.destroy');

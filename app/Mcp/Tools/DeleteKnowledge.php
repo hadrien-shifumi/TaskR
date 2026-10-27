@@ -13,7 +13,7 @@ use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Attributes\Name;
 
 #[Name('delete_knowledge')]
-#[Description('Delete a knowledge page of a workspace. Fails if the page still has child pages.')]
+#[Description('Move a knowledge page to the trash (soft delete). The page can be restored within 30 days via restore_knowledge. Fails if the page still has child pages.')]
 class DeleteKnowledge extends AgentTool
 {
     /**

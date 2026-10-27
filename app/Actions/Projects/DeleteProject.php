@@ -3,6 +3,7 @@
 namespace App\Actions\Projects;
 
 use App\Actions\Concerns\AuthorizesWorkspaceAccess;
+use App\Models\KnowledgePage;
 use App\Models\Project;
 use App\Models\User;
 use App\Responders\Projects\ProjectRedirectResponder;
@@ -38,9 +39,49 @@ class DeleteProject
             abort(409, "This project contains {$usage} issue(s). Archive it instead of deleting.");
         }
 
+        // Move all knowledge pages attached to this project to trash
+        // BEFORE deleting the project. This preserves the documentation
+        // (recoverable from trash for 30 days).
+        $this->moveKnowledgePagesToTrash($project, $user);
+
         $project->delete();
 
         return $project;
+    }
+
+    /**
+     * Soft delete all knowledge pages attached to a project.
+     *
+     * Pages are trashed with reason 'cascade_project' and deleted_by_id
+     * set to the user who deleted the project (or null for internal runs).
+     *
+     * The whole subtree is trashed at once (unlike DeleteKnowledgePage
+     * which blocks pages with children) because we trash everything.
+     *
+     * After trashing, project_id is nulled on all pages (trashed or not)
+     * so the FK cascade on projects does not hard-delete the trashed rows.
+     */
+    private function moveKnowledgePagesToTrash(Project $project, ?User $user): void
+    {
+        // Soft-delete all non-trashed pages attached to this project.
+        // The SoftDeletes global scope excludes already-trashed pages.
+        KnowledgePage::where('project_id', $project->id)
+            ->cursor()
+            ->each(function (KnowledgePage $page) use ($user): void {
+                $page->forceFill([
+                    'deleted_by_id' => $user?->id,
+                    'deleted_reason' => 'cascade_project',
+                ])->save();
+                $page->delete();
+            });
+
+        // Detach all pages (trashed and non-trashed) from the project so
+        // the FK cascadeOnDelete does not hard-delete the trashed rows
+        // when the project row is removed. The pages become transverse
+        // (project_id = null) and are recoverable from the trash.
+        KnowledgePage::withTrashed()
+            ->where('project_id', $project->id)
+            ->update(['project_id' => null]);
     }
 
     public function asController(Request $request, Project $project, ProjectRedirectResponder $responder): RedirectResponse

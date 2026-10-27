@@ -4,13 +4,15 @@ namespace App\Models;
 
 use App\Models\Concerns\BelongsToWorkspace;
 use App\Models\Concerns\HasAncestorChain;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class KnowledgePage extends BaseModel
 {
-    use BelongsToWorkspace, HasAncestorChain, HasFactory;
+    use BelongsToWorkspace, HasAncestorChain, HasFactory, SoftDeletes;
 
     protected $fillable = [
         'workspace_id',
@@ -19,6 +21,8 @@ class KnowledgePage extends BaseModel
         'title',
         'body',
         'last_editor_id',
+        'deleted_by_id',
+        'deleted_reason',
     ];
 
     protected $casts = [
@@ -26,6 +30,7 @@ class KnowledgePage extends BaseModel
         // pgvector's text format ([1,0.5,...]) is valid JSON: one cast covers
         // both the pgsql vector column and the sqlite JSON text column.
         'embedding' => 'array',
+        'deleted_at' => 'datetime',
     ];
 
     /**
@@ -58,5 +63,47 @@ class KnowledgePage extends BaseModel
     public function lastEditor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'last_editor_id');
+    }
+
+    /**
+     * All versions of this page (history).
+     *
+     * @return HasMany<KnowledgePageVersion, $this>
+     */
+    public function versions(): HasMany
+    {
+        return $this->hasMany(KnowledgePageVersion::class, 'page_id');
+    }
+
+    /**
+     * User who moved this page to trash.
+     *
+     * @return BelongsTo<User, $this>
+     */
+    public function deletedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'deleted_by_id');
+    }
+
+    /**
+     * Scope: only trashed pages.
+     *
+     * @param  Builder<KnowledgePage>  $query
+     * @return Builder<KnowledgePage>
+     */
+    public function scopeOnlyTrashed(Builder $query): Builder
+    {
+        return $query->onlyTrashed();
+    }
+
+    /**
+     * Scope: trashed pages deleted for a specific reason.
+     *
+     * @param  Builder<KnowledgePage>  $query
+     * @return Builder<KnowledgePage>
+     */
+    public function scopeTrashedWithReason(Builder $query, string $reason): Builder
+    {
+        return $query->onlyTrashed()->where('deleted_reason', $reason);
     }
 }
