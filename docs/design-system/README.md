@@ -14,6 +14,8 @@ Le design system de Taskr tient en trois couches : les **tokens sémantiques Tai
 
 La galerie Storybook montre les **vraies** primitives et composants de l'app : les stories sont colocalisées avec leur composant (`resources/js/components/**/*.stories.tsx`) et importent le même code que l'application — la galerie ne peut pas dériver du code.
 
+- **Fondations** : les stories `Foundations/Colors`, `Foundations/Typography` et `Foundations/Radii` (`resources/js/design-system/`) sont la contrepartie vivante des tokens documentés dans [tokens/](tokens/colors.md) — chaque swatch, taille et rayon y est rendu avec les classes utilitaires des tokens, et bascule light/dark avec la barre d'outils.
+
 ```bash
 npm run storybook        # → http://localhost:6006
 npm run build-storybook  # vérification du build (à passer avant de livrer)
