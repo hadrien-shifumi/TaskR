@@ -54,11 +54,25 @@ function countNodes(nodes: TreeNode[]): number {
 }
 
 /** Maquette sidebar nav-item pattern applied to a tree row. */
-function TreeRow({ node, depth, selectedId }: { node: TreeNode; depth: number; selectedId: string | null }) {
+function TreeRow({
+    node,
+    depth,
+    selectedId,
+    projectFilter,
+}: {
+    node: TreeNode;
+    depth: number;
+    selectedId: string | null;
+    projectFilter?: string;
+}) {
     return (
         <>
             <Link
-                href={route('knowledge.show', node.id)}
+                href={
+                    projectFilter
+                        ? route('knowledge.show', { page: node.id, project: projectFilter })
+                        : route('knowledge.show', node.id)
+                }
                 aria-current={node.id === selectedId ? 'page' : undefined}
                 className="block truncate rounded-lg px-2.5 py-1.75 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground aria-[current=page]:bg-secondary aria-[current=page]:font-medium aria-[current=page]:text-foreground"
                 style={{ paddingLeft: `${0.75 + depth * 1}rem` }}
@@ -66,7 +80,13 @@ function TreeRow({ node, depth, selectedId }: { node: TreeNode; depth: number; s
                 {node.title}
             </Link>
             {node.children.map((child) => (
-                <TreeRow key={child.id} node={child} depth={depth + 1} selectedId={selectedId} />
+                <TreeRow
+                    key={child.id}
+                    node={child}
+                    depth={depth + 1}
+                    selectedId={selectedId}
+                    projectFilter={projectFilter}
+                />
             ))}
         </>
     );
@@ -77,10 +97,11 @@ type SidebarSectionProps = {
     icon: LucideIcon;
     trees: TreeNode[];
     selectedId: string | null;
+    projectFilter?: string;
 };
 
 /** Sidebar group: mono heading (icon, truncated label, page count) over its tree. */
-function SidebarSection({ label, icon: Icon, trees, selectedId }: SidebarSectionProps) {
+function SidebarSection({ label, icon: Icon, trees, selectedId, projectFilter }: SidebarSectionProps) {
     if (trees.length === 0) return null;
 
     return (
@@ -93,7 +114,13 @@ function SidebarSection({ label, icon: Icon, trees, selectedId }: SidebarSection
                 </span>
             </h3>
             {trees.map((node) => (
-                <TreeRow key={node.id} node={node} depth={0} selectedId={selectedId} />
+                <TreeRow
+                    key={node.id}
+                    node={node}
+                    depth={0}
+                    selectedId={selectedId}
+                    projectFilter={projectFilter}
+                />
             ))}
         </section>
     );
@@ -174,6 +201,7 @@ export function KnowledgeSidebar({
                     icon={Globe}
                     trees={crossWorkspaceTrees}
                     selectedId={selectedId}
+                    projectFilter={projectFilter}
                 />
                 {projects.map((project) => (
                     <SidebarSection
@@ -182,6 +210,7 @@ export function KnowledgeSidebar({
                         icon={Folder}
                         trees={trees.filter((node) => node.projectId === project.id)}
                         selectedId={selectedId}
+                        projectFilter={projectFilter}
                     />
                 ))}
                 {pages.length === 0 ? (

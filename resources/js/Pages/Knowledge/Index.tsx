@@ -363,7 +363,11 @@ export default function KnowledgeIndex() {
                                     {results.map((result) => (
                                         <li key={result.id}>
                                             <Link
-                                                href={route('knowledge.show', result.id)}
+                                                href={
+                                                    projectFilter
+                                                        ? route('knowledge.show', { page: result.id, project: projectFilter })
+                                                        : route('knowledge.show', result.id)
+                                                }
                                                 className="block rounded-xl border bg-card p-4 transition-colors hover:border-primary/45"
                                             >
                                                 <div className="flex flex-wrap items-center gap-2">
@@ -463,7 +467,11 @@ export default function KnowledgeIndex() {
                                         <span key={ancestor.id} className="flex min-w-0 items-center gap-1.5">
                                             <ChevronRight className="size-3 shrink-0" aria-hidden />
                                             <Link
-                                                href={route('knowledge.show', ancestor.id)}
+                                                href={
+                                                    projectFilter
+                                                        ? route('knowledge.show', { page: ancestor.id, project: projectFilter })
+                                                        : route('knowledge.show', ancestor.id)
+                                                }
                                                 className="truncate transition-colors hover:text-foreground"
                                             >
                                                 {ancestor.title}
