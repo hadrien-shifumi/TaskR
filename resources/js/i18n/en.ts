@@ -646,6 +646,8 @@ const en = {
             restoreDescription:
                 "The page content will be updated to match this version. A new version will be created to capture this restoration.",
             noVersions: "No versions yet.",
+            preview: "View",
+            previewTitle: "Version preview",
         },
         conflict: {
             title: "This page was modified while you were editing",

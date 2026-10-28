@@ -10,8 +10,9 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { MarkdownView } from '@/components/ui/markdown-editor';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { ArrowLeft, History, RotateCcw } from 'lucide-react';
+import { ArrowLeft, Eye, History, RotateCcw } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { PageSharedProps } from '@/types';
@@ -43,6 +44,14 @@ interface PageDetail {
 interface VersionItem {
     id: string;
     title: string;
+    editor: string | null;
+    createdAt: string | null;
+}
+
+interface VersionDetail {
+    id: string;
+    title: string;
+    body: string;
     editor: string | null;
     createdAt: string | null;
 }
@@ -97,6 +106,9 @@ export default function KnowledgeVersions() {
     const { t } = useTranslation();
 
     const [versionToRestore, setVersionToRestore] = useState<VersionItem | null>(null);
+    const [versionToPreview, setVersionToPreview] = useState<VersionItem | null>(null);
+    const [versionContent, setVersionContent] = useState<VersionDetail | null>(null);
+    const [loadingVersion, setLoadingVersion] = useState(false);
 
     const trees = buildTree(pages);
     const crossWorkspaceTrees = trees.filter((node) => !node.projectId);
@@ -113,6 +125,28 @@ export default function KnowledgeVersions() {
                 onSuccess: () => setVersionToRestore(null),
             },
         );
+    };
+
+    const previewVersion = (version: VersionItem) => {
+        setVersionToPreview(version);
+        setVersionContent(null);
+        setLoadingVersion(true);
+
+        fetch(route('knowledge.versions.show', { page: page.id, version: version.id }), {
+            headers: {
+                Accept: 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+        })
+            .then((res) => {
+                if (!res.ok) throw new Error('Failed to load version');
+                return res.json();
+            })
+            .then((data: VersionDetail) => {
+                setVersionContent(data);
+                setLoadingVersion(false);
+            })
+            .catch(() => setLoadingVersion(false));
     };
 
     return (
@@ -214,14 +248,24 @@ export default function KnowledgeVersions() {
                                                     {version.createdAt ? formatDate(version.createdAt) : null}
                                                 </p>
                                             </div>
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => setVersionToRestore(version)}
-                                            >
-                                                <RotateCcw aria-hidden />
-                                                {t('knowledge.versions.restore')}
-                                            </Button>
+                                            <div className="flex shrink-0 items-center gap-2">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => previewVersion(version)}
+                                                >
+                                                    <Eye aria-hidden />
+                                                    {t('knowledge.versions.preview')}
+                                                </Button>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => setVersionToRestore(version)}
+                                                >
+                                                    <RotateCcw aria-hidden />
+                                                    {t('knowledge.versions.restore')}
+                                                </Button>
+                                            </div>
                                         </div>
                                     ))}
                                 </div>
@@ -256,6 +300,40 @@ export default function KnowledgeVersions() {
                             {t('knowledge.versions.restore')}
                         </Button>
                     </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog
+                open={!!versionToPreview}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setVersionToPreview(null);
+                        setVersionContent(null);
+                    }
+                }}
+            >
+                <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
+                    <DialogHeader>
+                        <DialogTitle>
+                            {versionContent?.title ?? versionToPreview?.title}
+                        </DialogTitle>
+                        <DialogDescription>
+                            {versionContent?.editor
+                                ? t('knowledge.versions.editedBy', { editor: versionContent.editor })
+                                : null}
+                            {versionContent?.editor && versionContent?.createdAt ? ' · ' : null}
+                            {versionContent?.createdAt ? formatDate(versionContent.createdAt) : null}
+                        </DialogDescription>
+                    </DialogHeader>
+                    {loadingVersion ? (
+                        <p className="py-8 text-center text-sm text-muted-foreground">
+                            {t('common.loading')}
+                        </p>
+                    ) : versionContent ? (
+                        <div className="rounded-lg border px-5 py-5">
+                            <MarkdownView value={versionContent.body} />
+                        </div>
+                    ) : null}
                 </DialogContent>
             </Dialog>
         </AppLayout>
