@@ -11,25 +11,13 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { MarkdownView } from '@/components/ui/markdown-editor';
-import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import { ArrowLeft, Eye, History, RotateCcw } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { PageSharedProps } from '@/types';
 import { formatDate } from '@/lib/format-date';
-
-interface PageRef {
-    id: string;
-    title: string;
-    parentId: string | null;
-    projectId: string | null;
-    updatedAt: string | null;
-}
-
-interface ProjectOption {
-    id: string;
-    name: string;
-}
+import { KnowledgeSidebar, type PageRef, type ProjectOption } from './components/knowledge-sidebar';
 
 interface PageDetail {
     id: string;
@@ -63,43 +51,6 @@ type PageProps = {
     projects: ProjectOption[];
 };
 
-type TreeNode = PageRef & { children: TreeNode[] };
-
-function buildTree(pages: PageRef[]): TreeNode[] {
-    const byId = new Map<string, TreeNode>();
-    pages.forEach((page) => byId.set(page.id, { ...page, children: [] }));
-
-    const roots: TreeNode[] = [];
-    byId.forEach((node) => {
-        if (node.parentId && byId.has(node.parentId)) {
-            byId.get(node.parentId)!.children.push(node);
-        } else {
-            roots.push(node);
-        }
-    });
-
-    return roots;
-}
-
-/** Sidebar nav-item pattern applied to a tree row (same as Index). */
-function TreeRow({ node, depth, selectedId }: { node: TreeNode; depth: number; selectedId: string }) {
-    return (
-        <>
-            <Link
-                href={route('knowledge.show', node.id)}
-                aria-current={node.id === selectedId ? 'page' : undefined}
-                className="block truncate rounded-lg px-2.5 py-1.75 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground aria-[current=page]:bg-secondary aria-[current=page]:font-medium aria-[current=page]:text-foreground"
-                style={{ paddingLeft: `${0.75 + depth * 1}rem` }}
-            >
-                {node.title}
-            </Link>
-            {node.children.map((child) => (
-                <TreeRow key={child.id} node={child} depth={depth + 1} selectedId={selectedId} />
-            ))}
-        </>
-    );
-}
-
 export default function KnowledgeVersions() {
     const { page, versions, pages, projects } = usePage<PageProps>().props;
     const { workspace } = usePage<PageSharedProps>().props;
@@ -109,9 +60,6 @@ export default function KnowledgeVersions() {
     const [versionToPreview, setVersionToPreview] = useState<VersionItem | null>(null);
     const [versionContent, setVersionContent] = useState<VersionDetail | null>(null);
     const [loadingVersion, setLoadingVersion] = useState(false);
-
-    const trees = buildTree(pages);
-    const crossWorkspaceTrees = trees.filter((node) => !node.projectId);
 
     const projectName = (projectId: string | null): string | null =>
         projectId ? (projects.find((project) => project.id === projectId)?.name ?? null) : null;
@@ -169,43 +117,7 @@ export default function KnowledgeVersions() {
             <FlashBanner />
 
             <div className="grid items-start gap-6 lg:grid-cols-[16rem_1fr]">
-                <aside className="overflow-hidden rounded-xl border bg-card">
-                    <div className="flex items-center gap-2.5 border-b px-4 py-3">
-                        <h2 className="text-sm font-semibold">{t('knowledge.pages')}</h2>
-                        <span className="rounded-full bg-secondary px-2 py-0.5 font-mono text-[11px] text-muted-foreground tabular-nums">
-                            {pages.length}
-                        </span>
-                    </div>
-                    <nav aria-label={t('knowledge.treeAria')} className="flex flex-col gap-3 px-3 py-3">
-                        {crossWorkspaceTrees.length > 0 ? (
-                            <section>
-                                <h3 className="px-2 pb-1 font-mono text-[12px] tracking-[0.08em] uppercase text-muted-foreground">
-                                    {t('knowledge.crossWorkspace')}
-                                </h3>
-                                {crossWorkspaceTrees.map((node) => (
-                                    <TreeRow key={node.id} node={node} depth={0} selectedId={page.id} />
-                                ))}
-                            </section>
-                        ) : null}
-                        {projects.map((project) => {
-                            const projectTrees = trees.filter((node) => node.projectId === project.id);
-                            if (projectTrees.length === 0) return null;
-                            return (
-                                <section key={project.id}>
-                                    <h3 className="px-2 pb-1 font-mono text-[12px] tracking-[0.08em] uppercase text-muted-foreground">
-                                        {project.name}
-                                    </h3>
-                                    {projectTrees.map((node) => (
-                                        <TreeRow key={node.id} node={node} depth={0} selectedId={page.id} />
-                                    ))}
-                                </section>
-                            );
-                        })}
-                        {pages.length === 0 ? (
-                            <p className="px-2 text-sm text-muted-foreground">{t('knowledge.noPages')}</p>
-                        ) : null}
-                    </nav>
-                </aside>
+                <KnowledgeSidebar pages={pages} projects={projects} selectedId={page.id} />
 
                 <div className="min-w-0">
                     <article className="overflow-hidden rounded-xl border bg-card">

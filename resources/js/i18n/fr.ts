@@ -450,12 +450,26 @@ const fr: typeof en = {
         intro:
             "Les issues archivées de ce projet, les plus récemment archivées en premier. Elles ont quitté toutes les vues actives ; le désarchivage ramène un sous-arbre fermé.",
         empty: "Aucune issue archivée dans ce projet pour le moment.",
+        emptyFiltered: "Aucune issue archivée ne correspond à ces filtres.",
         issue: "Ticket",
         status: "Statut",
         priority: "Priorité",
         assignees: "Assignés",
         archivedAt: "Archivé le",
         unarchive: "Désarchiver",
+        filters: {
+            allStatuses: "Tous les statuts",
+            allPriorities: "Toutes les priorités",
+            allAssignees: "Tous les assignés",
+            archivedFrom: "Archivé du",
+            archivedTo: "Archivé au",
+        },
+        pagination: {
+            showing: "Affichage de {{from}}–{{to}} sur {{total}}",
+            previous: "Précédent",
+            next: "Suivant",
+            page: "Page {{current}} / {{last}}",
+        },
     },
 
     labelPicker: {
@@ -605,6 +619,7 @@ const fr: typeof en = {
         pages: "Pages",
         crossWorkspace: "Transverse",
         treeAria: "Arborescence des connaissances",
+        breadcrumbAria: "Fil d'Ariane",
         noPages: "Aucune page pour le moment.",
         resultsFor: "Résultats pour « {{query}} »",
         noMatchingPages: "Aucune page correspondante.",
@@ -613,6 +628,11 @@ const fr: typeof en = {
         noPageSelected: "Aucune page sélectionnée",
         noPageSelectedHint:
             "Sélectionnez une page dans l'arborescence ou lancez une recherche pour commencer.",
+        noPagesHint: "Créez votre première page pour commencer.",
+        createPageWithTitle: "Créer une page « {{title}} »",
+        clearSearch: "Effacer la recherche",
+        noPagesInProject: "Aucune page dans {{project}} pour le moment.",
+        noPagesInProjectHint: "Soyez le premier à documenter ce projet.",
         deleteTitle: "Supprimer « {{title}} » ?",
         deleteDescription:
             "La page est retirée de la base de connaissances. Cette action est irréversible.",
@@ -671,6 +691,11 @@ const fr: typeof en = {
             overwrite: "Écraser leurs modifications",
             reload: "Recharger et fusionner",
             dismiss: "Ignorer",
+        },
+        filters: {
+            allProjects: "Tous les projets",
+            transverseOnly: "Transverse uniquement",
+            projectAria: "Filtrer par projet",
         },
     },
 };

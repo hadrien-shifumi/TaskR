@@ -27,7 +27,7 @@ class KnowledgePresenter
     /**
      * Selected page of the knowledge editor.
      *
-     * @return array{id: string, title: string, body: string, parentId: string|null, projectId: string|null, lastEditor: string|null, updatedAt: string|null}
+     * @return array{id: string, title: string, body: string, parentId: string|null, projectId: string|null, parentChain: array<int, array{id: string, title: string}>, lastEditor: string|null, updatedAt: string|null}
      */
     public static function detail(KnowledgePage $page): array
     {
@@ -37,6 +37,7 @@ class KnowledgePresenter
             'body' => $page->body,
             'parentId' => $page->parent_id,
             'projectId' => $page->project_id,
+            'parentChain' => $page->ancestorChain(),
             'lastEditor' => $page->lastEditor?->name,
             'updatedAt' => $page->updated_at?->toISOString(),
         ];

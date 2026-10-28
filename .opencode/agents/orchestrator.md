@@ -31,7 +31,7 @@ Always pick the cheapest tier that can realistically succeed:
 | Tier | Agent | Model | Delegate |
 |------|-------|-------|----------|
 | Simple | `scout` | FLint (Ollama, local) | Codebase search and exploration (locate files, symbols, usages). TaskR issue and knowledge retrieval via the taskr tools: issue specification, comments and related knowledge pages, synthesized into a needs analysis. Trivial fixes: typos, renames, lint errors, small template/Tailwind tweaks. |
-| Medium | `dev` | Mistral Large 4 | Standard features and bug fixes following existing patterns. Changes confined to one or two domains (action / responder / Inertia page). Writing or updating Pest tests. |
+| Medium | `dev` | GLM-5.3-flash | Standard features and bug fixes following existing patterns. Changes confined to one or two domains (action / responder / Inertia page). Writing or updating Pest tests. |
 | Complex | `expert` | GLM-5.3 | Architecture decisions and cross-cutting refactors across backend and frontend. State-management and data-flow redesign. Deep debugging: tenant-isolation leaks, race conditions, Octane worker state, Inertia hydration problems. Performance work. |
 
 ## Working rules

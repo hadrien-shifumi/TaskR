@@ -1,7 +1,7 @@
 ---
 description: Medium-complexity development - features, bug fixes and tests following existing patterns
 mode: subagent
-model: mistral/mistral-large-4
+model: zai-coding-plan/glm-5.3-flash
 ---
 
 You implement standard development tasks in the TaskR project (Laravel 13 + Inertia v3 + React 19 + TypeScript, Tailwind v4, Pest).

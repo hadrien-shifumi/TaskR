@@ -1,5 +1,6 @@
 import AppLayout from '@/layouts/app-layout';
 import { Banner } from '@/components/banner';
+import { FilterBar } from '@/components/filter-bar';
 import { FlashBanner } from '@/components/flash-banner';
 import { FormDialog } from '@/components/form-dialog';
 import { Badge } from '@/components/ui/badge';
@@ -23,24 +24,26 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
-import { BookOpen, History, Pencil, Plus, Search, Trash2, TriangleAlert, X } from 'lucide-react';
-import { useState } from 'react';
+import {
+    BookOpen,
+    ChevronRight,
+    Clock,
+    Folder,
+    Globe,
+    History,
+    Pencil,
+    Plus,
+    Search,
+    Trash2,
+    TriangleAlert,
+    User,
+    X,
+} from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { PageSharedProps } from '@/types';
-import { formatDate } from '@/lib/format-date';
-
-interface PageRef {
-    id: string;
-    title: string;
-    parentId: string | null;
-    projectId: string | null;
-    updatedAt: string | null;
-}
-
-interface ProjectOption {
-    id: string;
-    name: string;
-}
+import { formatDate, formatRelativeDate } from '@/lib/format-date';
+import { KnowledgeSidebar, type PageRef, type ProjectOption } from './components/knowledge-sidebar';
 
 interface SelectedPage {
     id: string;
@@ -48,6 +51,7 @@ interface SelectedPage {
     body: string;
     parentId: string | null;
     projectId: string | null;
+    parentChain: { id: string; title: string }[];
     lastEditor: string | null;
     updatedAt: string | null;
 }
@@ -70,6 +74,7 @@ type PageProps = {
     pages: PageRef[];
     projects: ProjectOption[];
     selected: SelectedPage | null;
+    projectFilter?: string | null;
     query?: string;
     results?: SearchResult[];
     searchUnavailable?: boolean;
@@ -78,47 +83,10 @@ type PageProps = {
 const NO_PROJECT = '__none__';
 const NO_PARENT = '__none__';
 
-type TreeNode = PageRef & { children: TreeNode[] };
-
-function buildTree(pages: PageRef[]): TreeNode[] {
-    const byId = new Map<string, TreeNode>();
-    pages.forEach((page) => byId.set(page.id, { ...page, children: [] }));
-
-    const roots: TreeNode[] = [];
-    byId.forEach((node) => {
-        if (node.parentId && byId.has(node.parentId)) {
-            byId.get(node.parentId)!.children.push(node);
-        } else {
-            roots.push(node);
-        }
-    });
-
-    return roots;
-}
-
-/** Maquette sidebar nav-item pattern applied to a tree row. */
-function TreeRow({ node, depth, selectedId }: { node: TreeNode; depth: number; selectedId: string | null }) {
-    return (
-        <>
-            <Link
-                href={route('knowledge.show', node.id)}
-                aria-current={node.id === selectedId ? 'page' : undefined}
-                className="block truncate rounded-lg px-2.5 py-1.75 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground aria-[current=page]:bg-secondary aria-[current=page]:font-medium aria-[current=page]:text-foreground"
-                style={{ paddingLeft: `${0.75 + depth * 1}rem` }}
-            >
-                {node.title}
-            </Link>
-            {node.children.map((child) => (
-                <TreeRow key={child.id} node={child} depth={depth + 1} selectedId={selectedId} />
-            ))}
-        </>
-    );
-}
-
 const emptyForm = { title: '', body: '', project_id: '', parent_id: '' };
 
 export default function KnowledgeIndex() {
-    const { pages, projects, selected, query, results, searchUnavailable } = usePage<PageProps>().props;
+    const { pages, projects, selected, projectFilter, query, results, searchUnavailable } = usePage<PageProps>().props;
     const { workspace } = usePage<PageSharedProps>().props;
     const { t } = useTranslation();
 
@@ -127,16 +95,75 @@ export default function KnowledgeIndex() {
     const [deleting, setDeleting] = useState(false);
     const [conflict, setConflict] = useState<ConflictInfo | null>(null);
     const [baseUpdatedAt, setBaseUpdatedAt] = useState<string | null>(null);
+    const [search, setSearch] = useState(query ?? '');
 
     const createForm = useForm({ ...emptyForm });
     const editForm = useForm({ ...emptyForm });
-    const searchForm = useForm({ q: query ?? '' });
 
-    const trees = buildTree(pages);
-    const crossWorkspaceTrees = trees.filter((node) => !node.projectId);
     const selectedId = selected?.id ?? null;
     const projectName = (projectId: string | null): string | null =>
         projectId ? (projects.find((project) => project.id === projectId)?.name ?? null) : null;
+
+    /** Opens the create dialog, optionally pre-filling title/project from the empty-state CTAs. */
+    const openCreating = (init?: { title?: string; projectId?: string }) => {
+        if (init) {
+            createForm.setData({
+                ...emptyForm,
+                title: init.title ?? '',
+                project_id: init.projectId ?? '',
+            });
+        }
+        setCreating(true);
+    };
+
+    /** Sets the sidebar project filter; an empty value removes the param. */
+    const setProjectFilter = (value: string) => {
+        const params: Record<string, string> = {};
+        if (value) {
+            params.project = value;
+        }
+        router.get(route('knowledge.index'), params, { preserveState: true, preserveScroll: true });
+    };
+
+    // Debounced semantic search: fires 400 ms after the last keystroke, with
+    // the active sidebar project filter riding along (`project_id` is the
+    // param SearchKnowledge validates). Emptying the box returns to the
+    // project-filtered index. Partial reloads touch only the search props, so
+    // the sidebar tree and filter survive the round trip untouched.
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (search === (query ?? '')) {
+                return;
+            }
+            if (search.trim() === '') {
+                router.get(
+                    route('knowledge.index'),
+                    projectFilter ? { project: projectFilter } : {},
+                    {
+                        preserveState: true,
+                        preserveScroll: true,
+                        only: ['query', 'results', 'searchUnavailable'],
+                    },
+                );
+                return;
+            }
+            router.get(
+                route('knowledge.search'),
+                { q: search, ...(projectFilter ? { project_id: projectFilter } : {}) },
+                {
+                    preserveState: true,
+                    preserveScroll: true,
+                    only: ['query', 'results', 'searchUnavailable'],
+                },
+            );
+        }, 400);
+        return () => clearTimeout(timer);
+    }, [search]);
+
+    // Navigation resync: the URL query prop is the source of truth for the box.
+    useEffect(() => {
+        setSearch(query ?? '');
+    }, [query]);
 
     const submitCreate = (e: React.FormEvent) => {
         e.preventDefault();
@@ -177,15 +204,6 @@ export default function KnowledgeIndex() {
                 // 422 validation errors are set automatically in editForm.errors.
             },
         });
-    };
-
-    const submitSearch = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!searchForm.data.q.trim()) {
-            router.get(route('knowledge.index'), {}, { preserveState: true });
-            return;
-        }
-        searchForm.get(route('knowledge.search'), { preserveState: true, only: ['query', 'results', 'searchUnavailable', 'pages', 'projects'] });
     };
 
     const remove = () => {
@@ -262,25 +280,15 @@ export default function KnowledgeIndex() {
 
             <FlashBanner />
 
-            <form onSubmit={submitSearch} className="mb-4 flex w-full max-w-md items-center gap-2">
-                <div className="relative w-full">
-                    <Search
-                        className="pointer-events-none absolute top-2 left-2.5 size-3.5 text-muted-foreground"
-                        aria-hidden
-                    />
-                    <Input
-                        type="search"
-                        value={searchForm.data.q}
-                        onChange={(e) => searchForm.setData('q', e.target.value)}
-                        placeholder={t('knowledge.searchPlaceholder')}
-                        aria-label={t('knowledge.searchAria')}
-                        className="h-7.5 rounded-md pl-8 text-[13px]"
-                    />
-                </div>
-                <Button type="submit" variant="outline" size="sm" disabled={searchForm.processing}>
-                    {t('knowledge.searchButton')}
-                </Button>
-            </form>
+            <FilterBar
+                search={search}
+                onSearchChange={setSearch}
+                searchPlaceholder={t('knowledge.searchPlaceholder')}
+                searchAriaLabel={t('knowledge.searchAria')}
+                searchClassName="w-72"
+                visible={results !== undefined ? results.length : pages.length}
+                total={pages.length}
+            />
 
             {searchUnavailable ? (
                 <Banner variant="warning" className="mb-4">
@@ -289,43 +297,21 @@ export default function KnowledgeIndex() {
             ) : null}
 
             <div className="grid items-start gap-6 lg:grid-cols-[16rem_1fr]">
-                <aside className="overflow-hidden rounded-xl border bg-card">
-                    <div className="flex items-center gap-2.5 border-b px-4 py-3">
-                        <h2 className="text-sm font-semibold">{t('knowledge.pages')}</h2>
-                        <span className="rounded-full bg-secondary px-2 py-0.5 font-mono text-[11px] text-muted-foreground tabular-nums">
-                            {pages.length}
-                        </span>
-                    </div>
-                    <nav aria-label={t('knowledge.treeAria')} className="flex flex-col gap-3 px-3 py-3">
-                        {crossWorkspaceTrees.length > 0 ? (
-                            <section>
-                                <h3 className="px-2 pb-1 font-mono text-[12px] tracking-[0.08em] uppercase text-muted-foreground">
-                                    {t('knowledge.crossWorkspace')}
-                                </h3>
-                                {crossWorkspaceTrees.map((node) => (
-                                    <TreeRow key={node.id} node={node} depth={0} selectedId={selectedId} />
-                                ))}
-                            </section>
-                        ) : null}
-                        {projects.map((project) => {
-                            const projectTrees = trees.filter((node) => node.projectId === project.id);
-                            if (projectTrees.length === 0) return null;
-                            return (
-                                <section key={project.id}>
-                                    <h3 className="px-2 pb-1 font-mono text-[12px] tracking-[0.08em] uppercase text-muted-foreground">
-                                        {project.name}
-                                    </h3>
-                                    {projectTrees.map((node) => (
-                                        <TreeRow key={node.id} node={node} depth={0} selectedId={selectedId} />
-                                    ))}
-                                </section>
-                            );
-                        })}
-                        {pages.length === 0 ? (
-                            <p className="px-2 text-sm text-muted-foreground">{t('knowledge.noPages')}</p>
-                        ) : null}
-                    </nav>
-                </aside>
+                <KnowledgeSidebar
+                    pages={pages}
+                    projects={projects}
+                    selectedId={selectedId}
+                    projectFilter={projectFilter ?? ''}
+                    onProjectFilterChange={setProjectFilter}
+                    onCreatePage={() =>
+                        openCreating({
+                            projectId:
+                                projectFilter && projectFilter !== 'transverse'
+                                    ? projectFilter
+                                    : '',
+                        })
+                    }
+                />
 
                 <div className="min-w-0">
                     {results !== undefined ? (
@@ -339,11 +325,38 @@ export default function KnowledgeIndex() {
                                 </span>
                             </div>
                             {results.length === 0 ? (
-                                <div className="rounded-xl border border-dashed px-4 py-8 text-center">
-                                    <p className="font-medium">{t('knowledge.noMatchingPages')}</p>
+                                <div className="rounded-xl border border-dashed px-4 py-12 text-center">
+                                    <Search
+                                        className="mx-auto size-8 text-muted-foreground/50"
+                                        aria-hidden
+                                    />
+                                    <p className="mt-3 font-medium">
+                                        {t('knowledge.noMatchingPages')}
+                                    </p>
                                     <p className="mt-1 text-sm text-muted-foreground">
                                         {t('knowledge.noMatchingHint')}
                                     </p>
+                                    <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() =>
+                                                openCreating({ title: query ?? '' })
+                                            }
+                                        >
+                                            <Plus aria-hidden />
+                                            {t('knowledge.createPageWithTitle', {
+                                                title: query ?? '',
+                                            })}
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => setSearch('')}
+                                        >
+                                            {t('knowledge.clearSearch')}
+                                        </Button>
+                                    </div>
                                 </div>
                             ) : (
                                 <ul className="grid gap-3">
@@ -360,9 +373,13 @@ export default function KnowledgeIndex() {
                                                             {projectName(result.projectId)}
                                                         </Badge>
                                                     ) : null}
-                                                    <span className="ml-auto font-mono text-xs text-muted-foreground tabular-nums">
-                                                        {result.score.toFixed(3)}
-                                                    </span>
+                                                    <Badge
+                                                        variant="outline"
+                                                        className="ml-auto font-mono text-[11px] tabular-nums"
+                                                        title={result.score.toFixed(3)}
+                                                    >
+                                                        {Math.round(result.score * 100)}%
+                                                    </Badge>
                                                 </div>
                                                 <p className="mt-1.5 text-sm text-muted-foreground">
                                                     {result.excerpt}
@@ -427,11 +444,50 @@ export default function KnowledgeIndex() {
                             ) : null}
                             <article className="overflow-hidden rounded-xl border bg-card">
                             <header className="flex flex-wrap items-center gap-x-2.5 gap-y-2 border-b px-5 py-3.5">
+                                <nav
+                                    aria-label={t('knowledge.breadcrumbAria')}
+                                    className="flex w-full flex-wrap items-center gap-1.5 text-[13px] text-muted-foreground"
+                                >
+                                    {selected.projectId ? (
+                                        <span className="flex items-center gap-1">
+                                            <Folder className="size-3.5 shrink-0" aria-hidden />
+                                            {projectName(selected.projectId)}
+                                        </span>
+                                    ) : (
+                                        <span className="flex items-center gap-1">
+                                            <Globe className="size-3.5 shrink-0" aria-hidden />
+                                            {t('knowledge.crossWorkspace')}
+                                        </span>
+                                    )}
+                                    {selected.parentChain.map((ancestor) => (
+                                        <span key={ancestor.id} className="flex min-w-0 items-center gap-1.5">
+                                            <ChevronRight className="size-3 shrink-0" aria-hidden />
+                                            <Link
+                                                href={route('knowledge.show', ancestor.id)}
+                                                className="truncate transition-colors hover:text-foreground"
+                                            >
+                                                {ancestor.title}
+                                            </Link>
+                                        </span>
+                                    ))}
+                                    <span className="flex min-w-0 items-center gap-1.5">
+                                        <ChevronRight className="size-3 shrink-0" aria-hidden />
+                                        <span className="truncate font-medium text-foreground">
+                                            {selected.title}
+                                        </span>
+                                    </span>
+                                </nav>
                                 <h2 className="text-base font-semibold tracking-tight">{selected.title}</h2>
                                 {selected.projectId ? (
-                                    <Badge variant="secondary">{projectName(selected.projectId)}</Badge>
+                                    <Badge variant="secondary" className="gap-1">
+                                        <Folder className="size-3" aria-hidden />
+                                        {projectName(selected.projectId)}
+                                    </Badge>
                                 ) : (
-                                    <Badge variant="outline">{t('knowledge.crossWorkspace')}</Badge>
+                                    <Badge variant="outline" className="gap-1">
+                                        <Globe className="size-3" aria-hidden />
+                                        {t('knowledge.crossWorkspace')}
+                                    </Badge>
                                 )}
                                 <div className="ml-auto flex items-center gap-1">
                                     <Button
@@ -472,11 +528,22 @@ export default function KnowledgeIndex() {
                                         {t('common.delete')}
                                     </Button>
                                 </div>
-                                <p className="w-full text-[13px] text-muted-foreground">
-                                    {selected.lastEditor
-                                        ? t('knowledge.editedBy', { name: selected.lastEditor })
-                                        : null}
-                                    {selected.updatedAt ? ` · ${formatDate(selected.updatedAt)}` : null}
+                                <p className="flex w-full flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-muted-foreground">
+                                    {selected.lastEditor ? (
+                                        <span className="flex items-center gap-1.5">
+                                            <User className="size-3.5 shrink-0" aria-hidden />
+                                            {t('knowledge.editedBy', { name: selected.lastEditor })}
+                                        </span>
+                                    ) : null}
+                                    {selected.updatedAt ? (
+                                        <span
+                                            className="flex items-center gap-1.5"
+                                            title={formatDate(selected.updatedAt)}
+                                        >
+                                            <Clock className="size-3.5 shrink-0" aria-hidden />
+                                            {formatRelativeDate(selected.updatedAt)}
+                                        </span>
+                                    ) : null}
                                 </p>
                             </header>
                             <div className="px-5 py-5">
@@ -485,12 +552,19 @@ export default function KnowledgeIndex() {
                             </article>
                         </div>
                     ) : results === undefined ? (
-                        <div className="rounded-xl border border-dashed px-4 py-10 text-center">
-                            <BookOpen className="mx-auto size-5 text-muted-foreground" aria-hidden />
-                            <p className="mt-2 font-medium">{t('knowledge.noPageSelected')}</p>
+                        <div className="rounded-xl border border-dashed px-4 py-12 text-center">
+                            <BookOpen
+                                className="mx-auto size-10 text-muted-foreground/50"
+                                aria-hidden
+                            />
+                            <p className="mt-3 font-medium">{t('knowledge.noPageSelected')}</p>
                             <p className="mt-1 text-sm text-muted-foreground">
                                 {t('knowledge.noPageSelectedHint')}
                             </p>
+                            <Button size="sm" className="mt-4" onClick={() => openCreating()}>
+                                <Plus aria-hidden />
+                                {t('knowledge.newPage')}
+                            </Button>
                         </div>
                     ) : null}
                 </div>
