@@ -74,4 +74,20 @@ class KnowledgePresenter
             'createdAt' => $version->created_at?->toISOString(),
         ];
     }
+
+    /**
+     * Full version detail for the preview modal.
+     *
+     * @return array{id: string, title: string, body: string, editor: string|null, createdAt: string|null}
+     */
+    public static function versionDetail(KnowledgePageVersion $version): array
+    {
+        return [
+            'id' => $version->id,
+            'title' => $version->title,
+            'body' => $version->body,
+            'editor' => $version->editor?->name,
+            'createdAt' => $version->created_at?->toISOString(),
+        ];
+    }
 }

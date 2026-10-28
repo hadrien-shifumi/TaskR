@@ -661,6 +661,8 @@ const fr: typeof en = {
             restoreDescription:
                 "Le contenu de la page sera mis à jour pour correspondre à cette version. Une nouvelle version sera créée pour capturer cette restauration.",
             noVersions: "Pas encore de versions.",
+            preview: "Voir",
+            previewTitle: "Aperçu de la version",
         },
         conflict: {
             title: "Cette page a été modifiée pendant votre édition",

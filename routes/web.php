@@ -26,6 +26,7 @@ use App\Actions\Issues\UpdateIssue;
 use App\Actions\Knowledge\CreateKnowledgePage;
 use App\Actions\Knowledge\DeleteKnowledgePage;
 use App\Actions\Knowledge\ForceDeleteKnowledgePage;
+use App\Actions\Knowledge\GetKnowledgePageVersion;
 use App\Actions\Knowledge\RestoreKnowledgePage;
 use App\Actions\Knowledge\RestoreKnowledgePageVersion;
 use App\Actions\Knowledge\SearchKnowledge;
@@ -165,8 +166,10 @@ Route::middleware(['auth', 'workspace'])->group(function (): void {
     Route::delete('/knowledge/{page}/force', ForceDeleteKnowledgePage::class)
         ->withTrashed()->name('knowledge.force-delete');
 
-    // Versioning — history page and version restore.
+    // Versioning — history page, single-version preview (JSON) and restore.
     Route::get('/knowledge/{page}/versions', ShowKnowledgeVersions::class)->name('knowledge.versions');
+    Route::get('/knowledge/{page}/versions/{version}', GetKnowledgePageVersion::class)
+        ->scopeBindings()->name('knowledge.versions.show');
     Route::post('/knowledge/{page}/versions/{version}/restore', RestoreKnowledgePageVersion::class)
         ->scopeBindings()->name('knowledge.versions.restore');
 
