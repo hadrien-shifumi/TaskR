@@ -8,6 +8,8 @@ type FilterBarProps = {
     onSearchChange: (value: string) => void;
     searchPlaceholder: string;
     searchAriaLabel: string;
+    /** Width class for the search input; defaults to the compact w-50. */
+    searchClassName?: string;
     /** Rows currently displayed… */
     visible: number;
     /** …out of the workspace total (unfiltered). */
@@ -26,6 +28,7 @@ export function FilterBar({
     onSearchChange,
     searchPlaceholder,
     searchAriaLabel,
+    searchClassName = 'w-50',
     visible,
     total,
     children,
@@ -44,7 +47,7 @@ export function FilterBar({
                     placeholder={searchPlaceholder}
                     aria-label={searchAriaLabel}
                     data-test="filter-search"
-                    className="h-7.5 w-50 rounded-md pl-8 text-[13px]"
+                    className={`h-7.5 ${searchClassName} rounded-md pl-8 text-[13px]`}
                 />
             </div>
             {children}

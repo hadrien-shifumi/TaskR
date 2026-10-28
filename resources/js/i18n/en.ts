@@ -447,12 +447,26 @@ const en = {
         intro:
             "Archived issues of this project, most recently archived first. They left every active view; unarchiving brings a closed subtree back.",
         empty: "No archived issue in this project yet.",
+        emptyFiltered: "No archived issue matches these filters.",
         issue: "Issue",
         status: "Status",
         priority: "Priority",
         assignees: "Assignees",
         archivedAt: "Archived on",
         unarchive: "Unarchive",
+        filters: {
+            allStatuses: "All statuses",
+            allPriorities: "All priorities",
+            allAssignees: "All assignees",
+            archivedFrom: "Archived from",
+            archivedTo: "Archived to",
+        },
+        pagination: {
+            showing: "Showing {{from}}–{{to}} of {{total}}",
+            previous: "Previous",
+            next: "Next",
+            page: "Page {{current}} / {{last}}",
+        },
     },
 
     labelPicker: {
@@ -594,6 +608,7 @@ const en = {
         pages: "Pages",
         crossWorkspace: "Cross-workspace",
         treeAria: "Knowledge tree",
+        breadcrumbAria: "Breadcrumb",
         noPages: "No knowledge pages yet.",
         resultsFor: "Results for “{{query}}”",
         noMatchingPages: "No matching pages.",
@@ -601,6 +616,11 @@ const en = {
         editedBy: "Edited by {{name}}",
         noPageSelected: "No page selected",
         noPageSelectedHint: "Select a page in the tree, or search to get started.",
+        noPagesHint: "Create your first page to get started.",
+        createPageWithTitle: 'Create a page titled "{{title}}"',
+        clearSearch: "Clear search",
+        noPagesInProject: "No pages in {{project}} yet.",
+        noPagesInProjectHint: "Be the first to document this project.",
         deleteTitle: 'Delete "{{title}}"?',
         deleteDescription: "The page is removed from the knowledge base. This cannot be undone.",
         newPageTitle: "New knowledge page",
@@ -656,6 +676,11 @@ const en = {
             overwrite: "Overwrite their changes",
             reload: "Reload and merge",
             dismiss: "Dismiss",
+        },
+        filters: {
+            allProjects: "All projects",
+            transverseOnly: "Cross-workspace only",
+            projectAria: "Filter by project",
         },
     },
 };

@@ -45,7 +45,7 @@ it('creates then edits a knowledge page from the UI', function () {
     $page = visit('/knowledge');
     $page->assertSee('No knowledge pages yet.');
 
-    $page->click('button:has-text("New page")');
+    $page->click('header button:has-text("New page")');
     $page->fill('new-knowledge-title', 'Onboarding');
     $page->fill('[role="dialog"] .ProseMirror', 'Bienvenue dans le workspace.');
     $page->click('button:has-text("Create")');
@@ -90,7 +90,7 @@ it('returns the relevant page from semantic search', function () {
 
     $page = visit('/knowledge');
     $page->fill('input[aria-label="Semantic search"]', 'comment se passe la facturation d\'un client');
-    $page->click('button:has-text("Search")');
+    $page->wait(1);
 
     $page->assertSee('Processus de règlement et invoices')
         ->assertSee('Le cycle de règlement des factures clients')

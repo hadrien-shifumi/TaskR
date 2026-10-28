@@ -19,9 +19,14 @@ class ListKnowledgePages
      * attached to their perimeter's projects; transverse pages and other
      * projects' pages are absent.
      *
+     * The optional project filter narrows the list further:
+     * `'transverse'` keeps only workspace-level pages (project_id null),
+     * a project ULID keeps only that project's pages. The filter is
+     * ANDed with the guest scope — an out-of-scope project yields nothing.
+     *
      * @return array<int, array<string, mixed>>
      */
-    public function handle(Workspace $workspace, ?User $user = null): array
+    public function handle(Workspace $workspace, ?User $user = null, ?string $projectFilter = null): array
     {
         $scope = $user instanceof User
             ? app(WorkspaceContext::class)->accessibleProjectIds($user)
@@ -29,6 +34,11 @@ class ListKnowledgePages
 
         return KnowledgePage::query()
             ->when($scope !== null, fn ($query) => $query->whereIn('project_id', $scope))
+            ->when($projectFilter === 'transverse', fn ($query) => $query->whereNull('project_id'))
+            ->when(
+                $projectFilter !== null && $projectFilter !== '' && $projectFilter !== 'transverse',
+                fn ($query) => $query->where('project_id', $projectFilter)
+            )
             ->orderBy('title')
             ->get()
             ->map(fn (KnowledgePage $page): array => KnowledgePresenter::listItem($page))
