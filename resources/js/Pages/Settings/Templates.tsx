@@ -46,11 +46,6 @@ interface LabelOption {
     color: string;
 }
 
-/** Body pre-filled in the create dialog (maquette: "corps markdown prérempli"). */
-const DEFAULT_BODY = '## Context\n\n## Steps to reproduce\n1.\n\n## Expected / Actual';
-
-const emptyForm = { name: '', description: DEFAULT_BODY, priority: 'none', label_ids: [] as string[] };
-
 export default function Templates() {
     const { templates, labels } = usePage<{ templates: TemplateRow[]; labels: LabelOption[] }>().props;
     const { workspace } = usePage<PageSharedProps>().props;
@@ -59,6 +54,14 @@ export default function Templates() {
 
     const [editing, setEditing] = useState<TemplateRow | null>(null);
     const [creating, setCreating] = useState(false);
+
+    /** Body pre-filled in the create dialog (maquette: "corps markdown prérempli"). */
+    const emptyForm = {
+        name: '',
+        description: t('templatesPage.defaultBody'),
+        priority: 'none',
+        label_ids: [] as string[],
+    };
 
     const createForm = useForm({ ...emptyForm });
     const editForm = useForm({ ...emptyForm });

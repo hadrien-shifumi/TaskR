@@ -63,12 +63,16 @@ export function CreateIssueDialog({ open, onClose, projects, statuses, labels, t
     const applyTemplate = (templateId: string) => {
         const template = templates.find((t) => t.id === templateId);
 
-        createForm.setData('template', template ? template.id : '');
-        createForm.setData({
+        // Functional form: in Inertia v3 the object form of setData REPLACES
+        // the whole data object, so merging over the previous state keeps the
+        // untouched fields (title, project, status, due date) intact.
+        createForm.setData((data) => ({
+            ...data,
+            template: template ? template.id : '',
             description: template?.description ?? '',
             priority: template?.priority ?? 'none',
             label_ids: template ? template.labels.map((l) => l.id) : [],
-        });
+        }));
     };
 
     const toggleIssueLabel = (labelId: string) => {

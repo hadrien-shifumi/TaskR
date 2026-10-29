@@ -7,6 +7,8 @@ use App\Actions\Projects\CreateProject;
 use App\Actions\TimeTracking\CreateTimeEntry;
 use App\Actions\Workspaces\CreateWorkspace;
 use App\Mcp\Servers\TaskrServer;
+use App\Mcp\Tools\AddComment;
+use App\Mcp\Tools\CreateIssue;
 use App\Mcp\Tools\CreateLabel;
 use App\Mcp\Tools\CreateStatus;
 use App\Mcp\Tools\CreateTemplate;
@@ -38,6 +40,8 @@ use App\Models\Workspace;
 use App\Support\WorkspaceContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Str;
+use Laravel\Mcp\Server\Testing\TestListResponse;
 use Laravel\Mcp\Server\Testing\TestResponse;
 use Tests\TestCase;
 
@@ -57,6 +61,13 @@ class McpExtendedToolsTest extends TestCase
         TestResponse::macro('payload', function (): array {
             /** @var TestResponse $this */
             return $this->response->toArray()['result']['structuredContent'] ?? [];
+        });
+
+        TestListResponse::macro('schemaFor', function (string $name): array {
+            /** @var TestListResponse $this */
+            $tool = collect($this->items)->firstWhere('name', $name) ?? [];
+
+            return $tool['inputSchema']['properties'] ?? [];
         });
     }
 
@@ -301,6 +312,58 @@ class McpExtendedToolsTest extends TestCase
 
         $this->assertTrue($result['deleted']);
         $this->assertDatabaseMissing('comments', ['id' => $comment->id]);
+    }
+
+    public function test_mcp_add_comment_rejects_missing_body(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspace();
+        app(WorkspaceContext::class)->set($workspace);
+        $issue = CreateIssueAction::run($workspace, ['project_id' => $project->id, 'title' => 'Target']);
+
+        TaskrServer::actingAs($owner)->tool(AddComment::class, [
+            'workspace_id' => $workspace->id,
+            'issue_id' => $issue->id,
+        ])->assertHasErrors(['body']);
+
+        $this->assertDatabaseCount('comments', 0);
+    }
+
+    public function test_mcp_add_comment_rejects_body_over_20000_characters(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspace();
+        app(WorkspaceContext::class)->set($workspace);
+        $issue = CreateIssueAction::run($workspace, ['project_id' => $project->id, 'title' => 'Target']);
+
+        TaskrServer::actingAs($owner)->tool(AddComment::class, [
+            'workspace_id' => $workspace->id,
+            'issue_id' => $issue->id,
+            'body' => str_repeat('a', 20001),
+        ])->assertHasErrors(['body']);
+
+        $this->assertDatabaseCount('comments', 0);
+    }
+
+    public function test_mcp_update_comment_rejects_body_over_20000_characters(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspace();
+        app(WorkspaceContext::class)->set($workspace);
+        $issue = CreateIssueAction::run($workspace, ['project_id' => $project->id, 'title' => 'Target']);
+        $comment = $issue->comments()->create([
+            'author_id' => $owner->id,
+            'body' => 'Original',
+        ]);
+
+        TaskrServer::actingAs($owner)->tool(UpdateComment::class, [
+            'workspace_id' => $workspace->id,
+            'issue_id' => $issue->id,
+            'comment_id' => $comment->id,
+            'body' => str_repeat('a', 20001),
+        ])->assertHasErrors(['body']);
+
+        $this->assertDatabaseHas('comments', [
+            'id' => $comment->id,
+            'body' => 'Original',
+        ]);
     }
 
     // ─── Phase 2 — Importants ───────────────────────────────────────────
@@ -567,6 +630,120 @@ class McpExtendedToolsTest extends TestCase
 
         $this->assertTrue($result['deleted']);
         $this->assertDatabaseMissing('issue_templates', ['id' => $template->id]);
+    }
+
+    public function test_create_issue_schema_exposes_template_parameter(): void
+    {
+        [$owner] = $this->setupWorkspace();
+
+        $properties = TaskrServer::actingAs($owner)->tools()->schemaFor('create_issue');
+
+        $this->assertArrayHasKey('template', $properties);
+        $this->assertSame('string', $properties['template']['type'] ?? null);
+    }
+
+    public function test_create_issue_applies_template_defaults_via_mcp(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspace();
+
+        $bug = TaskrServer::actingAs($owner)->tool(CreateLabel::class, [
+            'workspace_id' => $workspace->id,
+            'name' => 'bug',
+            'color' => 'red',
+        ])->assertOk()->payload()['label']['id'];
+
+        $front = TaskrServer::actingAs($owner)->tool(CreateLabel::class, [
+            'workspace_id' => $workspace->id,
+            'name' => 'front',
+            'color' => 'blue',
+        ])->assertOk()->payload()['label']['id'];
+
+        $template = TaskrServer::actingAs($owner)->tool(CreateTemplate::class, [
+            'workspace_id' => $workspace->id,
+            'name' => 'Bug',
+            'description' => '## Contexte',
+            'priority' => 'high',
+            'label_ids' => [$bug, $front],
+        ])->assertOk()->payload()['template'];
+
+        $result = TaskrServer::actingAs($owner)->tool(CreateIssue::class, [
+            'workspace_id' => $workspace->id,
+            'project_id' => $project->id,
+            'title' => 'From agent',
+            'template' => $template['id'],
+        ])->assertOk()->payload();
+
+        $this->assertSame('## Contexte', $result['issue']['description']);
+        $this->assertSame('high', $result['issue']['priority']);
+        $this->assertSame([$bug, $front], $result['issue']['labelIds']);
+    }
+
+    public function test_create_issue_explicit_values_win_over_template_via_mcp(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspace();
+
+        $bug = TaskrServer::actingAs($owner)->tool(CreateLabel::class, [
+            'workspace_id' => $workspace->id,
+            'name' => 'bug',
+            'color' => 'red',
+        ])->assertOk()->payload()['label']['id'];
+
+        $template = TaskrServer::actingAs($owner)->tool(CreateTemplate::class, [
+            'workspace_id' => $workspace->id,
+            'name' => 'Bug',
+            'description' => '## Corps du gabarit',
+            'priority' => 'high',
+            'label_ids' => [$bug],
+        ])->assertOk()->payload()['template'];
+
+        $result = TaskrServer::actingAs($owner)->tool(CreateIssue::class, [
+            'workspace_id' => $workspace->id,
+            'project_id' => $project->id,
+            'title' => 'Explicit wins',
+            'description' => 'Custom',
+            'priority' => 'low',
+            'template' => $template['id'],
+        ])->assertOk()->payload();
+
+        $this->assertSame('Custom', $result['issue']['description']);
+        $this->assertSame('low', $result['issue']['priority']);
+        $this->assertSame([$bug], $result['issue']['labelIds']);
+    }
+
+    public function test_create_issue_with_unknown_template_is_not_found(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspace();
+
+        $response = TaskrServer::actingAs($owner)->tool(CreateIssue::class, [
+            'workspace_id' => $workspace->id,
+            'project_id' => $project->id,
+            'title' => 'From agent',
+            'template' => (string) Str::ulid(),
+        ]);
+
+        $this->assertSame('not_found', $response->payload()['error']);
+        $this->assertDatabaseCount('issues', 0);
+    }
+
+    public function test_create_issue_with_template_of_another_workspace_is_not_found(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspace();
+
+        $other = CreateWorkspace::run($owner, ['name' => 'Other']);
+        $foreign = TaskrServer::actingAs($owner)->tool(CreateTemplate::class, [
+            'workspace_id' => $other->id,
+            'name' => 'Foreign',
+        ])->assertOk()->payload()['template'];
+
+        $response = TaskrServer::actingAs($owner)->tool(CreateIssue::class, [
+            'workspace_id' => $workspace->id,
+            'project_id' => $project->id,
+            'title' => 'Intrusion',
+            'template' => $foreign['id'],
+        ]);
+
+        $this->assertSame('not_found', $response->payload()['error']);
+        $this->assertDatabaseCount('issues', 0);
     }
 
     // ─── Helpers ────────────────────────────────────────────────────────
