@@ -1,4 +1,4 @@
-import { AvatarStack, PriorityBadge, StatusBadge } from '@/components/issue-badges';
+import { AvatarStack, BlockedBadge, PriorityBadge, StatusBadge } from '@/components/issue-badges';
 import { Banner } from '@/components/banner';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -122,6 +122,7 @@ export function ProjectKanbanBoard({ board }: ProjectKanbanBoardProps) {
                                         className="flex min-h-5.5 flex-wrap items-center gap-2"
                                         onDragStart={(e) => e.stopPropagation()}
                                     >
+                                        <BlockedBadge blocked={issue.blocked} unblockable={issue.unblockable} />
                                         <PriorityBadge priority={issue.priority} />
                                         <div className="ml-auto" />
                                         {issue.dueDate ? (

@@ -53,7 +53,7 @@ class ShowProjectBoard
 
         $issues = $project->issues()
             ->unarchived()
-            ->with(['assignees'])
+            ->with(['assignees', 'blockedBy.status'])
             ->when($parentsOnly, fn ($query) => $query->whereNull('parent_id'))
             ->when($assigneeId !== null, fn (Builder $query) => $query->whereHas('assignees', fn (Builder $q) => $q->where('users.id', $assigneeId)))
             ->orderBy('created_at')

@@ -93,6 +93,7 @@ const en = {
             allAssignees: "All assignees",
             allProjects: "All projects",
             overdue: "Overdue",
+            blocked: "Blocked",
         },
         views: {
             list: "List",
@@ -126,6 +127,11 @@ const en = {
         hoursAgo: "{{count}}h ago",
         dayAgo: "1 day ago",
         daysAgo: "{{count}} days ago",
+    },
+
+    issueBadges: {
+        blocked: "Blocked",
+        unblockable: "Unblockable",
     },
 
     issueShow: {
@@ -194,6 +200,21 @@ const en = {
         overdueForDays: "Overdue for {{count}} days.",
         softHierarchyHint: "Soft hierarchy — same workspace only, any depth.",
         setAction: "Set",
+        dependencies: "Dependencies",
+        dependenciesHint: "The dependency alerts, it never forbids — the workflow stays free.",
+        blocked: "Blocked",
+        unblockable: "Unblockable",
+        addBlocker: "Add",
+        noBlockers: "No blockers.",
+        removeBlocker: "Remove blocker {{name}}",
+        removeBlocks: "Stop blocking {{name}}",
+        blockedBy: "Blocked by",
+        blocks: "Blocks",
+        blocksThis: "This ticket blocks",
+        dependenciesTitle: "Manage blockers",
+        dependenciesDialogHint:
+            "Pick the tickets that must be finished before this one · cycles are forbidden.",
+        saveDependencies: "Save",
     },
 
     comments: {

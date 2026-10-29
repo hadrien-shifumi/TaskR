@@ -94,6 +94,26 @@ class Issue extends BaseModel
     }
 
     /**
+     * Issues that must be completed before this one.
+     *
+     * @return BelongsToMany<Issue, $this>
+     */
+    public function blockedBy(): BelongsToMany
+    {
+        return $this->belongsToMany(Issue::class, 'issue_dependencies', 'issue_id', 'blocked_by_id');
+    }
+
+    /**
+     * Issues that cannot start until this one is completed.
+     *
+     * @return BelongsToMany<Issue, $this>
+     */
+    public function blocks(): BelongsToMany
+    {
+        return $this->belongsToMany(Issue::class, 'issue_dependencies', 'blocked_by_id', 'issue_id');
+    }
+
+    /**
      * @return HasMany<Comment, $this>
      */
     public function comments(): HasMany

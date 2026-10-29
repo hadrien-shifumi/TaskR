@@ -23,7 +23,7 @@ class ListIssues
      * workspace-wide count never leaks: totalUnfiltered counts within the
      * perimeter as well.
      *
-     * @param  array<string, string|null>  $filters  project|status|category|priority|label|assignee|overdue|q
+     * @param  array<string, string|null>  $filters  project|status|category|priority|label|assignee|overdue|blocked|q
      * @return array{issues: array<int, array<string, mixed>>, total: int, totalUnfiltered: int}
      */
     public function handle(Workspace $workspace, array $filters = [], ?int $limit = null, int $offset = 0, ?User $user = null): array
@@ -33,7 +33,7 @@ class ListIssues
             : null;
 
         $query = Issue::query()
-            ->with(['project', 'status', 'labels', 'assignees'])
+            ->with(['project', 'status', 'labels', 'assignees', 'blockedBy.status'])
             ->when($scope !== null, fn (Builder $issues) => $issues->whereIn('project_id', $scope))
             ->orderByDesc('created_at');
 
@@ -107,6 +107,13 @@ class ListIssues
 
         if (($filters['overdue'] ?? null) === '1' || ($filters['overdue'] ?? null) === 'true') {
             $query->overdue();
+        }
+
+        if (($filters['blocked'] ?? null) === '1' || ($filters['blocked'] ?? null) === 'true') {
+            $query->whereHas('blockedBy', fn (Builder $blockers) => $blockers->whereHas(
+                'status',
+                fn (Builder $statuses) => $statuses->whereNotIn('category', [StatusCategory::Done, StatusCategory::Cancelled]),
+            ));
         }
     }
 }

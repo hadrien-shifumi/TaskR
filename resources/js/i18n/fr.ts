@@ -91,6 +91,7 @@ const fr: typeof en = {
             allAssignees: "Tous les assignés",
             allProjects: "Tous les projets",
             overdue: "En retard",
+            blocked: "Bloqué",
         },
         views: {
             list: "Liste",
@@ -124,6 +125,11 @@ const fr: typeof en = {
         hoursAgo: "il y a {{count}} h",
         dayAgo: "il y a 1 jour",
         daysAgo: "il y a {{count}} jours",
+    },
+
+    issueBadges: {
+        blocked: "Bloqué",
+        unblockable: "Déblocable",
     },
 
     issueShow: {
@@ -193,6 +199,21 @@ const fr: typeof en = {
         overdueForDays: "En retard de {{count}} jours.",
         softHierarchyHint: "Hiérarchie souple — même espace uniquement, toute profondeur.",
         setAction: "Définir",
+        dependencies: "Dépendances",
+        dependenciesHint: "La dépendance alerte, elle n'interdit pas — le workflow reste libre.",
+        blocked: "Bloqué",
+        unblockable: "Déblocable",
+        addBlocker: "Ajouter",
+        noBlockers: "Aucun bloqueur.",
+        removeBlocker: "Retirer le bloqueur {{name}}",
+        removeBlocks: "Ne plus bloquer {{name}}",
+        blockedBy: "Bloqué par",
+        blocks: "Bloque",
+        blocksThis: "Ce ticket bloque",
+        dependenciesTitle: "Gérer les bloqueurs",
+        dependenciesDialogHint:
+            "Sélectionnez les tickets à terminer avant celui-ci · cycles interdits.",
+        saveDependencies: "Enregistrer",
     },
 
     comments: {

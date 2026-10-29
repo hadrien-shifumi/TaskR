@@ -29,7 +29,7 @@ class GetIssue
             app(WorkspaceContext::class)->abortUnlessIssueAccessible($user, $issue);
         }
 
-        $issue->load(['project', 'status', 'labels', 'assignees', 'timeEntries', 'creator']);
+        $issue->load(['project', 'status', 'labels', 'assignees', 'timeEntries', 'creator', 'blockedBy.status', 'blocks.status']);
 
         $parent = $issue->parent()
             ->with('status')

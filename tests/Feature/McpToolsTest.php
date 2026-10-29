@@ -24,6 +24,7 @@ use App\Mcp\Tools\ListWorkspaces as ListWorkspacesTool;
 use App\Mcp\Tools\LogTime;
 use App\Mcp\Tools\MoveIssue;
 use App\Mcp\Tools\SetAssignees;
+use App\Mcp\Tools\SetIssueDependencies;
 use App\Mcp\Tools\SetIssueParent;
 use App\Mcp\Tools\SetLabels;
 use App\Mcp\Tools\UpdateIssue;
@@ -62,7 +63,7 @@ class McpToolsTest extends TestCase
             ListWorkspacesTool::class, ListProjects::class, CreateProjectTool::class, UpdateProjectTool::class, ArchiveProject::class,
             ListIssues::class, GetIssue::class, CreateIssue::class, UpdateIssue::class,
             DeleteIssue::class, MoveIssue::class,
-            SetIssueParent::class, SetAssignees::class, SetLabels::class,
+            SetIssueParent::class, SetIssueDependencies::class, SetAssignees::class, SetLabels::class,
             AddComment::class, ListComments::class,
             ListStatuses::class, ListLabels::class,
             LogTime::class, ListTimeEntries::class,
