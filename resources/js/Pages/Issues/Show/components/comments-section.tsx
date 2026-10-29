@@ -71,6 +71,7 @@ export function CommentsSection({ issueId, comments }: CommentsSectionProps) {
                                         value={commentEditForm.data.body}
                                         onChange={(e) => commentEditForm.setData('body', e.target.value)}
                                         required
+                                        maxLength={20000}
                                     />
                                     <div className="flex gap-2">
                                         <Button
@@ -147,6 +148,7 @@ export function CommentsSection({ issueId, comments }: CommentsSectionProps) {
                             value={commentForm.data.body}
                             onChange={(e) => commentForm.setData('body', e.target.value)}
                             required
+                            maxLength={20000}
                             aria-invalid={commentForm.errors.body ? true : undefined}
                         />
                     )}

@@ -170,6 +170,9 @@ const en = {
         cycleRefused: "Attachment refused:",
         cycleError:
             "this issue is a direct child — making it the parent would create a cycle. A parent must also belong to the same workspace.",
+        dependencyCycleRefused: "Update refused:",
+        dependencyCycleError:
+            "this blocker would create a dependency cycle (A blocked by B blocked by A). Remove the offending blocker and try again.",
         setError: "the parent could not be set.",
         setParent: "Set parent",
         logTime: "Log time",
@@ -596,6 +599,7 @@ const en = {
         defaultPriority: "Default priority",
         defaultLabels: "Default labels",
         defaultDescription: "Default description",
+        defaultBody: "## Context\n\n## Steps to reproduce\n1.\n\n## Expected\n\n## Observed",
     },
 
     tokensPage: {

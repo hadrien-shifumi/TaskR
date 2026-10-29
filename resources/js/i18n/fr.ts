@@ -168,6 +168,9 @@ const fr: typeof en = {
         cycleRefused: "Rattachement refusé :",
         cycleError:
             "ce ticket est un enfant direct — en faire le parent créerait un cycle. Un parent doit également appartenir au même espace de travail.",
+        dependencyCycleRefused: "Mise à jour refusée :",
+        dependencyCycleError:
+            "ce bloqueur créerait un cycle de dépendances (A bloqué par B bloqué par A). Retirez le bloqueur concerné puis réessayez.",
         setError: "le parent n'a pas pu être défini.",
         setParent: "Définir le parent",
         logTime: "Saisir du temps",
@@ -605,6 +608,7 @@ const fr: typeof en = {
         defaultPriority: "Priorité par défaut",
         defaultLabels: "Étiquettes par défaut",
         defaultDescription: "Description par défaut",
+        defaultBody: "## Contexte\n\n## Étapes pour reproduire\n1.\n\n## Attendu\n\n## Observé",
     },
 
     tokensPage: {

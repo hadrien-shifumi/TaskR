@@ -30,6 +30,7 @@ class CreateIssue extends AgentTool
             'due_date' => $schema->string()->description('Optional due date (YYYY-MM-DD)'),
             'assignees' => $schema->array()->items($schema->string())->description('User ids to assign'),
             'label_ids' => $schema->array()->items($schema->string())->description('ULIDs of workspace labels'),
+            'template' => $schema->string()->description('ULID of an issue template of this workspace; its description, priority and labels pre-fill the absent fields'),
         ];
     }
 

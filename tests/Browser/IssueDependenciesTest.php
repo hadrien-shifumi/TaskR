@@ -290,7 +290,9 @@ it('refuses a dependency cycle with a danger banner', function () {
     // The 422 refusal surfaces as a danger banner inside the dialog.
     $page->waitForEvent('networkidle');
     $page->assertPresent('@dependency-cycle-error');
-    $page->assertSee('Attachment refused');
+    // Discriminating dependency-flavor wording (not the parent-flavor message).
+    $page->assertSee('dependency cycle');
+    $page->assertSee('Update refused');
     // The dialog stays open so the user can fix their selection.
     $page->assertPresent('[data-slot="dialog-content"]');
 

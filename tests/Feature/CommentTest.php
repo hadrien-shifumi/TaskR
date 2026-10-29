@@ -142,4 +142,77 @@ class CommentTest extends TestCase
             ->patch("/issues/{$issue->id}/comments/{$comment->id}", ['body' => 'Hacked'])
             ->assertNotFound();
     }
+
+    public function test_comment_body_is_required(): void
+    {
+        [, $member, $issue] = $this->setupIssue();
+
+        $this->actingAs($member)
+            ->postJson("/issues/{$issue->id}/comments", [])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('body');
+
+        $this->assertDatabaseCount('comments', 0);
+    }
+
+    public function test_comment_body_rejects_more_than_20000_characters(): void
+    {
+        [, $member, $issue] = $this->setupIssue();
+
+        $this->actingAs($member)
+            ->postJson("/issues/{$issue->id}/comments", ['body' => str_repeat('a', 20001)])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('body');
+
+        $this->assertDatabaseCount('comments', 0);
+    }
+
+    public function test_comment_body_accepts_exactly_20000_characters(): void
+    {
+        [, $member, $issue] = $this->setupIssue();
+        $body = str_repeat('a', 20000);
+
+        $this->actingAs($member)
+            ->from(route('issues.show', $issue->id))
+            ->post("/issues/{$issue->id}/comments", ['body' => $body])
+            ->assertRedirect(route('issues.show', $issue->id));
+
+        $this->assertDatabaseHas('comments', [
+            'issue_id' => $issue->id,
+            'author_id' => $member->id,
+            'body' => $body,
+        ]);
+    }
+
+    public function test_comment_update_body_is_required(): void
+    {
+        [, $member, $issue] = $this->setupIssue();
+        $comment = AddComment::run($issue, $member, 'Initial');
+
+        $this->actingAs($member)
+            ->patchJson("/issues/{$issue->id}/comments/{$comment->id}", ['body' => ''])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('body');
+
+        $this->assertDatabaseHas('comments', [
+            'id' => $comment->id,
+            'body' => 'Initial',
+        ]);
+    }
+
+    public function test_comment_update_rejects_more_than_20000_characters(): void
+    {
+        [, $member, $issue] = $this->setupIssue();
+        $comment = AddComment::run($issue, $member, 'Initial');
+
+        $this->actingAs($member)
+            ->patchJson("/issues/{$issue->id}/comments/{$comment->id}", ['body' => str_repeat('a', 20001)])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('body');
+
+        $this->assertDatabaseHas('comments', [
+            'id' => $comment->id,
+            'body' => 'Initial',
+        ]);
+    }
 }

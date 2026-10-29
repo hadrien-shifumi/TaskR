@@ -76,7 +76,7 @@ function SetDependenciesForm({
                 onHttpException: (response) => {
                     setCycleError(
                         response.status === 422
-                            ? t('issueShow.cycleError')
+                            ? t('issueShow.dependencyCycleError')
                             : t('issueShow.setError'),
                     );
                     return false;
@@ -115,7 +115,7 @@ function SetDependenciesForm({
                 </div>
                 {cycleError ? (
                     <Banner variant="danger" role="alert" data-test="dependency-cycle-error">
-                        <strong>{t('issueShow.cycleRefused')}</strong> {cycleError}
+                        <strong>{t('issueShow.dependencyCycleRefused')}</strong> {cycleError}
                     </Banner>
                 ) : null}
                 <DialogFooter>
