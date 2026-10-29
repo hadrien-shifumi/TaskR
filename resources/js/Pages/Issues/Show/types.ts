@@ -1,5 +1,19 @@
 import type { LabelRef, UserRef } from '@/types';
 
+/** Dependency teaser listed on the fiche (blocker or blocked issue). */
+export type DependencyRef = {
+    id: string;
+    title: string;
+    statusName: string | null;
+    statusCategory: string | null;
+};
+
+/**
+ * Row of the "blocks" mirror. Carries the dependent's own blocker ids so
+ * a removal from this side can re-sync the dependent minus this issue.
+ */
+export type BlocksRef = DependencyRef & { blockerIds: string[] };
+
 export type IssueDetail = {
     id: string;
     title: string;
@@ -25,6 +39,10 @@ export type IssueDetail = {
         statusName: string | null;
         assignees: UserRef[];
     }[];
+    blockedBy: DependencyRef[];
+    blocks: BlocksRef[];
+    isBlocked: boolean;
+    isUnblockable: boolean;
 };
 
 export type TimeEntry = {

@@ -1,5 +1,6 @@
-import { Avatar } from '@/components/issue-badges';
+import { Avatar, StatusBadge } from '@/components/issue-badges';
 import { PRIORITIES } from '@/components/priority-select';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -21,9 +22,10 @@ import { Plus, X } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { LabelRef, UserRef } from '@/types';
-import type { IssueDetail } from '../types';
+import type { BlocksRef, IssueDetail } from '../types';
 import { EditDatesDialog } from './edit-dates-dialog';
 import { formatDate, formatHours, overdueDays } from './format';
+import { SetDependenciesDialog } from './set-dependencies-dialog';
 import { SetParentDialog } from './set-parent-dialog';
 
 type IssueSidebarProps = {
@@ -32,6 +34,7 @@ type IssueSidebarProps = {
     members: UserRef[];
     labels: LabelRef[];
     candidates: { id: string; title: string }[];
+    dependencyCandidates: { id: string; title: string }[];
     /** Builds the parent link href — lets the board modal route in place. */
     buildIssueHref?: (issueId: string) => string;
 };
@@ -73,13 +76,24 @@ function PropAction({ children, ...props }: React.ComponentProps<'button'>) {
 
 /**
  * Maquette issue-properties: sticky card with the prop list — status,
- * priority, assignees, labels, due date, estimation, parent.
+ * priority, assignees, labels, due date, estimation, parent, dependencies.
  */
-export function IssueSidebar({ issue, statuses, members, labels, candidates, buildIssueHref }: IssueSidebarProps) {
+export function IssueSidebar({
+    issue,
+    statuses,
+    members,
+    labels,
+    candidates,
+    dependencyCandidates,
+    buildIssueHref,
+}: IssueSidebarProps) {
     const { t } = useTranslation();
     const [datesOpen, setDatesOpen] = useState(false);
     const [parentOpen, setParentOpen] = useState(false);
+    const [dependenciesOpen, setDependenciesOpen] = useState(false);
     const [addingLabel, setAddingLabel] = useState(false);
+
+    const issueHref = (issueId: string) => buildIssueHref?.(issueId) ?? route('issues.show', issueId);
 
     const move = (statusId: string) => {
         router.post(route('issues.move', issue.id), { status_id: statusId });
@@ -110,6 +124,23 @@ export function IssueSidebar({ issue, statuses, members, labels, candidates, bui
             ? current.filter((id) => id !== labelId)
             : [...current, labelId];
         router.post(route('issues.labels', issue.id), { label_ids: next });
+    };
+
+    // Removing a blocker re-syncs this issue's blocker list without it.
+    const removeBlocker = (blockerId: string) => {
+        router.post(route('issues.dependencies', issue.id), {
+            blocked_by: issue.blockedBy
+                .map((blocker) => blocker.id)
+                .filter((id) => id !== blockerId),
+        });
+    };
+
+    // The mirror side deletes from the other end: the edge lives on the
+    // dependent, so the sync POST goes there with its list minus this issue.
+    const stopBlocking = (dependent: BlocksRef) => {
+        router.post(route('issues.dependencies', dependent.id), {
+            blocked_by: dependent.blockerIds.filter((id) => id !== issue.id),
+        });
     };
 
     // Labels are free-form: an existing name attaches directly, a new one is
@@ -373,6 +404,113 @@ export function IssueSidebar({ issue, statuses, members, labels, candidates, bui
                             <span className="text-sm text-muted-foreground">—</span>
                         )}
                     </PropRow>
+
+                    <PropRow
+                        label={t('issueShow.dependencies')}
+                        action={
+                            <PropAction
+                                data-test="dependencies-dialog-open"
+                                onClick={() => setDependenciesOpen(true)}
+                            >
+                                {t('issueShow.addBlocker')}
+                            </PropAction>
+                        }
+                        hint={t('issueShow.dependenciesHint')}
+                    >
+                        {issue.isBlocked || issue.isUnblockable ? (
+                            <span className="flex flex-wrap gap-1.5">
+                                {issue.isBlocked ? (
+                                    <Badge
+                                        variant="destructive"
+                                        className="rounded-full"
+                                        data-test="blocked-badge"
+                                    >
+                                        {t('issueShow.blocked')}
+                                    </Badge>
+                                ) : null}
+                                {issue.isUnblockable ? (
+                                    <Badge
+                                        variant="secondary"
+                                        className="rounded-full bg-success/10 text-success"
+                                        data-test="unblockable-badge"
+                                    >
+                                        {t('issueShow.unblockable')}
+                                    </Badge>
+                                ) : null}
+                            </span>
+                        ) : null}
+                        {issue.blockedBy.length > 0 ? (
+                            <ul className="flex flex-col gap-1.5">
+                                {issue.blockedBy.map((blocker) => (
+                                    <li key={blocker.id} className="flex items-center gap-2">
+                                        <Link
+                                            href={issueHref(blocker.id)}
+                                            className="min-w-0 flex-1 truncate text-[13px] text-primary hover:underline"
+                                        >
+                                            {blocker.title}
+                                        </Link>
+                                        {blocker.statusName ? (
+                                            <StatusBadge
+                                                name={blocker.statusName}
+                                                category={blocker.statusCategory ?? 'backlog'}
+                                            />
+                                        ) : null}
+                                        <button
+                                            type="button"
+                                            data-test="blocker-remove"
+                                            aria-label={t('issueShow.removeBlocker', {
+                                                name: blocker.title,
+                                            })}
+                                            onClick={() => removeBlocker(blocker.id)}
+                                            className="rounded-full text-muted-foreground transition-colors hover:text-foreground"
+                                        >
+                                            <X className="size-3" aria-hidden />
+                                        </button>
+                                    </li>
+                                ))}
+                            </ul>
+                        ) : (
+                            <span className="text-sm text-muted-foreground" data-test="no-blockers">
+                                {t('issueShow.noBlockers')}
+                            </span>
+                        )}
+                    </PropRow>
+
+                    <PropRow label={t('issueShow.blocksThis')}>
+                        {issue.blocks.length > 0 ? (
+                            <ul className="flex flex-col gap-1.5">
+                                {issue.blocks.map((dependent) => (
+                                    <li key={dependent.id} className="flex items-center gap-2">
+                                        <Link
+                                            href={issueHref(dependent.id)}
+                                            className="min-w-0 flex-1 truncate text-[13px] text-primary hover:underline"
+                                        >
+                                            {dependent.title}
+                                        </Link>
+                                        {dependent.statusName ? (
+                                            <StatusBadge
+                                                name={dependent.statusName}
+                                                category={dependent.statusCategory ?? 'backlog'}
+                                            />
+                                        ) : null}
+                                        <button
+                                            type="button"
+                                            data-test="blocks-remove"
+                                            aria-label={t('issueShow.removeBlocks', {
+                                                name: dependent.title,
+                                            })}
+                                            onClick={() => stopBlocking(dependent)}
+                                            className="rounded-full text-muted-foreground transition-colors hover:text-foreground"
+                                        >
+                                            <X className="size-3" aria-hidden />
+                                        </button>
+                                    </li>
+                                ))}
+                            </ul>
+                        ) : (
+                            <span className="text-sm text-muted-foreground">—</span>
+                        )}
+                    </PropRow>
                 </CardContent>
             </Card>
 
@@ -382,6 +520,12 @@ export function IssueSidebar({ issue, statuses, members, labels, candidates, bui
                 candidates={candidates}
                 open={parentOpen}
                 onClose={() => setParentOpen(false)}
+            />
+            <SetDependenciesDialog
+                issue={issue}
+                candidates={dependencyCandidates}
+                open={dependenciesOpen}
+                onClose={() => setDependenciesOpen(false)}
             />
         </aside>
     );

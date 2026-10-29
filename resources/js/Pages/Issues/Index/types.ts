@@ -8,6 +8,8 @@ export interface IssueRow {
     priority: string;
     dueDate: string | null;
     overdue: boolean;
+    blocked: boolean;
+    unblockable: boolean;
     assignees: UserRef[];
     labels: LabelRef[];
 }
@@ -26,6 +28,8 @@ export interface KanbanIssue {
     priority: string;
     dueDate: string | null;
     overdue: boolean;
+    blocked: boolean;
+    unblockable: boolean;
     assignees: UserRef[];
     labels: LabelRef[];
 }

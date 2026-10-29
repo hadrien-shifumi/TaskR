@@ -25,6 +25,8 @@ class IssuePresenter
             'priority' => $issue->priority->value,
             'dueDate' => $issue->due_date?->toISOString(),
             'parentId' => $issue->parent_id,
+            'blockedByIds' => $issue->blockedBy->pluck('id')->values()->all(),
+            'blocksIds' => $issue->blocks->pluck('id')->values()->all(),
             'assigneeIds' => $issue->assignees->pluck('id')->values()->all(),
             'labelIds' => $issue->labels->pluck('id')->values()->all(),
             'estimatedHours' => $issue->estimated_hours !== null ? (float) $issue->estimated_hours : null,

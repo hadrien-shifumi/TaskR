@@ -105,6 +105,8 @@ export default function Index() {
 
     const overdueOptions = [{ value: '1', label: t('issuesPage.filters.overdue') }];
 
+    const blockedOptions = [{ value: '1', label: t('issuesPage.filters.blocked') }];
+
     return (
         <AppLayout
             title={t('issuesPage.title')}
@@ -171,6 +173,14 @@ export default function Index() {
                     options={overdueOptions}
                     allLabel={t('issuesPage.filters.allIssues')}
                     onChange={(value) => setFilter('overdue', value)}
+                    className="h-7.5 w-32 text-[13px]"
+                />
+                <FilterSelect
+                    testId="filter-select-blocked"
+                    value={filters.blocked ?? ''}
+                    options={blockedOptions}
+                    allLabel={t('issuesPage.filters.allIssues')}
+                    onChange={(value) => setFilter('blocked', value)}
                     className="h-7.5 w-32 text-[13px]"
                 />
             </FilterBar>

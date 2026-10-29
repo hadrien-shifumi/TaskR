@@ -50,7 +50,7 @@ class ShowProjectArchives
 
         $query = $project->issues()
             ->archived()
-            ->with(['project', 'status', 'assignees', 'labels'])
+            ->with(['project', 'status', 'assignees', 'labels', 'blockedBy.status'])
             ->orderByDesc('archived_at');
 
         $this->applyFilters($query, $filters);

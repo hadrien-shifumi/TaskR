@@ -94,6 +94,8 @@ class PresentersTest extends TestCase
         $this->assertSame('high', $card['priority']);
         $this->assertSame($issue->due_date->toISOString(), $card['dueDate']);
         $this->assertFalse($card['overdue']);
+        $this->assertFalse($card['blocked']);
+        $this->assertFalse($card['unblockable']);
         $this->assertSame([['id' => $member->id, 'name' => $member->name]], $card['assignees']);
         $this->assertSame([['id' => $label->id, 'name' => 'front', 'color' => 'red']], $card['labels']);
     }
@@ -109,7 +111,7 @@ class PresentersTest extends TestCase
         $kanban = IssuePresenter::kanbanCard(IssuePresenter::card($issue));
 
         $this->assertSame(
-            ['id', 'title', 'priority', 'dueDate', 'overdue', 'assignees', 'labels'],
+            ['id', 'title', 'priority', 'dueDate', 'overdue', 'blocked', 'unblockable', 'assignees', 'labels'],
             array_keys($kanban),
         );
         $this->assertSame($issue->id, $kanban['id']);
@@ -128,7 +130,7 @@ class PresentersTest extends TestCase
         $board = IssuePresenter::boardCard($issue->load('assignees'));
 
         $this->assertSame(
-            ['id', 'title', 'priority', 'dueDate', 'overdue', 'assignees'],
+            ['id', 'title', 'priority', 'dueDate', 'overdue', 'blocked', 'unblockable', 'assignees'],
             array_keys($board),
         );
         $this->assertSame('2026-12-01', $board['dueDate']);

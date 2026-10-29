@@ -18,6 +18,7 @@ use App\Actions\Issues\CreateIssue;
 use App\Actions\Issues\DeleteIssue;
 use App\Actions\Issues\MoveIssue;
 use App\Actions\Issues\SetAssignees;
+use App\Actions\Issues\SetIssueDependencies;
 use App\Actions\Issues\SetIssueParent;
 use App\Actions\Issues\SetLabels;
 use App\Actions\Issues\ShowIssuePage;
@@ -134,6 +135,7 @@ Route::middleware(['auth', 'workspace'])->group(function (): void {
     Route::delete('/issues/{issue}', DeleteIssue::class)->name('issues.destroy');
     Route::post('/issues/{issue}/move', MoveIssue::class)->name('issues.move');
     Route::post('/issues/{issue}/parent', SetIssueParent::class)->name('issues.parent');
+    Route::post('/issues/{issue}/dependencies', SetIssueDependencies::class)->name('issues.dependencies');
     Route::post('/issues/{issue}/assignees', SetAssignees::class)->name('issues.assignees');
     Route::post('/issues/{issue}/labels', SetLabels::class)->name('issues.labels');
     Route::post('/issues/{issue}/archive', ArchiveIssue::class)->name('issues.archive');

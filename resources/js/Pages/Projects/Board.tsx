@@ -1,6 +1,6 @@
 import { ProjectMenu } from '@/components/project-menu';
 import { ProjectViewSwitcher } from '@/components/project-view-switcher';
-import { Avatar, AvatarStack, HealthBadge, PriorityBadge, StatusBadge } from '@/components/issue-badges';
+import { Avatar, AvatarStack, BlockedBadge, HealthBadge, PriorityBadge, StatusBadge } from '@/components/issue-badges';
 import { Banner } from '@/components/banner';
 import { FlashBanner } from '@/components/flash-banner';
 import { Badge } from '@/components/ui/badge';
@@ -39,6 +39,8 @@ interface BoardIssue {
     priority: string;
     dueDate: string | null;
     overdue: boolean;
+    blocked: boolean;
+    unblockable: boolean;
     assignees: { id: number; name: string }[];
 }
 
@@ -347,6 +349,7 @@ export default function Board() {
                                         onDragStart={(e) => e.stopPropagation()}
                                     >
                                         <StatusBadge name={column.name} category={column.category} />
+                                        <BlockedBadge blocked={issue.blocked} unblockable={issue.unblockable} />
                                         <PriorityBadge priority={issue.priority} />
                                         <div className="ml-auto" />
                                         {issue.dueDate ? (

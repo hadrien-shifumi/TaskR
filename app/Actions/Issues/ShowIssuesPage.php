@@ -28,7 +28,7 @@ class ShowIssuesPage
      * With view=kanban, issues are grouped into one board per active project,
      * each board carrying one column per workspace status (in workspace order).
      *
-     * @param  array<string, string|null>  $filters  view|project|status|category|priority|label|assignee|overdue|q
+     * @param  array<string, string|null>  $filters  view|project|status|category|priority|label|assignee|overdue|blocked|q
      * @return array<string, mixed>
      */
     public function handle(Workspace $workspace, array $filters = [], ?User $user = null): array
@@ -74,6 +74,7 @@ class ShowIssuesPage
             'label' => $request->query('label'),
             'assignee' => $request->query('assignee'),
             'overdue' => $request->query('overdue'),
+            'blocked' => $request->query('blocked'),
             'q' => $request->query('q'),
         ], $request->user());
 

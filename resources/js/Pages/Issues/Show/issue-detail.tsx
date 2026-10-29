@@ -20,6 +20,7 @@ type IssueDetailProps = {
     members: UserRef[];
     labels: LabelRef[];
     candidates: { id: string; title: string }[];
+    dependencyCandidates: { id: string; title: string }[];
     /**
      * Builds the href of parent/child links. Defaults to the full issue
      * page; the board's issue modal passes a board URL with an `issue`
@@ -43,6 +44,7 @@ export function IssueDetail({
     members,
     labels,
     candidates,
+    dependencyCandidates,
     buildIssueHref,
 }: IssueDetailProps) {
     const { t } = useTranslation();
@@ -134,6 +136,7 @@ export function IssueDetail({
                 members={members}
                 labels={labels}
                 candidates={candidates}
+                dependencyCandidates={dependencyCandidates}
                 buildIssueHref={buildIssueHref}
             />
         </div>

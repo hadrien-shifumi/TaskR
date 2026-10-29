@@ -45,6 +45,7 @@ use App\Mcp\Tools\RestoreKnowledge;
 use App\Mcp\Tools\RestoreKnowledgeVersion;
 use App\Mcp\Tools\SearchKnowledge;
 use App\Mcp\Tools\SetAssignees;
+use App\Mcp\Tools\SetIssueDependencies;
 use App\Mcp\Tools\SetIssueEstimate;
 use App\Mcp\Tools\SetIssueParent;
 use App\Mcp\Tools\SetLabels;
@@ -95,6 +96,7 @@ class TaskrServer extends Server
         DeleteIssue::class,
         MoveIssue::class,
         SetIssueParent::class,
+        SetIssueDependencies::class,
         SetAssignees::class,
         SetLabels::class,
         SetIssueEstimate::class,

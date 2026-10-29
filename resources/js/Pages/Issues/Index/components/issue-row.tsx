@@ -1,4 +1,4 @@
-import { AvatarStack, PriorityBadge, StatusBadge } from '@/components/issue-badges';
+import { AvatarStack, BlockedBadge, PriorityBadge, StatusBadge } from '@/components/issue-badges';
 import { Badge } from '@/components/ui/badge';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
@@ -17,22 +17,25 @@ export function IssueTableRow({ issue }: { issue: IssueRow }) {
     return (
         <TableRow data-test={`issue-row-${issue.id}`}>
             <TableCell>
-                {cancelled ? (
-                    <span
-                        data-test={`issue-title-${issue.id}`}
-                        className="font-normal text-muted-foreground line-through"
-                    >
-                        {issue.title}
-                    </span>
-                ) : (
-                    <Link
-                        data-test={`issue-title-${issue.id}`}
-                        href={route('issues.show', issue.id)}
-                        className="font-medium hover:text-primary"
-                    >
-                        {issue.title}
-                    </Link>
-                )}
+                <span className="flex flex-wrap items-center gap-1.5">
+                    {cancelled ? (
+                        <span
+                            data-test={`issue-title-${issue.id}`}
+                            className="font-normal text-muted-foreground line-through"
+                        >
+                            {issue.title}
+                        </span>
+                    ) : (
+                        <Link
+                            data-test={`issue-title-${issue.id}`}
+                            href={route('issues.show', issue.id)}
+                            className="font-medium hover:text-primary"
+                        >
+                            {issue.title}
+                        </Link>
+                    )}
+                    <BlockedBadge blocked={issue.blocked} unblockable={issue.unblockable} />
+                </span>
                 <span className="mt-0.5 block font-mono text-xs text-muted-foreground tabular-nums select-all">
                     {issue.id.slice(0, 7)} · {issue.project.name}
                 </span>

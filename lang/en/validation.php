@@ -5,6 +5,7 @@ return [
     'issue' => [
         'parent_out_of_scope' => 'The parent issue is outside your project scope.',
         'project_out_of_scope' => 'This project is outside your project scope.',
+        'blocker_out_of_scope' => 'A blocker issue is outside your project scope.',
     ],
 
     'knowledge' => [

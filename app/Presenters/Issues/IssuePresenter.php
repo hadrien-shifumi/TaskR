@@ -2,6 +2,7 @@
 
 namespace App\Presenters\Issues;
 
+use App\Enums\StatusCategory;
 use App\Models\Issue;
 use BackedEnum;
 use Illuminate\Support\Collection;
@@ -16,7 +17,7 @@ class IssuePresenter
     /**
      * Full card of the transverse issues list (list view, MCP layer).
      *
-     * @return array{id: string, title: string, project: array{id: string, name: string}, status: array{id: string, name: string, category: string}, priority: string, dueDate: string|null, overdue: bool, assignees: array<int, array{id: int, name: string}>, labels: array<int, array{id: string, name: string, color: string}>}
+     * @return array{id: string, title: string, project: array{id: string, name: string}, status: array{id: string, name: string, category: string}, priority: string, dueDate: string|null, overdue: bool, blocked: bool, unblockable: bool, assignees: array<int, array{id: int, name: string}>, labels: array<int, array{id: string, name: string, color: string}>}
      */
     public static function card(Issue $issue): array
     {
@@ -28,6 +29,8 @@ class IssuePresenter
             'priority' => $issue->priority->value,
             'dueDate' => $issue->due_date?->toISOString(),
             'overdue' => $issue->isOverdue(),
+            'blocked' => self::hasOpenBlocker($issue),
+            'unblockable' => self::isUnblockable($issue),
             'assignees' => self::assignees($issue),
             'labels' => $issue->labels->map(fn ($label) => ['id' => $label->id, 'name' => $label->name, 'color' => $label->color])->values()->all(),
         ];
@@ -38,7 +41,7 @@ class IssuePresenter
      * project and status wrappers (the board already carries them).
      *
      * @param  array<string, mixed>  $card  A card() result
-     * @return array{id: string, title: string, priority: string, dueDate: string|null, overdue: bool, assignees: array<int, array{id: int, name: string}>, labels: array<int, array{id: string, name: string, color: string}>}
+     * @return array{id: string, title: string, priority: string, dueDate: string|null, overdue: bool, blocked: bool, unblockable: bool, assignees: array<int, array{id: int, name: string}>, labels: array<int, array{id: string, name: string, color: string}>}
      */
     public static function kanbanCard(array $card): array
     {
@@ -48,6 +51,8 @@ class IssuePresenter
             'priority' => $card['priority'],
             'dueDate' => $card['dueDate'],
             'overdue' => $card['overdue'],
+            'blocked' => $card['blocked'],
+            'unblockable' => $card['unblockable'],
             'assignees' => $card['assignees'],
             'labels' => $card['labels'],
         ];
@@ -56,7 +61,7 @@ class IssuePresenter
     /**
      * Card of a project board column.
      *
-     * @return array{id: string, title: string, priority: string, dueDate: string|null, overdue: bool, assignees: array<int, array{id: int, name: string}>}
+     * @return array{id: string, title: string, priority: string, dueDate: string|null, overdue: bool, blocked: bool, unblockable: bool, assignees: array<int, array{id: int, name: string}>}
      */
     public static function boardCard(Issue $issue): array
     {
@@ -66,6 +71,8 @@ class IssuePresenter
             'priority' => $issue->priority->value,
             'dueDate' => $issue->due_date?->toDateString(),
             'overdue' => $issue->isOverdue(),
+            'blocked' => self::hasOpenBlocker($issue),
+            'unblockable' => self::isUnblockable($issue),
             'assignees' => self::assignees($issue),
         ];
     }
@@ -118,6 +125,10 @@ class IssuePresenter
             'labels' => $issue->labels->map(fn ($label) => ['id' => $label->id, 'name' => $label->name, 'color' => $label->color])->values()->all(),
             'parent' => $parent !== null ? self::parentSummary($parent) : null,
             'children' => collect($children)->map(fn (Issue $child) => self::childSummary($child))->values()->all(),
+            'blockedBy' => $issue->blockedBy->map(fn (Issue $blocker) => self::dependencySummary($blocker))->values()->all(),
+            'blocks' => $issue->blocks->map(fn (Issue $dependent) => self::dependencySummary($dependent))->values()->all(),
+            'isBlocked' => self::hasOpenBlocker($issue),
+            'isUnblockable' => self::isUnblockable($issue),
         ];
     }
 
@@ -167,6 +178,45 @@ class IssuePresenter
             'statusName' => $issue->statusName,
             'statusCategory' => $issue->statusCategory instanceof BackedEnum ? $issue->statusCategory->value : (string) $issue->statusCategory,
         ];
+    }
+
+    /**
+     * Dependency teaser listed on the fiche — a parentSummary shape
+     * plus the status category the blocked/unblockable badges key on.
+     *
+     * @return array{id: string, title: string, statusName: string|null, statusCategory: string|null}
+     */
+    private static function dependencySummary(Issue $blocker): array
+    {
+        return [
+            'id' => $blocker->id,
+            'title' => $blocker->title,
+            'statusName' => $blocker->status?->name,
+            'statusCategory' => $blocker->status?->category?->value,
+        ];
+    }
+
+    /**
+     * An issue is blocked while at least one of its blockers is open,
+     * i.e. its status category is neither done nor cancelled — a
+     * cancelled blocker releases the dependency, in line with
+     * Issue::isOverdue(). The blockedBy relation must be loaded with
+     * status by the querying action.
+     */
+    private static function hasOpenBlocker(Issue $issue): bool
+    {
+        return $issue->blockedBy->contains(
+            fn (Issue $blocker) => ! in_array($blocker->status?->category, [StatusCategory::Done, StatusCategory::Cancelled], true),
+        );
+    }
+
+    /**
+     * Every blocker is done or cancelled: the issue can be moved forward.
+     * False when there is no blocker at all.
+     */
+    private static function isUnblockable(Issue $issue): bool
+    {
+        return $issue->blockedBy->isNotEmpty() && ! self::hasOpenBlocker($issue);
     }
 
     /**

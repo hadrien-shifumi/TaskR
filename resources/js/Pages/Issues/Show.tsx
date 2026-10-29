@@ -28,11 +28,12 @@ type PageProps = {
     members: UserRef[];
     labels: LabelRef[];
     candidates: { id: string; title: string }[];
+    dependencyCandidates: { id: string; title: string }[];
     workspace?: { role?: string } | null;
 };
 
 export default function Show() {
-    const { issue, comments, timeEntries, statuses, members, labels, candidates, workspace } = usePage<PageProps>().props;
+    const { issue, comments, timeEntries, statuses, members, labels, candidates, dependencyCandidates, workspace } = usePage<PageProps>().props;
     const { t } = useTranslation();
     const [editingTitle, setEditingTitle] = useState(false);
     const [deleting, setDeleting] = useState(false);
@@ -121,6 +122,7 @@ export default function Show() {
                 members={members}
                 labels={labels}
                 candidates={candidates}
+                dependencyCandidates={dependencyCandidates}
             />
 
             <EditIssueDialog issue={issue} open={editingTitle} onClose={() => setEditingTitle(false)} />

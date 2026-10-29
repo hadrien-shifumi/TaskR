@@ -17,6 +17,7 @@ export type IssueDetailPayload = {
     members: UserRef[];
     labels: LabelRef[];
     candidates: { id: string; title: string }[];
+    dependencyCandidates: { id: string; title: string }[];
 };
 
 /**
@@ -91,6 +92,7 @@ export function IssueDetailDialog({ projectId, filters, parentsOnly, detail }: I
                         members={detail.members}
                         labels={detail.labels}
                         candidates={detail.candidates}
+                        dependencyCandidates={detail.dependencyCandidates}
                         buildIssueHref={(issueId) => boardIssueUrl(projectId, filters, parentsOnly, issueId)}
                     />
                 </div>

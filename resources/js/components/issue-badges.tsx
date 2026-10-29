@@ -24,8 +24,7 @@ export function StatusBadge({ name, category }: { name: string; category: string
     );
 }
 
-export function PriorityBadge({ priority }: { priority: string }) {
-    const { t } = useTranslation();
+export function PriorityBadge({ priority }: { priority: string }) {    const { t } = useTranslation();
 
     if (priority === 'none') {
         return (
@@ -43,6 +42,33 @@ export function PriorityBadge({ priority }: { priority: string }) {
               : 'bg-info/10 text-info';
 
     return <Badge variant="secondary" className={`rounded-full ${tone}`}>{t(`priority.${priority}`)}</Badge>;
+}
+
+/** Blocked/unblockable signal on issue cards: red while at least one blocker
+ *  is open, green once every blocker is done or cancelled, nothing when the
+ *  issue carries no dependency. */
+export function BlockedBadge({ blocked, unblockable }: { blocked: boolean; unblockable: boolean }) {
+    const { t } = useTranslation();
+
+    if (!blocked && !unblockable) {
+        return null;
+    }
+
+    if (blocked) {
+        return (
+            <Badge variant="destructive" className="rounded-full">
+                <span className={DOT} />
+                {t('issueBadges.blocked')}
+            </Badge>
+        );
+    }
+
+    return (
+        <Badge variant="secondary" className="rounded-full bg-success/10 text-success">
+            <span className={DOT} />
+            {t('issueBadges.unblockable')}
+        </Badge>
+    );
 }
 
 export function HealthBadge({ status }: { status: string | null }) {
