@@ -2,6 +2,7 @@
 description: Progress reporting only - turns the orchestrator status brief into a clear French progress report for the user; never codes, explores or decides
 mode: subagent
 model: ollama/flint:latest
+hidden: true
 permissions:
     - action: edit
       resource: "*"

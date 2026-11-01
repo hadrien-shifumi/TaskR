@@ -19,7 +19,7 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Mail;
 
 /**
- * Build and send the digest of one account, in its primary workspace.
+ * Build and send the digest of one account, in its active workspace.
  *
  * The only writer of notification_preferences.last_digest_at: an empty
  * digest sends nothing and leaves the date untouched, a sent digest stamps
@@ -47,7 +47,7 @@ class SendAccountDigest implements ShouldQueue
             return;
         }
 
-        $workspace = $this->primaryWorkspace();
+        $workspace = $this->activeWorkspace();
 
         if ($workspace === null) {
             return;
@@ -93,16 +93,28 @@ class SendAccountDigest implements ShouldQueue
     }
 
     /**
-     * Primary workspace of the account: the first by name among its
-     * memberships, the same fallback as ResolveCurrentWorkspace has
-     * outside a session.
+     * Active workspace of the account: the one it last activated in the
+     * web UI, when the membership still exists. Accounts that never went
+     * through the UI (seeded or MCP-created) fall back to the first
+     * workspace by name, the same rule as ResolveCurrentWorkspace outside
+     * a session. A stale column never fails the job.
      */
-    private function primaryWorkspace(): ?Workspace
+    private function activeWorkspace(): ?Workspace
     {
-        return Workspace::query()
+        $memberships = Workspace::query()
             ->whereHas('memberships', fn ($membership) => $membership
-                ->where('user_id', $this->user->getKey()))
-            ->orderBy('name')
-            ->first();
+                ->where('user_id', $this->user->getKey()));
+
+        $currentId = $this->user->current_workspace_id;
+
+        if ($currentId !== null) {
+            $current = (clone $memberships)->whereKey($currentId)->first();
+
+            if ($current !== null) {
+                return $current;
+            }
+        }
+
+        return $memberships->orderBy('name')->first();
     }
 }

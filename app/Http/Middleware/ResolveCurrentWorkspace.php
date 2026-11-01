@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\User;
 use App\Models\Workspace;
 use App\Support\WorkspaceContext;
 use Closure;
@@ -25,15 +26,33 @@ class ResolveCurrentWorkspace
             return $next($request);
         }
 
+        assert($user instanceof User);
+
         $workspace = $this->resolveWorkspace($request, $user->getKey());
 
         $this->context->set($workspace);
 
         if ($workspace !== null) {
             session(['workspace_id' => $workspace->id]);
+            $this->rememberCurrentWorkspace($user, $workspace);
         }
 
         return $next($request);
+    }
+
+    /**
+     * Mirror the session workspace on the account so background jobs (the
+     * digest) know which workspace the account is working in. The session
+     * is per browser; this column is the account-wide last activated one.
+     * Only written when it changes, to keep ordinary requests read-only.
+     */
+    private function rememberCurrentWorkspace(User $user, Workspace $workspace): void
+    {
+        if ($user->current_workspace_id === $workspace->id) {
+            return;
+        }
+
+        $user->forceFill(['current_workspace_id' => $workspace->id])->saveQuietly();
     }
 
     /**

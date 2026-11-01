@@ -293,15 +293,21 @@ function Toolbar({ editor }: { editor: Editor }) {
 
 /**
  * Full markdown WYSIWYG editor. The value is a plain markdown string.
+ *
+ * With `fill`, the editor stretches to its container height (the parent must
+ * give it a bounded height) and its own writing area scrolls, instead of the
+ * fixed `min-h-48` block.
  */
 function MarkdownEditor({
   value,
   onChange,
   className,
+  fill = false,
 }: {
   value: string
   onChange: (markdown: string) => void
   className?: string
+  fill?: boolean
 }) {
   const editor = useMarkdownDocument(value, onChange)
 
@@ -310,6 +316,7 @@ function MarkdownEditor({
       data-slot="markdown-editor"
       className={cn(
         "rounded-lg border border-input focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50 dark:bg-input/30",
+        fill && "flex min-h-0 flex-1 flex-col",
         className
       )}
     >
@@ -322,7 +329,10 @@ function MarkdownEditor({
         editor={editor}
         className={cn(
           "px-3 py-2 text-sm",
-          "[&_.ProseMirror]:min-h-48 [&_.ProseMirror]:outline-none",
+          fill && "min-h-0 flex-1 overflow-y-auto",
+          fill
+            ? "[&_.ProseMirror]:min-h-full [&_.ProseMirror]:outline-none"
+            : "[&_.ProseMirror]:min-h-48 [&_.ProseMirror]:outline-none",
           "[&_.is-empty:first-child::before]:content-(attr(data-placeholder)) [&_.is-empty:first-child::before]:float-left [&_.is-empty:first-child::before]:h-0 [&_.is-empty:first-child::before]:pointer-events-none [&_.is-empty:first-child::before]:text-muted-foreground",
           prose
         )}

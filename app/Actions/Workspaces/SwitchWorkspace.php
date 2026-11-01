@@ -22,6 +22,10 @@ class SwitchWorkspace
 
         session(['workspace_id' => $workspace->id]);
 
+        // Account-wide mirror read by background jobs: the session alone
+        // is invisible to the queue worker that sends the digest.
+        $user->forceFill(['current_workspace_id' => $workspace->id])->saveQuietly();
+
         return $workspace;
     }
 

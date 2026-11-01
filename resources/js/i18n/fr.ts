@@ -27,6 +27,10 @@ const fr: typeof en = {
         knowledge: "Base de connaissances",
         settings: "Réglages",
         mainNav: "Navigation",
+        sections: {
+            projects: "Gestion de projet",
+            knowledge: "Connaissance",
+        },
     },
 
     priority: {

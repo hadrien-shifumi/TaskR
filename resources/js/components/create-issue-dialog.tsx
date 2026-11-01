@@ -28,7 +28,14 @@ type CreateIssueDialogProps = {
     templates: TemplateOption[];
 };
 
-/** Full-issue creation form: template pre-fill, fields and label toggles. */
+/**
+ * Full-issue creation form: template pre-fill, fields and label toggles.
+ *
+ * Wide two-column layout: the writing side (template, title, description)
+ * fills the left column and is the only scrollable area; the properties
+ * (project, status, priority, due date, labels) sit in a fixed right column.
+ * Header and footer stay pinned to the panel.
+ */
 export function CreateIssueDialog({ open, onClose, projects, statuses, labels, templates }: CreateIssueDialogProps) {
     const { t } = useTranslation();
     const createForm = useForm({
@@ -95,59 +102,64 @@ export function CreateIssueDialog({ open, onClose, projects, statuses, labels, t
             description={t('issues.titleOnlyRequired')}
             submitLabel={t('common.create')}
             processing={createForm.processing}
-            contentClassName="max-h-[90vh] overflow-y-auto sm:max-w-3xl"
+            contentClassName="max-h-[90vh] sm:max-w-[min(1400px,calc(100vw-2rem))]"
+            bodyClassName="grid gap-6 md:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]"
+            scrollableBody
             onSubmit={submitCreate}
         >
-            {templates.length > 0 ? (
-                <div className="grid gap-2">
-                    <Label>{t('issues.template')}</Label>
-                    <Select
-                        value={createForm.data.template || 'none'}
-                        onValueChange={(v) => v && applyTemplate(v)}
-                    >
-                        <SelectTrigger>
-                            <SelectValue>
-                                {templates.find((t) => t.id === createForm.data.template)?.name ??
-                                    t('issues.noTemplate')}
-                            </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="none">{t('issues.noTemplate')}</SelectItem>
-                            {templates.map((t) => (
-                                <SelectItem key={t.id} value={t.id}>
-                                    {t.name}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    <p className="text-sm text-muted-foreground">
-                        {t('issues.templateHint')}
-                    </p>
-                </div>
-            ) : null}
-            <div className="grid gap-2">
-                <Label htmlFor="issue-title">{t('issues.fields.title')}</Label>
-                <Input
-                    id="issue-title"
-                    value={createForm.data.title}
-                    onChange={(e) => createForm.setData('title', e.target.value)}
-                    aria-required="true"
-                    aria-invalid={createForm.errors.title ? true : undefined}
-                />
-                {createForm.errors.title ? (
-                    <p data-test="title-error" className="text-sm text-destructive">
-                        {createForm.errors.title}
-                    </p>
+            <div data-test="issue-redaction" className="flex min-h-0 flex-col gap-4">
+                {templates.length > 0 ? (
+                    <div className="grid gap-2">
+                        <Label>{t('issues.template')}</Label>
+                        <Select
+                            value={createForm.data.template || 'none'}
+                            onValueChange={(v) => v && applyTemplate(v)}
+                        >
+                            <SelectTrigger>
+                                <SelectValue>
+                                    {templates.find((t) => t.id === createForm.data.template)?.name ??
+                                        t('issues.noTemplate')}
+                                </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="none">{t('issues.noTemplate')}</SelectItem>
+                                {templates.map((t) => (
+                                    <SelectItem key={t.id} value={t.id}>
+                                        {t.name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <p className="text-sm text-muted-foreground">
+                            {t('issues.templateHint')}
+                        </p>
+                    </div>
                 ) : null}
+                <div className="grid gap-2">
+                    <Label htmlFor="issue-title">{t('issues.fields.title')}</Label>
+                    <Input
+                        id="issue-title"
+                        value={createForm.data.title}
+                        onChange={(e) => createForm.setData('title', e.target.value)}
+                        aria-required="true"
+                        aria-invalid={createForm.errors.title ? true : undefined}
+                    />
+                    {createForm.errors.title ? (
+                        <p data-test="title-error" className="text-sm text-destructive">
+                            {createForm.errors.title}
+                        </p>
+                    ) : null}
+                </div>
+                <div data-test="issue-description" className="grid min-h-64 flex-1 gap-2">
+                    <Label>{t('issues.fields.description')}</Label>
+                    <MarkdownEditor
+                        fill
+                        value={createForm.data.description}
+                        onChange={(markdown) => createForm.setData('description', markdown)}
+                    />
+                </div>
             </div>
-            <div className="grid gap-2">
-                <Label>{t('issues.fields.description')}</Label>
-                <MarkdownEditor
-                    value={createForm.data.description}
-                    onChange={(markdown) => createForm.setData('description', markdown)}
-                />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div data-test="issue-properties" className="grid auto-rows-min content-start gap-4">
                 <div className="grid gap-2">
                     <Label>{t('issues.fields.project')}</Label>
                     <Select
@@ -197,8 +209,6 @@ export function CreateIssueDialog({ open, onClose, projects, statuses, labels, t
                         </Select>
                     </div>
                 ) : null}
-            </div>
-            <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
                     <Label>{t('issues.fields.priority')}</Label>
                     <PrioritySelect
@@ -215,17 +225,17 @@ export function CreateIssueDialog({ open, onClose, projects, statuses, labels, t
                         onChange={(e) => createForm.setData('due_date', e.target.value)}
                     />
                 </div>
+                {labels.length > 0 ? (
+                    <div className="grid gap-2">
+                        <Label>{t('issues.fields.labels')}</Label>
+                        <LabelPicker
+                            labels={labels}
+                            selectedIds={createForm.data.label_ids}
+                            onToggle={toggleIssueLabel}
+                        />
+                    </div>
+                ) : null}
             </div>
-            {labels.length > 0 ? (
-                <div className="grid gap-2">
-                    <Label>{t('issues.fields.labels')}</Label>
-                    <LabelPicker
-                        labels={labels}
-                        selectedIds={createForm.data.label_ids}
-                        onToggle={toggleIssueLabel}
-                    />
-                </div>
-            ) : null}
         </FormDialog>
     );
 }
