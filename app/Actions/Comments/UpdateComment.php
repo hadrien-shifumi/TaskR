@@ -2,6 +2,7 @@
 
 namespace App\Actions\Comments;
 
+use App\Actions\Mentions\SyncCommentMentions;
 use App\Models\Comment;
 use App\Models\Issue;
 use App\Models\User;
@@ -44,7 +45,11 @@ class UpdateComment
 
         $comment->update(['body' => $body]);
 
-        return $comment->refresh();
+        $comment = $comment->refresh();
+
+        SyncCommentMentions::run($comment);
+
+        return $comment;
     }
 
     public function asController(ActionRequest $request, Issue $issue, string $commentId, CommentRedirectResponder $responder): RedirectResponse

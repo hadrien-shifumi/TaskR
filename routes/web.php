@@ -7,7 +7,9 @@ use App\Actions\Auth\RegisterUser;
 use App\Actions\Auth\RevokeApiToken;
 use App\Actions\Auth\ShowApiTokensPage;
 use App\Actions\Auth\ShowLoginPage;
+use App\Actions\Auth\ShowNotificationSettingsPage;
 use App\Actions\Auth\ShowRegistrationPage;
+use App\Actions\Auth\UpdateNotificationPreferences;
 use App\Actions\Auth\UpdateUserLocale;
 use App\Actions\Comments\AddComment;
 use App\Actions\Comments\DeleteComment;
@@ -36,6 +38,9 @@ use App\Actions\Knowledge\ShowKnowledgeTrash;
 use App\Actions\Knowledge\ShowKnowledgeVersions;
 use App\Actions\Knowledge\UpdateKnowledgePage;
 use App\Actions\Labels\CreateLabel;
+use App\Actions\Mentions\MarkAllMentionsRead;
+use App\Actions\Mentions\MarkMentionRead;
+use App\Actions\Mentions\ShowMentionsPage;
 use App\Actions\Projects\AddProjectMember;
 use App\Actions\Projects\ArchiveProject;
 use App\Actions\Projects\CreateProject;
@@ -98,6 +103,10 @@ Route::middleware(['auth', 'workspace'])->group(function (): void {
     Route::delete('/workspaces/{workspace}/invitations/{invitation}', CancelInvitation::class)->name('workspaces.invitations.destroy');
     Route::delete('/workspaces/{workspace}/members/{user}', RemoveMember::class)->name('workspaces.members.destroy');
 
+    Route::get('/settings/notifications', ShowNotificationSettingsPage::class)->name('settings.notifications');
+    Route::match(['put', 'patch'], '/settings/notifications', UpdateNotificationPreferences::class)
+        ->name('settings.notifications.update');
+
     Route::get('/settings/tokens', ShowApiTokensPage::class)->name('settings.tokens');
     Route::post('/tokens', CreateApiToken::class)->name('tokens.store');
     Route::delete('/tokens/{token}', RevokeApiToken::class)->name('tokens.destroy');
@@ -152,6 +161,10 @@ Route::middleware(['auth', 'workspace'])->group(function (): void {
         ->scopeBindings()->name('issues.time-entries.update');
     Route::delete('/issues/{issue}/time-entries/{timeEntry}', DeleteTimeEntry::class)
         ->scopeBindings()->name('issues.time-entries.destroy');
+
+    Route::get('/mentions', ShowMentionsPage::class)->name('mentions.index');
+    Route::post('/mentions/read-all', MarkAllMentionsRead::class)->name('mentions.read-all');
+    Route::post('/mentions/{mention}/read', MarkMentionRead::class)->name('mentions.read');
 
     Route::post('/labels', CreateLabel::class)->name('labels.store');
 

@@ -10,6 +10,17 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * Knowledge page (wiki node) belonging to a project.
+ *
+ * The SoftDeletes macros below are registered at runtime by
+ * Illuminate\Database\Eloquent\SoftDeletingScope::extend(); they are declared
+ * here so static analysis resolves them on the model and on Builder<KnowledgePage>.
+ *
+ * @method static Builder<static> withTrashed(bool $withTrashed = true)
+ * @method static Builder<static> withoutTrashed()
+ * @method static Builder<static> onlyTrashed()
+ */
 class KnowledgePage extends BaseModel
 {
     use BelongsToWorkspace, HasAncestorChain, HasFactory, SoftDeletes;

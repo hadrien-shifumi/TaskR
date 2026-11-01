@@ -18,6 +18,17 @@ export interface PageSharedProps {
     workspaces: WorkspaceSummary[];
     /** Active application locale for the request (en | fr). */
     locale: string;
+    /** Unread @mentions of the account in the current workspace. */
+    unreadMentions: number;
+    /** Members and projects mentionable in comments, within the account's perimeter. */
+    mentionables: Mentionable[];
+}
+
+/** Autocomplete entry for the comment @mention picker. */
+export interface Mentionable {
+    handle: string;
+    name: string;
+    type: 'user' | 'project';
 }
 
 /** Minimal user reference embedded in issue payloads. */

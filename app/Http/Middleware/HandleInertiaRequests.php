@@ -2,8 +2,10 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\CommentMention;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Presenters\Mentions\MentionPresenter;
 use App\Support\WorkspaceContext;
 use Closure;
 use Illuminate\Http\Request;
@@ -68,6 +70,20 @@ class HandleInertiaRequests
                     ])
                     ->values()
                     ->all()
+                : [],
+            // Lazy: counted when the response renders, so comment mutations
+            // that redirect never pay for the query. Scoped to the current
+            // workspace and to the account's reachable perimeter.
+            'unreadMentions' => fn (): int => $user !== null && $workspace !== null
+                ? CommentMention::query()
+                    ->forAccount($user)
+                    ->whereNull('read_at')
+                    ->count()
+                : 0,
+            // Autocomplete source of the comment editor: members and
+            // projects of the workspace, within the account's perimeter.
+            'mentionables' => fn (): array => $user !== null && $workspace !== null
+                ? MentionPresenter::mentionables($workspace, $user)
                 : [],
         ];
     }

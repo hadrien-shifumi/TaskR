@@ -3,22 +3,35 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Support\HandleGenerator;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
-#[Fillable(['name', 'email', 'password', 'locale'])]
+#[Fillable(['name', 'email', 'password', 'locale', 'handle'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
     use HasApiTokens, HasFactory, Notifiable;
+
+    protected static function booted(): void
+    {
+        // Handles drive @mentions: derived from the name on first create
+        // (an explicit value wins), collisions get a -2, -3… suffix.
+        static::creating(function (User $user): void {
+            if ($user->handle === null) {
+                $user->handle = HandleGenerator::forUser($user->name);
+            }
+        });
+    }
 
     /**
      * @return HasMany<Membership, $this>
@@ -39,6 +52,16 @@ class User extends Authenticatable
             ->withPivot('role')
             ->using(ProjectMember::class)
             ->withTimestamps();
+    }
+
+    /**
+     * Per-account digest settings — one row at most, created on first save.
+     *
+     * @return HasOne<NotificationPreference, $this>
+     */
+    public function notificationPreference(): HasOne
+    {
+        return $this->hasOne(NotificationPreference::class);
     }
 
     /**

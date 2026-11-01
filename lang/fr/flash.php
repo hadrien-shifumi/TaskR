@@ -55,6 +55,10 @@ return [
         'deleted' => 'Gabarit supprimé.',
     ],
 
+    'notification_preferences' => [
+        'updated' => 'Préférences de notification enregistrées.',
+    ],
+
     'token' => [
         'created' => "Jeton d'API créé.",
         'revoked' => "Jeton d'API révoqué.",
@@ -78,6 +82,11 @@ return [
         'added' => 'Commentaire ajouté.',
         'updated' => 'Commentaire mis à jour.',
         'deleted' => 'Commentaire supprimé.',
+    ],
+
+    'mention' => [
+        'read' => 'Mention marquée comme lue.',
+        'read_all' => 'Toutes les mentions ont été marquées comme lues.',
     ],
 
     'page' => [
