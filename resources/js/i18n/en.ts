@@ -531,6 +531,7 @@ const en = {
             members: "Members",
             templates: "Issue templates",
             tokens: "API tokens",
+            notifications: "Notifications",
         },
         readOnlyBadge: "Read-only — member",
         readOnlyPrefix:
@@ -638,6 +639,21 @@ const en = {
         newTokenTitle: "New token",
         newTokenDescription: "The value will be shown only once, at creation.",
         createToken: "Create token",
+    },
+
+    notificationsPage: {
+        description:
+            "Choose whether Taskr emails you a digest of your issues, how often, and how far ahead upcoming due dates are flagged.",
+        optInLabel: "Email me a digest of my issues",
+        optInHint: "Disabled by default: no email is sent unless you opt in.",
+        frequencyLabel: "Frequency",
+        frequencyDaily: "Daily",
+        frequencyWeekly: "Weekly",
+        thresholdLabel: "Upcoming due dates",
+        thresholdHint: "Issues due within this many days (1 to 90) are flagged as upcoming.",
+        timezoneLabel: "Timezone",
+        save: "Save preferences",
+        optOutHint: "Opting out keeps your other settings: you can turn the digest back on at any time.",
     },
 
     knowledge: {

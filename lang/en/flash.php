@@ -55,6 +55,10 @@ return [
         'deleted' => 'Template deleted.',
     ],
 
+    'notification_preferences' => [
+        'updated' => 'Notification preferences saved.',
+    ],
+
     'token' => [
         'created' => 'API token created.',
         'revoked' => 'API token revoked.',

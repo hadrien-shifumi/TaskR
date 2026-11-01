@@ -10,6 +10,7 @@ const SECTIONS = [
     { path: '/settings/members', name: 'settings.members', label: 'settings.sections.members' },
     { path: '/settings/templates', name: 'settings.templates', label: 'settings.sections.templates' },
     { path: '/settings/tokens', name: 'settings.tokens', label: 'settings.sections.tokens' },
+    { path: '/settings/notifications', name: 'settings.notifications', label: 'settings.sections.notifications' },
 ];
 
 interface SettingsShellProps {
