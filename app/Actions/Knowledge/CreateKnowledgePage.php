@@ -2,7 +2,9 @@
 
 namespace App\Actions\Knowledge;
 
+use App\Actions\Audit\RecordActivity;
 use App\Actions\Concerns\AuthorizesWorkspaceAccess;
+use App\Enums\AuditEventType;
 use App\Jobs\VectorizeKnowledgePage;
 use App\Models\KnowledgePage;
 use App\Models\KnowledgePageVersion;
@@ -12,6 +14,7 @@ use App\Responders\Knowledge\KnowledgeRedirectResponder;
 use App\Support\WorkspaceContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Lorisleiva\Actions\ActionRequest;
@@ -88,6 +91,14 @@ class CreateKnowledgePage
                 'body' => $page->body,
                 'editor_id' => $editor->id,
                 'created_at' => $page->created_at,
+            ]);
+
+            // Journal the creation in the same transaction. The full body
+            // lives in the version table: the journal keeps a ~2000
+            // characters excerpt only.
+            RecordActivity::run(AuditEventType::KnowledgePageCreated, $page, $editor, [
+                'title' => ['before' => null, 'after' => $page->title],
+                'body' => ['before' => null, 'after' => Str::limit($page->body, 2000)],
             ]);
 
             return $page;

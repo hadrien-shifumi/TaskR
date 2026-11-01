@@ -4,16 +4,17 @@ import { useTranslation } from 'react-i18next';
 
 type ProjectViewSwitcherProps = {
     projectId: string;
-    /** Which view renders the switcher — the other one is the link target. */
-    active: 'health' | 'board';
+    /** Which view renders the switcher — the other ones are the link targets. */
+    active: 'health' | 'board' | 'activity';
 };
 
-/** Pill segment switching between a project's Health and Kanban views. */
+/** Pill segment switching between a project's Health, Kanban and Activity views. */
 export function ProjectViewSwitcher({ projectId, active }: ProjectViewSwitcherProps) {
     const { t } = useTranslation();
     const items = [
         { key: 'health', label: t('projects.views.health'), href: route('projects.health', projectId) },
         { key: 'board', label: t('projects.views.board'), href: route('projects.board', projectId) },
+        { key: 'activity', label: t('projects.views.activity'), href: route('projects.activity', projectId) },
     ] as const;
 
     return (

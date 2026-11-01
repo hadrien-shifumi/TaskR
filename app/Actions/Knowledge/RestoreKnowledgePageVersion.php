@@ -2,7 +2,9 @@
 
 namespace App\Actions\Knowledge;
 
+use App\Actions\Audit\RecordActivity;
 use App\Actions\Concerns\AuthorizesWorkspaceAccess;
+use App\Enums\AuditEventType;
 use App\Jobs\VectorizeKnowledgePage;
 use App\Models\KnowledgePage;
 use App\Models\KnowledgePageVersion;
@@ -11,6 +13,7 @@ use App\Responders\Knowledge\KnowledgeRedirectResponder;
 use App\Support\WorkspaceContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Lorisleiva\Actions\ActionRequest;
 use Lorisleiva\Actions\Concerns\AsController;
 use Lorisleiva\Actions\Concerns\AsObject;
@@ -55,6 +58,11 @@ class RestoreKnowledgePageVersion
         );
 
         return DB::transaction(function () use ($page, $version, $user) {
+            $before = [
+                'title' => $page->title,
+                'body' => $page->body,
+            ];
+
             // Update the page content to match the version.
             $page->update([
                 'title' => $version->title,
@@ -71,6 +79,19 @@ class RestoreKnowledgePageVersion
                 'body' => $version->body,
                 'editor_id' => $user->id,
                 'created_at' => now(),
+            ]);
+
+            // The restoration is journal-worthy even when the content ends
+            // up identical: it is an explicit history action. Bodies are
+            // truncated like every other page event — the version table
+            // keeps the full text.
+            RecordActivity::run(AuditEventType::KnowledgePageUpdated, $page, $user, [
+                'restored_version_id' => $version->id,
+                'title' => ['before' => $before['title'], 'after' => $page->title],
+                'body' => [
+                    'before' => Str::limit($before['body'], 2000),
+                    'after' => Str::limit($page->body, 2000),
+                ],
             ]);
 
             // Re-vectorize for semantic search.

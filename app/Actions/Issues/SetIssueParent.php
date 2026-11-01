@@ -2,7 +2,9 @@
 
 namespace App\Actions\Issues;
 
+use App\Actions\Audit\RecordActivity;
 use App\Actions\Concerns\AuthorizesWorkspaceAccess;
+use App\Enums\AuditEventType;
 use App\Models\Issue;
 use App\Models\User;
 use App\Responders\Issues\IssueRedirectResponder;
@@ -69,7 +71,19 @@ class SetIssueParent
             }
         }
 
+        $beforeParentId = $issue->parent_id;
+
         $issue->update(['parent_id' => $parentId]);
+
+        if ($parentId !== null && $parentId !== $beforeParentId) {
+            RecordActivity::run(AuditEventType::IssueParentSet, $issue, $user, [
+                'parent_id' => ['before' => $beforeParentId, 'after' => $parentId],
+            ]);
+        } elseif ($parentId === null && $beforeParentId !== null) {
+            RecordActivity::run(AuditEventType::IssueParentRemoved, $issue, $user, [
+                'parent_id' => ['before' => $beforeParentId, 'after' => null],
+            ]);
+        }
 
         return $issue->refresh();
     }

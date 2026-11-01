@@ -2,6 +2,8 @@
 
 namespace App\Actions\TimeTracking;
 
+use App\Actions\Audit\RecordActivity;
+use App\Enums\AuditEventType;
 use App\Models\Issue;
 use App\Models\TimeEntry;
 use App\Models\User;
@@ -52,11 +54,38 @@ class UpdateTimeEntry
             app(WorkspaceContext::class)->abortUnlessIssueAccessible($user, $timeEntry->issue);
         }
 
+        $before = [
+            'hours' => (float) $timeEntry->hours,
+            'worked_at' => $timeEntry->worked_at->toDateString(),
+            'note' => $timeEntry->note,
+        ];
+
         $timeEntry->update([
             'hours' => (float) $data['hours'],
             'worked_at' => $data['worked_at'] ?? $timeEntry->worked_at,
             'note' => $data['note'] ?? null,
         ]);
+
+        $after = [
+            'hours' => (float) $timeEntry->hours,
+            'worked_at' => $timeEntry->worked_at->toDateString(),
+            'note' => $timeEntry->note,
+        ];
+
+        // A no-op edit (same values) journals nothing.
+        $changes = [];
+        foreach ($before as $field => $value) {
+            if ($after[$field] !== $value) {
+                $changes[$field] = ['before' => $value, 'after' => $after[$field]];
+            }
+        }
+
+        if ($changes !== []) {
+            RecordActivity::run(AuditEventType::TimeEntryUpdated, $timeEntry->issue, $user, [
+                'time_entry_id' => $timeEntry->id,
+                ...$changes,
+            ]);
+        }
 
         return $timeEntry->refresh();
     }

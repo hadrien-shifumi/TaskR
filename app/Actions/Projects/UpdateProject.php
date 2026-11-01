@@ -2,7 +2,9 @@
 
 namespace App\Actions\Projects;
 
+use App\Actions\Audit\RecordActivity;
 use App\Actions\Concerns\AuthorizesWorkspaceAccess;
+use App\Enums\AuditEventType;
 use App\Models\Project;
 use App\Models\User;
 use App\Responders\Projects\ProjectRedirectResponder;
@@ -69,11 +71,34 @@ class UpdateProject
             app(WorkspaceContext::class)->abortUnlessProjectAccessible($user, $project);
         }
 
+        $before = [
+            'name' => $project->name,
+            'description' => $project->description,
+            'target_date' => $project->target_date?->toDateString(),
+        ];
+
         $project->update([
             'name' => $data['name'],
             'description' => $data['description'] ?? null,
             'target_date' => $data['target_date'] ?? null,
         ]);
+
+        // A no-op update (same values) journals nothing.
+        $changes = [];
+        foreach ($before as $field => $value) {
+            $after = match ($field) {
+                'target_date' => $project->target_date?->toDateString(),
+                default => $project->{$field},
+            };
+
+            if ($after !== $value) {
+                $changes[$field] = ['before' => $value, 'after' => $after];
+            }
+        }
+
+        if ($changes !== []) {
+            RecordActivity::run(AuditEventType::ProjectUpdated, $project, $user, $changes);
+        }
 
         return $project->refresh();
     }

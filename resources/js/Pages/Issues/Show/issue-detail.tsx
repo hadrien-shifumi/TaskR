@@ -4,18 +4,20 @@ import { Link } from '@inertiajs/react';
 import { CornerDownRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { LabelRef, UserRef } from '@/types';
+import { ActivitySection } from './components/activity-section';
 import { CommentsSection } from './components/comments-section';
 import { DescriptionSection } from './components/description-section';
 import { formatDate } from './components/format';
 import { IssueSidebar } from './components/issue-sidebar';
 import { SectionHead } from './components/section-head';
 import { TimeEntriesSection } from './components/time-entries-section';
-import type { CommentItem, IssueDetail as IssueDetailType, TimeEntry } from './types';
+import type { ActivityEvent, CommentItem, IssueDetail as IssueDetailType, TimeEntry } from './types';
 
 type IssueDetailProps = {
     issue: IssueDetailType;
     comments: CommentItem[];
     timeEntries: TimeEntry[];
+    activity: ActivityEvent[];
     statuses: { id: string; name: string; category: string }[];
     members: UserRef[];
     labels: LabelRef[];
@@ -32,14 +34,15 @@ type IssueDetailProps = {
 /**
  * Body of the issue fiche, shared between the full page (`Issues/Show`)
  * and the board's issue modal: meta line, title, badges, description,
- * child issues, time entries, comments and the sidebar. Parent/child
- * links route through `buildIssueHref` so the board modal can swap its
- * content in place.
+ * child issues, time entries, comments, audit timeline and the sidebar.
+ * Parent/child links route through `buildIssueHref` so the board modal
+ * can swap its content in place.
  */
 export function IssueDetail({
     issue,
     comments,
     timeEntries,
+    activity,
     statuses,
     members,
     labels,
@@ -128,6 +131,8 @@ export function IssueDetail({
                 <TimeEntriesSection issue={issue} timeEntries={timeEntries} />
 
                 <CommentsSection issueId={issue.id} comments={comments} />
+
+                <ActivitySection events={activity} />
             </div>
 
             <IssueSidebar

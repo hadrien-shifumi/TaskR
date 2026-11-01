@@ -2,7 +2,9 @@
 
 namespace App\Actions\TimeTracking;
 
+use App\Actions\Audit\RecordActivity;
 use App\Actions\Concerns\AuthorizesWorkspaceAccess;
+use App\Enums\AuditEventType;
 use App\Models\Issue;
 use App\Models\User;
 use App\Responders\TimeTracking\TimeTrackingResponder;
@@ -39,7 +41,18 @@ class SetIssueEstimate
             app(WorkspaceContext::class)->abortUnlessIssueAccessible($user, $issue);
         }
 
+        $before = $issue->estimated_hours !== null ? (float) $issue->estimated_hours : null;
+
         $issue->update(['estimated_hours' => $estimatedHours]);
+
+        $after = $issue->estimated_hours !== null ? (float) $issue->estimated_hours : null;
+
+        // Setting the same estimate journals nothing.
+        if ($after !== $before) {
+            RecordActivity::run(AuditEventType::IssueEstimateChanged, $issue, $user, [
+                'estimated_hours' => ['before' => $before, 'after' => $after],
+            ]);
+        }
 
         return $issue->refresh();
     }

@@ -2,7 +2,9 @@
 
 namespace App\Actions\Knowledge;
 
+use App\Actions\Audit\RecordActivity;
 use App\Actions\Concerns\AuthorizesWorkspaceAccess;
+use App\Enums\AuditEventType;
 use App\Models\KnowledgePage;
 use App\Models\User;
 use App\Responders\Knowledge\KnowledgeRedirectResponder;
@@ -54,6 +56,13 @@ class DeleteKnowledgePage
 
         // SoftDeletes trait: this sets deleted_at and saves.
         $page->delete();
+
+        // The row survives in the trash, so the subject link holds and
+        // the event is written after the mutation.
+        RecordActivity::run(AuditEventType::KnowledgePageDeleted, $page, $user, [
+            'title' => ['before' => $page->title, 'after' => null],
+            'reason' => $page->deleted_reason,
+        ]);
     }
 
     public function asController(ActionRequest $request, KnowledgePage $page, KnowledgeRedirectResponder $responder): RedirectResponse

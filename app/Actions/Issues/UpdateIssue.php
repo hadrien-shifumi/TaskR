@@ -2,7 +2,9 @@
 
 namespace App\Actions\Issues;
 
+use App\Actions\Audit\RecordActivity;
 use App\Actions\Concerns\AuthorizesWorkspaceAccess;
+use App\Enums\AuditEventType;
 use App\Enums\Priority;
 use App\Models\Issue;
 use App\Models\User;
@@ -46,6 +48,13 @@ class UpdateIssue
             app(WorkspaceContext::class)->abortUnlessIssueAccessible($user, $issue);
         }
 
+        $before = [
+            'title' => $issue->title,
+            'description' => $issue->description,
+            'priority' => $issue->priority->value,
+            'due_date' => $issue->due_date?->toDateString(),
+        ];
+
         $issue->update([
             'title' => $data['title'],
             'description' => $data['description'] ?? null,
@@ -53,7 +62,46 @@ class UpdateIssue
             'due_date' => $data['due_date'] ?? null,
         ]);
 
+        $this->recordUpdate($issue, $before, $user);
+
         return $issue->refresh();
+    }
+
+    /**
+     * Journal the edit as one event per semantic change: title and
+     * description share issue.updated, priority and due date get their
+     * own event. A no-op update (same values) journals nothing.
+     *
+     * @param  array{title: string, description: ?string, priority: string, due_date: ?string}  $before
+     */
+    private function recordUpdate(Issue $issue, array $before, ?User $user): void
+    {
+        $changes = [];
+
+        if ($issue->title !== $before['title']) {
+            $changes['title'] = ['before' => $before['title'], 'after' => $issue->title];
+        }
+
+        if ($issue->description !== $before['description']) {
+            $changes['description'] = ['before' => $before['description'], 'after' => $issue->description];
+        }
+
+        if ($changes !== []) {
+            RecordActivity::run(AuditEventType::IssueUpdated, $issue, $user, $changes);
+        }
+
+        if ($issue->priority->value !== $before['priority']) {
+            RecordActivity::run(AuditEventType::IssuePriorityChanged, $issue, $user, [
+                'priority' => ['before' => $before['priority'], 'after' => $issue->priority->value],
+            ]);
+        }
+
+        $afterDueDate = $issue->due_date?->toDateString();
+        if ($afterDueDate !== $before['due_date']) {
+            RecordActivity::run(AuditEventType::IssueDueDateChanged, $issue, $user, [
+                'due_date' => ['before' => $before['due_date'], 'after' => $afterDueDate],
+            ]);
+        }
     }
 
     public function asController(ActionRequest $request, Issue $issue, IssueRedirectResponder $responder): RedirectResponse

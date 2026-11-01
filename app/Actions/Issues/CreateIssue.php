@@ -2,7 +2,9 @@
 
 namespace App\Actions\Issues;
 
+use App\Actions\Audit\RecordActivity;
 use App\Actions\Concerns\AuthorizesWorkspaceAccess;
+use App\Enums\AuditEventType;
 use App\Enums\Priority;
 use App\Models\Issue;
 use App\Models\IssueTemplate;
@@ -84,7 +86,46 @@ class CreateIssue
             $issue->labels()->sync($data['label_ids']);
         }
 
-        return $issue->refresh();
+        $issue = $issue->refresh();
+
+        $this->recordCreation($issue, $user);
+
+        return $issue;
+    }
+
+    /**
+     * Journal the creation with the created fields (before null). Empty
+     * optional fields (missing description, due date, labels or assignees)
+     * stay out of the diff to keep the event light.
+     */
+    private function recordCreation(Issue $issue, ?User $user): void
+    {
+        $changes = [
+            'title' => ['before' => null, 'after' => $issue->title],
+        ];
+
+        if ($issue->description !== null) {
+            $changes['description'] = ['before' => null, 'after' => $issue->description];
+        }
+
+        $changes['status'] = ['before' => null, 'after' => $issue->status?->name];
+        $changes['priority'] = ['before' => null, 'after' => $issue->priority->value];
+
+        if ($issue->due_date !== null) {
+            $changes['due_date'] = ['before' => null, 'after' => $issue->due_date->toDateString()];
+        }
+
+        $labelIds = $issue->labels()->pluck('labels.id')->sort()->values()->all();
+        if ($labelIds !== []) {
+            $changes['labels'] = ['before' => null, 'after' => $labelIds];
+        }
+
+        $assigneeIds = $issue->assignees()->pluck('users.id')->sort()->values()->all();
+        if ($assigneeIds !== []) {
+            $changes['assignees'] = ['before' => null, 'after' => $assigneeIds];
+        }
+
+        RecordActivity::run(AuditEventType::IssueCreated, $issue, $user, $changes);
     }
 
     public function asController(ActionRequest $request, IssueRedirectResponder $responder): RedirectResponse

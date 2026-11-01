@@ -211,7 +211,10 @@ it('renders the dependencies section inside the board modal', function () {
     $page = visit("/projects/{$project->id}/board?issue={$dependent->id}");
 
     $dialog = '[data-test="issue-detail-dialog"]';
-    $page->assertSeeIn($dialog, 'Deploy API v2');
+    // The title is asserted on the modal h1: the audit timeline also carries
+    // the issue.created event (title empty → …), so a dialog-wide text match
+    // would resolve twice and trip Playwright's strict mode.
+    $page->assertSeeIn($dialog.' h1', 'Deploy API v2');
     $page->assertSeeIn($dialog, 'Dependencies');
     $page->assertSeeIn($dialog, 'Blocked');
     $page->assertSeeIn($dialog, 'Ship database migration');

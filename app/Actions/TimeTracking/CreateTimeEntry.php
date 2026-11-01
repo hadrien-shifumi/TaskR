@@ -2,7 +2,9 @@
 
 namespace App\Actions\TimeTracking;
 
+use App\Actions\Audit\RecordActivity;
 use App\Actions\Concerns\AuthorizesWorkspaceAccess;
+use App\Enums\AuditEventType;
 use App\Models\Issue;
 use App\Models\TimeEntry;
 use App\Models\User;
@@ -49,12 +51,28 @@ class CreateTimeEntry
             $note = $data['note'] ?? null;
         }
 
-        return $issue->timeEntries()->create([
+        $entry = $issue->timeEntries()->create([
             'author_id' => $author->getKey(),
             'worked_at' => $workedAt ?? now()->toDateString(),
             'hours' => $hours,
             'note' => $note,
         ]);
+
+        // A time entry is not an audit subject: the journal targets the
+        // parent issue and carries the entry details in changes.
+        $changes = [
+            'time_entry_id' => $entry->id,
+            'hours' => ['before' => null, 'after' => (float) $entry->hours],
+            'worked_at' => ['before' => null, 'after' => $entry->worked_at->toDateString()],
+        ];
+
+        if ($entry->note !== null) {
+            $changes['note'] = ['before' => null, 'after' => $entry->note];
+        }
+
+        RecordActivity::run(AuditEventType::TimeEntryCreated, $issue, $author, $changes);
+
+        return $entry;
     }
 
     public function asController(ActionRequest $request, Issue $issue, TimeTrackingResponder $responder): RedirectResponse

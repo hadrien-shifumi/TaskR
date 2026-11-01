@@ -61,3 +61,22 @@ export type CommentItem = {
     authorName: string;
     createdAt: string | null;
 };
+
+/** Single before → after change of an activity event (null = emptied value). */
+export type ActivityChange = {
+    before: unknown;
+    after: unknown;
+};
+
+/**
+ * Audit timeline row: journalled event with a dotted type ('issue.created'),
+ * a null actor for system events and the changed fields. Descending order
+ * is chosen by the backend query.
+ */
+export type ActivityEvent = {
+    id: string;
+    type: string;
+    actor: { id: number; name: string } | null;
+    createdAt: string | null;
+    changes: Record<string, ActivityChange>;
+};

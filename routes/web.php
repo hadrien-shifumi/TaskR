@@ -47,6 +47,7 @@ use App\Actions\Projects\CreateProject;
 use App\Actions\Projects\DeleteProject;
 use App\Actions\Projects\GetProjectHealth;
 use App\Actions\Projects\RemoveProjectMember;
+use App\Actions\Projects\ShowProjectActivity;
 use App\Actions\Projects\ShowProjectArchives;
 use App\Actions\Projects\ShowProjectBoard;
 use App\Actions\Projects\ShowProjectMembers;
@@ -126,6 +127,7 @@ Route::middleware(['auth', 'workspace'])->group(function (): void {
     Route::get('/projects', ShowProjectsPage::class)->name('projects.index');
     Route::post('/projects', CreateProject::class)->name('projects.store');
     Route::get('/projects/{project}/health', GetProjectHealth::class)->name('projects.health');
+    Route::get('/projects/{project}/activity', ShowProjectActivity::class)->name('projects.activity');
     Route::get('/projects/{project}/board', ShowProjectBoard::class)->name('projects.board');
     Route::get('/projects/{project}/archives', ShowProjectArchives::class)->name('projects.archives');
     Route::get('/projects/{project}/members', ShowProjectMembers::class)->name('projects.members.index');

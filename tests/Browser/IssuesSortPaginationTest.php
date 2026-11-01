@@ -62,7 +62,21 @@ function seedIssuesSortPaginationWorkspace(): array
                 'label_ids' => [$back->id],
                 'due_date' => '2026-04-10',
             ]),
-            'legacy' => $issue('Rewrite the legacy module', 'done'),
+            // The id is pinned at insert time: the prefix scenario searches by
+            // a seven-character id prefix and every ticket of the batch shares
+            // the same ULID timestamp prefix. Rewriting the primary key after
+            // creation is refused by the audit journal's FK
+            // (audit_events.issue_id), so the id travels with the factory
+            // creation — mirroring tests/Feature/IssueTest.php.
+            'legacy' => Issue::factory()->create([
+                'id' => 'Z7K3M9Q4R2T6V8W1X5Y0B3C4D5',
+                'workspace_id' => $workspace->id,
+                'project_id' => $project->id,
+                'status_id' => $statuses['done']->id,
+                'title' => 'Rewrite the legacy module',
+                'description' => null,
+                'priority' => 'none',
+            ]),
         ],
     ];
 }
@@ -375,11 +389,11 @@ it('finds an issue by its copied identifier or a seven-character prefix', functi
 
     // A seven-character prefix resolves to the same ticket. A fresh visit
     // avoids the debounce race of a second fill on the same input. The
-    // shared ULID timestamp prefix matches the whole seeded batch, so the
-    // scenario pins one ticket whose seven characters are unique.
+    // shared ULID timestamp prefix matches the whole seeded batch, so one
+    // ticket carries a pinned id, set at creation time in the seeder:
+    // rewriting the primary key after creation is refused by the audit
+    // journal's FK (audit_events.issue_id).
     $unique = $issues['legacy'];
-    $unique->forceFill(['id' => 'Z7K3M9Q4R2T6V8W1X5Y0B3C4D5'])->save();
-    $unique->refresh();
 
     $prefixPage = visit('/issues');
     $prefixPage->fill('@filter-search', substr($unique->id, 0, 7));

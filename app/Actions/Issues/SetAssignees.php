@@ -2,7 +2,9 @@
 
 namespace App\Actions\Issues;
 
+use App\Actions\Audit\RecordActivity;
 use App\Actions\Concerns\AuthorizesWorkspaceAccess;
+use App\Enums\AuditEventType;
 use App\Models\Issue;
 use App\Models\User;
 use App\Responders\Issues\IssueRedirectResponder;
@@ -60,6 +62,8 @@ class SetAssignees
             app(WorkspaceContext::class)->abortUnlessIssueAccessible($user, $issue);
         }
 
+        $before = $issue->assignees()->pluck('users.id')->sort()->values()->all();
+
         $issue->assignees()->sync($userIds);
 
         // Keep the original assignment date for people already assigned;
@@ -69,7 +73,36 @@ class SetAssignees
             ->wherePivotNull('assigned_at')
             ->updateExistingPivot($userIds, ['assigned_at' => now()->toDateTimeString()]);
 
+        $this->recordAssignmentDiff($issue, $before, $user);
+
         return $issue->refresh();
+    }
+
+    /**
+     * Journal the sync as two diff events: one for the added assignees,
+     * one for the removed ones. A sync that changes nothing journals
+     * nothing.
+     *
+     * @param  list<string>  $before
+     */
+    private function recordAssignmentDiff(Issue $issue, array $before, ?User $user): void
+    {
+        $after = $issue->assignees()->pluck('users.id')->sort()->values()->all();
+
+        $added = array_values(array_diff($after, $before));
+        $removed = array_values(array_diff($before, $after));
+
+        if ($added !== []) {
+            RecordActivity::run(AuditEventType::IssueAssigned, $issue, $user, [
+                'assignees_added' => $added,
+            ]);
+        }
+
+        if ($removed !== []) {
+            RecordActivity::run(AuditEventType::IssueUnassigned, $issue, $user, [
+                'assignees_removed' => $removed,
+            ]);
+        }
     }
 
     public function asController(ActionRequest $request, Issue $issue, IssueRedirectResponder $responder): RedirectResponse

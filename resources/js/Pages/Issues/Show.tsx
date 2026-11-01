@@ -18,12 +18,13 @@ import { CopyIssueIdButton } from './Show/components/copy-issue-id-button';
 import { DeleteIssueDialog } from './Show/components/delete-issue-dialog';
 import { EditIssueDialog } from './Show/components/edit-issue-dialog';
 import { IssueDetail } from './Show/issue-detail';
-import type { CommentItem, IssueDetail as IssueDetailType, TimeEntry } from './Show/types';
+import type { ActivityEvent, CommentItem, IssueDetail as IssueDetailType, TimeEntry } from './Show/types';
 
 type PageProps = {
     issue: IssueDetailType;
     comments: CommentItem[];
     timeEntries: TimeEntry[];
+    activity: ActivityEvent[];
     statuses: { id: string; name: string; category: string }[];
     members: UserRef[];
     labels: LabelRef[];
@@ -33,7 +34,7 @@ type PageProps = {
 };
 
 export default function Show() {
-    const { issue, comments, timeEntries, statuses, members, labels, candidates, dependencyCandidates, workspace } = usePage<PageProps>().props;
+    const { issue, comments, timeEntries, activity, statuses, members, labels, candidates, dependencyCandidates, workspace } = usePage<PageProps>().props;
     const { t } = useTranslation();
     const [editingTitle, setEditingTitle] = useState(false);
     const [deleting, setDeleting] = useState(false);
@@ -118,6 +119,7 @@ export default function Show() {
                 issue={issue}
                 comments={comments}
                 timeEntries={timeEntries}
+                activity={activity}
                 statuses={statuses}
                 members={members}
                 labels={labels}

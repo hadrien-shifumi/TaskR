@@ -23,8 +23,8 @@ const meta = {
     argTypes: {
         active: {
             control: 'select',
-            options: ['health', 'board'],
-            description: 'Which view renders the switcher — the other one is the link target.',
+            options: ['health', 'board', 'activity'],
+            description: 'Which view renders the switcher — the other ones are the link targets.',
         },
     },
 } satisfies Meta<typeof ProjectViewSwitcher>;
@@ -40,6 +40,10 @@ export const HealthActive: Story = {
 
 export const BoardActive: Story = {
     args: { active: 'board' },
+};
+
+export const ActivityActive: Story = {
+    args: { active: 'activity' },
 };
 
 export const InPagebar: Story = {

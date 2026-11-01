@@ -95,8 +95,13 @@ it('edits the description inline with a markdown preview', function () {
     $page->click('@description-edit-save');
 
     $page->waitForEvent('networkidle');
+
+    // The old text must leave the description section, not the audit
+    // timeline: the activity section keeps the before → after trace of the
+    // edit (audit spec), so the dont-see is scoped to the description
+    // section, which excludes [data-test="activity-section"].
     $page->assertSee('Nouvelle')
-        ->assertDontSee('Ancienne');
+        ->assertDontSeeIn('section:has([data-test="description-edit"])', 'Ancienne');
 
     app(WorkspaceContext::class)->set($workspace);
     expect($issue->fresh()->description)->toBe('Nouvelle **description**');

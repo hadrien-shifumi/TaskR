@@ -2,12 +2,15 @@
 
 namespace App\Actions\Knowledge;
 
+use App\Actions\Audit\RecordActivity;
 use App\Actions\Concerns\AuthorizesWorkspaceAccess;
+use App\Enums\AuditEventType;
 use App\Models\KnowledgePage;
 use App\Models\User;
 use App\Responders\Knowledge\KnowledgeRedirectResponder;
 use App\Support\WorkspaceContext;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Str;
 use Lorisleiva\Actions\ActionRequest;
 use Lorisleiva\Actions\Concerns\AsController;
 use Lorisleiva\Actions\Concerns\AsObject;
@@ -49,6 +52,18 @@ class ForceDeleteKnowledgePage
 
         // Hard delete — actually removes the row.
         // The SoftDeletes trait provides forceDelete() for this.
+
+        // The journal is written right before the destructive write: the
+        // subject FK requires the page to still exist, and the DB then
+        // nulls it on delete. The definitive inventory preserves what the
+        // purge destroys (versions cascade away with the page).
+        RecordActivity::run(AuditEventType::KnowledgePageDeleted, $page, $user, [
+            'title' => $page->title,
+            'body' => Str::limit($page->body, 2000),
+            'versions_count' => $page->versions()->count(),
+            'definitive' => true,
+        ]);
+
         $page->forceDelete();
     }
 
