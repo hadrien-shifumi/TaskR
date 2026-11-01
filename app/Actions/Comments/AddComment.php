@@ -3,6 +3,7 @@
 namespace App\Actions\Comments;
 
 use App\Actions\Concerns\AuthorizesWorkspaceAccess;
+use App\Actions\Mentions\SyncCommentMentions;
 use App\Models\Comment;
 use App\Models\Issue;
 use App\Models\User;
@@ -36,10 +37,14 @@ class AddComment
         // Out-of-scope issues fail exactly like non-existent ones.
         app(WorkspaceContext::class)->abortUnlessIssueAccessible($author, $issue);
 
-        return $issue->comments()->create([
+        $comment = $issue->comments()->create([
             'author_id' => $author->getKey(),
             'body' => $body,
         ]);
+
+        SyncCommentMentions::run($comment);
+
+        return $comment;
     }
 
     public function asController(ActionRequest $request, Issue $issue, CommentRedirectResponder $responder): RedirectResponse

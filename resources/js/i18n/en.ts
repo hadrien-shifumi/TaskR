@@ -25,6 +25,7 @@ const en = {
         home: "Home",
         projects: "Projects",
         issues: "Issues",
+        mentions: "Mentions",
         knowledge: "Knowledge",
         settings: "Settings",
         mainNav: "Main",
@@ -145,6 +146,24 @@ const en = {
         hoursAgo: "{{count}}h ago",
         dayAgo: "1 day ago",
         daysAgo: "{{count}} days ago",
+    },
+
+    mentions: {
+        title: "Mentions",
+        subtitle: "Comments where you were @mentioned, in this workspace.",
+        empty: "No mention yet.",
+        emptyHint: "When someone @mentions you in a comment, it will appear here.",
+        markRead: "Mark as read",
+        markAllRead: "Mark all as read",
+        unread: "Unread",
+        mentionedYou: "mentioned you on",
+        time: {
+            justNow: "just now",
+            minAgo: "{{count}} min ago",
+            hoursAgo: "{{count}}h ago",
+            daysAgo: "{{count}}d ago",
+            onDate: "on {{date}}",
+        },
     },
 
     issueBadges: {

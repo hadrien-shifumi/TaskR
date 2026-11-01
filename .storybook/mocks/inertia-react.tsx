@@ -31,6 +31,8 @@ let sharedProps: PageSharedProps = {
     workspaces: [defaultWorkspace],
     flash: {},
     locale: 'en',
+    unreadMentions: 0,
+    mentionables: [],
 };
 
 /**

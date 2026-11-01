@@ -1,7 +1,7 @@
 import { Avatar } from '@/components/issue-badges';
+import { MentionAutocomplete } from '@/components/mention-autocomplete';
 import { Button } from '@/components/ui/button';
 import { MarkdownView } from '@/components/ui/markdown-editor';
-import { Textarea } from '@/components/ui/textarea';
 import { router, useForm, usePage } from '@inertiajs/react';
 import { Pencil, Trash2 } from 'lucide-react';
 import { useState } from 'react';
@@ -66,10 +66,10 @@ export function CommentsSection({ issueId, comments }: CommentsSectionProps) {
                             </div>
                             {editingComment === comment.id ? (
                                 <form onSubmit={(e) => submitCommentEdit(e, comment.id)} className="mt-2 grid gap-2">
-                                    <Textarea
+                                    <MentionAutocomplete
                                         data-test="comment-edit-body"
                                         value={commentEditForm.data.body}
-                                        onChange={(e) => commentEditForm.setData('body', e.target.value)}
+                                        onChange={(body) => commentEditForm.setData('body', body)}
                                         required
                                         maxLength={20000}
                                     />
@@ -141,12 +141,12 @@ export function CommentsSection({ issueId, comments }: CommentsSectionProps) {
                             )}
                         </div>
                     ) : (
-                        <Textarea
+                        <MentionAutocomplete
                             data-test="comment-body"
                             placeholder={t('comments.placeholder')}
                             className="min-h-[70px]"
                             value={commentForm.data.body}
-                            onChange={(e) => commentForm.setData('body', e.target.value)}
+                            onChange={(body) => commentForm.setData('body', body)}
                             required
                             maxLength={20000}
                             aria-invalid={commentForm.errors.body ? true : undefined}

@@ -84,6 +84,11 @@ return [
         'deleted' => 'Commentaire supprimé.',
     ],
 
+    'mention' => [
+        'read' => 'Mention marquée comme lue.',
+        'read_all' => 'Toutes les mentions ont été marquées comme lues.',
+    ],
+
     'page' => [
         'created' => 'Page « :title » créée.',
         'updated' => 'Page « :title » mise à jour.',

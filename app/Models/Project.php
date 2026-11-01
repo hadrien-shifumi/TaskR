@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\ProjectRole;
 use App\Models\Concerns\BelongsToWorkspace;
 use App\Models\Scopes\WorkspaceScope;
+use App\Support\HandleGenerator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -14,12 +15,23 @@ class Project extends BaseModel
 {
     use BelongsToWorkspace, HasFactory;
 
-    protected $fillable = ['workspace_id', 'name', 'description', 'target_date', 'archived_at'];
+    protected $fillable = ['workspace_id', 'name', 'handle', 'description', 'target_date', 'archived_at'];
 
     protected $casts = [
         'archived_at' => 'datetime',
         'target_date' => 'date',
     ];
+
+    protected static function booted(): void
+    {
+        // Project handles are mentionable and unique per workspace: they
+        // derive from the name on first create (an explicit value wins).
+        static::creating(function (Project $project): void {
+            if ($project->handle === null) {
+                $project->handle = HandleGenerator::forProject($project->name, (string) $project->workspace_id);
+            }
+        });
+    }
 
     /**
      * @return HasMany<Issue, $this>

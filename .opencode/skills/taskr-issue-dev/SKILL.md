@@ -1,6 +1,6 @@
 ---
 name: taskr-issue-dev
-description: Mandatory lifecycle for every TaskR issue — research the ticket in the knowledge base and the code before implementing, post a plan comment before coding, post a completion comment when done, log the time spent from the issue's first comment to now, and reconcile the knowledge base. Enforced by the issue-dev plugin. Use whenever a task is a TaskR issue.
+description: Mandatory lifecycle for every TaskR issue — research the ticket in the knowledge base and the code before implementing, post a plan comment before coding, post a completion comment when done, log the time spent from the issue's first comment to now, and reconcile the knowledge base. The plugin also drives the issue statuses (In Progress on start, Done at closure, parent/child coherence). Enforced by the issue-dev plugin. Use whenever a task is a TaskR issue.
 ---
 
 # TaskR Issue Dev — research → plan → implement → report → log → knowledge
@@ -85,9 +85,21 @@ Compare what was learned and changed against the knowledge base, and keep it tru
 - Update stale pages (`update_knowledge`) or create missing ones (`create_knowledge`) — conventions, gotchas, architecture facts that a future session must know. Any `update_knowledge` / `create_knowledge` call satisfies this step.
 - If nothing deserves an update, attest it: `issue_dev(action="knowledge-reviewed")`, and justify it in the done comment ("Knowledge: reviewed X and Y, still accurate").
 
+## TaskR statuses (driven by the plugin)
+
+The plugin keeps the issue statuses coherent with the workflow, automatically and best effort over the TaskR MCP server:
+
+- **Start → In Progress**: `issue_dev action="start"` moves the issue to the workspace's In Progress status. If its parent is still Backlog, the parent is moved to In Progress too — a parent never stays in Backlog while a child is in progress. An issue already In Progress is left untouched.
+- **Closure → Done**: when every step is complete, the gate moves the issue to Done. If some children are not Done, the issue is left where it is — the gate names the blocking children once, then closes the workflow; finish the children, then `move_issue` the parent to Done.
+- **`move_issue` guard**: moving a parent to Done while a child is open (not Done, not Cancelled) is refused with the blocking children listed. Moving an issue to In Progress or Done lifts a Backlog parent to In Progress.
+- Done and Cancelled both close a child: a cancelled child no longer blocks its parent.
+- When TaskR is unreachable, nothing is blocked and no status is changed — the workflow proceeds normally and the outage is reported in the tool message.
+
+Do not fight these transitions: never move the workflow issue back to Backlog, and close the children before closing a parent.
+
 ## Gate behavior
 
-The post-agent gate denies ending a turn while steps are missing, listing exactly what remains — research (knowledge + code), plan comment, done comment, time entry, knowledge review. Finish them, or `cancel` if this is not a TaskR issue workflow.
+The post-agent gate denies ending a turn while steps are missing, listing exactly what remains — research (knowledge + code), plan comment, done comment, time entry, knowledge review. Finish them, or `cancel` if this is not a TaskR issue workflow. When every step is complete the gate also moves the issue to Done (see TaskR statuses above).
 
 ## Tool reference
 
@@ -101,7 +113,7 @@ The post-agent gate denies ending a turn while steps are missing, listing exactl
 | `list_issues` | Find work — filters: `project`, `status`, `category`, `priority`, `label`, `assignee`, `overdue`, `limit`, `offset` |
 | `create_issue` | New issue (parent first, children after) |
 | `set_issue_parent` | Link a child to its parent (`parent_id: null` detaches) |
-| `move_issue` | Change the status — the only way a status evolves |
+| `move_issue` | Change the status — the only way a status evolves; the plugin refuses a parent → Done while a child is open and lifts a Backlog parent when a child moves forward |
 | `update_issue` | Title, description, priority, due date |
 | `set_labels` / `set_assignees` | Labels and assignees |
 | `add_comment` / `list_comments` | Progress notes |

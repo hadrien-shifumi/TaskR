@@ -38,6 +38,9 @@ use App\Actions\Knowledge\ShowKnowledgeTrash;
 use App\Actions\Knowledge\ShowKnowledgeVersions;
 use App\Actions\Knowledge\UpdateKnowledgePage;
 use App\Actions\Labels\CreateLabel;
+use App\Actions\Mentions\MarkAllMentionsRead;
+use App\Actions\Mentions\MarkMentionRead;
+use App\Actions\Mentions\ShowMentionsPage;
 use App\Actions\Projects\AddProjectMember;
 use App\Actions\Projects\ArchiveProject;
 use App\Actions\Projects\CreateProject;
@@ -158,6 +161,10 @@ Route::middleware(['auth', 'workspace'])->group(function (): void {
         ->scopeBindings()->name('issues.time-entries.update');
     Route::delete('/issues/{issue}/time-entries/{timeEntry}', DeleteTimeEntry::class)
         ->scopeBindings()->name('issues.time-entries.destroy');
+
+    Route::get('/mentions', ShowMentionsPage::class)->name('mentions.index');
+    Route::post('/mentions/read-all', MarkAllMentionsRead::class)->name('mentions.read-all');
+    Route::post('/mentions/{mention}/read', MarkMentionRead::class)->name('mentions.read');
 
     Route::post('/labels', CreateLabel::class)->name('labels.store');
 

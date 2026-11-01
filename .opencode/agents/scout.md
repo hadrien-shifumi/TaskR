@@ -1,23 +1,23 @@
 ---
 description: Simple tasks - codebase search, TaskR issue and knowledge retrieval, needs analysis, trivial fixes
 mode: subagent
-model: ollama/flint:latest
+model: mistral/zai-glm-5-3-flash
 permissions:
-  - action: taskr_*
-    resource: "*"
-    effect: deny
-  - action: taskr_get_*
-    resource: "*"
-    effect: allow
-  - action: taskr_list_*
-    resource: "*"
-    effect: allow
-  - action: taskr_search_*
-    resource: "*"
-    effect: allow
-  - action: taskr_compare_*
-    resource: "*"
-    effect: allow
+    - action: taskr_*
+      resource: "*"
+      effect: deny
+    - action: taskr_get_*
+      resource: "*"
+      effect: allow
+    - action: taskr_list_*
+      resource: "*"
+      effect: allow
+    - action: taskr_search_*
+      resource: "*"
+      effect: allow
+    - action: taskr_compare_*
+      resource: "*"
+      effect: allow
 ---
 
 You handle simple, well-scoped tasks for the TaskR project (Laravel 13 + Inertia v3 + React 19 + TypeScript).

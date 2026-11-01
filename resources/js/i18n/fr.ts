@@ -23,6 +23,7 @@ const fr: typeof en = {
         home: "Accueil",
         projects: "Projets",
         issues: "Tickets",
+        mentions: "Mentions",
         knowledge: "Base de connaissances",
         settings: "Réglages",
         mainNav: "Navigation",
@@ -143,6 +144,25 @@ const fr: typeof en = {
         hoursAgo: "il y a {{count}} h",
         dayAgo: "il y a 1 jour",
         daysAgo: "il y a {{count}} jours",
+    },
+
+    mentions: {
+        title: "Mentions",
+        subtitle: "Les commentaires où vous avez été @mentionné, dans cet espace.",
+        empty: "Aucune mention pour le moment.",
+        emptyHint:
+            "Quand quelqu'un vous @mentionne dans un commentaire, elle apparaît ici.",
+        markRead: "Marquer comme lue",
+        markAllRead: "Tout marquer comme lu",
+        unread: "Non lue",
+        mentionedYou: "vous a mentionné sur",
+        time: {
+            justNow: "à l'instant",
+            minAgo: "il y a {{count}} min",
+            hoursAgo: "il y a {{count}} h",
+            daysAgo: "il y a {{count}} j",
+            onDate: "le {{date}}",
+        },
     },
 
     issueBadges: {

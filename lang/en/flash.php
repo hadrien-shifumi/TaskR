@@ -85,6 +85,11 @@ return [
         'deleted' => 'Comment deleted.',
     ],
 
+    'mention' => [
+        'read' => 'Mention marked as read.',
+        'read_all' => 'All mentions marked as read.',
+    ],
+
     'page' => [
         'created' => 'Page ":title" created.',
         'updated' => 'Page ":title" updated.',

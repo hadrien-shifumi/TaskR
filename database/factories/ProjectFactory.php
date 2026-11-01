@@ -14,6 +14,7 @@ class ProjectFactory extends Factory
         return [
             'workspace_id' => Workspace::factory(),
             'name' => fake()->unique()->words(2, true),
+            'handle' => fake()->unique()->slug(2),
             'description' => fake()->paragraph(),
             'target_date' => null,
             'archived_at' => null,
