@@ -2,6 +2,8 @@
 
 namespace App\Actions\Comments;
 
+use App\Actions\Audit\RecordActivity;
+use App\Enums\AuditEventType;
 use App\Models\Comment;
 use App\Models\Issue;
 use App\Models\User;
@@ -35,7 +37,17 @@ class DeleteComment
             app(WorkspaceContext::class)->abortUnlessIssueAccessible($user, $comment->issue);
         }
 
+        $issue = $comment->issue;
+        $snapshot = [
+            'comment_id' => $comment->id,
+            'body' => ['before' => $comment->body, 'after' => null],
+        ];
+
         $comment->delete();
+
+        // The comment is gone: the journal keeps its last body on the
+        // parent issue — comments have no version history of their own.
+        RecordActivity::run(AuditEventType::CommentDeleted, $issue, $user, $snapshot);
 
         return $comment;
     }

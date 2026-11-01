@@ -2,8 +2,10 @@
 
 namespace App\Actions\Comments;
 
+use App\Actions\Audit\RecordActivity;
 use App\Actions\Concerns\AuthorizesWorkspaceAccess;
 use App\Actions\Mentions\SyncCommentMentions;
+use App\Enums\AuditEventType;
 use App\Models\Comment;
 use App\Models\Issue;
 use App\Models\User;
@@ -43,6 +45,13 @@ class AddComment
         ]);
 
         SyncCommentMentions::run($comment);
+
+        // A comment is not an audit subject: the journal targets the parent
+        // issue and carries the comment details in changes.
+        RecordActivity::run(AuditEventType::CommentCreated, $issue, $author, [
+            'comment_id' => $comment->id,
+            'body' => ['before' => null, 'after' => $comment->body],
+        ]);
 
         return $comment;
     }

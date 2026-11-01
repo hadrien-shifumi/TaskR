@@ -2,6 +2,8 @@
 
 namespace App\Actions\TimeTracking;
 
+use App\Actions\Audit\RecordActivity;
+use App\Enums\AuditEventType;
 use App\Models\Issue;
 use App\Models\TimeEntry;
 use App\Models\User;
@@ -40,7 +42,23 @@ class DeleteTimeEntry
             app(WorkspaceContext::class)->abortUnlessIssueAccessible($user, $timeEntry->issue);
         }
 
+        $issue = $timeEntry->issue;
+
+        // The entry is about to disappear: keep its values in the journal —
+        // time entries have no version history of their own.
+        $snapshot = [
+            'time_entry_id' => $timeEntry->id,
+            'hours' => ['before' => (float) $timeEntry->hours, 'after' => null],
+            'worked_at' => ['before' => $timeEntry->worked_at->toDateString(), 'after' => null],
+        ];
+
+        if ($timeEntry->note !== null) {
+            $snapshot['note'] = ['before' => $timeEntry->note, 'after' => null];
+        }
+
         $timeEntry->delete();
+
+        RecordActivity::run(AuditEventType::TimeEntryDeleted, $issue, $user, $snapshot);
 
         return $timeEntry;
     }

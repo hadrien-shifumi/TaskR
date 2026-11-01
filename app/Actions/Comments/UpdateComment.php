@@ -2,7 +2,9 @@
 
 namespace App\Actions\Comments;
 
+use App\Actions\Audit\RecordActivity;
 use App\Actions\Mentions\SyncCommentMentions;
+use App\Enums\AuditEventType;
 use App\Models\Comment;
 use App\Models\Issue;
 use App\Models\User;
@@ -43,11 +45,21 @@ class UpdateComment
             app(WorkspaceContext::class)->abortUnlessIssueAccessible($user, $comment->issue);
         }
 
+        $beforeBody = $comment->body;
+
         $comment->update(['body' => $body]);
 
         $comment = $comment->refresh();
 
         SyncCommentMentions::run($comment);
+
+        // A no-op edit (same body) journals nothing.
+        if ($comment->body !== $beforeBody) {
+            RecordActivity::run(AuditEventType::CommentUpdated, $comment->issue, $user, [
+                'comment_id' => $comment->id,
+                'body' => ['before' => $beforeBody, 'after' => $comment->body],
+            ]);
+        }
 
         return $comment;
     }

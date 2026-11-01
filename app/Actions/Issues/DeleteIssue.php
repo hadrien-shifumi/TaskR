@@ -2,7 +2,9 @@
 
 namespace App\Actions\Issues;
 
+use App\Actions\Audit\RecordActivity;
 use App\Actions\Concerns\AuthorizesWorkspaceAccess;
+use App\Enums\AuditEventType;
 use App\Models\Issue;
 use App\Models\User;
 use App\Responders\Issues\IssueRedirectResponder;
@@ -34,6 +36,24 @@ class DeleteIssue
         if ($user !== null) {
             app(WorkspaceContext::class)->abortUnlessIssueAccessible($user, $issue);
         }
+
+        // The journal is written right before the destructive write: the
+        // subject FK requires the issue to still exist, and the DB then
+        // nulls it on delete. The event stays readable through its
+        // project and this loss inventory.
+        RecordActivity::run(AuditEventType::IssueDeleted, $issue, $user, [
+            'comments_count' => $issue->comments()->count(),
+            'time_entries_count' => $issue->timeEntries()->count(),
+            'title' => $issue->title,
+            'description' => $issue->description,
+            'status' => $issue->status?->name,
+            'priority' => $issue->priority->value,
+            'due_date' => $issue->due_date?->toDateString(),
+            'estimated_hours' => $issue->estimated_hours !== null ? (float) $issue->estimated_hours : null,
+            'labels' => $issue->labels()->pluck('labels.id')->sort()->values()->all(),
+            'assignees' => $issue->assignees()->pluck('users.id')->sort()->values()->all(),
+            'parent_id' => $issue->parent_id,
+        ]);
 
         $issue->delete();
 

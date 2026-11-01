@@ -2,7 +2,9 @@
 
 namespace App\Actions\Projects;
 
+use App\Actions\Audit\RecordActivity;
 use App\Actions\Concerns\AuthorizesWorkspaceAccess;
+use App\Enums\AuditEventType;
 use App\Enums\ProjectRole;
 use App\Models\Project;
 use App\Models\User;
@@ -66,8 +68,32 @@ class CreateProject
                 'role' => ProjectRole::Owner->value,
             ]);
 
+            $this->recordCreation($project, $creator);
+
             return $project;
         });
+    }
+
+    /**
+     * Journal the creation with the created fields (before null). Empty
+     * optional fields (missing description or target date) stay out of
+     * the diff to keep the event light.
+     */
+    private function recordCreation(Project $project, User $creator): void
+    {
+        $changes = [
+            'name' => ['before' => null, 'after' => $project->name],
+        ];
+
+        if ($project->description !== null) {
+            $changes['description'] = ['before' => null, 'after' => $project->description];
+        }
+
+        if ($project->target_date !== null) {
+            $changes['target_date'] = ['before' => null, 'after' => $project->target_date->toDateString()];
+        }
+
+        RecordActivity::run(AuditEventType::ProjectCreated, $project, $creator, $changes);
     }
 
     public function asController(ActionRequest $request, ProjectRedirectResponder $responder): RedirectResponse

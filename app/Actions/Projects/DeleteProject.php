@@ -2,7 +2,9 @@
 
 namespace App\Actions\Projects;
 
+use App\Actions\Audit\RecordActivity;
 use App\Actions\Concerns\AuthorizesWorkspaceAccess;
+use App\Enums\AuditEventType;
 use App\Models\KnowledgePage;
 use App\Models\Project;
 use App\Models\User;
@@ -39,10 +41,27 @@ class DeleteProject
             abort(409, "This project contains {$usage} issue(s). Archive it instead of deleting.");
         }
 
+        // Count the pages before the cascade: after the move they are
+        // detached from the project.
+        $trashedPages = KnowledgePage::where('project_id', $project->id)->count();
+
         // Move all knowledge pages attached to this project to trash
         // BEFORE deleting the project. This preserves the documentation
         // (recoverable from trash for 30 days).
         $this->moveKnowledgePagesToTrash($project, $user);
+
+        // The journal is written right before the destructive write: the
+        // subject FK requires the project to still exist, and the DB then
+        // nulls it on delete. The event stays readable through its
+        // workspace and this loss inventory. The issue count is zero by
+        // construction (409 guard above), so only the trashed pages are
+        // inventoried.
+        RecordActivity::run(AuditEventType::ProjectDeleted, $project, $user, [
+            'name' => $project->name,
+            'description' => $project->description,
+            'target_date' => $project->target_date?->toDateString(),
+            'knowledge_pages_trashed' => $trashedPages,
+        ]);
 
         $project->delete();
 

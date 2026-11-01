@@ -2,9 +2,11 @@
 
 namespace App\Actions\Issues;
 
+use App\Models\AuditEvent;
 use App\Models\Issue;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Presenters\Audit\AuditEventPresenter;
 use App\Presenters\Comments\CommentPresenter;
 use App\Presenters\Issues\IssuePresenter;
 use App\Presenters\Labels\LabelPresenter;
@@ -57,6 +59,19 @@ class ShowIssuePage
             ->sortByDesc('created_at')
             ->values();
 
+        // Descending audit timeline, newest first; the id breaks ties within
+        // the same second. Capped at 100 rows to keep the payload bounded.
+        $activity = AuditEvent::query()
+            ->where('issue_id', $issue->id)
+            ->with('actor')
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->limit(100)
+            ->get()
+            ->map(fn ($event) => AuditEventPresenter::detail($event))
+            ->values()
+            ->all();
+
         $detail = IssuePresenter::detail($issue, $parent, $children);
         $detail['blocks'] = $this->withDependentBlockerIds($detail['blocks'], $issue);
 
@@ -64,6 +79,7 @@ class ShowIssuePage
             'issue' => $detail,
             'comments' => $comments->map(fn ($comment) => CommentPresenter::detail($comment))->values()->all(),
             'timeEntries' => $timeEntries->map(fn ($entry) => TimeEntryPresenter::detail($entry))->values()->all(),
+            'activity' => $activity,
             'statuses' => $workspace->statuses()->get()->map(fn ($status) => StatusPresenter::option($status))->all(),
             'members' => $workspace->members()->orderBy('name')->get()->map(fn ($member) => ProjectMemberPresenter::person($member))->all(),
             'labels' => $workspace->labels()->orderBy('name')->get()->map(fn ($label) => LabelPresenter::present($label))->all(),

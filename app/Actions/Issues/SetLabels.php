@@ -2,7 +2,9 @@
 
 namespace App\Actions\Issues;
 
+use App\Actions\Audit\RecordActivity;
 use App\Actions\Concerns\AuthorizesWorkspaceAccess;
+use App\Enums\AuditEventType;
 use App\Models\Issue;
 use App\Models\User;
 use App\Responders\Issues\IssueRedirectResponder;
@@ -49,7 +51,18 @@ class SetLabels
             app(WorkspaceContext::class)->abortUnlessIssueAccessible($user, $issue);
         }
 
+        $before = $issue->labels()->pluck('labels.id')->sort()->values()->all();
+
         $issue->labels()->sync($labelIds);
+
+        $after = $issue->labels()->pluck('labels.id')->sort()->values()->all();
+
+        // A sync that changes nothing journals nothing.
+        if ($after !== $before) {
+            RecordActivity::run(AuditEventType::IssueUpdated, $issue, $user, [
+                'labels' => ['before' => $before, 'after' => $after],
+            ]);
+        }
 
         return $issue->refresh();
     }

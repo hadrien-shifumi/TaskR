@@ -2,7 +2,9 @@
 
 namespace App\Actions\Issues;
 
+use App\Actions\Audit\RecordActivity;
 use App\Actions\Concerns\AuthorizesWorkspaceAccess;
+use App\Enums\AuditEventType;
 use App\Enums\StatusCategory;
 use App\Models\Issue;
 use App\Models\User;
@@ -40,7 +42,7 @@ class ArchiveIssue
         }
 
         if ($issue->isArchived()) {
-            return $this->restore($issue);
+            return $this->restore($issue, $user);
         }
 
         $this->assertArchivable($issue);
@@ -48,7 +50,10 @@ class ArchiveIssue
         $archivedAt = now();
         $this->selfAndDescendants($issue)->each(fn (Issue $target) => $target->update(['archived_at' => $archivedAt]));
 
-        return $issue->refresh();
+        $issue = $issue->refresh();
+        RecordActivity::run(AuditEventType::IssueArchived, $issue, $user);
+
+        return $issue;
     }
 
     public function asController(Request $request, Issue $issue, IssueRedirectResponder $responder): RedirectResponse
@@ -92,11 +97,14 @@ class ArchiveIssue
      * Restoring clears the whole subtree: a parent never comes back with
      * its children still archived.
      */
-    private function restore(Issue $issue): Issue
+    private function restore(Issue $issue, ?User $user): Issue
     {
         $this->selfAndDescendants($issue)->each(fn (Issue $target) => $target->update(['archived_at' => null]));
 
-        return $issue->refresh();
+        $issue = $issue->refresh();
+        RecordActivity::run(AuditEventType::IssueRestored, $issue, $user);
+
+        return $issue;
     }
 
     /**

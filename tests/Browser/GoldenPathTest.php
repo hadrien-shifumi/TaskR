@@ -1,6 +1,11 @@
 <?php
 
 use App\Actions\Issues\CreateIssue;
+use App\Actions\Projects\CreateProject;
+use App\Models\Membership;
+use App\Models\ProjectMember;
+use App\Models\Status;
+use App\Models\User;
 use App\Support\WorkspaceContext;
 
 it('creates a project and a title-only issue from the UI', function () {
@@ -78,14 +83,20 @@ it('manages comments on an issue from the UI', function () {
         ->fill('@comment-edit-body', 'Commentaire corrigé')
         ->click('@comment-edit-save');
 
+    // The old body must leave the comments LIST, not the audit timeline:
+    // the activity section keeps the before → after trace of the edit
+    // (audit spec), so the dont-see assertions are scoped to the comments
+    // section, which excludes [data-test="activity-section"].
+    $commentsSection = 'section:has([data-test="comment-submit"])';
+
     $page->assertSee('Commentaire corrigé')
-        ->assertDontSee('Premier commentaire');
+        ->assertDontSeeIn($commentsSection, 'Premier commentaire');
 
     // Delete it: the plugin auto-dismisses native confirm dialogs, so accept them.
     $page->script('window.confirm = () => true');
     $page->click('@comment-delete');
 
-    $page->assertDontSee('Commentaire corrigé')
+    $page->assertDontSeeIn($commentsSection, 'Commentaire corrigé')
         ->assertSee('Comments (0)');
 
     app(WorkspaceContext::class)->set($workspace);
@@ -142,10 +153,10 @@ it('scopes the guest home dashboard to their perimeter', function () {
     [$owner, $workspace] = setupBrowserWorkspace();
     app(WorkspaceContext::class)->set($workspace);
 
-    $inScope = \App\Actions\Projects\CreateProject::run($workspace, $owner, ['name' => 'Projet client']);
-    $outOfScope = \App\Actions\Projects\CreateProject::run($workspace, $owner, ['name' => 'Interne secret']);
+    $inScope = CreateProject::run($workspace, $owner, ['name' => 'Projet client']);
+    $outOfScope = CreateProject::run($workspace, $owner, ['name' => 'Interne secret']);
 
-    $backlog = \App\Models\Status::withoutWorkspaceScope()
+    $backlog = Status::withoutWorkspaceScope()
         ->where('workspace_id', $workspace->id)
         ->where('category', 'backlog')
         ->firstOrFail();
@@ -161,13 +172,13 @@ it('scopes the guest home dashboard to their perimeter', function () {
         'status_id' => $backlog->id,
     ]);
 
-    $guest = \App\Models\User::factory()->create();
-    \App\Models\Membership::create([
+    $guest = User::factory()->create();
+    Membership::create([
         'user_id' => $guest->id,
         'workspace_id' => $workspace->id,
         'role' => 'guest',
     ]);
-    \App\Models\ProjectMember::create([
+    ProjectMember::create([
         'project_id' => $inScope->id,
         'user_id' => $guest->id,
         'role' => 'member',

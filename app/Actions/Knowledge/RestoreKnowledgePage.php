@@ -2,7 +2,9 @@
 
 namespace App\Actions\Knowledge;
 
+use App\Actions\Audit\RecordActivity;
 use App\Actions\Concerns\AuthorizesWorkspaceAccess;
+use App\Enums\AuditEventType;
 use App\Jobs\VectorizeKnowledgePage;
 use App\Models\KnowledgePage;
 use App\Models\Project;
@@ -78,6 +80,8 @@ class RestoreKnowledgePage
 
         // Re-vectorize for semantic search.
         VectorizeKnowledgePage::dispatch($page);
+
+        RecordActivity::run(AuditEventType::KnowledgePageRestored, $page, $user);
 
         return $page->refresh();
     }

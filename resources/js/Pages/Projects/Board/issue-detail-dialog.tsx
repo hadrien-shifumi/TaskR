@@ -1,6 +1,7 @@
 import { CopyIssueIdButton } from '@/Pages/Issues/Show/components/copy-issue-id-button';
 import { IssueDetail } from '@/Pages/Issues/Show/issue-detail';
 import type {
+    ActivityEvent,
     CommentItem,
     IssueDetail as IssueDetailType,
     TimeEntry,
@@ -13,6 +14,7 @@ export type IssueDetailPayload = {
     issue: IssueDetailType;
     comments: CommentItem[];
     timeEntries: TimeEntry[];
+    activity: ActivityEvent[];
     statuses: { id: string; name: string; category: string }[];
     members: UserRef[];
     labels: LabelRef[];
@@ -88,6 +90,7 @@ export function IssueDetailDialog({ projectId, filters, parentsOnly, detail }: I
                         issue={detail.issue}
                         comments={detail.comments}
                         timeEntries={detail.timeEntries}
+                        activity={detail.activity}
                         statuses={detail.statuses}
                         members={detail.members}
                         labels={detail.labels}

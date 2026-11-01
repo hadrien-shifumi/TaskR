@@ -10,6 +10,7 @@ use App\Actions\Projects\CreateProject;
 use App\Actions\Workspaces\CreateWorkspace;
 use App\Mcp\Servers\TaskrServer;
 use App\Mcp\Tools\ListIssues as ListIssuesTool;
+use App\Models\Issue;
 use App\Models\Label;
 use App\Models\Membership;
 use App\Models\Scopes\WorkspaceScope;
@@ -261,13 +262,27 @@ class IssueTest extends TestCase
     {
         [$owner, $workspace, $project] = $this->setupWorkspace();
 
-        $first = CreateIssue::run($workspace, ['project_id' => $project->id, 'title' => 'Webhook retry']);
-        $second = CreateIssue::run($workspace, ['project_id' => $project->id, 'title' => 'Login page fix']);
-
-        // Force a shared seven-character prefix; the rest of the ULID differs.
+        // Force a shared seven-character prefix; the rest of the ULID
+        // differs. The ids are set at insert time: rewriting the primary
+        // key after creation is refused by the audit journal's FK.
         $prefix = '01JQZ0A';
-        $first->forceFill(['id' => $prefix.'AAAAAAAAAAAAAAAAAAA'])->save();
-        $second->forceFill(['id' => $prefix.'BBBBBBBBBBBBBBBBBBB'])->save();
+        $statusId = $workspace->statuses()->firstOrFail()->id;
+        Issue::factory()->createMany([
+            [
+                'id' => $prefix.'AAAAAAAAAAAAAAAAAAA',
+                'workspace_id' => $workspace->id,
+                'project_id' => $project->id,
+                'status_id' => $statusId,
+                'title' => 'Webhook retry',
+            ],
+            [
+                'id' => $prefix.'BBBBBBBBBBBBBBBBBBB',
+                'workspace_id' => $workspace->id,
+                'project_id' => $project->id,
+                'status_id' => $statusId,
+                'title' => 'Login page fix',
+            ],
+        ]);
         CreateIssue::run($workspace, ['project_id' => $project->id, 'title' => 'Other task']);
 
         $this->actingAs($owner)
@@ -282,8 +297,15 @@ class IssueTest extends TestCase
     {
         [$owner, $workspace, $project] = $this->setupWorkspace();
 
-        $target = CreateIssue::run($workspace, ['project_id' => $project->id, 'title' => 'Webhook retry']);
-        $target->forceFill(['id' => '01JQZ0AAAAAAAAAAAAAAAAAAAA'])->save();
+        // The id is set at insert time: rewriting the primary key after
+        // creation is refused by the audit journal's FK.
+        Issue::factory()->create([
+            'id' => '01JQZ0AAAAAAAAAAAAAAAAAAAA',
+            'workspace_id' => $workspace->id,
+            'project_id' => $project->id,
+            'status_id' => $workspace->statuses()->firstOrFail()->id,
+            'title' => 'Webhook retry',
+        ]);
 
         // Six characters: below the seven-character threshold, so the id is
         // never consulted and only the title search applies.
@@ -322,8 +344,15 @@ class IssueTest extends TestCase
     {
         [$owner, $workspace, $project] = $this->setupWorkspace();
 
-        $target = CreateIssue::run($workspace, ['project_id' => $project->id, 'title' => 'Webhook retry']);
-        $target->forceFill(['id' => '01JQZ0AAAAAAAAAAAAAAAAAAAA'])->save();
+        // The id is set at insert time: rewriting the primary key after
+        // creation is refused by the audit journal's FK.
+        Issue::factory()->create([
+            'id' => '01JQZ0AAAAAAAAAAAAAAAAAAAA',
+            'workspace_id' => $workspace->id,
+            'project_id' => $project->id,
+            'status_id' => $workspace->statuses()->firstOrFail()->id,
+            'title' => 'Webhook retry',
+        ]);
 
         $this->actingAs($owner)
             ->get('/issues?q=01jqz0a')

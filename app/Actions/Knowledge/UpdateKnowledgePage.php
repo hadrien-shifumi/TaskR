@@ -2,7 +2,9 @@
 
 namespace App\Actions\Knowledge;
 
+use App\Actions\Audit\RecordActivity;
 use App\Actions\Concerns\AuthorizesWorkspaceAccess;
+use App\Enums\AuditEventType;
 use App\Jobs\VectorizeKnowledgePage;
 use App\Models\KnowledgePage;
 use App\Models\KnowledgePageVersion;
@@ -13,6 +15,7 @@ use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Lorisleiva\Actions\ActionRequest;
@@ -123,7 +126,14 @@ class UpdateKnowledgePage
             }
         }
 
-        $page = DB::transaction(function () use ($page, $data, $parentId, $editor): KnowledgePage {
+        $before = [
+            'title' => $page->title,
+            'body' => $page->body,
+            'project_id' => $page->project_id,
+            'parent_id' => $page->parent_id,
+        ];
+
+        $page = DB::transaction(function () use ($page, $data, $parentId, $editor, $before): KnowledgePage {
             $page->update([
                 'project_id' => $data['project_id'] ?? null,
                 'parent_id' => $parentId,
@@ -141,12 +151,49 @@ class UpdateKnowledgePage
                 'created_at' => $page->updated_at,
             ]);
 
+            $this->recordUpdate($page, $before, $editor);
+
             return $page;
         });
 
         VectorizeKnowledgePage::dispatch($page);
 
         return $page->refresh();
+    }
+
+    /**
+     * Journal the edit in the same transaction. The full history lives in
+     * the version table: bodies are truncated to ~2000 characters. A
+     * no-op update (same values) journals nothing.
+     *
+     * @param  array{title: string, body: string, project_id: ?string, parent_id: ?string}  $before
+     */
+    private function recordUpdate(KnowledgePage $page, array $before, User $editor): void
+    {
+        $changes = [];
+
+        if ($page->title !== $before['title']) {
+            $changes['title'] = ['before' => $before['title'], 'after' => $page->title];
+        }
+
+        if ($page->body !== $before['body']) {
+            $changes['body'] = [
+                'before' => Str::limit($before['body'], 2000),
+                'after' => Str::limit($page->body, 2000),
+            ];
+        }
+
+        if ($page->project_id !== $before['project_id']) {
+            $changes['project_id'] = ['before' => $before['project_id'], 'after' => $page->project_id];
+        }
+
+        if ($page->parent_id !== $before['parent_id']) {
+            $changes['parent_id'] = ['before' => $before['parent_id'], 'after' => $page->parent_id];
+        }
+
+        if ($changes !== []) {
+            RecordActivity::run(AuditEventType::KnowledgePageUpdated, $page, $editor, $changes);
+        }
     }
 
     public function asController(ActionRequest $request, KnowledgePage $page, KnowledgeRedirectResponder $responder): RedirectResponse

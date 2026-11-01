@@ -2,7 +2,9 @@
 
 namespace App\Actions\Issues;
 
+use App\Actions\Audit\RecordActivity;
 use App\Actions\Concerns\AuthorizesWorkspaceAccess;
+use App\Enums\AuditEventType;
 use App\Models\Issue;
 use App\Models\User;
 use App\Responders\Issues\IssueRedirectResponder;
@@ -46,9 +48,20 @@ class MoveIssue
             app(WorkspaceContext::class)->abortUnlessIssueAccessible($user, $issue);
         }
 
+        $beforeStatus = $issue->status?->name;
+
         $issue->update(['status_id' => $statusId]);
 
-        return $issue->refresh();
+        $issue = $issue->refresh();
+
+        // Moving to the same status is a no-op: no transition, no event.
+        if ($issue->status?->name !== $beforeStatus) {
+            RecordActivity::run(AuditEventType::IssueStatusChanged, $issue, $user, [
+                'status' => ['before' => $beforeStatus, 'after' => $issue->status?->name],
+            ]);
+        }
+
+        return $issue;
     }
 
     public function asController(ActionRequest $request, Issue $issue, IssueRedirectResponder $responder): RedirectResponse

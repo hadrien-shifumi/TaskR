@@ -2,7 +2,9 @@
 
 namespace App\Actions\Projects;
 
+use App\Actions\Audit\RecordActivity;
 use App\Actions\Concerns\AuthorizesWorkspaceAccess;
+use App\Enums\AuditEventType;
 use App\Models\Project;
 use App\Models\User;
 use App\Responders\Projects\ProjectRedirectResponder;
@@ -36,9 +38,17 @@ class ArchiveProject
             app(WorkspaceContext::class)->abortUnlessProjectAccessible($user, $project);
         }
 
+        $wasArchived = $project->isArchived();
+
         $project->update([
-            'archived_at' => $project->isArchived() ? null : now(),
+            'archived_at' => $wasArchived ? null : now(),
         ]);
+
+        RecordActivity::run(
+            $wasArchived ? AuditEventType::ProjectUnarchived : AuditEventType::ProjectArchived,
+            $project,
+            $user,
+        );
 
         return $project->refresh();
     }

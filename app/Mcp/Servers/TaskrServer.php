@@ -25,6 +25,7 @@ use App\Mcp\Tools\GetIssue;
 use App\Mcp\Tools\GetKnowledge;
 use App\Mcp\Tools\GetProjectHealth;
 use App\Mcp\Tools\InviteMember;
+use App\Mcp\Tools\ListActivity;
 use App\Mcp\Tools\ListComments;
 use App\Mcp\Tools\ListIssues;
 use App\Mcp\Tools\ListKnowledge;
@@ -136,6 +137,8 @@ class TaskrServer extends Server
         CreateTemplate::class,
         UpdateTemplate::class,
         DeleteTemplate::class,
+        // Audit
+        ListActivity::class,
     ];
 
     /**
