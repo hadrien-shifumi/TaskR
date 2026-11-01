@@ -101,6 +101,55 @@ it('pins the create dialog header and footer while only the writing side scrolls
     $page->assertNoSmoke();
 });
 
+it('keeps the create dialog fields compact, without stretched rows', function () {
+    [$owner, $workspace, $project] = setupBrowserWorkspace(withProject: true);
+    app(WorkspaceContext::class)->set($workspace);
+    $this->actingAs($owner);
+
+    $page = visit('/issues');
+
+    $page->click('button:has-text("New issue")');
+    $page->assertPresent('[data-test="issue-description"]');
+
+    // The description block must not be taller than its label, its editor and
+    // the 8px gap between them: a stretched row would push the editor away
+    // from the label and leave a dead band under it.
+    $spacing = $page->script(<<<'JS'
+        (() => {
+            const block = document.querySelector('[data-test="issue-description"]');
+            const label = block.querySelector('[data-slot="label"]');
+            const editor = block.querySelector('[data-slot="markdown-editor"]');
+            const labelRect = label.getBoundingClientRect();
+            const editorRect = editor.getBoundingClientRect();
+            return {
+                blockHeight: block.getBoundingClientRect().height,
+                contentHeight: editorRect.bottom - labelRect.top,
+                labelToEditor: editorRect.top - labelRect.bottom,
+                editorToBlockBottom: block.getBoundingClientRect().bottom - editorRect.bottom,
+            };
+        })()
+        JS);
+
+    expect(abs($spacing['blockHeight'] - $spacing['contentHeight']))->toBeLessThan(2);
+    expect($spacing['labelToEditor'])->toBeLessThan(12);
+    expect($spacing['editorToBlockBottom'])->toBeLessThan(2);
+
+    // Properties stack tightly in the right column: no stretched rows either,
+    // otherwise the gap between two consecutive fields would grow.
+    $gaps = $page->script(<<<'JS'
+        (() => {
+            const properties = document.querySelector('[data-test="issue-properties"]');
+            const fields = Array.from(properties.children).map((field) => field.getBoundingClientRect());
+            return fields.slice(1).map((rect, index) => rect.top - fields[index].bottom);
+        })()
+        JS);
+
+    expect($gaps)->not->toBeEmpty();
+    expect((float) max($gaps))->toBeLessThan(20);
+
+    $page->assertNoSmoke();
+});
+
 it('opens the board create dialog wide, with every property on the right', function () {
     [$owner, $workspace, $project] = setupBrowserWorkspace(withProject: true);
     app(WorkspaceContext::class)->set($workspace);

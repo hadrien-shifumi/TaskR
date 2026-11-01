@@ -34,7 +34,9 @@ type CreateIssueDialogProps = {
  * Wide two-column layout: the writing side (template, title, description)
  * fills the left column and is the only scrollable area; the properties
  * (project, status, priority, due date, labels) sit in a fixed right column.
- * Header and footer stay pinned to the panel.
+ * Header and footer stay pinned to the panel. Body rows are `auto` and the
+ * grid content starts at the top: stretching them would spread the fields
+ * apart and push the description editor away from its label.
  */
 export function CreateIssueDialog({ open, onClose, projects, statuses, labels, templates }: CreateIssueDialogProps) {
     const { t } = useTranslation();
@@ -103,7 +105,7 @@ export function CreateIssueDialog({ open, onClose, projects, statuses, labels, t
             submitLabel={t('common.create')}
             processing={createForm.processing}
             contentClassName="max-h-[90vh] sm:max-w-[min(1400px,calc(100vw-2rem))]"
-            bodyClassName="grid gap-6 md:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]"
+            bodyClassName="grid auto-rows-min content-start gap-6 md:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]"
             scrollableBody
             onSubmit={submitCreate}
         >
