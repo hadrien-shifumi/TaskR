@@ -55,6 +55,10 @@ return [
         'deleted' => 'Gabarit supprimé.',
     ],
 
+    'notification_preferences' => [
+        'updated' => 'Préférences de notification enregistrées.',
+    ],
+
     'token' => [
         'created' => "Jeton d'API créé.",
         'revoked' => "Jeton d'API révoqué.",

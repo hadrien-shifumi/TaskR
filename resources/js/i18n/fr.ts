@@ -534,6 +534,7 @@ const fr: typeof en = {
             members: "Membres",
             templates: "Gabarits de tickets",
             tokens: "Jetons d'API",
+            notifications: "Notifications",
         },
         readOnlyBadge: "Lecture seule — membre",
         readOnlyPrefix:
@@ -649,6 +650,23 @@ const fr: typeof en = {
         newTokenTitle: "Nouveau jeton",
         newTokenDescription: "La valeur ne sera affichée qu'une seule fois, à la création.",
         createToken: "Créer le jeton",
+    },
+
+    notificationsPage: {
+        description:
+            "Choisissez si Taskr vous envoie une synthèse par e-mail de vos tickets, à quelle fréquence, et à partir de combien de jours les échéances à venir sont signalées.",
+        optInLabel: "Recevoir une synthèse de mes tickets par e-mail",
+        optInHint: "Désactivé par défaut : aucun e-mail n'est envoyé sans votre accord.",
+        frequencyLabel: "Fréquence",
+        frequencyDaily: "Quotidienne",
+        frequencyWeekly: "Hebdomadaire",
+        thresholdLabel: "Échéances à venir",
+        thresholdHint:
+            "Les tickets dont l'échéance tombe dans ce nombre de jours (1 à 90) sont signalés comme à venir.",
+        timezoneLabel: "Fuseau horaire",
+        save: "Enregistrer les préférences",
+        optOutHint:
+            "Le désabonnement conserve vos autres réglages : vous pouvez réactiver la synthèse à tout moment.",
     },
 
     knowledge: {
