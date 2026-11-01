@@ -20,6 +20,7 @@ class DigestPresenter
     {
         return [
             ...$content->toArray(),
+            'workspaceName' => $context->workspace->name,
             'isEmpty' => $content->isEmpty(),
             'windowStart' => $context->windowStart()->toISOString(),
             'generatedAt' => $context->now->toISOString(),

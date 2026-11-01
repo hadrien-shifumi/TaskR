@@ -18,6 +18,12 @@
 // 4. issue_dev tool: the state machine the agent drives — start, status,
 //    knowledge-reviewed, cancel.
 //
+// 5. TaskR statuses: the workflow drives the issue status — In Progress on
+//    start, Done at closure, parents lifted out of Backlog while a child
+//    moves forward, move_issue to Done refused while children stay open.
+//    All best effort over the TaskR MCP server (./taskr.ts): an outage
+//    skips the sync, it never breaks the workflow.
+//
 // State lives in one JSON file per project root. One active workflow per
 // repo at a time: concurrent sessions on the same checkout share it.
 //
@@ -28,6 +34,13 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs"
 import { homedir } from "node:os"
 import path from "node:path"
 import crypto from "node:crypto"
+import {
+  createTaskrClient,
+  type TaskrClient,
+  type TaskrIssue,
+  type TaskrIssueRef,
+  type TaskrStatus,
+} from "./taskr"
 
 const PLAN_MARKER = "taskr:plan"
 const DONE_MARKER = "taskr:done"
@@ -40,39 +53,55 @@ const SOURCE_FILE = /(^|\/)(app|routes|database|config|resources\/js|resources\/
 // State management (one JSON file per project root)
 // ---------------------------------------------------------------------------
 
-type IssueDevState = {
+export type IssueDevState = {
   active: boolean
   workspace_id?: string
   issue_id?: string
   started_at?: number
+  session_id?: string
+  agent?: string
   knowledge_searched: boolean
   code_explored: boolean
   plan_comment: boolean
   done_comment: boolean
   time_logged: boolean
   knowledge_reviewed: boolean
+  done_blocked_notified?: boolean
   completed_at?: number
 }
 
+// The plugin runtime's working directory is the OpenCode server's cwd (often
+// the home directory), not the project. OpenCode exposes the real project
+// directory on ctx.location.directory; capture it at load time so the state
+// file stays scoped to the project instead of being shared across every
+// repository and every session.
+let locationDirectory: string | null = null
+
+export function setLocation(directory: unknown): void {
+  if (typeof directory === "string" && directory !== "") {
+    locationDirectory = directory
+  }
+}
+
 function projectRoot(): string {
-  // Walk up from cwd to find the Laravel project root.
-  let dir = process.cwd()
+  const start = locationDirectory ?? process.cwd()
+  let dir = start
   for (let level = 0; level < 10; level += 1) {
     if (existsSync(path.join(dir, "artisan")) || existsSync(path.join(dir, "composer.json"))) return dir
     const parent = path.dirname(dir)
     if (parent === dir) break
     dir = parent
   }
-  return process.cwd()
+  return start
 }
 
-function statePath(): string {
+export function statePath(): string {
   const root = projectRoot()
   const hash = crypto.createHash("sha1").update(root).digest("hex").slice(0, 12)
   return path.join(homedir(), ".cache", "opencode-issue-dev", `${hash}.json`)
 }
 
-function loadState(): IssueDevState {
+export function loadState(): IssueDevState {
   try {
     const raw = readFileSync(statePath(), "utf-8")
     const parsed = JSON.parse(raw)
@@ -81,12 +110,15 @@ function loadState(): IssueDevState {
       workspace_id: parsed.workspace_id,
       issue_id: parsed.issue_id,
       started_at: parsed.started_at,
+      session_id: parsed.session_id,
+      agent: parsed.agent,
       knowledge_searched: parsed.knowledge_searched ?? false,
       code_explored: parsed.code_explored ?? false,
       plan_comment: parsed.plan_comment ?? false,
       done_comment: parsed.done_comment ?? false,
       time_logged: parsed.time_logged ?? false,
       knowledge_reviewed: parsed.knowledge_reviewed ?? false,
+      done_blocked_notified: parsed.done_blocked_notified ?? false,
       completed_at: parsed.completed_at,
     }
   } catch {
@@ -102,7 +134,7 @@ function loadState(): IssueDevState {
   }
 }
 
-function saveState(state: IssueDevState): void {
+export function saveState(state: IssueDevState): void {
   try {
     mkdirSync(path.dirname(statePath()), { recursive: true })
     writeFileSync(statePath(), JSON.stringify(state, null, 2))
@@ -111,19 +143,110 @@ function saveState(state: IssueDevState): void {
   }
 }
 
-function freshState(workspaceId: string, issueId: string): IssueDevState {
+export function freshState(workspaceId: string, issueId: string, sessionId?: string, agent?: string): IssueDevState {
   return {
     active: true,
     workspace_id: workspaceId,
     issue_id: issueId,
     started_at: Date.now(),
+    session_id: sessionId,
+    agent,
     knowledge_searched: false,
     code_explored: false,
     plan_comment: false,
     done_comment: false,
     time_logged: false,
     knowledge_reviewed: false,
+    done_blocked_notified: false,
   }
+}
+
+// ---------------------------------------------------------------------------
+// TaskR status coherence (start -> In Progress, closure -> Done,
+// parents lifted out of Backlog, parents blocked over open children)
+// ---------------------------------------------------------------------------
+
+// Done and Cancelled both close a child: a cancelled child no longer
+// blocks its parent, mirroring TaskR's own dependency semantics.
+const CLOSED_CATEGORIES = new Set(["done", "cancelled"])
+
+function statusByCategory(statuses: TaskrStatus[], category: string): TaskrStatus | null {
+  for (const status of statuses) {
+    if (status.category === category) return status
+  }
+  return null
+}
+
+// get_issue reports the parent and children with their status *name* only.
+// Status names are unique per workspace, so the category resolves through
+// the workspace status list.
+function categoryOfStatusName(statuses: TaskrStatus[], name: string | null): string | null {
+  if (typeof name !== "string" || name === "") return null
+  for (const status of statuses) {
+    if (status.name === name) return status.category
+  }
+  return null
+}
+
+function blockingChildren(issue: TaskrIssue, statuses: TaskrStatus[]): TaskrIssueRef[] {
+  return issue.children.filter((child) => {
+    const category = categoryOfStatusName(statuses, child.statusName)
+    return category !== null && !CLOSED_CATEGORIES.has(category)
+  })
+}
+
+function formatChildren(children: TaskrIssueRef[]): string {
+  return children.map((child) => `- ${child.title} (${child.id}, ${child.statusName ?? "unknown"})`).join("\n")
+}
+
+// A parent cannot stay in Backlog once a child moves forward (or closes):
+// lift it to In Progress. Best effort — a failed move only skips the lift.
+async function liftBacklogParent(
+  client: TaskrClient,
+  workspaceId: string,
+  issue: TaskrIssue,
+  statuses: TaskrStatus[],
+  notes?: string[],
+): Promise<void> {
+  const parent = issue.parent
+  if (parent === null) return
+  if (categoryOfStatusName(statuses, parent.statusName) !== "backlog") return
+
+  const inProgress = statusByCategory(statuses, "in_progress")
+  if (inProgress === null) return
+
+  const moved = await client.moveIssue(workspaceId, parent.id, inProgress.id)
+  if (moved === null) return
+
+  const note = `parent ${parent.id} (${parent.title}) moved to ${inProgress.name} — a child moved forward`
+  if (notes !== undefined) notes.push(note)
+  else process.stderr.write(`issue-dev taskr: ${note}\n`)
+}
+
+export type StartStatusSync = { reachable: boolean; notes: string[] }
+
+// Rule 1: a started issue is In Progress. Rule 3: its parent leaves the
+// Backlog. Best effort — an unreachable TaskR never fails the start.
+export async function syncStartStatuses(workspaceId: string, issueId: string, ctx?: any): Promise<StartStatusSync> {
+  const client = await createTaskrClient(ctx)
+  if (client === null) return { reachable: false, notes: [] }
+
+  const issue = await client.getIssue(workspaceId, issueId)
+  const statuses = issue !== null ? await client.listStatuses(workspaceId) : null
+  if (issue === null || statuses === null) return { reachable: false, notes: [] }
+
+  const notes: string[] = []
+
+  if (issue.status?.category !== "in_progress") {
+    const inProgress = statusByCategory(statuses, "in_progress")
+    if (inProgress !== null) {
+      const moved = await client.moveIssue(workspaceId, issueId, inProgress.id)
+      if (moved !== null) notes.push(`issue ${issueId} moved to ${inProgress.name} (was ${issue.status?.name})`)
+    }
+  }
+
+  await liftBacklogParent(client, workspaceId, issue, statuses, notes)
+  return { reachable: true, notes }
 }
 
 // ---------------------------------------------------------------------------
@@ -211,11 +334,13 @@ function isTaskrTool(tool: string): boolean {
 
 type CliResult = { ok: boolean; message: string }
 
-function cliMain(args: {
+export async function cliMain(args: {
   action: string
   workspaceId?: string
   issueId?: string
-}): CliResult {
+  sessionId?: string
+  agent?: string
+}, ctx?: any): Promise<CliResult> {
   const state = loadState()
 
   switch (args.action) {
@@ -228,11 +353,20 @@ function cliMain(args: {
           message: `usage: issue_dev action="start" workspaceId="<workspace_ulid>" issueId="<issue_ulid>"`,
         }
       }
-      saveState(freshState(workspaceId, issueId))
+      saveState(freshState(workspaceId, issueId, args.sessionId, args.agent))
+
+      const sync = await syncStartStatuses(workspaceId, issueId, ctx)
+      const statusLine = !sync.reachable
+        ? "TaskR statuses: server unreachable — statuses left untouched."
+        : sync.notes.length > 0
+          ? `TaskR statuses: ${sync.notes.join("; ")}.`
+          : `TaskR statuses: issue ${issueId} already in progress.`
+
       return {
         ok: true,
         message:
           `issue-dev: workflow opened for issue ${issueId}.\n` +
+          `${statusLine}\n` +
           `Next: research the issue (search_knowledge + get_knowledge + code exploration), then the plan comment with \`<!-- ${PLAN_MARKER} -->\`.`,
       }
     }
@@ -285,7 +419,75 @@ function cliMain(args: {
 // Pre-tool ordering rules (mirrors preToolChecks in issue-dev.php)
 // ---------------------------------------------------------------------------
 
-function preToolChecks(state: IssueDevState, tool: string, input: Record<string, unknown>): void {
+function firstString(input: Record<string, unknown>, keys: string[]): string | null {
+  for (const key of keys) {
+    const value = input[key]
+    if (typeof value === "string" && value !== "") return value
+  }
+  return null
+}
+
+function targetIssueId(input: Record<string, unknown>): string | null {
+  return firstString(input, ["issue_id", "issueId"])
+}
+
+// A TaskR write only belongs to the workflow when it targets the workflow's
+// issue. Comments and time entries on any other issue are ordinary tracker
+// work: they must never be blocked by the workflow, nor recorded against it.
+function targetsWorkflow(state: IssueDevState, input: Record<string, unknown>): boolean {
+  const target = targetIssueId(input)
+  return target === null || target === state.issue_id
+}
+
+// move_issue coherence, enforced on every move whatever the target issue:
+// a parent cannot close over open children (rule 4), and a parent never
+// stays in Backlog while a child moves forward (rule 3). An unreachable
+// TaskR never blocks a move — the status guard only ever restricts moves
+// it can verify.
+async function guardMoveIssue(state: IssueDevState, input: Record<string, unknown>, ctx?: any): Promise<void> {
+  const issueId = targetIssueId(input)
+  if (issueId === null) return
+
+  const workspaceId = firstString(input, ["workspace_id", "workspaceId"]) ?? state.workspace_id ?? null
+  if (workspaceId === null) return
+
+  const statusId = firstString(input, ["status_id", "statusId", "status"])
+  if (statusId === null) return // The server rejects the call anyway.
+
+  const client = await createTaskrClient(ctx)
+  if (client === null) return
+
+  const [statuses, issue] = await Promise.all([
+    client.listStatuses(String(workspaceId)),
+    client.getIssue(String(workspaceId), issueId),
+  ])
+  if (statuses === null || issue === null) return
+
+  const target = statuses.find((status) => status.id === statusId)
+  if (target === undefined) return // Unknown status: the server validates.
+
+  if (target.category === "done") {
+    const blockers = blockingChildren(issue, statuses)
+    if (blockers.length > 0) {
+      throw new Error(
+        `issue-dev: issue ${issueId} cannot move to ${target.name} — these children are not done yet:\n` +
+          `${formatChildren(blockers)}\n` +
+          `Move the children to Done (or cancel them) first, then move the parent.`,
+      )
+    }
+  }
+
+  if (target.category === "done" || target.category === "in_progress") {
+    await liftBacklogParent(client, String(workspaceId), issue, statuses)
+  }
+}
+
+export async function preToolChecks(
+  state: IssueDevState,
+  tool: string,
+  input: Record<string, unknown>,
+  ctx?: any,
+): Promise<void> {
   // Allow the issue_dev tool itself.
   if (tool === "issue_dev" || tool.endsWith("_issue_dev")) return
 
@@ -302,23 +504,30 @@ function preToolChecks(state: IssueDevState, tool: string, input: Record<string,
     return
   }
 
-  // TaskR connector tool calls (MCP tools arrive with taskr_ prefix or as execute tool with code).
-  const isExecuteTool = tool.includes("execute") || tool.includes("typescript") || tool.includes("codemode")
-  const code = String(input.code ?? input.command ?? "")
+  // Code Mode wraps MCP calls in `execute`, but the inner tool fires its own
+  // execute.before event with the real name and arguments. Enforcing here too
+  // would only re-check a code string we cannot reliably parse.
+  if (tool.includes("execute") || tool.includes("typescript") || tool.includes("codemode")) return
 
-  if (isTaskrTool(tool) || (isExecuteTool && code.includes("connector_taskr"))) {
+  // move_issue coherence: parents cannot close over open children, and a
+  // Backlog parent is lifted when a child moves forward.
+  if (tool.includes("move_issue")) {
+    await guardMoveIssue(state, input, ctx)
+  }
+
+  if (isTaskrTool(tool) && targetsWorkflow(state, input)) {
     // log_time before done comment.
-    if ((tool.includes("log_time") || code.includes("log_time")) && !state.done_comment) {
+    if (tool.includes("log_time") && !state.done_comment) {
       throw new Error(
         "issue-dev: log_time comes after the done comment — the logged duration runs from the issue's first comment to now, so the implementation must be finished and reported first.",
       )
     }
 
     // add_comment marker enforcement.
-    const isAddComment = tool.includes("add_comment") || code.includes("add_comment")
+    const isAddComment = tool.includes("add_comment")
     if (isAddComment) {
-      const hasPlan = code.includes(PLAN_MARKER) || String(input.body ?? "").includes(`<!-- ${PLAN_MARKER} -->`)
-      const hasDone = code.includes(DONE_MARKER) || String(input.body ?? "").includes(`<!-- ${DONE_MARKER} -->`)
+      const hasPlan = String(input.body ?? "").includes(`<!-- ${PLAN_MARKER} -->`)
+      const hasDone = String(input.body ?? "").includes(`<!-- ${DONE_MARKER} -->`)
 
       if (!hasPlan && !hasDone) {
         throw new Error(
@@ -354,15 +563,19 @@ function preToolChecks(state: IssueDevState, tool: string, input: Record<string,
 // Post-tool progress recording (mirrors recordProgress in issue-dev.php)
 // ---------------------------------------------------------------------------
 
-function recordProgress(state: IssueDevState, tool: string, event: any): boolean {
+export function recordProgress(state: IssueDevState, tool: string, event: any): boolean {
   const input = (event?.input ?? event?.args ?? {}) as Record<string, unknown>
-  if (event?.error === true || event?.result?.metadata?.error === true) return false
+  // V2 reports failures through status; V1 used an error flag. Honour both.
+  if (event?.status === "error" || event?.error === true || event?.result?.metadata?.error === true) return false
 
   let changed = false
-  const code = String(input.code ?? "")
 
-  // TaskR connector tools (MCP tools arrive with taskr_ prefix).
+  // TaskR connector tools (MCP tools arrive with taskr_ prefix). The inner MCP
+  // tool fires its own execute.after event, so the outer `execute` call is
+  // ignored here: it carries a code string, not the tool arguments.
   if (isTaskrTool(tool)) {
+    const isWorkflowIssue = targetsWorkflow(state, input)
+
     if (tool.includes("search_knowledge") && !state.knowledge_searched) {
       state.knowledge_searched = true
       changed = true
@@ -371,7 +584,7 @@ function recordProgress(state: IssueDevState, tool: string, event: any): boolean
       state.knowledge_reviewed = true
       changed = true
     }
-    if (tool.includes("add_comment")) {
+    if (isWorkflowIssue && tool.includes("add_comment")) {
       const body = String(input.body ?? "")
       if (body.includes(`<!-- ${PLAN_MARKER} -->`) && !state.plan_comment) {
         state.plan_comment = true
@@ -382,33 +595,7 @@ function recordProgress(state: IssueDevState, tool: string, event: any): boolean
         changed = true
       }
     }
-    if (tool.includes("log_time") && state.done_comment && !state.time_logged) {
-      state.time_logged = true
-      changed = true
-    }
-  }
-
-  // Code Mode execute tool: inspect the code for TaskR connector calls.
-  if ((tool.includes("execute") || tool.includes("typescript") || tool.includes("codemode")) && code.includes("connector_taskr")) {
-    if (code.includes("search_knowledge") && !state.knowledge_searched) {
-      state.knowledge_searched = true
-      changed = true
-    }
-    if ((code.includes("update_knowledge") || code.includes("create_knowledge")) && !state.knowledge_reviewed) {
-      state.knowledge_reviewed = true
-      changed = true
-    }
-    if (code.includes("add_comment")) {
-      if (code.includes(PLAN_MARKER) && !state.plan_comment) {
-        state.plan_comment = true
-        changed = true
-      }
-      if (code.includes(DONE_MARKER) && state.plan_comment && !state.done_comment) {
-        state.done_comment = true
-        changed = true
-      }
-    }
-    if (code.includes("log_time") && state.done_comment && !state.time_logged) {
+    if (isWorkflowIssue && tool.includes("log_time") && state.done_comment && !state.time_logged) {
       state.time_logged = true
       changed = true
     }
@@ -439,25 +626,118 @@ function recordProgress(state: IssueDevState, tool: string, event: any): boolean
 // Turn gate (mirrors the post_agent branch in issue-dev.php)
 // ---------------------------------------------------------------------------
 
-async function turnGate(ctx: any, sessionId: string): Promise<void> {
+// The writer and reporter can neither start nor close an issue workflow
+// (issue_dev is denied to them), so nudging them toward it is a dead end.
+const WORKFLOW_EXEMPT_AGENTS = new Set(["writer", "reporter"])
+
+export function shouldNudge(agent: string): boolean {
+  return !WORKFLOW_EXEMPT_AGENTS.has(agent)
+}
+
+// V2 exposes ctx.session.prompt; V1 exposed ctx.client.session.prompt.
+export async function promptSession(ctx: any, sessionId: string, text: string): Promise<void> {
+  if (typeof ctx?.session?.prompt === "function") {
+    await ctx.session.prompt({ sessionID: sessionId, text })
+    return
+  }
+  if (typeof ctx?.client?.session?.prompt === "function") {
+    await ctx.client.session.prompt({ sessionID: sessionId, text })
+  }
+}
+
+async function sessionAgent(ctx: any, sessionId: string): Promise<string> {
+  try {
+    if (typeof ctx?.session?.get === "function") {
+      const session = await ctx.session.get({ sessionID: sessionId })
+      return String(session?.agent ?? "")
+    }
+  } catch {
+    // Unknown session: fall through and treat it as a workflow owner.
+  }
+  return ""
+}
+
+// Only the session that opened the workflow may be pushed to finish it.
+// Every other session (writer, reporter, dev, parallel work) cannot act on
+// it and would only loop on tools it is not allowed to call.
+async function ownsWorkflowTurn(ctx: any, state: IssueDevState, sessionId: string): Promise<boolean> {
+  if (state.session_id) return state.session_id === sessionId
+  return shouldNudge(await sessionAgent(ctx, sessionId))
+}
+
+function closeWorkflow(state: IssueDevState): void {
+  state.active = false
+  state.completed_at = Date.now()
+  saveState(state)
+}
+
+// Rule 2: the workflow ends with the issue Done. Rule 4: never over open
+// children — the session is told once which children hold the closure
+// (done_blocked_notified prevents a notification loop), then the workflow
+// closes anyway: the remaining work lives in the children, not here.
+// Best effort — an unreachable TaskR just closes the workflow.
+async function closeWorkflowWithStatuses(ctx: any, sessionId: string, state: IssueDevState): Promise<void> {
+  const workspaceId = typeof state.workspace_id === "string" ? state.workspace_id : null
+  const issueId = typeof state.issue_id === "string" ? state.issue_id : null
+
+  if (workspaceId !== null && issueId !== null) {
+    const client = await createTaskrClient(ctx)
+    if (client !== null) {
+      const issue = await client.getIssue(workspaceId, issueId)
+      const statuses = issue !== null ? await client.listStatuses(workspaceId) : null
+
+      if (issue !== null && statuses !== null && issue.status?.category !== "done") {
+        const blockers = blockingChildren(issue, statuses)
+
+        if (blockers.length > 0) {
+          if (!state.done_blocked_notified && (await ownsWorkflowTurn(ctx, state, sessionId))) {
+            state.done_blocked_notified = true
+            saveState(state)
+            await promptSession(
+              ctx,
+              sessionId,
+              `issue-dev-gate: every step of issue ${issueId} is complete, but it was not moved to Done — these children are not done yet:\n` +
+                `${formatChildren(blockers)}\n` +
+                `Move the children to Done (or cancel them), then move_issue ${issueId} to Done. The workflow is closed; finish the children as their own work.`,
+            )
+          }
+          closeWorkflow(state)
+          return
+        }
+
+        const done = statusByCategory(statuses, "done")
+        if (done !== null) {
+          const moved = await client.moveIssue(workspaceId, issueId, done.id)
+          if (moved !== null) {
+            await liftBacklogParent(client, workspaceId, issue, statuses)
+          }
+        }
+      }
+    }
+  }
+
+  closeWorkflow(state)
+}
+
+export async function turnGate(ctx: any, sessionId: string): Promise<void> {
   const state = loadState()
   if (!state.active) return
 
   const steps = missingSteps(state)
   if (steps.length === 0) {
-    state.active = false
-    state.completed_at = Date.now()
-    saveState(state)
+    await closeWorkflowWithStatuses(ctx, sessionId, state)
     return
   }
 
-  await ctx.client.session.prompt({
-    sessionID: sessionId,
-    text:
-      `issue-dev-gate: the TaskR issue ${issueLabel(state)} workflow is incomplete:\n` +
+  if (!(await ownsWorkflowTurn(ctx, state, sessionId))) return
+
+  await promptSession(
+    ctx,
+    sessionId,
+    `issue-dev-gate: the TaskR issue ${issueLabel(state)} workflow is incomplete:\n` +
       `- ${steps.join("\n- ")}\n` +
       `Finish them (see the taskr-issue-dev skill), or run issue_dev action="cancel" if this is not a TaskR issue workflow.`,
-  })
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -467,52 +747,60 @@ async function turnGate(ctx: any, sessionId: string): Promise<void> {
 // OpenCode v1 entrypoint: server(ctx) -> hooks.
 export const IssueDevPlugin = async (ctx: any): Promise<
   Record<string, (input: any, output: any) => Promise<void>>
-> => ({
-  "tool.execute.before": async (input, output) => {
-    const state = loadState()
-    if (!state.active) return
-    const tool = String(input?.tool ?? "")
-    preToolChecks(state, tool, input?.args ?? output?.args ?? {})
-  },
-  "tool.execute.after": async (input, output) => {
-    const tool = String(input?.tool ?? "")
-    const state = loadState()
+> => {
+  setLocation(ctx?.location?.directory ?? ctx?.directory ?? ctx?.cwd)
 
-    if (state.active) {
-      if (recordProgress(state, tool, { input: input?.args, ...output })) {
-        saveState(state)
+  return {
+    "tool.execute.before": async (input, output) => {
+      const state = loadState()
+      if (!state.active) return
+      const tool = String(input?.tool ?? "")
+      await preToolChecks(state, tool, input?.args ?? output?.args ?? {}, ctx)
+    },
+    "tool.execute.after": async (input, output) => {
+      const tool = String(input?.tool ?? "")
+      const state = loadState()
+
+      if (state.active) {
+        if (recordProgress(state, tool, { input: input?.args, ...output })) {
+          saveState(state)
+        }
+        return
       }
-      return
-    }
 
-    // Not in a workflow, yet the TaskR connector is being used: remind the
-    // agent the lifecycle exists before it silently bypasses it.
-    const args = input?.args ?? {}
-    const code = String(args.code ?? "")
-    if ((isTaskrTool(tool) || code.includes("connector_taskr")) && !tool.includes("issue_dev")) {
-      inject(output, block([
-        "The TaskR connector is in use with no declared issue workflow.",
-        `If this task is a TaskR issue: run issue_dev action="start" workspaceId="<workspace_ulid>" issueId="<issue_ulid>" and follow the taskr-issue-dev skill (research, plan comment, implement, done comment, time entry, knowledge review).`,
-        "If it is not (triage, admin, read-only lookup): ignore this reminder.",
-      ]))
-    }
-  },
-  event: async (event) => {
-    if (event.type === "session.idle") {
+      // Not in a workflow, yet the TaskR connector is being used: remind the
+      // agent the lifecycle exists before it silently bypasses it.
+      if (!shouldNudge(String(input?.agent ?? ""))) return
+      if (isTaskrTool(tool) && !tool.includes("issue_dev")) {
+        inject(output, block([
+          "The TaskR connector is in use with no declared issue workflow.",
+          `If this task is a TaskR issue: run issue_dev action="start" workspaceId="<workspace_ulid>" issueId="<issue_ulid>" and follow the taskr-issue-dev skill (research, plan comment, implement, done comment, time entry, knowledge review).`,
+          "If it is not (triage, admin, read-only lookup): ignore this reminder.",
+        ]))
+      }
+    },
+    event: async (event) => {
+      if (event.type !== "session.idle") return
       const sessionId = String(event.sessionID ?? event.session_id ?? "default")
-      await turnGate(ctx, sessionId)
-    }
-  },
-})
+      try {
+        await turnGate(ctx, sessionId)
+      } catch {
+        // One failed gate must never stop the plugin.
+      }
+    },
+  }
+}
 
 // OpenCode v2 entrypoint.
 const setup = async (ctx: any) => {
+  setLocation(ctx?.location?.directory ?? ctx?.directory ?? ctx?.cwd)
+
   // Register the issue_dev tool for the state machine.
   await ctx.tool.transform((editor: any) => {
     editor.add({
       name: "issue_dev",
       description:
-        "Manage the TaskR issue development workflow state machine. Actions: start (requires workspaceId + issueId), status, knowledge-reviewed, cancel.",
+        "Manage the TaskR issue development workflow state machine. Actions: start (requires workspaceId + issueId; moves the issue to In Progress and lifts a Backlog parent), status, knowledge-reviewed, cancel.",
       input: {
         type: "object",
         properties: {
@@ -533,8 +821,11 @@ const setup = async (ctx: any) => {
         required: ["action"],
         additionalProperties: false,
       },
-      execute: async (input: { action: string; workspaceId?: string; issueId?: string }) => {
-        const result = cliMain(input)
+      execute: async (
+        input: { action: string; workspaceId?: string; issueId?: string },
+        context?: { sessionID?: string; agent?: string },
+      ) => {
+        const result = await cliMain({ ...input, sessionId: context?.sessionID, agent: context?.agent }, ctx)
         return {
           content: result.message,
           metadata: { ok: result.ok },
@@ -550,7 +841,7 @@ const setup = async (ctx: any) => {
     const tool = String(event?.tool ?? "")
     // Allow the issue_dev tool itself.
     if (tool === "issue_dev" || tool.endsWith("_issue_dev")) return
-    preToolChecks(state, tool, event?.input ?? event?.args ?? {})
+    await preToolChecks(state, tool, event?.input ?? event?.args ?? {}, ctx)
   })
 
   // Post-tool: record progress, nudge when TaskR is used untracked.
@@ -565,10 +856,10 @@ const setup = async (ctx: any) => {
       return
     }
 
-    // Not in a workflow, yet the TaskR connector is being used.
-    const input = event?.input ?? event?.args ?? {}
-    const code = String((input as any).code ?? "")
-    if ((isTaskrTool(tool) || code.includes("connector_taskr")) && !tool.includes("issue_dev")) {
+    // Not in a workflow, yet the TaskR connector is being used. The writer and
+    // reporter cannot run issue_dev, so the reminder would only mislead them.
+    if (!shouldNudge(String(event?.agent ?? ""))) return
+    if (isTaskrTool(tool) && !tool.includes("issue_dev")) {
       inject(event, block([
         "The TaskR connector is in use with no declared issue workflow.",
         `If this task is a TaskR issue: run issue_dev action="start" workspaceId="<workspace_ulid>" issueId="<issue_ulid>" and follow the taskr-issue-dev skill (research, plan comment, implement, done comment, time entry, knowledge review).`,
@@ -582,9 +873,12 @@ const setup = async (ctx: any) => {
   void (async () => {
     try {
       for await (const event of ctx.event.subscribe({ signal: controller.signal })) {
-        if (event.type === "session.idle") {
-          const sessionId = String((event as any).sessionID ?? (event as any).session_id ?? "default")
+        if (event.type !== "session.idle") continue
+        const sessionId = String((event as any).sessionID ?? (event as any).session_id ?? "default")
+        try {
           await turnGate(ctx, sessionId)
+        } catch {
+          // One failed gate must never end the subscription.
         }
       }
     } catch {

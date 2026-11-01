@@ -1,8 +1,12 @@
 <?php
 
+use App\Actions\Notifications\SendDueDigests;
+use App\Jobs\SendAccountDigest;
 use App\Jobs\VectorizeKnowledgePage;
 use App\Models\KnowledgePage;
+use App\Models\User;
 use App\Support\WebpConverter;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -46,5 +50,19 @@ Artisan::command('images:webp {input : Path to the source JPG or PNG} {--sizes=1
     return 0;
 })->purpose('Convert a JPG/PNG to optimized webp size variants, or generate the site icon set with --icon');
 
+Artisan::command('notifications:send-digests', function (): void {
+    $userIds = SendDueDigests::run(CarbonImmutable::now());
+
+    User::query()
+        ->whereIn('id', $userIds->all())
+        ->get()
+        ->each(fn (User $user) => SendAccountDigest::dispatch($user));
+
+    $this->info($userIds->count().' digest job(s) queued.');
+})->purpose('Queue the digest of every account whose local time is 08:00 and whose frequency matches the day');
+
 // Purge knowledge trash daily at 3 AM.
 Schedule::command('knowledge:purge-trash')->dailyAt('03:00');
+
+// Digests: the command only queues jobs; the job decides whether to send.
+Schedule::command('notifications:send-digests')->hourly();

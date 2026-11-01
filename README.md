@@ -1,58 +1,118 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+<p align="center"><img src="public/assets/taskr-lockup.svg" width="220" alt="TaskR"></p>
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+# TaskR
 
-## About Laravel
+**TaskR** est un tracker de tickets multi-tenant et minimaliste, organisé autour du **workspace** : des équipes y créent des projets, des issues, suivent les statuts, le temps passé et la santé des projets — sans sprints, sans types d'issue, sans workflow configurable. Le pilotage se fait par convention : le workspace impose ses statuts à tous ses projets.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+TaskR est conçu pour être piloté **autant par des humains (UI web) que par des agents IA** via un serveur MCP dédié. Les identifiants sont des ULID opaques dans les URLs (pas de « TASK-42 »), et il n'existe que deux rôles : `owner` et `member`.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Fonctionnalités
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- **Workspaces multi-tenants** — un utilisateur peut appartenir à plusieurs workspaces et basculer entre eux ; invitations par email (rôle `owner`/`member`, projets optionnels), isolation stricte des données entre workspaces.
+- **Projets** — conteneur minimal (nom, description, date cible), archivage, membres de projet avec rôles, et **santé calculée** : avancement %, issues en retard, consommation des heures (loggué vs estimé), projection `on track` / `at risk` / `late`.
+- **Issues** — titre, description **Markdown**, statut, priorité (`none` / `low` / `high` / `urgent`), labels libres, **plusieurs assignés**, due date, estimation en heures, **hiérarchie molle** (parent/enfants, profondeur libre, cycles interdits), **dépendances** entre issues, archivage.
+- **Statuts** — définis au niveau du workspace (nom libre + catégorie sémantique `backlog` / `in_progress` / `done` / `cancelled`), réordonnables par drag & drop ; changement de statut libre, sans transition imposée.
+- **Commentaires** avec **@mentions** et notifications associées.
+- **Time tracking** — estimations d'heures et saisies de temps (édition/suppression réservées à l'auteur).
+- **Templates d'issues** — pré-remplissage de la création d'issue (sans lien persistant).
+- **Base de connaissances** — pages hiérarchiques en Markdown (éditeur TipTap), corbeille (soft delete, restauration, suppression définitive), **versioning** (historique, comparaison de versions, restauration) et **recherche sémantique** via pgvector (endpoint d'embeddings compatible OpenAI, ex. Mistral).
+- **Notifications** — page des mentions, préférences de notification par compte, digest email périodique (job en queue).
+- **API & MCP** — tokens personnels Sanctum et serveur MCP stateless sur `POST /mcp` (~50 outils) pour piloter TaskR depuis un agent IA avec les mêmes validations et permissions que l'UI.
+- **i18n** — interface en français et en anglais, au choix de chaque utilisateur.
 
-## Learning Laravel
+## Stack technique
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+| Couche | Technologies |
+|---|---|
+| Backend | PHP 8.5, Laravel 13, Laravel Octane (FrankenPHP en mode worker), PostgreSQL + pgvector, Sanctum, [laravel-actions](https://github.com/lorisleiva/laravel-actions) (Actions + Responders), Ziggy |
+| Frontend | Inertia v3, React 19, TypeScript, Tailwind CSS v4, shadcn/ui sur Base UI, TipTap (Markdown), react-i18next, Storybook |
+| Tests | Pest — suites Unit, Feature et Browser (E2E Playwright, desktop + mobile) |
+| Outils IA | Laravel Boost (MCP), OpenCode avec skills `taskr-backend`, `taskr-frontend`, `taskr-issue-dev`, `tdd` |
+| Qualité | Pint |
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## Architecture
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+- **Multi-tenancy par workspace** : toutes les données appartiennent à un workspace, scopées par un global scope (`WorkspaceScope`) et un contexte (`WorkspaceContext`) résolu par middleware ; aucune donnée d'un workspace non rejoint n'est visible, même par URL directe.
+- **Identifiants ULID** pour toutes les ressources (workspaces, projets, issues, pages de connaissance…).
+- **Actions comme controllers** (`app/Actions`) avec **Responders** (`app/Responders`) pour les réponses Inertia/redirect — pas de controllers classiques métier.
+- **MCP stateless** (`routes/ai.php`) : `POST /mcp` authentifié par token Sanctum (pas de session ni cookies), serveur `TaskrServer` exposé aux agents.
 
-## Agentic Development
+## Installation (développement local)
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+Prérequis : PHP ≥ 8.3 (8.5 recommandé), Node 22+, Composer, Docker (pour PostgreSQL).
 
 ```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+composer setup        # install dépendances, .env, clé d'app, migrations, npm install, build Vite
+docker compose up -d  # PostgreSQL 18 + pgvector exposé sur le port 5433 (voir docker-compose.yml)
+composer dev          # lance serveur, queue, logs et Vite (php artisan dev)
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+L'application est alors sur http://localhost:8000. Pense à définir `APP_NAME=Taskr` dans ton `.env`.
 
-## Contributing
+Configuration notable (`.env`) :
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+- `DB_*` : PostgreSQL (port **5433** par défaut avec le compose, pour que les commandes artisan locales tapent la même base que les conteneurs). L'extension **pgvector** est requise pour la recherche sémantique de la base de connaissances.
+- `KNOWLEDGE_EMBEDDINGS_*` (optionnel) : endpoint d'embeddings compatible OpenAI (ex. `https://api.mistral.ai/v1`, modèle `mistral-embed`) pour la vectorisation des pages de connaissance.
 
-## Code of Conduct
+Un déploiement « prod-like » local est aussi possible avec les mêmes images que la production :
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+```bash
+docker compose up --build
+# app (Octane/FrankenPHP) sur http://localhost:8080, worker queue:work, PostgreSQL pgvector
+```
 
-## Security Vulnerabilities
+## Tests
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+```bash
+composer test        # Pest : suites Unit + Feature
+composer test:e2e    # suite Browser (Playwright, viewports desktop + mobile) — build Vite inclus
+```
 
-## License
+Le workflow TDD est obligatoire dans ce projet (voir `AGENTS.md` et `.opencode/skills/tdd`) : plan de tests, test rouge, implémentation, Unit+Feature au vert avant de passer à la suite Browser.
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+## Pilotage par agents IA (MCP)
+
+1. Crée un token dans **Settings → API tokens** (valeur affichée une seule fois).
+2. Expose l'endpoint `POST /mcp` à ton agent, authentifié par `Authorization: Bearer <token>` (stateless, token Sanctum).
+
+Le serveur `Taskr` fournit ~50 outils (workspaces, projets, issues, commentaires, statuts, labels, time tracking, connaissance, templates…). Commencer par `list_workspaces`, puis passer le `workspace_id` cible à chaque outil. Chaque outil applique les mêmes validations et permissions que l'UI web.
+
+Exemple de configuration client (OpenCode) :
+
+```json
+{
+  "mcp": {
+    "servers": {
+      "taskr": {
+        "type": "remote",
+        "url": "https://taskr.example.com/mcp",
+        "oauth": false,
+        "headers": { "Authorization": "Bearer {env:TASKR_MCP_TOKEN}" }
+      }
+    }
+  }
+}
+```
+
+## Déploiement (production)
+
+La production tourne sur **Scaleway**, déployée avec **Kamal 2** — voir le runbook complet dans [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) :
+
+- **Image Docker multi-stage** (`Dockerfile`) : FrankenPHP 1.13 / PHP 8.5 avec **Laravel Octane en mode worker** (`octane:frankenphp`), build Vite en stage séparé, extensions `pdo_pgsql`, `intl`, `bcmath`…
+- **Rôles** : `web` (Octane, migrations au boot via `docker/entrypoint.sh`) et `worker` (`queue:work`) ; healthcheck sur `/up`.
+- **Infrastructure** : serveur Scaleway durci avec Ansible (`ansible/secure.yml` : user `deploy`, UFW, fail2ban…), **Scaleway Container Registry** privé, **PostgreSQL managé Scaleway avec pgvector** (TLS obligatoire, `DB_SSLMODE=require`), proxy **Traefik** de Kamal en terminaison TLS (ACME/Let's Encrypt).
+- **Commande** : `kamal deploy` (config dans `config/deploy.yml`, secrets dans `.kamal/secrets`, jamais commités).
+
+Architecture cible : `utilisateur → proxy Kamal (443, ACME) → conteneur taskr (Octane/FrankenPHP :8080) → PostgreSQL managé (TLS, pgvector)`.
+
+## Documentation & conventions
+
+- [`AGENTS.md`](AGENTS.md) — conventions du projet (TDD obligatoire, workflow `issue-dev` pour chaque issue : recherche → plan → implémentation → revue de la base de connaissances, géré dans TaskR lui-même).
+- [`docs/design-brief.md`](docs/design-brief.md) — brief produit (concepts, règles métier, écrans).
+- [`docs/design-system/`](docs/design-system) — design system (tokens, composants, patterns) et [`docs/maquettes/`](docs/maquettes) — maquettes HTML.
+- [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) — runbook de déploiement Scaleway/Ansible/Kamal.
+- `.opencode/skills/` — skills `taskr-backend`, `taskr-frontend`, `taskr-issue-dev`, `tdd`.
+
+## Dépôt
+
+[github.com/hadrien-shifumi/TaskR](https://github.com/hadrien-shifumi/TaskR)

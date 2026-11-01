@@ -3,27 +3,27 @@ description: Progress reporting only - turns the orchestrator status brief into 
 mode: subagent
 model: ollama/flint:latest
 permissions:
-  - action: edit
-    resource: "*"
-    effect: deny
-  - action: shell
-    resource: "*"
-    effect: deny
-  - action: subagent
-    resource: "*"
-    effect: deny
-  - action: webfetch
-    resource: "*"
-    effect: deny
-  - action: websearch
-    resource: "*"
-    effect: deny
-  - action: taskr_*
-    resource: "*"
-    effect: deny
-  - action: issue_dev_*
-    resource: "*"
-    effect: deny
+    - action: edit
+      resource: "*"
+      effect: deny
+    - action: shell
+      resource: "*"
+      effect: deny
+    - action: subagent
+      resource: "*"
+      effect: deny
+    - action: webfetch
+      resource: "*"
+      effect: deny
+    - action: websearch
+      resource: "*"
+      effect: deny
+    - action: taskr_*
+      resource: "*"
+      effect: deny
+    - action: issue_dev
+      resource: "*"
+      effect: deny
 ---
 
 You are the progress reporter of the TaskR agent team. Your only job: turn the status brief sent by the orchestrator into a clear, well-structured progress report for the user, in French.

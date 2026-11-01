@@ -59,7 +59,7 @@ const DEV_SUITES = "Unit,Feature"
 
 type Phase = "green" | "red" | "regression" | "unknown"
 
-type TddState = {
+export type TddState = {
   phase: Phase
   phase_at: number
   dirty: boolean
@@ -75,7 +75,7 @@ function statePath(sessionId: string): string {
   return path.join(stateDir(), `${safe || "default"}.json`)
 }
 
-function loadState(sessionId: string): TddState {
+export function loadState(sessionId: string): TddState {
   try {
     const raw = readFileSync(statePath(sessionId), "utf-8")
     const parsed = JSON.parse(raw)
@@ -90,7 +90,7 @@ function loadState(sessionId: string): TddState {
   }
 }
 
-function saveState(sessionId: string, state: TddState): void {
+export function saveState(sessionId: string, state: TddState): void {
   try {
     mkdirSync(stateDir(), { recursive: true })
     writeFileSync(statePath(sessionId), JSON.stringify(state))
@@ -229,20 +229,36 @@ function block(lines: string[]): string {
   return ["── tdd-guard ──", ...lines, "───────────────"].join("\n")
 }
 
+// V2 tool results carry their output as content parts; V1 exposed a plain
+// `output` string. Read both so the bash watcher can parse a test run.
+export function resultText(result: unknown): string {
+  if (!result || typeof result !== "object") return ""
+  const r = result as Record<string, any>
+  if (typeof r.output === "string") return r.output
+  if (typeof r.text === "string") return r.text
+  if (Array.isArray(r.content)) {
+    return r.content
+      .filter((part: any) => part && part.type === "text" && typeof part.text === "string")
+      .map((part: any) => part.text)
+      .join("\n")
+  }
+  return ""
+}
+
 // ---------------------------------------------------------------------------
 // Command classification (mirrors tdd-guard.php)
 // ---------------------------------------------------------------------------
 
-function isE2eCommand(command: string): boolean {
+export function isE2eCommand(command: string): boolean {
   return /composer\s+(?:run\s+)?test:e2e|--testsuite(?:=|\s+)Browser|tests\/Browser\/|artisan\s+test\b[^\n]*Browser/.test(command)
 }
 
-function isDevTestCommand(command: string): boolean {
+export function isDevTestCommand(command: string): boolean {
   return /vendor\/bin\/(?:phpunit|pest)|composer\s+(?:run\s+)?test\b|artisan\s+test\b/.test(command)
 }
 
 // A narrow run targets one file or filter and cannot clear a suite verdict.
-function isNarrowRun(command: string): boolean {
+export function isNarrowRun(command: string): boolean {
   return /--filter\b|tests\/\S+|artisan\s+test\s+--compact\s+\S/.test(command)
 }
 
@@ -250,7 +266,7 @@ function isNarrowRun(command: string): boolean {
 // Record bash test runs (mirrors recordBashRun in tdd-guard.php)
 // ---------------------------------------------------------------------------
 
-function recordBashRun(state: TddState, command: string, outputText: string, toolFailed: boolean): void {
+export function recordBashRun(state: TddState, command: string, outputText: string, toolFailed: boolean): void {
   if (isE2eCommand(command)) {
     state.e2e_at = Date.now()
     return
@@ -372,7 +388,7 @@ async function guardEditWrite(
 // Pre-tool E2E gate (mirrors the pre_tool branch in tdd-guard.php)
 // ---------------------------------------------------------------------------
 
-function guardBashBefore(tool: string, args: Record<string, unknown> | undefined, sessionId: string): void {
+export function guardBashBefore(tool: string, args: Record<string, unknown> | undefined, sessionId: string): void {
   if (!tool.includes("bash")) return
   const command = String(args?.command ?? "")
   if (!isE2eCommand(command)) return
@@ -390,7 +406,7 @@ function guardBashBefore(tool: string, args: Record<string, unknown> | undefined
 // Post-tool bash watcher (records manual test runs)
 // ---------------------------------------------------------------------------
 
-function guardBashAfter(
+export function guardBashAfter(
   tool: string,
   args: Record<string, unknown> | undefined,
   event: any,
@@ -398,8 +414,10 @@ function guardBashAfter(
 ): void {
   if (!tool.includes("bash")) return
   const command = String(args?.command ?? "")
-  const outputText = String(event?.result?.output ?? event?.output ?? "")
-  const toolFailed = event?.result?.metadata?.error === true || event?.error === true
+  const outputText = resultText(event?.result) || String(event?.output ?? "")
+  // V2 reports failures through status; V1 used an error flag.
+  const toolFailed =
+    event?.status === "error" || event?.result?.metadata?.error === true || event?.error === true
   const state = loadState(sessionId)
   recordBashRun(state, command, outputText, toolFailed)
   saveState(sessionId, state)
@@ -409,31 +427,45 @@ function guardBashAfter(
 // Turn gate (mirrors tdd-gate.php)
 // ---------------------------------------------------------------------------
 
-async function turnGate(ctx: any, sessionId: string): Promise<void> {
+// V2 exposes ctx.session.prompt; V1 exposed ctx.client.session.prompt.
+export async function promptSession(ctx: any, sessionId: string, text: string): Promise<void> {
+  if (typeof ctx?.session?.prompt === "function") {
+    await ctx.session.prompt({ sessionID: sessionId, text })
+    return
+  }
+  if (typeof ctx?.client?.session?.prompt === "function") {
+    await ctx.client.session.prompt({ sessionID: sessionId, text })
+  }
+}
+
+export async function turnGate(ctx: any, sessionId: string): Promise<void> {
   const state = loadState(sessionId)
   const phase = state.phase
 
   if (phase === "regression") {
-    await ctx.client.session.prompt({
-      sessionID: sessionId,
-      text: "tdd-gate: Unit+Feature are RED at their last run — the task is not done. Continue the implementation pass and rerun `composer test` until green.",
-    })
+    await promptSession(
+      ctx,
+      sessionId,
+      "tdd-gate: Unit+Feature are RED at their last run — the task is not done. Continue the implementation pass and rerun `composer test` until green.",
+    )
     return
   }
 
   if (phase === "red") {
-    await ctx.client.session.prompt({
-      sessionID: sessionId,
-      text: "tdd-gate: tests were written and are RED (normal TDD phase), but nothing is green yet. Do the minimal implementation pass and rerun the tests. Only stop at red if the user explicitly asked for the test plan alone — in that case, restate that and stop.",
-    })
+    await promptSession(
+      ctx,
+      sessionId,
+      "tdd-gate: tests were written and are RED (normal TDD phase), but nothing is green yet. Do the minimal implementation pass and rerun the tests. Only stop at red if the user explicitly asked for the test plan alone — in that case, restate that and stop.",
+    )
     return
   }
 
   if (state.dirty) {
-    await ctx.client.session.prompt({
-      sessionID: sessionId,
-      text: "tdd-gate: code or tests were edited since the last test run. Rerun the covering scope (`composer test` or the narrowest test file) before finishing this turn.",
-    })
+    await promptSession(
+      ctx,
+      sessionId,
+      "tdd-gate: code or tests were edited since the last test run. Rerun the covering scope (`composer test` or the narrowest test file) before finishing this turn.",
+    )
   }
 }
 
@@ -460,9 +492,12 @@ export const TddGuardPlugin = async (ctx: any): Promise<
     await guardEditWrite(tool, args, output, sessionId)
   },
   event: async (event) => {
-    if (event.type === "session.idle") {
-      const sessionId = String(event.sessionID ?? event.session_id ?? "default")
+    if (event.type !== "session.idle") return
+    const sessionId = String(event.sessionID ?? event.session_id ?? "default")
+    try {
       await turnGate(ctx, sessionId)
+    } catch {
+      // One failed gate must never stop the plugin.
     }
   },
 })
@@ -492,9 +527,12 @@ const setup = async (ctx: any) => {
   void (async () => {
     try {
       for await (const event of ctx.event.subscribe({ signal: controller.signal })) {
-        if (event.type === "session.idle") {
-          const sessionId = String((event as any).sessionID ?? (event as any).session_id ?? "default")
+        if (event.type !== "session.idle") continue
+        const sessionId = String((event as any).sessionID ?? (event as any).session_id ?? "default")
+        try {
           await turnGate(ctx, sessionId)
+        } catch {
+          // One failed gate must never end the subscription.
         }
       }
     } catch {
