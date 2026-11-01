@@ -15,6 +15,7 @@ import {
 import { Link, router, useForm, usePage } from "@inertiajs/react";
 import { useTranslation } from "react-i18next";
 import {
+    AtSign,
     BookOpen,
     ChevronDown,
     Folder,
@@ -25,6 +26,7 @@ import {
     SlidersHorizontal,
     Trash2,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import type { PageSharedProps } from "@/types";
 import { LanguageSwitcher } from "@/components/language-switcher";
 
@@ -42,7 +44,16 @@ interface AppLayoutProps {
     children: ReactNode;
 }
 
-const NAV_ITEMS = [
+type NavItem = {
+    label: string;
+    route: string;
+    prefix: string;
+    icon: LucideIcon;
+    /** Shared prop rendered as a count pill when positive. */
+    badge?: "unreadMentions";
+};
+
+const NAV_ITEMS: NavItem[] = [
     { label: "nav.home", route: "home", prefix: "/", icon: Home },
     {
         label: "nav.projects",
@@ -55,6 +66,13 @@ const NAV_ITEMS = [
         route: "issues.index",
         prefix: "/issues",
         icon: ListChecks,
+    },
+    {
+        label: "nav.mentions",
+        route: "mentions.index",
+        prefix: "/mentions",
+        icon: AtSign,
+        badge: "unreadMentions",
     },
     {
         label: "nav.knowledge",
@@ -86,7 +104,8 @@ export default function AppLayout({
     narrow,
     children,
 }: AppLayoutProps) {
-    const { auth, workspace, workspaces } = usePage<PageSharedProps>().props;
+    const { auth, workspace, workspaces, unreadMentions } =
+        usePage<PageSharedProps>().props;
     const { url } = usePage();
     const { t } = useTranslation();
 
@@ -239,6 +258,16 @@ export default function AppLayout({
                                 <span className="max-lg:hidden">
                                     {t(item.label)}
                                 </span>
+                                {item.badge === "unreadMentions" &&
+                                unreadMentions > 0 ? (
+                                    <span
+                                        data-test="mentions-badge"
+                                        title={t("mentions.title")}
+                                        className="ml-auto grid min-w-5 shrink-0 place-items-center rounded-full bg-primary px-1.5 text-[10px] font-semibold leading-4 text-primary-foreground max-lg:ml-1"
+                                    >
+                                        {unreadMentions}
+                                    </span>
+                                ) : null}
                             </Link>
                         );
                     })}

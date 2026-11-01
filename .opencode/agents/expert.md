@@ -1,7 +1,7 @@
 ---
 description: Complex work - architecture, cross-cutting refactors, state-management redesign, deep debugging
 mode: subagent
-model: mistral/glm-5.3
+model: mistral/zai-glm-5-3
 permissions:
   - action: taskr_*
     resource: "*"

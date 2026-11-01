@@ -55,6 +55,10 @@ return [
         'deleted' => 'Template deleted.',
     ],
 
+    'notification_preferences' => [
+        'updated' => 'Notification preferences saved.',
+    ],
+
     'token' => [
         'created' => 'API token created.',
         'revoked' => 'API token revoked.',
@@ -79,6 +83,11 @@ return [
         'added' => 'Comment added.',
         'updated' => 'Comment updated.',
         'deleted' => 'Comment deleted.',
+    ],
+
+    'mention' => [
+        'read' => 'Mention marked as read.',
+        'read_all' => 'All mentions marked as read.',
     ],
 
     'page' => [
