@@ -1,4 +1,4 @@
-import { useState, type FormEvent, type ReactNode } from "react";
+import { Fragment, useState, type FormEvent, type ReactNode } from "react";
 import { FormDialog } from "@/components/form-dialog";
 import { initials } from "@/components/issue-badges";
 import { Input } from "@/components/ui/input";
@@ -53,44 +53,69 @@ type NavItem = {
     badge?: "unreadMentions";
 };
 
-const NAV_ITEMS: NavItem[] = [
-    { label: "nav.home", route: "home", prefix: "/", icon: Home },
+type NavSection = {
+    /** i18n key of the section label; omitted for ungrouped items. */
+    label?: string;
+    items: NavItem[];
+};
+
+/** Nav entries grouped by family; unlabelled sections stay flat. */
+const NAV_SECTIONS: NavSection[] = [
     {
-        label: "nav.projects",
-        route: "projects.index",
-        prefix: "/projects",
-        icon: Folder,
+        items: [
+            { label: "nav.home", route: "home", prefix: "/", icon: Home },
+            {
+                label: "nav.mentions",
+                route: "mentions.index",
+                prefix: "/mentions",
+                icon: AtSign,
+                badge: "unreadMentions",
+            },
+        ],
     },
     {
-        label: "nav.issues",
-        route: "issues.index",
-        prefix: "/issues",
-        icon: ListChecks,
+        label: "nav.sections.projects",
+        items: [
+            {
+                label: "nav.projects",
+                route: "projects.index",
+                prefix: "/projects",
+                icon: Folder,
+            },
+            {
+                label: "nav.issues",
+                route: "issues.index",
+                prefix: "/issues",
+                icon: ListChecks,
+            },
+        ],
     },
     {
-        label: "nav.mentions",
-        route: "mentions.index",
-        prefix: "/mentions",
-        icon: AtSign,
-        badge: "unreadMentions",
+        label: "nav.sections.knowledge",
+        items: [
+            {
+                label: "nav.knowledge",
+                route: "knowledge.index",
+                prefix: "/knowledge",
+                icon: BookOpen,
+            },
+            {
+                label: "knowledge.trash.nav",
+                route: "knowledge.trash",
+                prefix: "/knowledge/trash",
+                icon: Trash2,
+            },
+        ],
     },
     {
-        label: "nav.knowledge",
-        route: "knowledge.index",
-        prefix: "/knowledge",
-        icon: BookOpen,
-    },
-    {
-        label: "knowledge.trash.nav",
-        route: "knowledge.trash",
-        prefix: "/knowledge/trash",
-        icon: Trash2,
-    },
-    {
-        label: "nav.settings",
-        route: "settings.statuses",
-        prefix: "/settings",
-        icon: SlidersHorizontal,
+        items: [
+            {
+                label: "nav.settings",
+                route: "settings.statuses",
+                prefix: "/settings",
+                icon: SlidersHorizontal,
+            },
+        ],
     },
 ];
 
@@ -109,7 +134,7 @@ export default function AppLayout({
     const { url } = usePage();
     const { t } = useTranslation();
 
-    const isActive = (item: (typeof NAV_ITEMS)[number]) => {
+    const isActive = (item: NavItem) => {
         if (item.prefix === "/") return url === "/";
         // Knowledge stays active on its sub-pages, except the trash
         // which has its own nav entry.
@@ -243,32 +268,57 @@ export default function AppLayout({
                     className="flex items-start gap-1.5 max-lg:flex-none lg:flex-col"
                     aria-label={t("nav.mainNav")}
                 >
-                    {NAV_ITEMS.map((item) => {
-                        const Icon = item.icon;
-                        return (
-                            <Link
-                                key={item.label}
-                                href={route(item.route)}
-                                aria-current={
-                                    isActive(item) ? "page" : undefined
-                                }
-                                className="flex items-center gap-2.5 rounded-lg px-2.5 py-1.75 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground aria-[current=page]:bg-secondary aria-[current=page]:font-medium aria-[current=page]:text-foreground max-lg:px-2.5 max-lg:py-2"
-                            >
-                                <Icon className="size-4 shrink-0" aria-hidden />
-                                <span className="max-lg:hidden">
-                                    {t(item.label)}
-                                </span>
-                                {item.badge === "unreadMentions" &&
-                                unreadMentions > 0 ? (
-                                    <span
-                                        data-test="mentions-badge"
-                                        title={t("mentions.title")}
-                                        className="ml-auto grid min-w-5 shrink-0 place-items-center rounded-full bg-primary px-1.5 text-[10px] font-semibold leading-4 text-primary-foreground max-lg:ml-1"
-                                    >
-                                        {unreadMentions}
+                    {NAV_SECTIONS.map((section, sectionIndex) => {
+                        const items = section.items.map((item) => {
+                            const Icon = item.icon;
+                            return (
+                                <Link
+                                    key={item.label}
+                                    href={route(item.route)}
+                                    aria-current={
+                                        isActive(item) ? "page" : undefined
+                                    }
+                                    className="flex items-center gap-2.5 rounded-lg px-2.5 py-1.75 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground aria-[current=page]:bg-secondary aria-[current=page]:font-medium aria-[current=page]:text-foreground max-lg:px-2.5 max-lg:py-2"
+                                >
+                                    <Icon className="size-4 shrink-0" aria-hidden />
+                                    <span className="max-lg:hidden">
+                                        {t(item.label)}
                                     </span>
-                                ) : null}
-                            </Link>
+                                    {item.badge === "unreadMentions" &&
+                                    unreadMentions > 0 ? (
+                                        <span
+                                            data-test="mentions-badge"
+                                            title={t("mentions.title")}
+                                            className="ml-auto grid min-w-5 shrink-0 place-items-center rounded-full bg-primary px-1.5 text-[10px] font-semibold leading-4 text-primary-foreground max-lg:ml-1"
+                                        >
+                                            {unreadMentions}
+                                        </span>
+                                    ) : null}
+                                </Link>
+                            );
+                        });
+
+                        // Labelled families get a mono section label; on
+                        // mobile the wrapper dissolves so every link stays
+                        // in the horizontal bar and the label hides.
+                        if (!section.label) {
+                            // Flat entries stay direct children of the nav.
+                            return items.map((item, itemIndex) => (
+                                <Fragment key={`ungrouped-${sectionIndex}-${itemIndex}`}>{item}</Fragment>
+                            ));
+                        }
+
+                        return (
+                            <section
+                                key={section.label}
+                                data-test="nav-section"
+                                className="max-lg:contents lg:flex lg:flex-col lg:gap-1.5"
+                            >
+                                <p className="px-2 pt-3.5 pb-1 font-mono text-[12px] tracking-[0.08em] uppercase text-muted-foreground max-lg:hidden">
+                                    {t(section.label)}
+                                </p>
+                                {items}
+                            </section>
                         );
                     })}
                 </nav>

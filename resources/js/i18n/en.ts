@@ -29,6 +29,10 @@ const en = {
         knowledge: "Knowledge",
         settings: "Settings",
         mainNav: "Main",
+        sections: {
+            projects: "Project management",
+            knowledge: "Knowledge",
+        },
     },
 
     priority: {

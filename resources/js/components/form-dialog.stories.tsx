@@ -98,6 +98,43 @@ export const Processing: Story = {
     render: () => <FormDialogHarness defaultOpen processing />,
 };
 
+export const PinnedHeaderAndFooter: Story = {
+    name: 'Pinned header and footer, scrollable body',
+    render: () => {
+        const [open, setOpen] = useState(true);
+
+        return (
+            <FormDialog
+                open={open}
+                onOpenChange={setOpen}
+                title="New issue"
+                description="Title is the only required field."
+                submitLabel="Create issue"
+                contentClassName="max-h-[70vh] sm:max-w-[min(1400px,calc(100vw-2rem))]"
+                bodyClassName="grid gap-6 md:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]"
+                scrollableBody
+                onSubmit={() => setOpen(false)}
+            >
+                <div className="grid min-h-0 gap-2">
+                    <Label htmlFor="story-issue-title">Title</Label>
+                    <Input id="story-issue-title" placeholder="Describe the task in one sentence" required />
+                    <Textarea id="story-issue-body" rows={24} placeholder={'## Context\n\n…'} />
+                </div>
+                <div className="grid auto-rows-min content-start gap-4">
+                    <div className="grid gap-2">
+                        <Label htmlFor="story-issue-status">Status</Label>
+                        <Input id="story-issue-status" defaultValue="Backlog" />
+                    </div>
+                    <div className="grid gap-2">
+                        <Label htmlFor="story-issue-priority">Priority</Label>
+                        <Input id="story-issue-priority" defaultValue="None" />
+                    </div>
+                </div>
+            </FormDialog>
+        );
+    },
+};
+
 export const ScrollableLongForm: Story = {
     name: 'Scrollable long form',
     render: () => {

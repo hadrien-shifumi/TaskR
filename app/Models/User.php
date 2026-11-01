@@ -8,6 +8,7 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -15,7 +16,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
-#[Fillable(['name', 'email', 'password', 'locale', 'handle'])]
+#[Fillable(['name', 'email', 'password', 'locale', 'handle', 'current_workspace_id'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -62,6 +63,17 @@ class User extends Authenticatable
     public function notificationPreference(): HasOne
     {
         return $this->hasOne(NotificationPreference::class);
+    }
+
+    /**
+     * The workspace the account last activated in the web UI. Background
+     * jobs read it to know which workspace the account is working in.
+     *
+     * @return BelongsTo<Workspace, $this>
+     */
+    public function currentWorkspace(): BelongsTo
+    {
+        return $this->belongsTo(Workspace::class, 'current_workspace_id');
     }
 
     /**

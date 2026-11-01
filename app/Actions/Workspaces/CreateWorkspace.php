@@ -79,6 +79,7 @@ class CreateWorkspace
         $workspace = $this->handle($user, $request->all());
 
         session(['workspace_id' => $workspace->id]);
+        $user->forceFill(['current_workspace_id' => $workspace->id])->saveQuietly();
 
         return redirect()
             ->route('home')

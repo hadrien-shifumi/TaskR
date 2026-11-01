@@ -114,6 +114,7 @@ class AcceptInvitation
         $workspace = $this->handle($invitation, $user);
 
         session(['workspace_id' => $workspace->id]);
+        $user->forceFill(['current_workspace_id' => $workspace->id])->saveQuietly();
 
         return redirect()->route('home')->with('status', __('flash.joined_workspace', ['name' => $workspace->name]));
     }
