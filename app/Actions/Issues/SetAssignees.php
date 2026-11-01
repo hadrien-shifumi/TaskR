@@ -62,6 +62,13 @@ class SetAssignees
 
         $issue->assignees()->sync($userIds);
 
+        // Keep the original assignment date for people already assigned;
+        // only a brand-new assignment gets a fresh timestamp. sync() inserts
+        // new pivot rows without the extra attribute, hence the second pass.
+        $issue->assignees()
+            ->wherePivotNull('assigned_at')
+            ->updateExistingPivot($userIds, ['assigned_at' => now()->toDateTimeString()]);
+
         return $issue->refresh();
     }
 
