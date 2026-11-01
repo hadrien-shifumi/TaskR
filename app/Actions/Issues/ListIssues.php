@@ -16,6 +16,18 @@ class ListIssues
 {
     use AsObject;
 
+    /** Sort keys accepted by the issues list; anything else falls back to created. */
+    private const SORT_KEYS = ['created', 'priority', 'due_date', 'status', 'project'];
+
+    /**
+     * Crockford base32 alphabet of a ULID, without the ambiguous I, L, O and U.
+     * A search text made only of these characters may be an identifier.
+     */
+    private const ULID_ALPHABET = '0-9A-HJKMNP-TV-Z';
+
+    /** Shortest identifier prefix the search resolves to a ticket. */
+    private const ULID_PREFIX_MIN_LENGTH = 7;
+
     /**
      * Filterable list across every project of the workspace the user may
      * see, presented as plain arrays. Shared by the issues page and the
@@ -23,10 +35,12 @@ class ListIssues
      * workspace-wide count never leaks: totalUnfiltered counts within the
      * perimeter as well.
      *
-     * @param  array<string, string|null>  $filters  project|status|category|priority|label|assignee|overdue|blocked|q
+     * @param  array<string, string|array<int, string>|null>  $filters  project|status|category|priority|label|assignee|overdue|blocked|due_before|due_after|q|sort|dir
+     * @param  string|null  $sort  created (default)|priority|due_date|status|project — invalid values are ignored
+     * @param  string|null  $dir  asc|desc — invalid values are ignored (desc for created, asc otherwise)
      * @return array{issues: array<int, array<string, mixed>>, total: int, totalUnfiltered: int}
      */
-    public function handle(Workspace $workspace, array $filters = [], ?int $limit = null, int $offset = 0, ?User $user = null): array
+    public function handle(Workspace $workspace, array $filters = [], ?int $limit = null, int $offset = 0, ?User $user = null, ?string $sort = null, ?string $dir = null): array
     {
         $scope = $user instanceof User
             ? app(WorkspaceContext::class)->accessibleProjectIds($user)
@@ -34,17 +48,18 @@ class ListIssues
 
         $query = Issue::query()
             ->with(['project', 'status', 'labels', 'assignees', 'blockedBy.status'])
-            ->when($scope !== null, fn (Builder $issues) => $issues->whereIn('project_id', $scope))
-            ->orderByDesc('created_at');
+            ->when($scope !== null, fn (Builder $issues) => $issues->whereIn('project_id', $scope));
+
+        $this->applySort($query, $sort ?? ($filters['sort'] ?? null), $dir ?? ($filters['dir'] ?? null));
 
         // Archived visibility: excluded by default (every active view), or
         // explicitly included / listed only. Applied before the unfiltered
         // count: the "total" shown next to filters is the active total.
         $archived = $filters['archived'] ?? 'exclude';
         if ($archived === 'only') {
-            $query->archived();
+            $query->whereNotNull('issues.archived_at');
         } elseif ($archived !== 'include') {
-            $query->unarchived();
+            $query->whereNull('issues.archived_at');
         }
 
         // Scope-wide count, before any other filter: the issues page shows
@@ -73,20 +88,115 @@ class ListIssues
     }
 
     /**
-     * @param  array<string, string|null>  $filters
+     * Order the list. `created` (the default) keeps the historical newest
+     * first order; `priority` follows the enum order (none < low < high <
+     * urgent); `status` follows the workspace position; `project` follows
+     * the project name. A null due date always sorts last. `created_at`
+     * (desc) is the secondary key so equal values stay stable.
+     */
+    private function applySort(Builder $query, mixed $sort, mixed $dir): void
+    {
+        $key = is_string($sort) && in_array($sort, self::SORT_KEYS, true) ? $sort : 'created';
+
+        $direction = is_string($dir) && in_array($dir, ['asc', 'desc'], true)
+            ? $dir
+            : ($key === 'created' ? 'desc' : 'asc');
+
+        if ($key === 'status') {
+            $query->leftJoin('statuses', 'statuses.id', '=', 'issues.status_id')
+                ->orderBy('statuses.position', $direction);
+        } elseif ($key === 'project') {
+            $query->leftJoin('projects', 'projects.id', '=', 'issues.project_id')
+                ->orderBy('projects.name', $direction);
+        } elseif ($key === 'priority') {
+            $query->orderByRaw($this->priorityOrderExpression().' '.$direction);
+        } elseif ($key === 'due_date') {
+            $query->orderByRaw('issues.due_date is null')
+                ->orderBy('issues.due_date', $direction);
+        } else {
+            $query->orderBy('issues.created_at', $direction);
+        }
+
+        if ($key !== 'created') {
+            $query->orderByDesc('issues.created_at');
+        }
+
+        $query->orderBy('issues.id');
+    }
+
+    /**
+     * Portable CASE expression mapping the priority enum onto its case
+     * order (none < low < high < urgent).
+     */
+    private function priorityOrderExpression(): string
+    {
+        $cases = collect(Priority::cases())
+            ->map(fn (Priority $priority, int $index) => "when '{$priority->value}' then {$index}")
+            ->implode(' ');
+
+        return "case issues.priority {$cases} else 0 end";
+    }
+
+    /**
+     * Free-text search. The title search always applies, raw (historical
+     * behavior). When the text looks like a ULID — complete or a prefix of at
+     * least seven characters from the Crockford alphabet — the identifier is
+     * matched too, so the value of the "copy identifier" button can be pasted
+     * back. LIKE wildcards of the prefix branch are escaped.
+     */
+    private function applySearch(Builder $query, string $search): void
+    {
+        $query->where(function (Builder $matches) use ($search): void {
+            $matches->where('issues.title', 'like', '%'.$search.'%');
+
+            $identifier = strtoupper($search);
+
+            if (! $this->looksLikeUlid($identifier)) {
+                return;
+            }
+
+            $matches->orWhere('issues.id', 'like', $this->escapeLike($identifier).'%');
+        });
+    }
+
+    /**
+     * A complete ULID (26 characters) or a prefix of at least seven
+     * characters, made only of Crockford base32 characters.
+     */
+    private function looksLikeUlid(string $identifier): bool
+    {
+        $length = strlen($identifier);
+
+        if ($length < self::ULID_PREFIX_MIN_LENGTH || $length > 26) {
+            return false;
+        }
+
+        return preg_match('/^['.self::ULID_ALPHABET.']+$/', $identifier) === 1;
+    }
+
+    /**
+     * Escape the LIKE wildcards so a pasted identifier matches literally.
+     */
+    private function escapeLike(string $value): string
+    {
+        return str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $value);
+    }
+
+    /**
+     * @param  array<string, string|array<int, string>|null>  $filters
      */
     private function applyFilters(Builder $query, array $filters): void
     {
         if (! empty($filters['q'])) {
-            $query->where('title', 'like', '%'.$filters['q'].'%');
+            $this->applySearch($query, (string) $filters['q']);
         }
 
         if (! empty($filters['project'])) {
-            $query->where('project_id', $filters['project']);
+            $query->where('issues.project_id', $filters['project']);
         }
 
         if (! empty($filters['status'])) {
-            $query->where('status_id', $filters['status']);
+            $query->where('issues.status_id', $filters['status']);
         }
 
         if (! empty($filters['category'])) {
@@ -94,15 +204,26 @@ class ListIssues
         }
 
         if (! empty($filters['priority'])) {
-            $query->where('priority', Priority::from($filters['priority']));
+            $query->where('issues.priority', Priority::from($filters['priority']));
         }
 
         if (! empty($filters['label'])) {
-            $query->whereHas('labels', fn (Builder $labels) => $labels->whereKey($filters['label']));
+            // A single ULID (MCP) or a list of ULIDs (multi-select): a ticket
+            // matches as soon as it carries at least one selected label.
+            $labelIds = (array) $filters['label'];
+            $query->whereHas('labels', fn (Builder $labels) => $labels->whereKey($labelIds));
         }
 
         if (! empty($filters['assignee'])) {
             $query->whereHas('assignees', fn (Builder $assignees) => $assignees->whereKey($filters['assignee']));
+        }
+
+        if (! empty($filters['due_after'])) {
+            $query->whereDate('issues.due_date', '>=', $filters['due_after']);
+        }
+
+        if (! empty($filters['due_before'])) {
+            $query->whereDate('issues.due_date', '<=', $filters['due_before']);
         }
 
         if (($filters['overdue'] ?? null) === '1' || ($filters['overdue'] ?? null) === 'true') {

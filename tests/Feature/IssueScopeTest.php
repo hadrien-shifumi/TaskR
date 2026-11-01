@@ -84,6 +84,32 @@ class IssueScopeTest extends TestCase
                 ->where('totalUnfiltered', 1));
     }
 
+    public function test_search_ulid_respects_guest_scope(): void
+    {
+        [$owner, $workspace, $inScopeIssue, $outOfScopeIssue, $guest] = $this->setupScopedGuest();
+
+        // The out-of-perimeter ticket id is pasted verbatim: a guest must not
+        // see it surface through the id search.
+        $this->actingAs($guest)
+            ->get(route('issues.index', ['q' => $outOfScopeIssue->id]))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->has('issues', 0)
+                ->where('total', 0)
+                ->where('totalUnfiltered', 1));
+
+        // Same for a prefix shared by both tickets: only the in-scope one shows.
+        $prefix = substr($inScopeIssue->id, 0, 7);
+        $outOfScopeIssue->forceFill(['id' => $prefix.substr($outOfScopeIssue->id, 7)])->save();
+
+        $this->actingAs($guest)
+            ->get(route('issues.index', ['q' => $prefix]))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->has('issues', 1)
+                ->where('issues.0.id', $inScopeIssue->id));
+    }
+
     public function test_guest_kanban_builds_only_scope_boards(): void
     {
         [$owner, $workspace, $inScopeIssue, $outOfScopeIssue, $guest] = $this->setupScopedGuest();
