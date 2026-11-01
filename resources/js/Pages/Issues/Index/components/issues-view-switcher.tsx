@@ -5,8 +5,8 @@ import { useTranslation } from 'react-i18next';
 type IssuesViewSwitcherProps = {
     /** Current view — the other one is the target when clicked. */
     active: 'list' | 'kanban';
-    /** Current URL filters, preserved when switching views. */
-    filters: Record<string, string>;
+    /** Current URL filters, preserved when switching views (`label` may be an array). */
+    filters: Record<string, string | string[]>;
 };
 
 /** Pill segment switching between the list and kanban views of /issues. */
@@ -14,7 +14,7 @@ export function IssuesViewSwitcher({ active, filters }: IssuesViewSwitcherProps)
     const { t } = useTranslation();
 
     const switchTo = (view: 'list' | 'kanban') => {
-        const next: Record<string, string> = { ...filters };
+        const next: Record<string, string | string[]> = { ...filters };
         if (view === 'list') {
             delete next.view;
         } else {

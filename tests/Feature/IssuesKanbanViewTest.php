@@ -409,4 +409,31 @@ class IssuesKanbanViewTest extends TestCase
                 ->where('projectBoards.0.columns.0.issuesCount', 1)
                 ->where('projectBoards.0.columns.0.issues.0.title', 'Webhook retry'));
     }
+
+    public function test_kanban_view_ignores_sort_and_pagination(): void
+    {
+        [$owner, $workspace, $project, $statuses] = $this->setupWorkspace();
+
+        for ($i = 1; $i <= 51; $i++) {
+            CreateIssue::run($workspace, [
+                'project_id' => $project->id,
+                'title' => sprintf('Ticket %02d', $i),
+                'status_id' => $statuses['backlog']->id,
+            ]);
+        }
+
+        // The kanban is a full load: page/sort params are ignored and every
+        // issue lands on its board column.
+        $this->actingAs($owner)
+            ->get('/issues?view=kanban&page=2&sort=priority&dir=asc')
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->component('Issues/Index')
+                ->missing('issues')
+                ->missing('page')
+                ->missing('perPage')
+                ->has('projectBoards', 1)
+                ->where('projectBoards.0.columns.0.issuesCount', 51)
+                ->has('projectBoards.0.columns.0.issues', 51));
+    }
 }
