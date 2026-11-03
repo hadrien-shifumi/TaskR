@@ -149,6 +149,7 @@ class AuditEventTest extends TestCase
             'issue.priority_changed', 'issue.assigned', 'issue.unassigned',
             'issue.due_date_changed', 'issue.estimate_changed', 'issue.parent_set',
             'issue.parent_removed', 'issue.archived', 'issue.restored',
+            'issue.knowledge_linked', 'issue.knowledge_unlinked',
             'comment.created', 'comment.updated', 'comment.deleted',
             'time_entry.created', 'time_entry.updated', 'time_entry.deleted',
             'project.created', 'project.updated', 'project.archived', 'project.unarchived',

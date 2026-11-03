@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Actions\Audit\RecordActivity;
+use App\Actions\Comments\AddComment;
 use App\Actions\Issues\CreateIssue;
 use App\Actions\Projects\CreateProject;
 use App\Actions\Workspaces\CreateWorkspace;
@@ -153,6 +154,25 @@ class McpActivityTest extends TestCase
         // + project.updated + issue.status_changed, newest first.
         $this->assertCount(5, $result['events']);
         $this->assertSame([$issueEvent->id, $projectEvent->id], array_slice($ids, 0, 2));
+    }
+
+    public function test_list_activity_exposes_comment_id_without_body(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspace();
+        $issue = $this->createIssue($workspace, $project, 'Commenté', $owner);
+
+        $comment = AddComment::run($issue, $owner, 'Premier retour');
+
+        $result = TaskrServer::actingAs($owner)->tool(ListActivity::class, [
+            'workspace_id' => $workspace->id,
+            'issue_id' => $issue->id,
+            'type' => 'comment.created',
+        ])->assertOk()->payload();
+
+        $this->assertCount(1, $result['events']);
+        $this->assertSame($comment->id, $result['events'][0]['commentId']);
+        // The body is not duplicated in the journal: it lives with the comment.
+        $this->assertSame([], $result['events'][0]['changes']);
     }
 
     // ── Filtres ────────────────────────────────────────────────────────

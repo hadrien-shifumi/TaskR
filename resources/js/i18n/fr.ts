@@ -791,6 +791,9 @@ const fr: typeof en = {
         system: "Système",
         emptyValue: "vide",
         beforeAfter: "{{before}} → {{after}}",
+        listChange: "{{values}}",
+        viewComment: "Voir le commentaire",
+        hideComment: "Masquer le commentaire",
         headTitle: "Activité — {{name}}",
         intro: "Journal des événements du projet, filtrable par acteur et par type.",
         filters: {

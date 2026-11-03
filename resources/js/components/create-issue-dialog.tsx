@@ -1,20 +1,20 @@
-import { FormDialog } from '@/components/form-dialog';
-import { LabelPicker } from '@/components/label-picker';
-import { PrioritySelect } from '@/components/priority-select';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { MarkdownEditor } from '@/components/ui/markdown-editor';
+import { FormDialog } from "@/components/form-dialog";
+import { LabelPicker } from "@/components/label-picker";
+import { PrioritySelect } from "@/components/priority-select";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { MarkdownEditor } from "@/components/ui/markdown-editor";
 import {
     Select,
     SelectContent,
     SelectItem,
     SelectTrigger,
     SelectValue,
-} from '@/components/ui/select';
-import { useForm } from '@inertiajs/react';
-import { useTranslation } from 'react-i18next';
-import type { LabelRef } from '@/types';
-import type { TemplateOption } from '@/Pages/Issues/Index/types';
+} from "@/components/ui/select";
+import { useForm } from "@inertiajs/react";
+import { useTranslation } from "react-i18next";
+import type { LabelRef } from "@/types";
+import type { TemplateOption } from "@/Pages/Issues/Index/types";
 
 type ProjectOption = { id: string; name: string };
 type StatusOption = { id: string; name: string; category: string };
@@ -38,24 +38,31 @@ type CreateIssueDialogProps = {
  * grid content starts at the top: stretching them would spread the fields
  * apart and push the description editor away from its label.
  */
-export function CreateIssueDialog({ open, onClose, projects, statuses, labels, templates }: CreateIssueDialogProps) {
+export function CreateIssueDialog({
+    open,
+    onClose,
+    projects,
+    statuses,
+    labels,
+    templates,
+}: CreateIssueDialogProps) {
     const { t } = useTranslation();
     const createForm = useForm({
-        project_id: projects[0]?.id ?? '',
-        title: '',
-        description: '',
-        status_id: '',
-        priority: 'none',
-        due_date: '',
-        template: '',
+        project_id: projects[0]?.id ?? "",
+        title: "",
+        description: "",
+        status_id: "",
+        priority: "none",
+        due_date: "",
+        template: "",
         label_ids: [] as string[],
     });
 
-    const createStatusId = createForm.data.status_id || statuses[0]?.id || '';
+    const createStatusId = createForm.data.status_id || statuses[0]?.id || "";
 
     const submitCreate = (e: React.FormEvent) => {
         e.preventDefault();
-        createForm.post(route('issues.store'), {
+        createForm.post(route("issues.store"), {
             onSuccess: () => {
                 onClose();
                 createForm.reset();
@@ -77,9 +84,9 @@ export function CreateIssueDialog({ open, onClose, projects, statuses, labels, t
         // untouched fields (title, project, status, due date) intact.
         createForm.setData((data) => ({
             ...data,
-            template: template ? template.id : '',
-            description: template?.description ?? '',
-            priority: template?.priority ?? 'none',
+            template: template ? template.id : "",
+            description: template?.description ?? "",
+            priority: template?.priority ?? "none",
             label_ids: template ? template.labels.map((l) => l.id) : [],
         }));
     };
@@ -87,7 +94,7 @@ export function CreateIssueDialog({ open, onClose, projects, statuses, labels, t
     const toggleIssueLabel = (labelId: string) => {
         const current = createForm.data.label_ids;
         createForm.setData(
-            'label_ids',
+            "label_ids",
             current.includes(labelId)
                 ? current.filter((id) => id !== labelId)
                 : [...current, labelId],
@@ -100,9 +107,9 @@ export function CreateIssueDialog({ open, onClose, projects, statuses, labels, t
             onOpenChange={(o) => {
                 if (!o) onClose();
             }}
-            title={t('issues.newIssue')}
-            description={t('issues.titleOnlyRequired')}
-            submitLabel={t('common.create')}
+            title={t("issues.newIssue")}
+            description={t("issues.titleOnlyRequired")}
+            submitLabel={t("common.create")}
             processing={createForm.processing}
             contentClassName="max-h-[90vh] sm:max-w-[min(1400px,calc(100vw-2rem))]"
             bodyClassName="grid auto-rows-min content-start gap-6 md:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]"
@@ -112,19 +119,23 @@ export function CreateIssueDialog({ open, onClose, projects, statuses, labels, t
             <div data-test="issue-redaction" className="flex min-h-0 flex-col gap-4">
                 {templates.length > 0 ? (
                     <div className="grid gap-2">
-                        <Label>{t('issues.template')}</Label>
+                        <Label>{t("issues.template")}</Label>
                         <Select
-                            value={createForm.data.template || 'none'}
+                            value={createForm.data.template || "none"}
                             onValueChange={(v) => v && applyTemplate(v)}
                         >
                             <SelectTrigger>
                                 <SelectValue>
-                                    {templates.find((t) => t.id === createForm.data.template)?.name ??
-                                        t('issues.noTemplate')}
+                                    {templates.find(
+                                        (t) =>
+                                            t.id === createForm.data.template,
+                                    )?.name ?? t("issues.noTemplate")}
                                 </SelectValue>
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="none">{t('issues.noTemplate')}</SelectItem>
+                                <SelectItem value="none">
+                                    {t("issues.noTemplate")}
+                                </SelectItem>
                                 {templates.map((t) => (
                                     <SelectItem key={t.id} value={t.id}>
                                         {t.name}
@@ -133,46 +144,74 @@ export function CreateIssueDialog({ open, onClose, projects, statuses, labels, t
                             </SelectContent>
                         </Select>
                         <p className="text-sm text-muted-foreground">
-                            {t('issues.templateHint')}
+                            {t("issues.templateHint")}
                         </p>
                     </div>
                 ) : null}
                 <div className="grid gap-2">
-                    <Label htmlFor="issue-title">{t('issues.fields.title')}</Label>
+                    <Label htmlFor="issue-title">
+                        {t("issues.fields.title")}
+                    </Label>
                     <Input
                         id="issue-title"
                         value={createForm.data.title}
-                        onChange={(e) => createForm.setData('title', e.target.value)}
+                        onChange={(e) =>
+                            createForm.setData("title", e.target.value)
+                        }
                         aria-required="true"
-                        aria-invalid={createForm.errors.title ? true : undefined}
+                        aria-invalid={
+                            createForm.errors.title ? true : undefined
+                        }
                     />
                     {createForm.errors.title ? (
-                        <p data-test="title-error" className="text-sm text-destructive">
+                        <p
+                            data-test="title-error"
+                            className="text-sm text-destructive"
+                        >
                             {createForm.errors.title}
                         </p>
                     ) : null}
                 </div>
-                <div data-test="issue-description" className="grid min-h-64 flex-1 gap-2">
-                    <Label>{t('issues.fields.description')}</Label>
+                {/* Flex column, not grid: a grid stretches its auto rows to
+                    fill the block (align-content defaults to stretch), which
+                    leaves a dead band around the "Description" label. Here the
+                    label keeps its natural height and the editor (fill) takes
+                    the remaining space. */}
+                <div
+                    data-test="issue-description"
+                    className="flex min-h-64 flex-1 flex-col gap-2"
+                >
+                    <Label>{t("issues.fields.description")}</Label>
                     <MarkdownEditor
                         fill
                         value={createForm.data.description}
-                        onChange={(markdown) => createForm.setData('description', markdown)}
+                        onChange={(markdown) =>
+                            createForm.setData("description", markdown)
+                        }
                     />
                 </div>
             </div>
-            <div data-test="issue-properties" className="grid auto-rows-min content-start gap-4">
+            <div
+                data-test="issue-properties"
+                className="grid auto-rows-min content-start gap-4"
+            >
                 <div className="grid gap-2">
-                    <Label>{t('issues.fields.project')}</Label>
+                    <Label>{t("issues.fields.project")}</Label>
                     <Select
                         value={createForm.data.project_id}
                         onValueChange={(v) => {
-                            if (v) createForm.setData('project_id', v);
+                            if (v) createForm.setData("project_id", v);
                         }}
                     >
-                        <SelectTrigger aria-invalid={createForm.errors.project_id ? true : undefined}>
+                        <SelectTrigger
+                            aria-invalid={
+                                createForm.errors.project_id ? true : undefined
+                            }
+                        >
                             <SelectValue>
-                                {projects.find((p) => p.id === createForm.data.project_id)?.name ?? t('issues.fields.project')}
+                                {projects.find(
+                                    (p) => p.id === createForm.data.project_id,
+                                )?.name ?? t("issues.fields.project")}
                             </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
@@ -184,21 +223,25 @@ export function CreateIssueDialog({ open, onClose, projects, statuses, labels, t
                         </SelectContent>
                     </Select>
                     {createForm.errors.project_id ? (
-                        <p className="text-sm text-destructive">{createForm.errors.project_id}</p>
+                        <p className="text-sm text-destructive">
+                            {createForm.errors.project_id}
+                        </p>
                     ) : null}
                 </div>
                 {statuses.length > 0 ? (
                     <div className="grid gap-2">
-                        <Label>{t('issues.fields.status')}</Label>
+                        <Label>{t("issues.fields.status")}</Label>
                         <Select
                             value={createStatusId}
                             onValueChange={(v) => {
-                                if (v) createForm.setData('status_id', v);
+                                if (v) createForm.setData("status_id", v);
                             }}
                         >
                             <SelectTrigger>
                                 <SelectValue>
-                                    {statuses.find((s) => s.id === createStatusId)?.name ?? t('issues.fields.status')}
+                                    {statuses.find(
+                                        (s) => s.id === createStatusId,
+                                    )?.name ?? t("issues.fields.status")}
                                 </SelectValue>
                             </SelectTrigger>
                             <SelectContent>
@@ -212,24 +255,30 @@ export function CreateIssueDialog({ open, onClose, projects, statuses, labels, t
                     </div>
                 ) : null}
                 <div className="grid gap-2">
-                    <Label>{t('issues.fields.priority')}</Label>
+                    <Label>{t("issues.fields.priority")}</Label>
                     <PrioritySelect
                         value={createForm.data.priority}
-                        onValueChange={(priority) => createForm.setData('priority', priority)}
+                        onValueChange={(priority) =>
+                            createForm.setData("priority", priority)
+                        }
                     />
                 </div>
                 <div className="grid gap-2">
-                    <Label htmlFor="issue-due">{t('issues.fields.dueDate')}</Label>
+                    <Label htmlFor="issue-due">
+                        {t("issues.fields.dueDate")}
+                    </Label>
                     <Input
                         id="issue-due"
                         type="date"
                         value={createForm.data.due_date}
-                        onChange={(e) => createForm.setData('due_date', e.target.value)}
+                        onChange={(e) =>
+                            createForm.setData("due_date", e.target.value)
+                        }
                     />
                 </div>
                 {labels.length > 0 ? (
                     <div className="grid gap-2">
-                        <Label>{t('issues.fields.labels')}</Label>
+                        <Label>{t("issues.fields.labels")}</Label>
                         <LabelPicker
                             labels={labels}
                             selectedIds={createForm.data.label_ids}

@@ -39,6 +39,8 @@ Before writing any code, post the plan with `add_comment`. The body must start w
 
 The plugin denies edits on source files (`app/`, `routes/`, `database/`, `config/`, `resources/js/`, `resources/views/`, `tests/`) until this comment is posted.
 
+Draft the plan in `.opencode/scratch/plan-<issueId>.md` and post it from that file — the plugin mirrors the posted body back to the same path, so the file stays the canonical re-readable copy (see Persisted context in scratch files).
+
 ## Phase 3 — Implementation
 
 Standard TDD loop (see the `tdd` skill): red, green, refactor, then the E2E final gate. The issue-dev plugin lets edits through from here; the tdd plugin takes over the feedback loop.
@@ -53,6 +55,8 @@ When the implementation is green and the E2E gate has run, post the report with 
 - deviations from the plan and why.
 
 The marker matters: it is what the plugin uses to tell this comment from any other.
+
+Draft the report in `.opencode/scratch/done-<issueId>.md` and post it from that file — the plugin mirrors the posted body back to the same path.
 
 ## Phase 5 — Time entry
 
@@ -84,6 +88,25 @@ Compare what was learned and changed against the knowledge base, and keep it tru
 - Re-run `search_knowledge` on the areas touched by the issue.
 - Update stale pages (`update_knowledge`) or create missing ones (`create_knowledge`) — conventions, gotchas, architecture facts that a future session must know. Any `update_knowledge` / `create_knowledge` call satisfies this step.
 - If nothing deserves an update, attest it: `issue_dev(action="knowledge-reviewed")`, and justify it in the done comment ("Knowledge: reviewed X and Y, still accurate").
+
+## Persisted context in scratch files
+
+Subagents are dispatched with a fresh context every time: the shared context lives in files under `.opencode/scratch/` (git-ignored), never inlined in briefs. These files are caches — the source of truth stays TaskR and the code.
+
+The issue-dev plugin maintains two kinds of them:
+
+- **Epic dossier** — on `issue_dev action="start"`, when the issue has a parent, the plugin scaffolds `.opencode/scratch/epic-<epicId>/` and records `epic_id` in the workflow state. It creates three stubs, never overwriting existing files, so the dossier is filled once and survives the epic's whole run:
+  - `kb.md` — spec, arbitrages, ULIDs, gotchas. Filled by `reader` (via the orchestrator) on the epic's first ticket.
+  - `patterns.md` — observed signatures as `fichier:ligne`, test and factory patterns. Filled by `scout`. Line numbers drift: regenerate the file on every domain change — never trust stale references.
+  - `review-checklist.md` — invariants to check on every ticket of the epic (tenancy, ULIDs, scoped validation…). Filled by `reviewer`.
+  
+  An issue without a parent gets no dossier; an unreachable TaskR skips the scaffold without ever failing the start.
+- **Plan/done mirrors** — as soon as a marked comment is posted on the workflow issue, the plugin writes the exact body to `.opencode/scratch/plan-<issueId>.md` (marker `<!-- taskr:plan -->`) or `.opencode/scratch/done-<issueId>.md` (marker `<!-- taskr:done -->`). Draft the comment in that file and post it from there — the mirror then guarantees the file matches what TaskR holds. Any subagent can re-read the plan afterwards without TaskR access.
+
+Working conventions:
+
+- Briefs reference these files ("lis d'abord `.opencode/scratch/epic-<id>/kb.md` et `patterns.md`") and stay limited to the ticket's delta — re-inlining shared context wastes the context window and corrupts long bodies.
+- Delete `.opencode/scratch/epic-<id>/` when the epic closes; the plan/done mirrors are per-issue and can be kept as history.
 
 ## TaskR statuses (driven by the plugin)
 

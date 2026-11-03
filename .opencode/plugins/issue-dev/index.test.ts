@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test"
 import crypto from "node:crypto"
-import { existsSync, rmSync } from "node:fs"
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { homedir } from "node:os"
 import path from "node:path"
 import {
@@ -167,6 +167,53 @@ describe("state location", () => {
   })
 })
 
+describe("state retrocompatibility", () => {
+  const directories: string[] = []
+
+  function useTemporaryLocation(): string {
+    const directory = path.join("/tmp", `taskr-issue-dev-test-${crypto.randomUUID()}`)
+    directories.push(directory)
+    setLocation(directory)
+    return directory
+  }
+
+  afterEach(() => {
+    for (const directory of directories.splice(0)) {
+      rmSync(directory, { recursive: true, force: true })
+    }
+    resetTaskr()
+  })
+
+  test("a legacy state file without epic_id loads with epic_id undefined and active preserved", () => {
+    const directory = useTemporaryLocation()
+    // A state JSON as written before the epic_id field existed.
+    const legacy = {
+      active: true,
+      workspace_id: WORKSPACE,
+      issue_id: WORKFLOW_ISSUE,
+      started_at: 1_700_000_000_000,
+      session_id: "ses_owner",
+      agent: "orchestrator",
+      knowledge_searched: true,
+      code_explored: true,
+      plan_comment: true,
+      done_comment: false,
+      time_logged: false,
+      knowledge_reviewed: false,
+      done_blocked_notified: false,
+    }
+    mkdirSync(path.dirname(expectedStatePath(directory)), { recursive: true })
+    writeFileSync(expectedStatePath(directory), JSON.stringify(legacy))
+
+    const loaded = loadState()
+
+    expect(loaded.active).toBe(true)
+    expect(loaded.issue_id).toBe(WORKFLOW_ISSUE)
+    expect(loaded.plan_comment).toBe(true)
+    expect(loaded.epic_id).toBeUndefined()
+  })
+})
+
 describe("comment marker rules", () => {
   test("a comment on another issue is allowed without a marker", async () => {
     const current = state()
@@ -269,6 +316,82 @@ describe("progress recording", () => {
   })
 })
 
+describe("plan/done comment mirroring", () => {
+  const directories: string[] = []
+
+  function useTemporaryLocation(): string {
+    const directory = path.join("/tmp", `taskr-issue-dev-test-${crypto.randomUUID()}`)
+    directories.push(directory)
+    setLocation(directory)
+    return directory
+  }
+
+  afterEach(() => {
+    for (const directory of directories.splice(0)) {
+      rmSync(directory, { recursive: true, force: true })
+    }
+    resetTaskr()
+  })
+
+  test("a plan comment on the workflow issue is mirrored verbatim to scratch", () => {
+    const directory = useTemporaryLocation()
+    const current = state({ knowledge_searched: true, code_explored: true })
+    const body = "<!-- taskr:plan -->\n## Plan\n\n- étape 1\n- regex `\\d+` préservée"
+
+    const changed = recordProgress(current, "taskr_add_comment", {
+      input: { workspace_id: WORKSPACE, issue_id: WORKFLOW_ISSUE, body },
+      status: "completed",
+    })
+
+    expect(changed).toBe(true)
+    expect(current.plan_comment).toBe(true)
+    const mirrored = path.join(directory, ".opencode", "scratch", `plan-${WORKFLOW_ISSUE}.md`)
+    expect(readFileSync(mirrored, "utf-8")).toBe(body)
+  })
+
+  test("a done comment on the workflow issue is mirrored verbatim to scratch", () => {
+    const directory = useTemporaryLocation()
+    const current = state({ knowledge_searched: true, code_explored: true, plan_comment: true })
+    const body = "<!-- taskr:done -->\n## Rapport\n\nRésumé du travail."
+
+    const changed = recordProgress(current, "taskr_add_comment", {
+      input: { workspace_id: WORKSPACE, issue_id: WORKFLOW_ISSUE, body },
+      status: "completed",
+    })
+
+    expect(changed).toBe(true)
+    expect(current.done_comment).toBe(true)
+    const mirrored = path.join(directory, ".opencode", "scratch", `done-${WORKFLOW_ISSUE}.md`)
+    expect(readFileSync(mirrored, "utf-8")).toBe(body)
+  })
+
+  test("the mirror is rewritten even when the marker flag was already set", () => {
+    const directory = useTemporaryLocation()
+    const current = state({ knowledge_searched: true, code_explored: true, plan_comment: true })
+
+    const changed = recordProgress(current, "taskr_add_comment", {
+      input: { workspace_id: WORKSPACE, issue_id: WORKFLOW_ISSUE, body: "<!-- taskr:plan -->\nPlan v2" },
+      status: "completed",
+    })
+
+    expect(changed).toBe(false)
+    const mirrored = path.join(directory, ".opencode", "scratch", `plan-${WORKFLOW_ISSUE}.md`)
+    expect(readFileSync(mirrored, "utf-8")).toBe("<!-- taskr:plan -->\nPlan v2")
+  })
+
+  test("a marked comment on another issue is never mirrored", () => {
+    const directory = useTemporaryLocation()
+    const current = state({ knowledge_searched: true, code_explored: true })
+
+    recordProgress(current, "taskr_add_comment", {
+      input: { workspace_id: WORKSPACE, issue_id: OTHER_ISSUE, body: "<!-- taskr:plan -->\nPlan" },
+      status: "completed",
+    })
+
+    expect(existsSync(path.join(directory, ".opencode", "scratch"))).toBe(false)
+  })
+})
+
 describe("workflow nudge", () => {
   test("the writer and reporter never receive the issue_dev nudge", () => {
     expect(shouldNudge("writer")).toBe(false)
@@ -346,6 +469,91 @@ describe("start status sync", () => {
     expect(result.message).toContain("parent")
     expect(world.moves).toContainEqual({ issueId: CHILD_ISSUE, statusId: STATUS_PROGRESS })
     expect(world.moves).toContainEqual({ issueId: PARENT_ISSUE, statusId: STATUS_PROGRESS })
+  })
+})
+
+describe("epic scratch context", () => {
+  const directories: string[] = []
+
+  function useTemporaryLocation(): string {
+    const directory = path.join("/tmp", `taskr-issue-dev-test-${crypto.randomUUID()}`)
+    directories.push(directory)
+    setLocation(directory)
+    return directory
+  }
+
+  afterEach(() => {
+    for (const directory of directories.splice(0)) {
+      const file = expectedStatePath(directory)
+      if (existsSync(file)) rmSync(file)
+      rmSync(directory, { recursive: true, force: true })
+    }
+    resetTaskr()
+  })
+
+  test("start scaffolds the epic dossier for a child issue and records epic_id", async () => {
+    const directory = useTemporaryLocation()
+    installFakeTaskr([
+      { id: PARENT_ISSUE, title: "Parent epic", statusId: STATUS_BACKLOG, parentId: null },
+      { id: CHILD_ISSUE, title: "Child task", statusId: STATUS_BACKLOG, parentId: PARENT_ISSUE },
+    ])
+
+    const result = await cliMain({ action: "start", workspaceId: WORKSPACE, issueId: CHILD_ISSUE })
+
+    expect(result.ok).toBe(true)
+    const epicDir = path.join(directory, ".opencode", "scratch", `epic-${PARENT_ISSUE}`)
+    expect(existsSync(path.join(epicDir, "kb.md"))).toBe(true)
+    expect(existsSync(path.join(epicDir, "patterns.md"))).toBe(true)
+    expect(existsSync(path.join(epicDir, "review-checklist.md"))).toBe(true)
+    expect(loadState().epic_id).toBe(PARENT_ISSUE)
+    expect(result.message).toContain(`.opencode/scratch/epic-${PARENT_ISSUE}/`)
+  })
+
+  test("start never overwrites an existing epic context file", async () => {
+    const directory = useTemporaryLocation()
+    installFakeTaskr([
+      { id: PARENT_ISSUE, title: "Parent epic", statusId: STATUS_BACKLOG, parentId: null },
+      { id: CHILD_ISSUE, title: "Child task", statusId: STATUS_BACKLOG, parentId: PARENT_ISSUE },
+    ])
+    const epicDir = path.join(directory, ".opencode", "scratch", `epic-${PARENT_ISSUE}`)
+    mkdirSync(epicDir, { recursive: true })
+    const filled = "# Contexte EPIC rempli par le reader\n\n- arbitrage\n"
+    writeFileSync(path.join(epicDir, "kb.md"), filled)
+
+    const result = await cliMain({ action: "start", workspaceId: WORKSPACE, issueId: CHILD_ISSUE })
+
+    expect(result.ok).toBe(true)
+    expect(readFileSync(path.join(epicDir, "kb.md"), "utf-8")).toBe(filled)
+    expect(existsSync(path.join(epicDir, "patterns.md"))).toBe(true)
+    expect(existsSync(path.join(epicDir, "review-checklist.md"))).toBe(true)
+    expect(loadState().epic_id).toBe(PARENT_ISSUE)
+  })
+
+  test("start on an issue without a parent scaffolds no epic dossier", async () => {
+    const directory = useTemporaryLocation()
+    installFakeTaskr([{ id: WORKFLOW_ISSUE, title: "The workflow issue", statusId: STATUS_BACKLOG, parentId: null }])
+
+    const result = await cliMain({ action: "start", workspaceId: WORKSPACE, issueId: WORKFLOW_ISSUE })
+
+    expect(result.ok).toBe(true)
+    expect(existsSync(path.join(directory, ".opencode", "scratch"))).toBe(false)
+    expect(loadState().epic_id).toBeUndefined()
+  })
+
+  test("start succeeds without a scaffold when TaskR has no config", async () => {
+    const directory = useTemporaryLocation()
+    // No injected config and no transport: the plugin must fall back to the
+    // ctx lookup, find nothing, and still open the workflow.
+    setTaskrConfig(null)
+    resetTaskrTransport()
+    const ctx = { location: { directory }, mcp: { list: async () => [] } }
+
+    const result = await cliMain({ action: "start", workspaceId: WORKSPACE, issueId: CHILD_ISSUE }, ctx)
+
+    expect(result.ok).toBe(true)
+    expect(result.message).toContain("unreachable")
+    expect(existsSync(path.join(directory, ".opencode", "scratch"))).toBe(false)
+    expect(loadState().epic_id).toBeUndefined()
   })
 })
 

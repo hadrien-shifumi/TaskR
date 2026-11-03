@@ -47,11 +47,9 @@ class AddComment
         SyncCommentMentions::run($comment);
 
         // A comment is not an audit subject: the journal targets the parent
-        // issue and carries the comment details in changes.
-        RecordActivity::run(AuditEventType::CommentCreated, $issue, $author, [
-            'comment_id' => $comment->id,
-            'body' => ['before' => null, 'after' => $comment->body],
-        ]);
+        // issue and only records that a comment was added. The body is not
+        // duplicated — it is displayed with the comment itself.
+        RecordActivity::run(AuditEventType::CommentCreated, $issue, $author, commentId: $comment->id);
 
         return $comment;
     }

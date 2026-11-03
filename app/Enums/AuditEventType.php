@@ -25,6 +25,8 @@ enum AuditEventType: string
     case IssueParentRemoved = 'issue.parent_removed';
     case IssueArchived = 'issue.archived';
     case IssueRestored = 'issue.restored';
+    case IssueKnowledgeLinked = 'issue.knowledge_linked';
+    case IssueKnowledgeUnlinked = 'issue.knowledge_unlinked';
 
     case CommentCreated = 'comment.created';
     case CommentUpdated = 'comment.updated';

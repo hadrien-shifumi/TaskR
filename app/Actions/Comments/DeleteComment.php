@@ -11,6 +11,7 @@ use App\Responders\Comments\CommentRedirectResponder;
 use App\Support\WorkspaceContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Lorisleiva\Actions\Concerns\AsController;
 use Lorisleiva\Actions\Concerns\AsObject;
 
@@ -39,15 +40,16 @@ class DeleteComment
 
         $issue = $comment->issue;
         $snapshot = [
-            'comment_id' => $comment->id,
-            'body' => ['before' => $comment->body, 'after' => null],
+            'body' => ['before' => Str::limit($comment->body, 2000, ''), 'after' => null],
         ];
 
-        $comment->delete();
+        // The journal is written right before the destructive write: the
+        // comment FK requires the comment to still exist, and the DB then
+        // nulls it on delete. The event stays readable through its issue and
+        // this loss inventory — the only remaining trace of the body.
+        RecordActivity::run(AuditEventType::CommentDeleted, $issue, $user, $snapshot, $comment->id);
 
-        // The comment is gone: the journal keeps its last body on the
-        // parent issue — comments have no version history of their own.
-        RecordActivity::run(AuditEventType::CommentDeleted, $issue, $user, $snapshot);
+        $comment->delete();
 
         return $comment;
     }

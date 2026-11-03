@@ -24,10 +24,21 @@ class RecordActivity
      * WorkspaceContext by BelongsToWorkspace; the subject FK is derived from
      * the model type.
      *
-     * @param  array<string, array{before: mixed, after: mixed}>  $changes
+     * `changes` carries either a before/after pair per changed field
+     * (`['status' => ['before' => 'Backlog', 'after' => 'In Progress']]`) or a
+     * flat list for "added/removed" diffs (`['assignees_added' => [...]]`,
+     * `['knowledge_pages_removed' => [...]]`). Free-text bodies are never
+     * journalled on creation or update — they live with their object.
+     *
+     * @param  array<string, mixed>  $changes
      */
-    public function handle(AuditEventType $type, Model $subject, ?User $actor = null, array $changes = []): AuditEvent
-    {
+    public function handle(
+        AuditEventType $type,
+        Model $subject,
+        ?User $actor = null,
+        array $changes = [],
+        ?string $commentId = null,
+    ): AuditEvent {
         $subjectKey = $subject->getKey();
 
         // An unknown subject would produce an orphan event (no FK set):
@@ -49,6 +60,7 @@ class RecordActivity
                 default => null,
             },
             'knowledge_page_id' => $subject instanceof KnowledgePage ? $subjectKey : null,
+            'comment_id' => $commentId,
             'actor_id' => $actor?->getKey(),
             'type' => $type,
             'changes' => $changes,
