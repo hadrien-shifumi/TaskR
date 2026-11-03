@@ -7,6 +7,7 @@ import { Pencil, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { CommentItem } from '../types';
+import { commentAnchorId } from './comment-anchor';
 import { timeAgo } from './format';
 import { SectionHead } from './section-head';
 
@@ -55,7 +56,11 @@ export function CommentsSection({ issueId, comments }: CommentsSectionProps) {
             <SectionHead title={t('comments.title', { count: comments.length })} />
             <ul className="divide-y">
                 {comments.map((comment) => (
-                    <li key={comment.id} className="group flex gap-3 py-3.5">
+                    <li
+                        key={comment.id}
+                        id={commentAnchorId(comment.id)}
+                        className="group flex scroll-mt-24 gap-3 rounded-md py-3.5 transition-colors duration-700 [&.comment-flash]:bg-primary/10"
+                    >
                         <Avatar name={comment.authorName} />
                         <div className="min-w-0 flex-1">
                             <div className="flex flex-wrap items-baseline gap-x-2">

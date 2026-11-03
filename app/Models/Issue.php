@@ -114,6 +114,16 @@ class Issue extends BaseModel
     }
 
     /**
+     * Knowledge pages linked to this issue.
+     *
+     * @return BelongsToMany<KnowledgePage, $this>
+     */
+    public function knowledgePages(): BelongsToMany
+    {
+        return $this->belongsToMany(KnowledgePage::class, 'issue_knowledge_pages');
+    }
+
+    /**
      * @return HasMany<Comment, $this>
      */
     public function comments(): HasMany

@@ -111,28 +111,33 @@ it('keeps the create dialog fields compact, without stretched rows', function ()
     $page->click('button:has-text("New issue")');
     $page->assertPresent('[data-test="issue-description"]');
 
-    // The description block must not be taller than its label, its editor and
-    // the 8px gap between them: a stretched row would push the editor away
-    // from the label and leave a dead band under it.
+    // The description label must keep its natural height (a stretched grid
+    // row would balloon it and center the text in a dead band), sit one gap
+    // under the title input, and touch the editor with only the 8px gap.
     $spacing = $page->script(<<<'JS'
         (() => {
-            const block = document.querySelector('[data-test="issue-description"]');
+            const panel = document.querySelector('[data-slot="dialog-content"]');
+            const titleInput = panel.querySelector('#issue-title');
+            const block = panel.querySelector('[data-test="issue-description"]');
             const label = block.querySelector('[data-slot="label"]');
             const editor = block.querySelector('[data-slot="markdown-editor"]');
+            const titleRect = titleInput.getBoundingClientRect();
+            const blockRect = block.getBoundingClientRect();
             const labelRect = label.getBoundingClientRect();
             const editorRect = editor.getBoundingClientRect();
             return {
-                blockHeight: block.getBoundingClientRect().height,
-                contentHeight: editorRect.bottom - labelRect.top,
+                titleToDescription: blockRect.top - titleRect.bottom,
+                labelHeight: labelRect.height,
                 labelToEditor: editorRect.top - labelRect.bottom,
-                editorToBlockBottom: block.getBoundingClientRect().bottom - editorRect.bottom,
             };
         })()
         JS);
 
-    expect(abs($spacing['blockHeight'] - $spacing['contentHeight']))->toBeLessThan(2);
-    expect($spacing['labelToEditor'])->toBeLessThan(12);
-    expect($spacing['editorToBlockBottom'])->toBeLessThan(2);
+    expect($spacing['titleToDescription'])->toBeGreaterThanOrEqual(12)
+        ->and($spacing['titleToDescription'])->toBeLessThan(24);
+    expect($spacing['labelHeight'])->toBeLessThan(30);
+    expect($spacing['labelToEditor'])->toBeGreaterThanOrEqual(4)
+        ->and($spacing['labelToEditor'])->toBeLessThan(12);
 
     // Properties stack tightly in the right column: no stretched rows either,
     // otherwise the gap between two consecutive fields would grow.

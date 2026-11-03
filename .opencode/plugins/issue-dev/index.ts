@@ -24,6 +24,11 @@
 //    All best effort over the TaskR MCP server (./taskr.ts): an outage
 //    skips the sync, it never breaks the workflow.
 //
+// 6. Scratch context: shared context persists in .opencode/scratch/ — the
+//    epic dossier scaffolded at start (never overwritten) and the plan/
+//    done comment mirrors — so fresh-context subagents re-read files
+//    instead of receiving the context inline in each brief.
+//
 // State lives in one JSON file per project root. One active workflow per
 // repo at a time: concurrent sessions on the same checkout share it.
 //
@@ -57,6 +62,9 @@ export type IssueDevState = {
   active: boolean
   workspace_id?: string
   issue_id?: string
+  // Parent (epic) issue id, recorded at start when the started issue has
+  // one — the epic scratch dossier is keyed on it.
+  epic_id?: string
   started_at?: number
   session_id?: string
   agent?: string
@@ -109,6 +117,7 @@ export function loadState(): IssueDevState {
       active: parsed.active ?? false,
       workspace_id: parsed.workspace_id,
       issue_id: parsed.issue_id,
+      epic_id: parsed.epic_id,
       started_at: parsed.started_at,
       session_id: parsed.session_id,
       agent: parsed.agent,
@@ -148,6 +157,7 @@ export function freshState(workspaceId: string, issueId: string, sessionId?: str
     active: true,
     workspace_id: workspaceId,
     issue_id: issueId,
+    epic_id: undefined,
     started_at: Date.now(),
     session_id: sessionId,
     agent,
@@ -159,6 +169,132 @@ export function freshState(workspaceId: string, issueId: string, sessionId?: str
     knowledge_reviewed: false,
     done_blocked_notified: false,
   }
+}
+
+// ---------------------------------------------------------------------------
+// Scratch context — persisted .opencode/scratch/ files
+//
+// Subagents are dispatched with a fresh context every time: the shared
+// context lives in files under the (git-ignored) scratch folder instead of
+// being re-inlined in each brief. Two kinds are maintained here:
+//
+// 1. Epic dossier: <scratchRoot>/epic-<epicId>/{kb.md,patterns.md,
+//    review-checklist.md}, scaffolded at start when the started issue has
+//    a parent, filled by reader/scout/reviewer along the epic's tickets.
+// 2. Plan/done mirrors: <scratchRoot>/{plan,done}-<issueId>.md, written as
+//    soon as the marked comment is posted so any subagent without TaskR
+//    access can re-read it, and the writer can draft the comment in this
+//    very file, then post it from there.
+//
+// Every filesystem operation is best effort — a failed write never breaks
+// the workflow. Stub bodies are French on purpose: they are user-facing
+// working notes, unlike the plugin messages.
+// ---------------------------------------------------------------------------
+
+export function scratchRoot(): string {
+  return path.join(projectRoot(), ".opencode", "scratch")
+}
+
+// Issue ids end up in file and folder names; only accept TaskR ULID-shaped
+// ids so a garbled parent ref can never write outside the scratch folder.
+const SAFE_ISSUE_ID = /^[0-9A-Za-z]{20,}$/
+
+function stubDate(): string {
+  return new Date().toISOString().slice(0, 10)
+}
+
+const EPIC_STUBS: Array<{ file: string; body: (epicId: string) => string }> = [
+  {
+    file: "kb.md",
+    body: (epicId) => `# Contexte EPIC — base de connaissances (${epicId})
+
+> Cache — la source de vérité reste TaskR et le code.
+
+- **But** : contexte de l'EPIC relu par chaque sous-agent avant tout travail : spec, arbitrages, ULIDs (workspace, projet, issues), gotchas.
+- **Rempli par** : l'agent \`reader\` via l'orchestrateur (dump des pages knowledge pertinentes).
+- **Scaffoldé le** : ${stubDate()} par le plugin issue-dev (stub à remplacer).
+`,
+  },
+  {
+    file: "patterns.md",
+    body: (epicId) => `# Contexte EPIC — patterns du code (${epicId})
+
+> Cache — la source de vérité reste TaskR et le code.
+
+- **But** : signatures observées au format \`fichier:ligne\`, patterns de tests et factories, pour éviter une re-exploration à chaque ticket.
+- **Rempli par** : l'agent \`scout\` via l'orchestrateur.
+- **Scaffoldé le** : ${stubDate()} par le plugin issue-dev (stub à remplacer).
+- **Attention** : les numéros de ligne dérivent — régénérer ce fichier à chaque changement de domaine.
+`,
+  },
+  {
+    file: "review-checklist.md",
+    body: (epicId) => `# Contexte EPIC — checklist de revue (${epicId})
+
+> Cache — la source de vérité reste TaskR et le code.
+
+- **But** : invariants à vérifier sur chaque ticket de l'EPIC (multi-tenancy, ULIDs, validation scopée, etc.).
+- **Rempli par** : l'agent \`reviewer\` via l'orchestrateur.
+- **Scaffoldé le** : ${stubDate()} par le plugin issue-dev (stub à remplacer).
+`,
+  },
+]
+
+export type EpicScaffold = { dir: string; created: string[] }
+
+// Scaffolds the epic dossier with its three context stubs, each only when
+// absent: the dossier is filled along the epic's tickets and must survive
+// every later start. Returns null when the filesystem refuses — the start
+// itself still succeeds.
+export function scaffoldEpicContext(epicId: string): EpicScaffold | null {
+  try {
+    const dir = path.join(scratchRoot(), `epic-${epicId}`)
+    mkdirSync(dir, { recursive: true })
+    const created: string[] = []
+    for (const stub of EPIC_STUBS) {
+      const file = path.join(dir, stub.file)
+      if (existsSync(file)) continue
+      writeFileSync(file, stub.body(epicId))
+      created.push(stub.file)
+    }
+    return { dir, created }
+  } catch {
+    return null
+  }
+}
+
+// Mirrors a posted plan/done comment body verbatim into the scratch folder.
+// Overwriting is fine — one marked comment per kind is enforced upstream.
+function mirrorComment(kind: "plan" | "done", issueId: string, body: string): void {
+  try {
+    mkdirSync(scratchRoot(), { recursive: true })
+    writeFileSync(path.join(scratchRoot(), `${kind}-${issueId}.md`), body)
+  } catch {
+    // The mirror is a convenience: a failed write never breaks the flow.
+  }
+}
+
+export type EpicContext = { reachable: boolean; epicId: string | null; scaffold: EpicScaffold | null }
+
+// Best effort epic context: when the started issue has a parent, remember
+// it in the state and scaffold the shared scratch dossier. An unreachable
+// TaskR skips the scaffold — the start never fails because of it.
+async function syncEpicContext(state: IssueDevState, ctx?: any): Promise<EpicContext> {
+  const workspaceId = typeof state.workspace_id === "string" ? state.workspace_id : null
+  const issueId = typeof state.issue_id === "string" ? state.issue_id : null
+  if (workspaceId === null || issueId === null) return { reachable: false, epicId: null, scaffold: null }
+
+  const client = await createTaskrClient(ctx)
+  if (client === null) return { reachable: false, epicId: null, scaffold: null }
+
+  const issue = await client.getIssue(workspaceId, issueId)
+  if (issue === null) return { reachable: false, epicId: null, scaffold: null }
+
+  const parentId = issue.parent !== null ? issue.parent.id : null
+  if (parentId === null || !SAFE_ISSUE_ID.test(parentId)) return { reachable: true, epicId: null, scaffold: null }
+
+  state.epic_id = parentId
+  return { reachable: true, epicId: parentId, scaffold: scaffoldEpicContext(parentId) }
 }
 
 // ---------------------------------------------------------------------------
@@ -266,7 +402,9 @@ function missingSteps(state: IssueDevState): string[] {
     steps.push("explore the codebase (read files / grep the areas concerned)")
   }
   if (!state.plan_comment) {
-    steps.push(`post the plan comment (add_comment starting with \`<!-- ${PLAN_MARKER} -->\`)`)
+    steps.push(
+      `post the plan comment (draft it in .opencode/scratch/plan-${issueLabel(state)}.md — it is mirrored there automatically once posted; the add_comment body starts with \`<!-- ${PLAN_MARKER} -->\`)`,
+    )
   }
   if (!state.done_comment) {
     steps.push(`post the done comment (add_comment starting with \`<!-- ${DONE_MARKER} -->\`)`)
@@ -353,20 +491,34 @@ export async function cliMain(args: {
           message: `usage: issue_dev action="start" workspaceId="<workspace_ulid>" issueId="<issue_ulid>"`,
         }
       }
-      saveState(freshState(workspaceId, issueId, args.sessionId, args.agent))
+      const started = freshState(workspaceId, issueId, args.sessionId, args.agent)
+      saveState(started)
 
       const sync = await syncStartStatuses(workspaceId, issueId, ctx)
+      const epic = await syncEpicContext(started, ctx)
+      if (epic.epicId !== null) saveState(started)
+
       const statusLine = !sync.reachable
         ? "TaskR statuses: server unreachable — statuses left untouched."
         : sync.notes.length > 0
           ? `TaskR statuses: ${sync.notes.join("; ")}.`
           : `TaskR statuses: issue ${issueId} already in progress.`
 
+      // The epic line only appears when the dossier exists on disk: a
+      // filesystem failure must not advertise a path nobody can read.
+      const epicLine =
+        epic.epicId !== null && epic.scaffold !== null
+          ? epic.scaffold.created.length > 0
+            ? `Epic context scaffolded at .opencode/scratch/epic-${epic.epicId}/ (kb.md, patterns.md, review-checklist.md) — reader fills kb.md, scout fills patterns.md; reference these files in subagent briefs.`
+            : `Epic context available at .opencode/scratch/epic-${epic.epicId}/ (kb.md, patterns.md, review-checklist.md) — reference these files in subagent briefs.`
+          : null
+
       return {
         ok: true,
         message:
           `issue-dev: workflow opened for issue ${issueId}.\n` +
           `${statusLine}\n` +
+          (epicLine !== null ? `${epicLine}\n` : "") +
           `Next: research the issue (search_knowledge + get_knowledge + code exploration), then the plan comment with \`<!-- ${PLAN_MARKER} -->\`.`,
       }
     }
@@ -586,6 +738,13 @@ export function recordProgress(state: IssueDevState, tool: string, event: any): 
     }
     if (isWorkflowIssue && tool.includes("add_comment")) {
       const body = String(input.body ?? "")
+      // Mirror the exact body to the scratch folder — whether or not the
+      // flag flips — so the latest posted comment always wins on disk.
+      const issueId = typeof state.issue_id === "string" ? state.issue_id : null
+      if (issueId !== null && SAFE_ISSUE_ID.test(issueId)) {
+        if (body.includes(`<!-- ${PLAN_MARKER} -->`)) mirrorComment("plan", issueId, body)
+        if (body.includes(`<!-- ${DONE_MARKER} -->`)) mirrorComment("done", issueId, body)
+      }
       if (body.includes(`<!-- ${PLAN_MARKER} -->`) && !state.plan_comment) {
         state.plan_comment = true
         changed = true

@@ -16,6 +16,10 @@ use LogicException;
  * knowledge page), with the before/after values of the changed fields in
  * `changes` ({ field: { before, after } }).
  *
+ * `comment_id` links a comment event to the comment it is about, without
+ * going through `changes` (an id is metadata, not a diff). No FK on purpose:
+ * a `comment.deleted` event must keep pointing at the removed comment.
+ *
  * The journal is immutable: model events and query-level mass updates or
  * deletes are refused, so no code path can rewrite history.
  */
@@ -28,6 +32,7 @@ class AuditEvent extends BaseModel
         'issue_id',
         'project_id',
         'knowledge_page_id',
+        'comment_id',
         'actor_id',
         'type',
         'changes',

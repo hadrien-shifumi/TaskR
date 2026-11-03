@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\Comments\AddComment;
+use App\Actions\Comments\DeleteComment;
 use App\Actions\Issues\CreateIssue;
 use App\Actions\Issues\MoveIssue;
 use App\Models\User;
@@ -85,6 +86,109 @@ it('shows the audit timeline inside the board issue modal', function () {
     );
 
     expect($rows)->toBe(2);
+
+    $page->assertNoSmoke();
+});
+
+it('keeps a long comment out of the timeline and reaches it through its anchor', function () {
+    [$owner, $workspace, $project] = setupBrowserWorkspace(withProject: true);
+    app(WorkspaceContext::class)->set($workspace);
+    $issue = CreateIssue::run($workspace, [
+        'project_id' => $project->id,
+        'title' => 'Commentaire fleuve',
+    ], $owner);
+
+    // A 20 000-character body used to be dumped verbatim in the timeline.
+    $longBody = 'Un commentaire tres long qui ne doit jamais ecraser la timeline. '.str_repeat('Lorem ipsum dolor sit amet. ', 500);
+    $comment = AddComment::run($issue, $owner, $longBody);
+    $this->actingAs($owner);
+
+    $page = visit('/issues/'.$issue->id);
+
+    // The comment event is a single sentence: no changes list, no body dump.
+    $page->assertPresent('[data-test="activity-event-row"]')
+        ->assertSeeIn('[data-test="activity-section"]', 'Comment added')
+        ->assertDontSeeIn('[data-test="activity-section"]', 'Lorem ipsum dolor sit amet.');
+
+    $changeLists = $page->script(<<<'JS'
+        (() => {
+            const row = [...document.querySelectorAll('[data-test="activity-event-row"]')]
+                .find((el) => el.textContent.includes('Comment added'));
+
+            return row === null
+                ? -1
+                : row.querySelectorAll('[data-test="activity-event-changes"]').length;
+        })()
+        JS);
+
+    expect($changeLists)->toBe(0);
+
+    // Clicking the chevron scrolls to the comment in the thread and flashes
+    // it instead of duplicating its body in the timeline.
+    $page->click('[data-test="activity-event-row"]:has-text("Comment added") [data-test="activity-comment-toggle"]');
+
+    $flashed = $page->script(<<<JS
+        (() => {
+            const target = document.getElementById('comment-{$comment->id}');
+
+            return target !== null && target.classList.contains('comment-flash');
+        })()
+        JS);
+
+    expect($flashed)->toBeTrue();
+
+    $page->assertMissing('[data-test="activity-comment-snapshot"]')
+        ->assertNoSmoke();
+});
+
+it('expands the journal snapshot of a deleted comment', function () {
+    [$owner, $workspace, $project] = setupBrowserWorkspace(withProject: true);
+    app(WorkspaceContext::class)->set($workspace);
+    $issue = CreateIssue::run($workspace, [
+        'project_id' => $project->id,
+        'title' => 'Commentaire supprime',
+    ], $owner);
+
+    $comment = AddComment::run($issue, $owner, 'Ce commentaire va disparaitre');
+    DeleteComment::run($comment, $owner);
+    $this->actingAs($owner);
+
+    $page = visit('/issues/'.$issue->id);
+
+    // The body is not dumped until the user asks for it.
+    $page->assertSeeIn('[data-test="activity-section"]', 'Comment deleted')
+        ->assertDontSeeIn('[data-test="activity-section"]', 'Ce commentaire va disparaitre');
+
+    // The comment is gone: the chevron expands the journal snapshot.
+    $page->click('[data-test="activity-event-row"]:has-text("Comment deleted") [data-test="activity-comment-toggle"]')
+        ->assertPresent('[data-test="activity-comment-snapshot"]')
+        ->assertSeeIn('[data-test="activity-comment-snapshot"]', 'Ce commentaire va disparaitre');
+
+    $page->assertNoSmoke();
+});
+
+it('never renders technical identifiers as timeline changes', function () {
+    [$owner, $workspace, $project] = setupBrowserWorkspace(withProject: true);
+    app(WorkspaceContext::class)->set($workspace);
+    $backlog = $workspace->statuses()->where('name', 'Backlog')->firstOrFail();
+    $inProgress = $workspace->statuses()->where('name', 'In Progress')->firstOrFail();
+    $issue = CreateIssue::run($workspace, [
+        'project_id' => $project->id,
+        'title' => 'Identifiants techniques',
+        'status_id' => $backlog->id,
+    ], $owner);
+    MoveIssue::run($issue, $inProgress->id, $owner);
+    AddComment::run($issue, $owner, 'Vu en revue');
+    $this->actingAs($owner);
+
+    $page = visit('/issues/'.$issue->id);
+
+    // Field changes keep their before → after pair…
+    $page->assertSeeIn('[data-test="activity-section"]', 'Backlog → In Progress');
+
+    // …while metadata identifiers never surface as changes.
+    $page->assertDontSeeIn('[data-test="activity-section"]', 'comment_id')
+        ->assertDontSeeIn('[data-test="activity-section"]', 'time_entry_id');
 
     $page->assertNoSmoke();
 });

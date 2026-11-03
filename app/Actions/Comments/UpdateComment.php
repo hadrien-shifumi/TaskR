@@ -53,12 +53,10 @@ class UpdateComment
 
         SyncCommentMentions::run($comment);
 
-        // A no-op edit (same body) journals nothing.
+        // A no-op edit (same body) journals nothing. The edit itself is
+        // journalled without the body: it lives with the comment.
         if ($comment->body !== $beforeBody) {
-            RecordActivity::run(AuditEventType::CommentUpdated, $comment->issue, $user, [
-                'comment_id' => $comment->id,
-                'body' => ['before' => $beforeBody, 'after' => $comment->body],
-            ]);
+            RecordActivity::run(AuditEventType::CommentUpdated, $comment->issue, $user, commentId: $comment->id);
         }
 
         return $comment;

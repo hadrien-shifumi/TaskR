@@ -72,6 +72,7 @@ return [
         'parent_out_of_scope' => "Le ticket parent est en dehors de votre périmètre d'accès.",
         'project_out_of_scope' => "Ce projet est en dehors de votre périmètre d'accès.",
         'blocker_out_of_scope' => "Un ticket bloqueur est en dehors de votre périmètre d'accès.",
+        'knowledge_page_out_of_scope' => "Une page de la base de connaissance est en dehors de votre périmètre d'accès.",
     ],
 
     'knowledge' => [

@@ -71,12 +71,15 @@ export type ActivityChange = {
 /**
  * Audit timeline row: journalled event with a dotted type ('issue.created'),
  * a null actor for system events and the changed fields. Descending order
- * is chosen by the backend query.
+ * is chosen by the backend query. `commentId` links comment events to the
+ * comment they are about; `changes` may also carry flat added/removed lists
+ * (assignees, knowledge pages), hence the `unknown` value type.
  */
 export type ActivityEvent = {
     id: string;
     type: string;
     actor: { id: number; name: string } | null;
     createdAt: string | null;
-    changes: Record<string, ActivityChange>;
+    commentId: string | null;
+    changes: Record<string, ActivityChange | unknown>;
 };

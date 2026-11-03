@@ -773,6 +773,9 @@ const en = {
         system: "System",
         emptyValue: "empty",
         beforeAfter: "{{before}} → {{after}}",
+        listChange: "{{values}}",
+        viewComment: "View comment",
+        hideComment: "Hide comment",
         headTitle: "Activity — {{name}}",
         intro: "The project's event journal, filterable by actor and type.",
         filters: {
