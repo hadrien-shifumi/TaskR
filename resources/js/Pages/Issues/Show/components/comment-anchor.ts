@@ -1,10 +1,11 @@
 /**
  * Anchor helpers shared by the activity timeline and the comments thread.
  *
- * The two sections are siblings on the page (and inside the board modal), so
- * the timeline cannot drive the comment list through React state: it scrolls
- * the DOM node directly and flashes it, which keeps both components
- * independent.
+ * The timeline scrolls the comment row directly in the DOM and flashes it:
+ * when the comments accordion is folded, the issue fiche first unfolds it
+ * (state lifted in `IssueDetail`) and defers the scroll to the effect that
+ * runs once the panel has rendered — `scrollToComment` stays the shared DOM
+ * helper for both the immediate and the post-unfold path.
  */
 
 /** Marks a comment row as recently targeted: the CSS transition fades it back. */

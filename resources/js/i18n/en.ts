@@ -287,6 +287,9 @@ const en = {
         submit: "Comment",
         editBy: "Edit comment by {{name}}",
         deleteBy: "Delete comment by {{name}}",
+        showMore: "Show more",
+        showLess: "Show less",
+        accordionLabel: "Toggle the comments section",
     },
 
     timeEntries: {
@@ -794,6 +797,7 @@ const en = {
         listChange: "{{values}}",
         viewComment: "View comment",
         hideComment: "Hide comment",
+        accordionLabel: "Toggle the activity section",
         headTitle: "Activity — {{name}}",
         intro: "The project's event journal, filterable by actor and type.",
         filters: {

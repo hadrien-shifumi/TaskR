@@ -44,6 +44,9 @@ it('test_mention_autocomplete_inserts_handle_in_comment_editor', function () {
 
     $page = visit('/issues/'.$issueId);
 
+    // The comments accordion folds by default: open it to reach the box.
+    $page->click('[data-test="comments-accordion-trigger"]');
+
     // Typing "@" opens the autocomplete of the workspace members.
     $page->fill('[data-test="comment-body"]', '@')
         ->assertVisible('[data-test="mention-autocomplete"]')
@@ -64,6 +67,9 @@ it('test_posting_comment_creates_comment_mention', function () {
     $this->actingAs($owner);
 
     $page = visit('/issues/'.$issueId);
+
+    // The comments accordion folds by default: open it to reach the box.
+    $page->click('[data-test="comments-accordion-trigger"]');
 
     $page->fill('[data-test="comment-body"]', '@'.$member->handle.' peux-tu relire ?')
         ->click('[data-test="comment-submit"]')
@@ -91,6 +97,10 @@ it('test_mentioned_member_sees_sidebar_badge_and_unread_mentions_page', function
     $this->actingAs($owner);
 
     $page = visit('/issues/'.$issueId);
+
+    // The comments accordion folds by default: open it to reach the box.
+    $page->click('[data-test="comments-accordion-trigger"]');
+
     $page->fill('[data-test="comment-body"]', '@'.$member->handle.' peux-tu relire ?')
         ->click('[data-test="comment-submit"]')
         ->waitForEvent('networkidle');
@@ -123,11 +133,19 @@ it('test_mark_mention_read_and_read_all', function () {
 
     $this->actingAs($owner);
     $page = visit('/issues/'.$firstIssue);
+
+    // The comments accordion folds by default: open it to reach the box.
+    $page->click('[data-test="comments-accordion-trigger"]');
+
     $page->fill('[data-test="comment-body"]', '@'.$member->handle.' premier ping')
         ->click('[data-test="comment-submit"]')
         ->waitForEvent('networkidle');
 
     $page->navigate('/issues/'.$secondIssue);
+
+    // Same fold on the second fiche.
+    $page->click('[data-test="comments-accordion-trigger"]');
+
     $page->fill('[data-test="comment-body"]', '@'.$member->handle.' second ping')
         ->click('[data-test="comment-submit"]')
         ->waitForEvent('networkidle');
@@ -172,6 +190,9 @@ it('test_unknown_handle_creates_no_mention', function () {
     $this->actingAs($owner);
 
     $page = visit('/issues/'.$issueId);
+
+    // The comments accordion folds by default: open it to reach the box.
+    $page->click('[data-test="comments-accordion-trigger"]');
 
     $page->fill('[data-test="comment-body"]', '@nobody coucou')
         ->click('[data-test="comment-submit"]')

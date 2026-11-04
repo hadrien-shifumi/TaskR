@@ -74,6 +74,14 @@ function formatDateTime(date: string | null): string {
 
 type ActivityEventRowProps = {
     event: ActivityEvent;
+    /**
+     * Jump handler for a live comment: opens the comments accordion if
+     * needed, then scrolls and flashes the target row. Returns false when
+     * the comment is unreachable (deleted, or no comments thread on the
+     * page) so the row falls back to its own snapshot. When omitted, the
+     * row scrolls the DOM anchor directly (project activity page).
+     */
+    onJumpToComment?: (commentId: string) => boolean;
 };
 
 /**
@@ -83,7 +91,7 @@ type ActivityEventRowProps = {
  * in the thread, a deleted one expands the journal snapshot.
  * Shared between the issue page and the board's issue modal.
  */
-export function ActivityEventRow({ event }: ActivityEventRowProps) {
+export function ActivityEventRow({ event, onJumpToComment }: ActivityEventRowProps) {
     const { t } = useTranslation();
     const [expanded, setExpanded] = useState(false);
     const actorName = event.actor?.name ?? t('audit.system');
@@ -97,10 +105,17 @@ export function ActivityEventRow({ event }: ActivityEventRowProps) {
     );
 
     const toggleComment = () => {
-        if (!expanded && event.commentId !== null && scrollToComment(event.commentId)) {
-            // The comment is on the page: scroll and flash it instead of
-            // duplicating its body in the timeline.
-            return;
+        if (!expanded && event.commentId !== null) {
+            // The comment is on the page: open the comments accordion if
+            // needed, then scroll and flash it instead of duplicating its
+            // body in the timeline.
+            const jumped = onJumpToComment !== undefined
+                ? onJumpToComment(event.commentId)
+                : scrollToComment(event.commentId);
+
+            if (jumped) {
+                return;
+            }
         }
 
         setExpanded((value) => !value);
