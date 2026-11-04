@@ -4,6 +4,7 @@ namespace App\Actions\Workspaces;
 
 use App\Enums\ProjectRole;
 use App\Enums\WorkspaceRole;
+use App\Exceptions\InvitationEmailMismatchException;
 use App\Models\Invitation;
 use App\Models\InvitationProject;
 use App\Models\Membership;
@@ -11,6 +12,7 @@ use App\Models\Project;
 use App\Models\ProjectMember;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Support\EmailMask;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -30,6 +32,13 @@ class AcceptInvitation
 
             if (! $invitation->isUsable()) {
                 abort(410, 'This invitation is no longer valid.');
+            }
+
+            // The acceptance is reserved to the invited address: any other
+            // account is refused before a single row is written, whatever
+            // the caller (direct hit, post-login replay, future flows).
+            if (strcasecmp($user->email, $invitation->email) !== 0) {
+                throw new InvitationEmailMismatchException($invitation->email);
             }
 
             // The membership carries the invited role; an already-member
@@ -111,7 +120,18 @@ class AcceptInvitation
             ])->toResponse(request());
         }
 
-        $workspace = $this->handle($invitation, $user);
+        try {
+            $workspace = $this->handle($invitation, $user);
+        } catch (InvitationEmailMismatchException) {
+            // Explicit refusal page: the invited address is shown masked,
+            // nothing was created and the workspace stays closed.
+            return Inertia::render('Auth/InvitationEmailMismatch', [
+                'invitation' => [
+                    'email' => EmailMask::mask($invitation->email),
+                ],
+            ])->toResponse(request())
+                ->setStatusCode(403);
+        }
 
         session(['workspace_id' => $workspace->id]);
         $user->forceFill(['current_workspace_id' => $workspace->id])->saveQuietly();
