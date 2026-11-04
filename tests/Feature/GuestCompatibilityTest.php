@@ -204,7 +204,7 @@ class GuestCompatibilityTest extends TestCase
         $this->assertSame(WorkspaceRole::Guest, $invitation->role);
 
         // The full acceptance chain recreates the announced perimeter.
-        $invitee = User::factory()->create();
+        $invitee = User::factory()->create(['email' => 'client@example.com']);
         $this->actingAs($invitee)
             ->get(route('invitations.accept', $invitation->token))
             ->assertRedirect(route('home'));

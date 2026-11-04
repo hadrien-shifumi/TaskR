@@ -152,7 +152,7 @@ class GuestInvitationTest extends TestCase
         [$owner, $workspace, $alpha, $beta] = $this->setupWorkspace();
         $invitation = $this->guestInvitation($workspace, $alpha, $beta);
 
-        $invitee = User::factory()->create();
+        $invitee = User::factory()->create(['email' => 'client@example.com']);
 
         $response = $this->actingAs($invitee)
             ->get(route('invitations.accept', $invitation->token));

@@ -497,6 +497,11 @@ const fr: typeof en = {
             accept: "Accepter l'invitation",
             decline: "Refuser",
         },
+        invitationMismatch: {
+            title: "Cette invitation ne vous est pas destinée",
+            message:
+                "Elle était destinée à l'adresse {{email}}. Vous êtes connecté avec un compte différent.",
+        },
     },
 
     projects: {

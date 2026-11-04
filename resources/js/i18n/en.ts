@@ -494,6 +494,11 @@ const en = {
             accept: "Accept the invitation",
             decline: "Decline",
         },
+        invitationMismatch: {
+            title: "This invitation is not addressed to you",
+            message:
+                "It was intended for {{email}}. You are signed in with a different account.",
+        },
     },
 
     projects: {

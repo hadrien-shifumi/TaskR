@@ -43,6 +43,7 @@ return [
         'created' => 'Invitation created for :email: :link',
         'resent' => 'Invitation resent for :email: :link',
         'cancelled' => 'Invitation for :email cancelled.',
+        'email_mismatch' => 'This invitation was intended for the address :email.',
     ],
 
     'member' => [
