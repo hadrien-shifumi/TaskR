@@ -24,6 +24,7 @@ use App\Actions\Issues\ArchiveCompletedIssues;
 use App\Actions\Issues\ArchiveIssue;
 use App\Actions\Issues\CreateIssue;
 use App\Actions\Issues\DeleteIssue;
+use App\Actions\Issues\ExportIssues;
 use App\Actions\Issues\MoveIssue;
 use App\Actions\Issues\SearchIssueKnowledge;
 use App\Actions\Issues\SetAssignees;
@@ -74,11 +75,13 @@ use App\Actions\Templates\ShowTemplatesPage;
 use App\Actions\Templates\UpdateIssueTemplate;
 use App\Actions\TimeTracking\CreateTimeEntry;
 use App\Actions\TimeTracking\DeleteTimeEntry;
+use App\Actions\TimeTracking\ExportTimeEntries;
 use App\Actions\TimeTracking\SetIssueEstimate;
 use App\Actions\TimeTracking\UpdateTimeEntry;
 use App\Actions\Workspaces\AcceptInvitation;
 use App\Actions\Workspaces\CancelInvitation;
 use App\Actions\Workspaces\CreateWorkspace;
+use App\Actions\Workspaces\DownloadWorkspaceBackup;
 use App\Actions\Workspaces\InviteMember;
 use App\Actions\Workspaces\RemoveMember;
 use App\Actions\Workspaces\ResendInvitation;
@@ -157,6 +160,8 @@ Route::middleware(['auth', 'workspace'])->group(function (): void {
 
     Route::get('/issues', ShowIssuesPage::class)->name('issues.index');
     Route::post('/issues', CreateIssue::class)->name('issues.store');
+    // Declared before /issues/{issue} so "export" is not captured as an id.
+    Route::get('/issues/export', ExportIssues::class)->name('issues.export');
     Route::get('/issues/{issue}', ShowIssuePage::class)->name('issues.show');
     Route::match(['put', 'patch'], '/issues/{issue}', UpdateIssue::class)->name('issues.update');
     Route::delete('/issues/{issue}', DeleteIssue::class)->name('issues.destroy');
@@ -181,6 +186,14 @@ Route::middleware(['auth', 'workspace'])->group(function (): void {
         ->scopeBindings()->name('issues.time-entries.update');
     Route::delete('/issues/{issue}/time-entries/{timeEntry}', DeleteTimeEntry::class)
         ->scopeBindings()->name('issues.time-entries.destroy');
+
+    // Workspace-wide export of the time entries (billing): transverse to
+    // any single issue, so it lives at the workspace level.
+    Route::get('/time-entries/export', ExportTimeEntries::class)->name('time-entries.export');
+
+    // Complete workspace backup (owner only): every project, ticket, time
+    // entry, comment and knowledge page in one archive — the escape hatch.
+    Route::get('/backup', DownloadWorkspaceBackup::class)->name('backup.download');
 
     Route::get('/mentions', ShowMentionsPage::class)->name('mentions.index');
     Route::post('/mentions/read-all', MarkAllMentionsRead::class)->name('mentions.read-all');

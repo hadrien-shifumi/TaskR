@@ -7,6 +7,11 @@ return [
         'project_out_of_scope' => 'This project is outside your project scope.',
         'blocker_out_of_scope' => 'A blocker issue is outside your project scope.',
         'knowledge_page_out_of_scope' => 'A knowledge page is outside your access scope.',
+        'export_too_many' => 'The export is limited to :max tickets. Narrow the filters to reduce the volume.',
+    ],
+
+    'time_entry' => [
+        'export_too_many' => 'The export is limited to :max time entries. Narrow the filters to reduce the volume.',
     ],
 
     'knowledge' => [
