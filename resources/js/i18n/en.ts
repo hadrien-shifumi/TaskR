@@ -406,6 +406,16 @@ const en = {
         teamWorkload: "Team workload",
         member: "Member",
         hours: "Hours",
+        trends: "Issue trends",
+        trendsPeriod: "Period",
+        trendsPeriod30: "Last 30 days",
+        trendsPeriod90: "Last 90 days",
+        trendsPeriodAll: "Since creation",
+        trendsOpened: "Opened",
+        trendsClosed: "Closed",
+        trendsMoved: "Moved",
+        trendsJournalSince:
+            "Closed and moved are tracked since {{date}} (activity journal introduction): before that, days read as zero.",
     },
 
     home: {
