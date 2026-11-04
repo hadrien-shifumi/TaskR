@@ -7,6 +7,7 @@ use App\Actions\Auth\RegisterUser;
 use App\Actions\Auth\ResetPassword;
 use App\Actions\Auth\RevokeApiToken;
 use App\Actions\Auth\SendPasswordResetLink;
+use App\Actions\Auth\ShowAccountSettingsPage;
 use App\Actions\Auth\ShowApiTokensPage;
 use App\Actions\Auth\ShowForgotPasswordPage;
 use App\Actions\Auth\ShowLoginPage;
@@ -14,6 +15,7 @@ use App\Actions\Auth\ShowNotificationSettingsPage;
 use App\Actions\Auth\ShowRegistrationPage;
 use App\Actions\Auth\ShowResetPasswordPage;
 use App\Actions\Auth\UpdateNotificationPreferences;
+use App\Actions\Auth\UpdatePassword;
 use App\Actions\Auth\UpdateUserLocale;
 use App\Actions\Comments\AddComment;
 use App\Actions\Comments\DeleteComment;
@@ -99,6 +101,7 @@ Route::middleware('guest')->group(function (): void {
 Route::post('/logout', LogoutUser::class)->middleware('auth')->name('logout');
 
 Route::match(['put', 'patch'], '/user/locale', UpdateUserLocale::class)->middleware('auth')->name('user.locale.update');
+Route::match(['put', 'patch'], '/user/password', UpdatePassword::class)->middleware('auth')->name('user.password.update');
 
 // Acceptance is reachable by guests: the action renders the invitation landing
 // page for them and performs the membership only for authenticated users.
@@ -114,6 +117,8 @@ Route::middleware(['auth', 'workspace'])->group(function (): void {
     Route::post('/workspaces/{workspace}/invitations/{invitation}/resend', ResendInvitation::class)->name('workspaces.invitations.resend');
     Route::delete('/workspaces/{workspace}/invitations/{invitation}', CancelInvitation::class)->name('workspaces.invitations.destroy');
     Route::delete('/workspaces/{workspace}/members/{user}', RemoveMember::class)->name('workspaces.members.destroy');
+
+    Route::get('/settings/account', ShowAccountSettingsPage::class)->name('settings.account');
 
     Route::get('/settings/notifications', ShowNotificationSettingsPage::class)->name('settings.notifications');
     Route::match(['put', 'patch'], '/settings/notifications', UpdateNotificationPreferences::class)

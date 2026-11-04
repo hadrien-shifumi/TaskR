@@ -592,6 +592,7 @@ const fr: typeof en = {
     settings: {
         sectionsAria: "Sections des réglages",
         sections: {
+            account: "Compte",
             statuses: "Statuts",
             members: "Membres",
             templates: "Gabarits de tickets",
@@ -729,6 +730,17 @@ const fr: typeof en = {
         save: "Enregistrer les préférences",
         optOutHint:
             "Le désabonnement conserve vos autres réglages : vous pouvez réactiver la synthèse à tout moment.",
+    },
+
+    accountPage: {
+        description: "Changez le mot de passe de votre compte Taskr.",
+        currentPassword: "Mot de passe actuel",
+        newPassword: "Nouveau mot de passe",
+        passwordHint: "8 caractères minimum",
+        confirmPassword: "Confirmez le nouveau mot de passe",
+        submit: "Mettre à jour le mot de passe",
+        securityHint: "En cas de suspicion de compromission, révoquez aussi vos jetons d'API :",
+        securityHintLink: "gérer mes jetons d'API",
     },
 
     knowledge: {

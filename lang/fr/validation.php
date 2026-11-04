@@ -88,6 +88,10 @@ return [
         'cannot_remove_last_guest_project' => 'Un invité Guest doit conserver au moins un projet : retirez-le du workspace pour supprimer son accès.',
     ],
 
+    'password' => [
+        'wrong_current' => 'Le mot de passe actuel est incorrect.',
+    ],
+
     'invitation' => [
         'guest_requires_projects' => 'Un invité Guest doit être rattaché à au moins un projet.',
         'member_cannot_carry_projects' => 'Une invitation Member ne porte pas de périmètre de projets.',
