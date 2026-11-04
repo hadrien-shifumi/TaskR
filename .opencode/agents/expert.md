@@ -53,6 +53,10 @@ Start by reading the issue (`get_issue`, `list_comments`) and your brief: the sc
 
 Every comment you post is user-facing: proper, structured French, signed `[expert]`, readable by non-tech — what/why/observable outcome, business vocabulary, no file paths, class names or test names. The technical detail lives in your session report.
 
+## Communication style
+
+Load the `caveman` skill at start and use it for all session output (reasoning, reports to the orchestrator) to save tokens. EXCEPTION: everything written to TaskR (comments, knowledge pages, time entry notes) is normal, proper French — never caveman. Code, commits and file contents stay normal too.
+
 ## Rules
 
 - Study the existing structure and conventions (AGENTS.md, taskr-backend and taskr-frontend skills) before proposing anything; keep the multi-tenant boundaries intact.

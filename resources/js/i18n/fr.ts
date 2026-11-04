@@ -134,6 +134,14 @@ const fr: typeof en = {
         emptyHint: "Utilisez le bouton « Nouveau ticket » pour créer le premier.",
         ulidNote:
             "Les identifiants sont opaques (ULID) : pas de numérotation séquentielle, l'ordre d'affichage n'est pas un identifiant.",
+        export: {
+            button: "Exporter ({{count}})",
+            aria: "Exporter les tickets filtrés",
+            label: "Exporter les tickets",
+            csv: "CSV",
+            json: "JSON",
+            failed: "L'export a échoué. Réessayez.",
+        },
     },
 
     labelDialog: {
@@ -408,6 +416,19 @@ const fr: typeof en = {
         teamWorkload: "Charge de l'équipe",
         member: "Membre",
         hours: "Heures",
+        export: {
+            button: "Exporter le temps",
+            title: "Exporter les saisies de temps",
+            description:
+                "Saisies de temps du projet {{name}}, au format CSV ou JSON. Par défaut : le mois en cours.",
+            format: "Format",
+            csv: "CSV",
+            json: "JSON",
+            workedAfter: "Du",
+            workedBefore: "Au",
+            submit: "Exporter",
+            failed: "L'export a échoué. Réessayez.",
+        },
     },
 
     home: {
@@ -857,6 +878,11 @@ const fr: typeof en = {
             allActors: "Tous les acteurs",
             type: "Type",
             allTypes: "Tous les types",
+        },
+        pagination: {
+            previous: "Précédent",
+            next: "Suivant",
+            page: "Page {{current}} sur {{last}} · total {{total}}",
         },
         transitions: "Transitions de statut",
         transitionsHint: "Nombre de passages par paire de statuts, alimenté par le journal d'activité.",

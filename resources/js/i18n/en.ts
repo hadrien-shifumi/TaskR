@@ -136,6 +136,14 @@ const en = {
         emptyHint: "Use the “New issue” button to create the first one.",
         ulidNote:
             "Identifiers are opaque (ULIDs): no sequential numbering, display order is not an identifier.",
+        export: {
+            button: "Export ({{count}})",
+            aria: "Export the filtered issues",
+            label: "Export issues",
+            csv: "CSV",
+            json: "JSON",
+            failed: "The export failed. Please try again.",
+        },
     },
 
     labelDialog: {
@@ -406,6 +414,19 @@ const en = {
         teamWorkload: "Team workload",
         member: "Member",
         hours: "Hours",
+        export: {
+            button: "Export time",
+            title: "Export time entries",
+            description:
+                "Time entries of the {{name}} project, as CSV or JSON. Defaults to the current month.",
+            format: "Format",
+            csv: "CSV",
+            json: "JSON",
+            workedAfter: "From",
+            workedBefore: "To",
+            submit: "Export",
+            failed: "The export failed. Please try again.",
+        },
     },
 
     home: {
@@ -839,6 +860,11 @@ const en = {
             allActors: "All actors",
             type: "Type",
             allTypes: "All types",
+        },
+        pagination: {
+            previous: "Previous",
+            next: "Next",
+            page: "Page {{current}} of {{last}} · total {{total}}",
         },
         transitions: "Status transitions",
         transitionsHint: "Count per status pair, fed by the activity journal.",
