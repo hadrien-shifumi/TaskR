@@ -29,7 +29,7 @@ export default function ForgotPassword() {
                     <p className="mt-1 mb-4.5 text-sm text-muted-foreground">{t('auth.forgot.subtitle')}</p>
 
                     {flash?.status ? (
-                        <Banner variant="info" role="status" className="mb-4 rounded-md text-[13px]">
+                        <Banner variant="info" role="status" className="mb-4 rounded-md text-[13px]" data-test="forgot-flash">
                             {flash.status}
                         </Banner>
                     ) : null}
