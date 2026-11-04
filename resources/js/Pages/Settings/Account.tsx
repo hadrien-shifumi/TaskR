@@ -34,7 +34,7 @@ export default function Account() {
             >
                 <Head title={t('settings.sections.account')} />
 
-                <FlashBanner />
+                <FlashBanner data-test="account-flash" />
 
                 <Banner variant="warning" data-test="account-security-hint">
                     {t('accountPage.securityHint')}{' '}
