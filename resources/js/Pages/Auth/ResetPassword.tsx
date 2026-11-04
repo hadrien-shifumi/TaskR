@@ -35,7 +35,7 @@ export default function ResetPassword() {
                     <h1 className="text-[19px] font-semibold tracking-tight">{t('auth.reset.title')}</h1>
                     <p className="mt-1 mb-4.5 text-sm text-muted-foreground">{t('auth.reset.subtitle')}</p>
 
-                    <form onSubmit={submit} className="grid gap-3">
+                    <form onSubmit={submit} className="grid gap-3" data-test="reset-password-form">
                         <input type="hidden" name="token" value={data.token} />
                         <div className="grid gap-1.5">
                             <Label htmlFor="email">{t('auth.reset.email')}</Label>
@@ -46,6 +46,7 @@ export default function ResetPassword() {
                                 value={data.email}
                                 onChange={(e) => setData('email', e.target.value)}
                                 aria-invalid={errors.email ? true : undefined}
+                                data-test="reset-email"
                             />
                             {errors.email ? <p className="text-sm text-destructive">{errors.email}</p> : null}
                         </div>
@@ -58,7 +59,11 @@ export default function ResetPassword() {
                                 value={data.password}
                                 onChange={(e) => setData('password', e.target.value)}
                                 aria-invalid={errors.password ? true : undefined}
+                                data-test="reset-password"
                             />
+                            <p className="text-sm text-muted-foreground" data-test="reset-password-hint">
+                                {t('auth.reset.passwordHint')}
+                            </p>
                             {errors.password ? <p className="text-sm text-destructive">{errors.password}</p> : null}
                         </div>
                         <div className="grid gap-1.5">
@@ -69,9 +74,14 @@ export default function ResetPassword() {
                                 required
                                 value={data.password_confirmation}
                                 onChange={(e) => setData('password_confirmation', e.target.value)}
+                                aria-invalid={errors.password_confirmation ? true : undefined}
+                                data-test="reset-password-confirmation"
                             />
+                            {errors.password_confirmation ? (
+                                <p className="text-sm text-destructive">{errors.password_confirmation}</p>
+                            ) : null}
                         </div>
-                        <Button type="submit" size="lg" className="w-full" disabled={processing}>
+                        <Button type="submit" size="lg" className="w-full" disabled={processing} data-test="reset-submit">
                             {t('auth.reset.submit')}
                         </Button>
                     </form>

@@ -4,6 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { FlashBanner } from '@/components/flash-banner';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import { useTranslation } from 'react-i18next';
 
@@ -53,6 +54,8 @@ export default function Login() {
                         </Link>
                     </div>
 
+                    <FlashBanner data-test="login-flash" />
+
                     <h1 className="text-[19px] font-semibold tracking-tight">{t('auth.login.welcome')}</h1>
                     <p className="mt-1 mb-4.5 text-sm text-muted-foreground">{t('auth.login.subtitle')}</p>
 
@@ -68,6 +71,7 @@ export default function Login() {
                                 value={data.email}
                                 onChange={(e) => setData('email', e.target.value)}
                                 aria-invalid={errors.email ? true : undefined}
+                                data-test="login-email"
                             />
                             {errors.email ? <p className="text-sm text-destructive">{errors.email}</p> : null}
                         </div>
@@ -81,6 +85,7 @@ export default function Login() {
                                 value={data.password}
                                 onChange={(e) => setData('password', e.target.value)}
                                 aria-invalid={errors.password ? true : undefined}
+                                data-test="login-password"
                             />
                             {errors.password ? <p className="text-sm text-destructive">{errors.password}</p> : null}
                         </div>
@@ -96,12 +101,13 @@ export default function Login() {
                             <Link
                                 href={route('password.request')}
                                 className="ml-auto text-[13px] font-medium text-muted-foreground hover:text-foreground"
+                                data-test="login-forgot-link"
                             >
                                 {t('auth.login.forgot')}
                             </Link>
                         </div>
                         {/* The maquette sits the submit button 4px under the last field. */}
-                        <Button type="submit" size="lg" className="-mt-2 w-full" disabled={processing}>
+                        <Button type="submit" size="lg" className="-mt-2 w-full" disabled={processing} data-test="login-submit">
                             {t('auth.login.submit')}
                         </Button>
                     </form>

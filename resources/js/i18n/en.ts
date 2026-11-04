@@ -460,6 +460,7 @@ const en = {
             subtitle: "Define the new password for your account.",
             email: "Email",
             password: "New password",
+            passwordHint: "8 characters minimum",
             confirmPassword: "Confirm new password",
             submit: "Update password",
         },

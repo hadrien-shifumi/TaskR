@@ -463,6 +463,7 @@ const fr: typeof en = {
             subtitle: "Définissez le nouveau mot de passe de votre compte.",
             email: "Email",
             password: "Nouveau mot de passe",
+            passwordHint: "8 caractères minimum",
             confirmPassword: "Confirmez le nouveau mot de passe",
             submit: "Mettre à jour le mot de passe",
         },
