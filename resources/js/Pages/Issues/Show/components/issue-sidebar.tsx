@@ -21,6 +21,7 @@ import { Link, router, useForm } from '@inertiajs/react';
 import { Plus, X } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { cn } from '@/lib/utils';
 import type { LabelRef, UserRef } from '@/types';
 import type { BlocksRef, IssueDetail } from '../types';
 import { EditDatesDialog } from './edit-dates-dialog';
@@ -40,6 +41,12 @@ type IssueSidebarProps = {
     projects: { id: string; name: string }[];
     /** Builds the parent link href — lets the board modal route in place. */
     buildIssueHref?: (issueId: string) => string;
+    /**
+     * Pins the card below the page header while the fiche scrolls (full
+     * page default). The board modal disables it so the card scrolls away
+     * with the modal's single scrolling body.
+     */
+    sticky?: boolean;
 };
 
 type PropRowProps = {
@@ -91,6 +98,7 @@ export function IssueSidebar({
     dependencyCandidates,
     projects,
     buildIssueHref,
+    sticky = true,
 }: IssueSidebarProps) {
     const { t } = useTranslation();
     const [datesOpen, setDatesOpen] = useState(false);
@@ -205,7 +213,7 @@ export function IssueSidebar({
     const daysLate = issue.dueDate ? overdueDays(issue.dueDate) : 0;
 
     return (
-        <aside className="lg:sticky lg:top-[76px]">
+        <aside data-test="issue-sidebar" className={cn(sticky && 'lg:sticky lg:top-[76px]')}>
             <Card className="py-5">
                 <CardContent className="flex flex-col px-5">
                     <PropRow label={t('issues.fields.status')} hint={t('issueShow.statusHint')}>

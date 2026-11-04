@@ -100,6 +100,138 @@ it('navigates between child and parent issues inside the modal', function () {
     $page->assertNoSmoke();
 });
 
+it('keeps the issue id header pinned to the modal top while the body scrolls', function () {
+    [$owner, $workspace, $project] = setupBrowserWorkspace(withProject: true);
+    app(WorkspaceContext::class)->set($workspace);
+    $backlog = $workspace->statuses()->where('name', 'Backlog')->firstOrFail();
+    $issue = CreateIssue::run($workspace, [
+        'project_id' => $project->id,
+        'title' => 'En-tête fixe',
+        'description' => str_repeat("Paragraphe assez long pour forcer le defilement de la fiche en modal.\n\n", 60),
+        'status_id' => $backlog->id,
+    ]);
+    $this->actingAs($owner);
+
+    $page = visit("/projects/{$project->id}/board");
+    $page->click("[data-test=\"board-card-{$issue->id}\"] a");
+    $page->assertSeeIn('[data-test="issue-detail-dialog"] h1', 'En-tête fixe');
+    // Let the open animation finish before measuring pinned positions.
+    $page->wait(0.5);
+
+    // Scroll the modal's single scrollable area to the bottom: the header
+    // row (short id + copy action) and the close button must stay pinned
+    // to the top of the panel instead of being carried away with the body.
+    $probe = <<<'JS'
+        (() => {
+            const panel = document.querySelector('[data-test="issue-detail-dialog"]');
+            const scrollable = panel.querySelector('[data-test="issue-detail-scroll"]');
+            if (!scrollable) {
+                return { scrolled: false, pinned: null };
+            }
+            scrollable.scrollTop = scrollable.scrollHeight;
+            const panelRect = panel.getBoundingClientRect();
+            const pinned = (selector) => {
+                const el = panel.querySelector(selector);
+                if (!el) {
+                    return false;
+                }
+                const rect = el.getBoundingClientRect();
+                return rect.top >= panelRect.top - 1 && rect.bottom <= panelRect.top + 60;
+            };
+            return {
+                scrolled: scrollable.scrollTop > 0,
+                pinned: pinned('[data-test="issue-ulid"]')
+                    && pinned('[data-test="copy-identifier"]')
+                    && pinned('[data-slot="dialog-close"]'),
+            };
+        })()
+        JS;
+
+    $result = $page->script($probe);
+
+    expect($result['scrolled'])->toBeTrue('the modal body must actually scroll for this probe to mean anything');
+    expect($result['pinned'])->toBeTrue('the short id, the copy action and the close button must stay pinned to the top of the modal while its body scrolls');
+
+    $page->assertNoSmoke();
+});
+
+it('scrolls the whole modal body in a single container so the sidebar is not pinned', function () {
+    [$owner, $workspace, $project] = setupBrowserWorkspace(withProject: true);
+    app(WorkspaceContext::class)->set($workspace);
+    $backlog = $workspace->statuses()->where('name', 'Backlog')->firstOrFail();
+    $issue = CreateIssue::run($workspace, [
+        'project_id' => $project->id,
+        'title' => 'Colonne laterale entrainee',
+        'description' => str_repeat("Paragraphe assez long pour forcer le defilement de la fiche en modal.\n\n", 60),
+        'status_id' => $backlog->id,
+    ]);
+    $this->actingAs($owner);
+
+    $page = visit("/projects/{$project->id}/board");
+    // A short viewport makes the sidebar taller than the modal's visible
+    // scroll area — the exact condition where a pinned sidebar hides its
+    // own bottom. Width stays above the `lg:` breakpoint so the sidebar
+    // sits in its right-hand column.
+    $page->resize(1280, 600);
+    $page->click("[data-test=\"board-card-{$issue->id}\"] a");
+    $page->assertSeeIn('[data-test="issue-detail-dialog"] h1', 'Colonne laterale entrainee');
+    // Let the open animation finish: its zoom transform rescales visual
+    // rects and would distort the movement measurements below.
+    $page->wait(0.5);
+
+    // One scrollable container for the whole body: no second scroll area,
+    // and the sidebar travels with the content instead of staying pinned
+    // (measured between two scroll offsets; its bottom must stay reachable
+    // mid-scroll, which a pinned taller-than-view sidebar breaks).
+    $probe = <<<'JS'
+        (() => {
+            const panel = document.querySelector('[data-test="issue-detail-dialog"]');
+            const scrollable = panel.querySelector('[data-test="issue-detail-scroll"]');
+            const aside = panel.querySelector('aside');
+            if (!scrollable || !aside) {
+                return {
+                    scrolled: false,
+                    singleScrollable: null,
+                    sidebarTallerThanView: null,
+                    sidebarMoved: null,
+                    sidebarReachable: null,
+                };
+            }
+            const scrollables = [panel, ...panel.querySelectorAll('*')].filter((el) => {
+                const style = getComputedStyle(el);
+                return (style.overflowY === 'auto' || style.overflowY === 'scroll')
+                    && el.scrollHeight > el.clientHeight;
+            });
+            scrollable.scrollTop = 200;
+            const topAt200 = aside.getBoundingClientRect().top;
+            const scrolledFrom = scrollable.scrollTop;
+            scrollable.scrollTop = 800;
+            const topAt800 = aside.getBoundingClientRect().top;
+            const scrolledBy = scrollable.scrollTop - scrolledFrom;
+            const movedBy = topAt200 - topAt800;
+            const scrollRect = scrollable.getBoundingClientRect();
+            const asideRect = aside.getBoundingClientRect();
+            return {
+                scrolled: scrollable.scrollTop > 0,
+                singleScrollable: scrollables.length === 1 && scrollables[0] === scrollable,
+                sidebarTallerThanView: aside.scrollHeight > scrollable.clientHeight,
+                sidebarMoved: movedBy >= scrolledBy - 10,
+                sidebarReachable: asideRect.bottom <= scrollRect.bottom + 1,
+            };
+        })()
+        JS;
+
+    $result = $page->script($probe);
+
+    expect($result['scrolled'])->toBeTrue('the modal body must actually scroll for this probe to mean anything');
+    expect($result['singleScrollable'])->toBeTrue('the whole modal body must scroll inside a single container');
+    expect($result['sidebarTallerThanView'])->toBeTrue('the sidebar must overflow the visible area for this probe to mean anything');
+    expect($result['sidebarMoved'])->toBeTrue('the sidebar must scroll along with the body instead of staying pinned');
+    expect($result['sidebarReachable'])->toBeTrue('the bottom of the sidebar must be reachable while the body scrolls');
+
+    $page->assertNoSmoke();
+});
+
 it('keeps the close button pinned to the modal top while the content scrolls', function () {
     [$owner, $workspace, $project] = setupBrowserWorkspace(withProject: true);
     app(WorkspaceContext::class)->set($workspace);

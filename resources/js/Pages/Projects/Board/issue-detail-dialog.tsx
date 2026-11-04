@@ -6,7 +6,9 @@ import type {
     IssueDetail as IssueDetailType,
     TimeEntry,
 } from '@/Pages/Issues/Show/types';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogClose, DialogContent } from '@/components/ui/dialog';
+import { XIcon } from 'lucide-react';
 import { router } from '@inertiajs/react';
 import type { LabelRef, UserRef } from '@/types';
 
@@ -77,9 +79,13 @@ export function IssueDetailDialog({ projectId, filters, parentsOnly, detail }: I
             <DialogContent
                 data-test="issue-detail-dialog"
                 className="flex max-h-[88vh] flex-col gap-0 p-0 sm:max-w-5xl"
+                showCloseButton={false}
             >
-                <div data-test="issue-detail-scroll" className="min-h-0 flex-1 overflow-y-auto p-6">
-                    <div className="flex items-center gap-1.5 pb-4">
+                <div
+                    data-test="issue-modal-header"
+                    className="flex shrink-0 items-center justify-between border-b px-6 py-3"
+                >
+                    <div className="flex items-center gap-1.5">
                         <span
                             data-test="issue-ulid"
                             className="font-mono text-xs text-muted-foreground tabular-nums"
@@ -88,6 +94,12 @@ export function IssueDetailDialog({ projectId, filters, parentsOnly, detail }: I
                         </span>
                         <CopyIssueIdButton issueId={detail.issue.id} />
                     </div>
+                    <DialogClose render={<Button variant="ghost" size="icon-sm" />}>
+                        <XIcon />
+                        <span className="sr-only">Close</span>
+                    </DialogClose>
+                </div>
+                <div data-test="issue-detail-scroll" className="min-h-0 flex-1 overflow-y-auto p-6">
                     <IssueDetail
                         issue={detail.issue}
                         comments={detail.comments}
@@ -99,6 +111,7 @@ export function IssueDetailDialog({ projectId, filters, parentsOnly, detail }: I
                         candidates={detail.candidates}
                         dependencyCandidates={detail.dependencyCandidates}
                         projects={detail.projects}
+                        sidebarSticky={false}
                         buildIssueHref={(issueId) => boardIssueUrl(projectId, filters, parentsOnly, issueId)}
                     />
                 </div>
