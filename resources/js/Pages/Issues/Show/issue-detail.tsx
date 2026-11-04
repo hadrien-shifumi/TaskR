@@ -23,6 +23,8 @@ type IssueDetailProps = {
     labels: LabelRef[];
     candidates: { id: string; title: string }[];
     dependencyCandidates: { id: string; title: string }[];
+    /** Nameable projects of the workspace, for the knowledge pages' badges. */
+    projects: { id: string; name: string }[];
     /**
      * Builds the href of parent/child links. Defaults to the full issue
      * page; the board's issue modal passes a board URL with an `issue`
@@ -48,6 +50,7 @@ export function IssueDetail({
     labels,
     candidates,
     dependencyCandidates,
+    projects,
     buildIssueHref,
 }: IssueDetailProps) {
     const { t } = useTranslation();
@@ -142,6 +145,7 @@ export function IssueDetail({
                 labels={labels}
                 candidates={candidates}
                 dependencyCandidates={dependencyCandidates}
+                projects={projects}
                 buildIssueHref={buildIssueHref}
             />
         </div>

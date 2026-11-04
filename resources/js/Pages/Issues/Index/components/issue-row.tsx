@@ -1,4 +1,4 @@
-import { AvatarStack, BlockedBadge, PriorityBadge, StatusBadge } from '@/components/issue-badges';
+import { AvatarStack, BlockedBadge, KnowledgeBadge, PriorityBadge, StatusBadge } from '@/components/issue-badges';
 import { Badge } from '@/components/ui/badge';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
@@ -35,6 +35,7 @@ export function IssueTableRow({ issue }: { issue: IssueRow }) {
                         </Link>
                     )}
                     <BlockedBadge blocked={issue.blocked} unblockable={issue.unblockable} />
+                    <KnowledgeBadge count={issue.knowledgePagesCount} titles={issue.knowledgePageTitles} />
                 </span>
                 <span className="mt-0.5 block font-mono text-xs text-muted-foreground tabular-nums select-all">
                     {issue.id.slice(0, 7)} · {issue.project.name}

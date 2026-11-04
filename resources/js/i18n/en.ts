@@ -173,6 +173,7 @@ const en = {
     issueBadges: {
         blocked: "Blocked",
         unblockable: "Unblockable",
+        knowledgeTooltip: "Knowledge base: {{titles}}",
     },
 
     issueShow: {
@@ -259,6 +260,23 @@ const en = {
         dependenciesDialogHint:
             "Pick the tickets that must be finished before this one · cycles are forbidden.",
         saveDependencies: "Save",
+        linkPages: "Link pages",
+        noKnowledgePages: "No linked pages.",
+        knowledgeHint: "The workspace's documentation memory — link the pages relevant to this issue.",
+        knowledgeDialogTitle: "Manage linked pages",
+        knowledgeDialogHint:
+            "Search semantically and check the pages to link — unchecking removes the link. Saving replaces the whole list.",
+        knowledgeDialogEmpty: "Search and check the pages to link.",
+        knowledgeLinkedPages: "Linked pages",
+        knowledgeSearchResults: "Results",
+        knowledgeTrashed: "in trash",
+        knowledgeTrashedDetached:
+            "A page in the trash cannot stay linked: saving removes its link.",
+        knowledgeLinkRefused: "Linking refused:",
+        knowledgeLinkError:
+            "at least one page cannot be linked — out of perimeter or in the trash.",
+        knowledgeSetError: "the pages could not be linked.",
+        knowledgeSearchError: "The search failed — try again.",
     },
 
     comments: {
@@ -805,6 +823,8 @@ const en = {
                 parent_removed: "Parent removed",
                 archived: "Issue archived",
                 restored: "Issue restored",
+                knowledge_linked: "Pages linked",
+                knowledge_unlinked: "Pages unlinked",
             },
             comment: {
                 created: "Comment added",

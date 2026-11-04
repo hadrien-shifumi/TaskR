@@ -11,6 +11,7 @@ use App\Presenters\Comments\CommentPresenter;
 use App\Presenters\Issues\IssuePresenter;
 use App\Presenters\Labels\LabelPresenter;
 use App\Presenters\Projects\ProjectMemberPresenter;
+use App\Presenters\Projects\ProjectPresenter;
 use App\Presenters\Statuses\StatusPresenter;
 use App\Presenters\TimeTracking\TimeEntryPresenter;
 use App\Responders\Issues\IssuePageResponder;
@@ -72,6 +73,8 @@ class ShowIssuePage
             ->values()
             ->all();
 
+        app(LoadIssueKnowledgePages::class)->handle($issue, $user);
+
         $detail = IssuePresenter::detail($issue, $parent, $children);
         $detail['blocks'] = $this->withDependentBlockerIds($detail['blocks'], $issue);
 
@@ -85,6 +88,7 @@ class ShowIssuePage
             'labels' => $workspace->labels()->orderBy('name')->get()->map(fn ($label) => LabelPresenter::present($label))->all(),
             'candidates' => $this->candidateParents($issue, $user),
             'dependencyCandidates' => $this->dependencyCandidates($issue, $user),
+            'projects' => $this->projectOptions($workspace, $user),
         ];
     }
 
@@ -93,6 +97,27 @@ class ShowIssuePage
         $workspace = app(WorkspaceContext::class)->getOrFail();
 
         return $responder->toResponse($request, $this->handle($workspace, $issue, $request->user()));
+    }
+
+    /**
+     * Nameable projects for the knowledge section's project badges: the
+     * whole workspace for a full member, the guest's perimeter only
+     * otherwise — same scoping as the knowledge page's sidebar.
+     *
+     * @return array<int, array{id: string, name: string}>
+     */
+    private function projectOptions(Workspace $workspace, ?User $user): array
+    {
+        $scope = $user !== null
+            ? app(WorkspaceContext::class)->accessibleProjectIds($user)
+            : null;
+
+        return $workspace->projects()
+            ->when($scope !== null, fn ($query) => $query->whereIn('id', $scope))
+            ->orderBy('name')
+            ->get()
+            ->map(fn ($project) => ProjectPresenter::option($project))
+            ->all();
     }
 
     /**
