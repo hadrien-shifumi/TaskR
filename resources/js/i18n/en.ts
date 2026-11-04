@@ -588,6 +588,7 @@ const en = {
     settings: {
         sectionsAria: "Settings sections",
         sections: {
+            account: "Account",
             statuses: "Statuses",
             members: "Members",
             templates: "Issue templates",
@@ -715,6 +716,17 @@ const en = {
         timezoneLabel: "Timezone",
         save: "Save preferences",
         optOutHint: "Opting out keeps your other settings: you can turn the digest back on at any time.",
+    },
+
+    accountPage: {
+        description: "Change the password of your Taskr account.",
+        currentPassword: "Current password",
+        newPassword: "New password",
+        passwordHint: "8 characters minimum",
+        confirmPassword: "Confirm new password",
+        submit: "Update password",
+        securityHint: "If you suspect your account has been compromised, also revoke your API tokens:",
+        securityHintLink: "manage my API tokens",
     },
 
     knowledge: {

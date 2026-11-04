@@ -103,6 +103,7 @@ return [
     'password' => [
         'reset_link_sent' => 'Si un compte existe pour cette adresse e-mail, un lien de réinitialisation vient d\'être envoyé. Il est valable une heure.',
         'reset_done' => 'Votre mot de passe a été mis à jour. Vous pouvez maintenant vous connecter avec votre nouveau mot de passe.',
+        'updated' => 'Votre mot de passe a été mis à jour.',
     ],
 
 ];
