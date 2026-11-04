@@ -2,9 +2,11 @@ import { PriorityBadge, StatusBadge } from '@/components/issue-badges';
 import { Badge } from '@/components/ui/badge';
 import { Link } from '@inertiajs/react';
 import { CornerDownRight } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { LabelRef, UserRef } from '@/types';
 import { ActivitySection } from './components/activity-section';
+import { scrollToComment } from './components/comment-anchor';
 import { CommentsSection } from './components/comments-section';
 import { DescriptionSection } from './components/description-section';
 import { formatDate } from './components/format';
@@ -62,7 +64,49 @@ export function IssueDetail({
 }: IssueDetailProps) {
     const { t } = useTranslation();
 
+    // Both thread sections fold by default to keep the fiche compact; the
+    // state lives here so the activity timeline can unfold the comments
+    // thread before jumping to a comment.
+    const [commentsOpen, setCommentsOpen] = useState(false);
+    const [activityOpen, setActivityOpen] = useState(false);
+    // Comment to scroll to once the comments panel has rendered.
+    const [pendingJumpCommentId, setPendingJumpCommentId] = useState<string | null>(null);
+
     const issueHref = (issueId: string) => buildIssueHref?.(issueId) ?? route('issues.show', issueId);
+
+    /**
+     * Reaches a live comment from the timeline: opens the comments accordion
+     * when folded (the scroll happens once the panel has rendered, see the
+     * effect below), scrolls and flashes right away otherwise. Returns false
+     * when the comment no longer exists so the row falls back to its
+     * journal snapshot.
+     */
+    const jumpToComment = (commentId: string): boolean => {
+        if (!comments.some((comment) => comment.id === commentId)) {
+            return false;
+        }
+
+        if (commentsOpen) {
+            scrollToComment(commentId);
+            return true;
+        }
+
+        setPendingJumpCommentId(commentId);
+        setCommentsOpen(true);
+        return true;
+    };
+
+    // The anchor only exists after the comments panel has rendered: scroll
+    // and flash the pending comment on the first render following the fold.
+    useEffect(() => {
+        if (!commentsOpen || pendingJumpCommentId === null) {
+            return;
+        }
+
+        const commentId = pendingJumpCommentId;
+        setPendingJumpCommentId(null);
+        scrollToComment(commentId);
+    }, [commentsOpen, pendingJumpCommentId]);
 
     return (
         <div className="grid items-start gap-7 lg:grid-cols-[1fr_280px]">
@@ -140,9 +184,19 @@ export function IssueDetail({
 
                 <TimeEntriesSection issue={issue} timeEntries={timeEntries} />
 
-                <CommentsSection issueId={issue.id} comments={comments} />
+                <CommentsSection
+                    issueId={issue.id}
+                    comments={comments}
+                    open={commentsOpen}
+                    onOpenChange={setCommentsOpen}
+                />
 
-                <ActivitySection events={activity} />
+                <ActivitySection
+                    events={activity}
+                    open={activityOpen}
+                    onOpenChange={setActivityOpen}
+                    onJumpToComment={jumpToComment}
+                />
             </div>
 
             <IssueSidebar

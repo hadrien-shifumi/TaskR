@@ -3,24 +3,90 @@ import { MentionAutocomplete } from '@/components/mention-autocomplete';
 import { Button } from '@/components/ui/button';
 import { MarkdownView } from '@/components/ui/markdown-editor';
 import { router, useForm, usePage } from '@inertiajs/react';
-import { Pencil, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { ChevronDown, ChevronRight, Pencil, Trash2 } from 'lucide-react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { CommentItem } from '../types';
 import { commentAnchorId } from './comment-anchor';
 import { timeAgo } from './format';
-import { SectionHead } from './section-head';
+import { SectionAccordion } from './section-accordion';
+
+/** Visible lines of a folded comment body. */
+const CLAMP_CLASS = 'line-clamp-6';
+
+/** Sub-pixel tolerance of the overflow probe. */
+const OVERFLOW_TOLERANCE_PX = 1;
+
+type CommentBodyProps = {
+    comment: CommentItem;
+};
+
+/**
+ * Read-only comment body. Long bodies fold to a few lines with a dedicated
+ * show more / show less control (never an onClick on the body itself, so
+ * markdown links stay clickable); the control only renders when the content
+ * actually overflows the clamp, measured on the folded box.
+ */
+function CommentBody({ comment }: CommentBodyProps) {
+    const { t } = useTranslation();
+    const [expanded, setExpanded] = useState(false);
+    const [overflowing, setOverflowing] = useState(false);
+    const bodyRef = useRef<HTMLDivElement | null>(null);
+
+    // Only measure while folded: the measured result must survive unfolding,
+    // otherwise "show less" would vanish the moment the body is expanded.
+    useLayoutEffect(() => {
+        if (expanded) {
+            return;
+        }
+
+        const element = bodyRef.current;
+        if (element === null) {
+            return;
+        }
+
+        setOverflowing(element.scrollHeight > element.clientHeight + OVERFLOW_TOLERANCE_PX);
+    }, [expanded, comment.body]);
+
+    return (
+        <div className="mt-0.5">
+            <div
+                ref={bodyRef}
+                data-test="comment-clamp"
+                className={expanded ? undefined : CLAMP_CLASS}
+            >
+                <MarkdownView value={comment.body} className="text-[13.5px]" />
+            </div>
+            {overflowing ? (
+                <Button
+                    type="button"
+                    variant="ghost"
+                    size="xs"
+                    data-test={expanded ? 'comment-collapse' : 'comment-expand'}
+                    className="-ml-2 text-xs text-muted-foreground"
+                    onClick={() => setExpanded((value) => !value)}
+                >
+                    {expanded ? <ChevronDown aria-hidden /> : <ChevronRight aria-hidden />}
+                    {expanded ? t('comments.showLess') : t('comments.showMore')}
+                </Button>
+            ) : null}
+        </div>
+    );
+}
 
 type CommentsSectionProps = {
     issueId: string;
     comments: CommentItem[];
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
 };
 
 /**
- * Maquette issue-comments: markdown bodies, author-only actions revealed on
- * hover, and a comment box (avatar + textarea + Preview / Comment).
+ * Maquette issue-comments: an accordion section (folded by default) holding
+ * markdown bodies with author-only actions revealed on hover, and a comment
+ * box (avatar + textarea + Preview / Comment).
  */
-export function CommentsSection({ issueId, comments }: CommentsSectionProps) {
+export function CommentsSection({ issueId, comments, open, onOpenChange }: CommentsSectionProps) {
     const { auth } = usePage<{ auth: { user: { id: number; name: string } | null } }>().props;
     const { t } = useTranslation();
     const [editingComment, setEditingComment] = useState<string | null>(null);
@@ -52,130 +118,138 @@ export function CommentsSection({ issueId, comments }: CommentsSectionProps) {
     };
 
     return (
-        <section>
-            <SectionHead title={t('comments.title', { count: comments.length })} />
-            <ul className="divide-y">
-                {comments.map((comment) => (
-                    <li
-                        key={comment.id}
-                        id={commentAnchorId(comment.id)}
-                        className="group flex scroll-mt-24 gap-3 rounded-md py-3.5 transition-colors duration-700 [&.comment-flash]:bg-primary/10"
-                    >
-                        <Avatar name={comment.authorName} />
-                        <div className="min-w-0 flex-1">
-                            <div className="flex flex-wrap items-baseline gap-x-2">
-                                <span className="text-[13px] font-medium">{comment.authorName}</span>
-                                <span className="text-xs text-muted-foreground">
-                                    {comment.createdAt ? timeAgo(comment.createdAt) : ''}
-                                </span>
+        <section data-test="comments-section">
+            <SectionAccordion
+                title={t('comments.title', { count: comments.length })}
+                open={open}
+                onOpenChange={onOpenChange}
+                triggerTestId="comments-accordion-trigger"
+                panelTestId="comments-panel"
+                ariaLabel={t('comments.accordionLabel')}
+            >
+                <ul className="divide-y">
+                    {comments.map((comment) => (
+                        <li
+                            key={comment.id}
+                            id={commentAnchorId(comment.id)}
+                            className="group flex scroll-mt-24 gap-3 rounded-md py-3.5 transition-colors duration-700 [&.comment-flash]:bg-primary/10"
+                        >
+                            <Avatar name={comment.authorName} />
+                            <div className="min-w-0 flex-1">
+                                <div className="flex flex-wrap items-baseline gap-x-2">
+                                    <span className="text-[13px] font-medium">{comment.authorName}</span>
+                                    <span className="text-xs text-muted-foreground">
+                                        {comment.createdAt ? timeAgo(comment.createdAt) : ''}
+                                    </span>
+                                </div>
+                                {editingComment === comment.id ? (
+                                    <form onSubmit={(e) => submitCommentEdit(e, comment.id)} className="mt-2 grid gap-2">
+                                        <MentionAutocomplete
+                                            data-test="comment-edit-body"
+                                            value={commentEditForm.data.body}
+                                            onChange={(body) => commentEditForm.setData('body', body)}
+                                            required
+                                            maxLength={20000}
+                                        />
+                                        <div className="flex gap-2">
+                                            <Button
+                                                type="submit"
+                                                size="sm"
+                                                data-test="comment-edit-save"
+                                                disabled={commentEditForm.processing}
+                                            >
+                                                {t('common.save')}
+                                            </Button>
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => setEditingComment(null)}
+                                            >
+                                                {t('common.cancel')}
+                                            </Button>
+                                        </div>
+                                    </form>
+                                ) : (
+                                    <CommentBody comment={comment} />
+                                )}
                             </div>
-                            {editingComment === comment.id ? (
-                                <form onSubmit={(e) => submitCommentEdit(e, comment.id)} className="mt-2 grid gap-2">
-                                    <MentionAutocomplete
-                                        data-test="comment-edit-body"
-                                        value={commentEditForm.data.body}
-                                        onChange={(body) => commentEditForm.setData('body', body)}
-                                        required
-                                        maxLength={20000}
-                                    />
-                                    <div className="flex gap-2">
-                                        <Button
-                                            type="submit"
-                                            size="sm"
-                                            data-test="comment-edit-save"
-                                            disabled={commentEditForm.processing}
-                                        >
-                                            {t('common.save')}
-                                        </Button>
-                                        <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => setEditingComment(null)}
-                                        >
-                                            {t('common.cancel')}
-                                        </Button>
-                                    </div>
-                                </form>
-                            ) : (
-                                <MarkdownView value={comment.body} className="mt-0.5 text-[13.5px]" />
-                            )}
-                        </div>
-                        {auth.user && auth.user.id === comment.authorId ? (
-                            <span className="flex shrink-0 gap-0.5 self-start opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100 max-lg:opacity-100">
-                                <Button
-                                    variant="ghost"
-                                    size="icon-sm"
-                                    aria-label={t('comments.editBy', { name: comment.authorName })}
-                                    data-test="comment-edit"
-                                    onClick={() => {
-                                        setEditingComment(comment.id);
-                                        commentEditForm.setData('body', comment.body);
-                                    }}
-                                >
-                                    <Pencil aria-hidden />
-                                </Button>
-                                <Button
-                                    variant="ghost"
-                                    size="icon-sm"
-                                    aria-label={t('comments.deleteBy', { name: comment.authorName })}
-                                    data-test="comment-delete"
-                                    onClick={() => removeComment(comment.id)}
-                                >
-                                    <Trash2 aria-hidden />
-                                </Button>
-                            </span>
-                        ) : null}
-                    </li>
-                ))}
-            </ul>
+                            {auth.user && auth.user.id === comment.authorId ? (
+                                <span className="flex shrink-0 gap-0.5 self-start opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100 max-lg:opacity-100">
+                                    <Button
+                                        variant="ghost"
+                                        size="icon-sm"
+                                        aria-label={t('comments.editBy', { name: comment.authorName })}
+                                        data-test="comment-edit"
+                                        onClick={() => {
+                                            setEditingComment(comment.id);
+                                            commentEditForm.setData('body', comment.body);
+                                        }}
+                                    >
+                                        <Pencil aria-hidden />
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon-sm"
+                                        aria-label={t('comments.deleteBy', { name: comment.authorName })}
+                                        data-test="comment-delete"
+                                        onClick={() => removeComment(comment.id)}
+                                    >
+                                        <Trash2 aria-hidden />
+                                    </Button>
+                                </span>
+                            ) : null}
+                        </li>
+                    ))}
+                </ul>
 
-            <div className="mt-3.5 flex gap-3">
-                <Avatar name={auth.user?.name ?? '?'} />
-                <form onSubmit={submitComment} className="grid min-w-0 flex-1 gap-2">
-                    <span className="font-mono text-xs text-muted-foreground">{t('comments.addLabel')}</span>
-                    {previewing ? (
-                        <div
-                            data-test="comment-preview-view"
-                            className="min-h-[70px] rounded-lg border bg-card px-3.5 py-2.5"
-                        >
-                            {commentForm.data.body ? (
-                                <MarkdownView value={commentForm.data.body} className="text-[13.5px]" />
-                            ) : (
-                                <p className="text-sm italic text-muted-foreground">{t('issueShow.nothingToPreview')}</p>
-                            )}
+                <div className="mt-3.5 flex gap-3">
+                    <Avatar name={auth.user?.name ?? '?'} />
+                    <form onSubmit={submitComment} className="grid min-w-0 flex-1 gap-2">
+                        <span className="font-mono text-xs text-muted-foreground">{t('comments.addLabel')}</span>
+                        {previewing ? (
+                            <div
+                                data-test="comment-preview-view"
+                                className="min-h-[70px] rounded-lg border bg-card px-3.5 py-2.5"
+                            >
+                                {commentForm.data.body ? (
+                                    <MarkdownView value={commentForm.data.body} className="text-[13.5px]" />
+                                ) : (
+                                    <p className="text-sm italic text-muted-foreground">{t('issueShow.nothingToPreview')}</p>
+                                )}
+                            </div>
+                        ) : (
+                            <MentionAutocomplete
+                                data-test="comment-body"
+                                placeholder={t('comments.placeholder')}
+                                className="min-h-[70px]"
+                                value={commentForm.data.body}
+                                onChange={(body) => commentForm.setData('body', body)}
+                                required
+                                maxLength={20000}
+                                aria-invalid={commentForm.errors.body ? true : undefined}
+                            />
+                        )}
+                        {commentForm.errors.body ? (
+                            <p className="text-sm text-destructive">{commentForm.errors.body}</p>
+                        ) : null}
+                        <div className="flex justify-end gap-2">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                data-test="comment-preview"
+                                onClick={() => setPreviewing((value) => !value)}
+                            >
+                                {previewing ? t('issueShow.write') : t('issueShow.preview')}
+                            </Button>
+                            <Button type="submit" size="sm" data-test="comment-submit" disabled={commentForm.processing}>
+                                {t('comments.submit')}
+                            </Button>
                         </div>
-                    ) : (
-                        <MentionAutocomplete
-                            data-test="comment-body"
-                            placeholder={t('comments.placeholder')}
-                            className="min-h-[70px]"
-                            value={commentForm.data.body}
-                            onChange={(body) => commentForm.setData('body', body)}
-                            required
-                            maxLength={20000}
-                            aria-invalid={commentForm.errors.body ? true : undefined}
-                        />
-                    )}
-                    {commentForm.errors.body ? (
-                        <p className="text-sm text-destructive">{commentForm.errors.body}</p>
-                    ) : null}
-                    <div className="flex justify-end gap-2">
-                        <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            data-test="comment-preview"
-                            onClick={() => setPreviewing((value) => !value)}
-                        >
-                            {previewing ? t('issueShow.write') : t('issueShow.preview')}
-                        </Button>
-                        <Button type="submit" size="sm" data-test="comment-submit" disabled={commentForm.processing}>
-                            {t('comments.submit')}
-                        </Button>
-                    </div>
-                </form>
-            </div>
+                    </form>
+                </div>
+            </SectionAccordion>
         </section>
     );
 }

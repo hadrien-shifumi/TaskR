@@ -119,6 +119,9 @@ it('links a page to the issue from the dialog semantic search', function () {
     $page->assertVisible('@knowledge-page-link');
     $page->assertSee('Invoice settlement process');
     $page->assertNotPresent('@no-knowledge-pages');
+
+    // The journal folded with the rest of the fiche: open its accordion.
+    $page->click('[data-test="activity-accordion-trigger"]');
     $page->assertSee('Pages linked');
 
     app(WorkspaceContext::class)->set($workspace);
@@ -159,6 +162,9 @@ it('unlinks a page by unchecking it in the dialog', function () {
     $page->assertNotPresent('[data-slot="dialog-content"]');
     $page->assertVisible('@no-knowledge-pages');
     $page->assertNotPresent('@knowledge-page-link');
+
+    // The journal folded with the rest of the fiche: open its accordion.
+    $page->click('[data-test="activity-accordion-trigger"]');
     $page->assertSee('Pages unlinked');
 
     app(WorkspaceContext::class)->set($workspace);

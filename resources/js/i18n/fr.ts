@@ -287,6 +287,9 @@ const fr: typeof en = {
         submit: "Commenter",
         editBy: "Modifier le commentaire de {{name}}",
         deleteBy: "Supprimer le commentaire de {{name}}",
+        showMore: "Voir plus",
+        showLess: "Voir moins",
+        accordionLabel: "Replier ou déplier la section commentaires",
     },
 
     timeEntries: {
@@ -812,6 +815,7 @@ const fr: typeof en = {
         listChange: "{{values}}",
         viewComment: "Voir le commentaire",
         hideComment: "Masquer le commentaire",
+        accordionLabel: "Replier ou déplier la section activité",
         headTitle: "Activité — {{name}}",
         intro: "Journal des événements du projet, filtrable par acteur et par type.",
         filters: {

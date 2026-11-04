@@ -72,6 +72,9 @@ it('manages comments on an issue from the UI', function () {
 
     $page = visit('/issues/'.$issue->id);
 
+    // The comments accordion folds by default: open it to reach the box.
+    $page->click('[data-test="comments-accordion-trigger"]');
+
     // Add a comment as the author.
     $page->fill('textarea[placeholder="Add a comment..."]', 'Premier commentaire')
         ->click('@comment-submit');

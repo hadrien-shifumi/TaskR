@@ -23,6 +23,9 @@ it('shows the issue audit timeline newest first on the issue page', function () 
 
     $page = visit('/issues/'.$issue->id);
 
+    // The timeline is folded by default: open its accordion first.
+    $page->click('[data-test="activity-accordion-trigger"]');
+
     // The audit timeline lists the three journalled events with their i18n
     // type labels and the actor name.
     $page->assertSeeIn('[data-test="activity-section"]', 'Activity')
@@ -77,6 +80,9 @@ it('shows the audit timeline inside the board issue modal', function () {
     $page = visit("/projects/{$project->id}/board");
     $page->click("[data-test=\"board-card-{$issue->id}\"] a");
 
+    // The timeline folds by default inside the modal too: open its accordion.
+    $page->click('[data-test="issue-detail-dialog"] [data-test="activity-accordion-trigger"]');
+
     // The modal renders the same audit timeline as the full fiche.
     $page->assertSeeIn('[data-test="issue-detail-dialog"] [data-test="activity-section"]', 'Issue created')
         ->assertSeeIn('[data-test="issue-detail-dialog"] [data-test="activity-section"]', 'Status changed');
@@ -105,6 +111,9 @@ it('keeps a long comment out of the timeline and reaches it through its anchor',
 
     $page = visit('/issues/'.$issue->id);
 
+    // The timeline folds by default: open its accordion first.
+    $page->click('[data-test="activity-accordion-trigger"]');
+
     // The comment event is a single sentence: no changes list, no body dump.
     $page->assertPresent('[data-test="activity-event-row"]')
         ->assertSeeIn('[data-test="activity-section"]', 'Comment added')
@@ -124,8 +133,49 @@ it('keeps a long comment out of the timeline and reaches it through its anchor',
     expect($changeLists)->toBe(0);
 
     // Clicking the chevron scrolls to the comment in the thread and flashes
-    // it instead of duplicating its body in the timeline.
-    $page->click('[data-test="activity-event-row"]:has-text("Comment added") [data-test="activity-comment-toggle"]');
+    // it instead of duplicating its body in the timeline. The comments
+    // accordion is still folded: the jump must open it first so the anchor
+    // exists, then scroll and flash the target row.
+    $page->assertNotPresent('[data-test="comments-panel"]')
+        ->click('[data-test="activity-event-row"]:has-text("Comment added") [data-test="activity-comment-toggle"]')
+        ->assertPresent('[data-test="comments-panel"]');
+
+    $flashed = $page->script(<<<JS
+        (() => {
+            const target = document.getElementById('comment-{$comment->id}');
+
+            return target !== null && target.classList.contains('comment-flash');
+        })()
+        JS);
+
+    expect($flashed)->toBeTrue();
+
+    $page->assertMissing('[data-test="activity-comment-snapshot"]')
+        ->assertNoSmoke();
+});
+
+it('reaches a live comment from the modal timeline by opening the comments accordion', function () {
+    [$owner, $workspace, $project] = setupBrowserWorkspace(withProject: true);
+    app(WorkspaceContext::class)->set($workspace);
+    $issue = CreateIssue::run($workspace, [
+        'project_id' => $project->id,
+        'title' => 'Saut en modal',
+    ], $owner);
+    $comment = AddComment::run($issue, $owner, 'Vu en revue en modal');
+    $this->actingAs($owner);
+
+    $page = visit("/projects/{$project->id}/board");
+    $page->click("[data-test=\"board-card-{$issue->id}\"] a")
+        ->assertSeeIn('[data-test="issue-detail-dialog"] h1', 'Saut en modal');
+
+    // Both sections start folded inside the modal: open the timeline, then
+    // jump to the comment. The comments accordion must unfold first so the
+    // anchor exists, then the target row is scrolled and flashed.
+    $page->click('[data-test="issue-detail-dialog"] [data-test="activity-accordion-trigger"]')
+        ->assertNotPresent('[data-test="issue-detail-dialog"] [data-test="comments-panel"]')
+        ->click('[data-test="issue-detail-dialog"] [data-test="activity-comment-toggle"]')
+        ->assertPresent('[data-test="issue-detail-dialog"] [data-test="comments-panel"]')
+        ->assertSeeIn('[data-test="issue-detail-dialog"] [data-test="comments-panel"]', 'Vu en revue en modal');
 
     $flashed = $page->script(<<<JS
         (() => {
@@ -155,6 +205,9 @@ it('expands the journal snapshot of a deleted comment', function () {
 
     $page = visit('/issues/'.$issue->id);
 
+    // The timeline folds by default: open its accordion first.
+    $page->click('[data-test="activity-accordion-trigger"]');
+
     // The body is not dumped until the user asks for it.
     $page->assertSeeIn('[data-test="activity-section"]', 'Comment deleted')
         ->assertDontSeeIn('[data-test="activity-section"]', 'Ce commentaire va disparaitre');
@@ -182,6 +235,9 @@ it('never renders technical identifiers as timeline changes', function () {
     $this->actingAs($owner);
 
     $page = visit('/issues/'.$issue->id);
+
+    // The timeline folds by default: open its accordion first.
+    $page->click('[data-test="activity-accordion-trigger"]');
 
     // Field changes keep their before → after pair…
     $page->assertSeeIn('[data-test="activity-section"]', 'Backlog → In Progress');
