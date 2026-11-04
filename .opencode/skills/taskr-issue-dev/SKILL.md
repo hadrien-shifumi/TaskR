@@ -9,7 +9,7 @@ Every TaskR ticket follows this lifecycle, in this order. The `issue-dev` plugin
 
 ## Roles
 
-- **Orchestrator** runs `issue_dev`, dispatches the agents, verifies the diff, attests the knowledge review when nothing deserves an update.
+- **Orchestrator** runs `issue_dev`, creates and moves tickets, dispatches the agents, verifies the diff, attests the knowledge review when nothing deserves an update.
 - **Scout** (local model, free) does the research: one short functional comment on the issue, the full technical analysis in its report to the orchestrator.
 - **Dev / expert** implement and post their own plan, done, time and knowledge updates.
 

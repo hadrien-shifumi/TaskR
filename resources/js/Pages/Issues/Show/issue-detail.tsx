@@ -31,6 +31,12 @@ type IssueDetailProps = {
      * param so hierarchy navigation stays inside the modal.
      */
     buildIssueHref?: (issueId: string) => string;
+    /**
+     * Whether the sidebar pins below the page header while scrolling.
+     * Defaults to true (full page); the board's issue modal disables it
+     * so the whole body scrolls in a single container.
+     */
+    sidebarSticky?: boolean;
 };
 
 /**
@@ -52,6 +58,7 @@ export function IssueDetail({
     dependencyCandidates,
     projects,
     buildIssueHref,
+    sidebarSticky = true,
 }: IssueDetailProps) {
     const { t } = useTranslation();
 
@@ -147,6 +154,7 @@ export function IssueDetail({
                 dependencyCandidates={dependencyCandidates}
                 projects={projects}
                 buildIssueHref={buildIssueHref}
+                sticky={sidebarSticky}
             />
         </div>
     );
