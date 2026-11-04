@@ -81,8 +81,9 @@ class McpKnowledgeToolsTest extends TestCase
         );
 
         // 6 base tools + 3 trash tools (ListKnowledgeTrash, RestoreKnowledge, ForceDeleteKnowledge)
-        // + 3 versioning tools (ListKnowledgeVersions, RestoreKnowledgeVersion, CompareKnowledgeVersions).
-        $this->assertCount(12, $knowledgeTools);
+        // + 3 versioning tools (ListKnowledgeVersions, RestoreKnowledgeVersion, CompareKnowledgeVersions)
+        // + SetIssueKnowledge (link pages to an issue).
+        $this->assertCount(13, $knowledgeTools);
     }
 
     public function test_list_then_get_knowledge_immersion_flow(): void

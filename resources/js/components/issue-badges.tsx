@@ -71,6 +71,29 @@ export function BlockedBadge({ blocked, unblockable }: { blocked: boolean; unblo
     );
 }
 
+/** Knowledge-pages signal on the compact cards: « 📖 N » while at least one
+ *  page is linked, nothing otherwise. The native title tooltip lists the
+ *  linked page titles — no Tooltip component in the UI kit. */
+export function KnowledgeBadge({ count, titles }: { count: number; titles: string[] }) {
+    const { t } = useTranslation();
+
+    if (count <= 0) {
+        return null;
+    }
+
+    return (
+        <Badge
+            variant="secondary"
+            className="rounded-full bg-secondary/70 text-muted-foreground"
+            title={t('issueBadges.knowledgeTooltip', { titles: titles.join(', ') })}
+            data-test="issue-knowledge-badge"
+        >
+            <span aria-hidden>📖</span>
+            {count}
+        </Badge>
+    );
+}
+
 export function HealthBadge({ status }: { status: string | null }) {
     const { t } = useTranslation();
 

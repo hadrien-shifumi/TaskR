@@ -14,6 +14,17 @@ export type DependencyRef = {
  */
 export type BlocksRef = DependencyRef & { blockerIds: string[] };
 
+/**
+ * Knowledge page linked to the issue. Trashed pages stay linked and are
+ * flagged: the fiche shows them with an "in trash" badge.
+ */
+export type KnowledgePageRef = {
+    id: string;
+    title: string;
+    projectId: string | null;
+    trashed: boolean;
+};
+
 export type IssueDetail = {
     id: string;
     title: string;
@@ -43,6 +54,7 @@ export type IssueDetail = {
     blocks: BlocksRef[];
     isBlocked: boolean;
     isUnblockable: boolean;
+    knowledgePages: KnowledgePageRef[];
 };
 
 export type TimeEntry = {

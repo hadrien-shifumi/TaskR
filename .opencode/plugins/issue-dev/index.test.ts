@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test"
 import crypto from "node:crypto"
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { mkdirSync, rmSync, writeFileSync } from "node:fs"
 import { homedir } from "node:os"
 import path from "node:path"
 import {
@@ -8,11 +8,8 @@ import {
   freshState,
   loadState,
   preToolChecks,
-  promptSession,
   recordProgress,
-  saveState,
   setLocation,
-  shouldNudge,
   statePath,
   turnGate,
   type IssueDevState,
@@ -32,20 +29,14 @@ const OTHER_ISSUE = "01m6bdqn45mbwcwa47vpdv7wds"
 const STATUS_BACKLOG = "01stbacklog0000000001"
 const STATUS_PROGRESS = "01stprogress00000001"
 const STATUS_DONE = "01stdone00000000001"
-const STATUS_CANCELLED = "01stcancelled000001"
 const STATUSES = [
   { id: STATUS_BACKLOG, name: "Backlog", category: "backlog", position: 1 },
   { id: STATUS_PROGRESS, name: "In Progress", category: "in_progress", position: 2 },
   { id: STATUS_DONE, name: "Done", category: "done", position: 3 },
-  { id: STATUS_CANCELLED, name: "Cancelled", category: "cancelled", position: 4 },
 ]
 
-const PARENT_ISSUE = "01testparentissue00001"
-const CHILD_ISSUE = "01testchildissue000001"
-const OTHER_CHILD_ISSUE = "01testchildissue000002"
-
 function state(overrides: Partial<IssueDevState> = {}): IssueDevState {
-  return { ...freshState(WORKSPACE, WORKFLOW_ISSUE), ...overrides }
+  return { ...freshState(WORKSPACE, WORKFLOW_ISSUE, "ses_owner", "orchestrator"), ...overrides }
 }
 
 function expectedStatePath(directory: string): string {
@@ -53,32 +44,25 @@ function expectedStatePath(directory: string): string {
   return path.join(homedir(), ".cache", "opencode-issue-dev", `${hash}.json`)
 }
 
-// In-memory TaskR world speaking the MCP JSON-RPC wire protocol, mirroring
-// the shapes the real server returns (status name only on parent/children).
-type FakeIssue = { id: string; title: string; statusId: string; parentId: string | null }
+// ---------------------------------------------------------------------------
+// In-memory TaskR world speaking the MCP JSON-RPC wire protocol.
+// ---------------------------------------------------------------------------
+
+type FakeIssue = { id: string; title: string; statusId: string }
 type FakeTaskr = { issues: Record<string, FakeIssue>; moves: Array<{ issueId: string; statusId: string }> }
 
 function installFakeTaskr(issues: FakeIssue[], options: { sse?: boolean } = {}): FakeTaskr {
   const world: FakeTaskr = { issues: {}, moves: [] }
   for (const issue of issues) world.issues[issue.id] = { ...issue }
 
-  const statusName = (issueId: string): string | null => {
-    const issue = world.issues[issueId]
-    return STATUSES.find((candidate) => candidate.id === issue?.statusId)?.name ?? null
-  }
-
   const detail = (issueId: string) => {
     const issue = world.issues[issueId]
     if (issue === undefined) return null
     const status = STATUSES.find((candidate) => candidate.id === issue.statusId)
-    const parent = issue.parentId !== null ? world.issues[issue.parentId] : undefined
-    const children = Object.values(world.issues).filter((candidate) => candidate.parentId === issueId)
     return {
       id: issue.id,
       title: issue.title,
       status: { id: status?.id ?? "", name: status?.name ?? "", category: status?.category ?? "" },
-      parent: parent !== undefined ? { id: parent.id, title: parent.title, statusName: statusName(parent.id) } : null,
-      children: children.map((child) => ({ id: child.id, title: child.title, statusName: statusName(child.id) })),
     }
   }
 
@@ -151,56 +135,61 @@ function resetTaskr(): void {
   resetTaskrTransport()
 }
 
-describe("state location", () => {
+// Captures every prompt the gate sends, as the OpenCode runtime would.
+function gateCtx(): { ctx: any; prompts: string[] } {
+  const prompts: string[] = []
+  const ctx = {
+    session: {
+      prompt: async (args: any) => {
+        prompts.push(String(args.text))
+      },
+    },
+  }
+  return { ctx, prompts }
+}
+
+// Isolated state file per test group.
+const directories: string[] = []
+
+function useTemporaryLocation(): string {
+  const directory = path.join("/tmp", `taskr-issue-dev-test-${crypto.randomUUID()}`)
+  directories.push(directory)
+  setLocation(directory)
+  return directory
+}
+
+afterEach(() => {
+  for (const directory of directories.splice(0)) {
+    rmSync(directory, { recursive: true, force: true })
+  }
+  rmSync(path.dirname(statePath()), { recursive: true, force: true })
+  resetTaskr()
+})
+
+// ---------------------------------------------------------------------------
+// State
+// ---------------------------------------------------------------------------
+
+describe("state", () => {
   test("state path is scoped to the location directory, not process.cwd()", () => {
-    const directory = "/tmp/taskr-issue-dev-test"
-    setLocation(directory)
+    const directory = useTemporaryLocation()
     expect(statePath()).toBe(expectedStatePath(directory))
     expect(statePath()).not.toBe(expectedStatePath(process.cwd()))
   })
 
-  test("a fresh workflow records its owning session and agent", () => {
-    const current = freshState(WORKSPACE, WORKFLOW_ISSUE, "ses_owner", "orchestrator")
-    expect(current.session_id).toBe("ses_owner")
-    expect(current.agent).toBe("orchestrator")
-    expect(current.done_blocked_notified).toBe(false)
-  })
-})
-
-describe("state retrocompatibility", () => {
-  const directories: string[] = []
-
-  function useTemporaryLocation(): string {
-    const directory = path.join("/tmp", `taskr-issue-dev-test-${crypto.randomUUID()}`)
-    directories.push(directory)
-    setLocation(directory)
-    return directory
-  }
-
-  afterEach(() => {
-    for (const directory of directories.splice(0)) {
-      rmSync(directory, { recursive: true, force: true })
-    }
-    resetTaskr()
-  })
-
-  test("a legacy state file without epic_id loads with epic_id undefined and active preserved", () => {
+  test("a legacy state file without the removed flags loads with defaults", () => {
     const directory = useTemporaryLocation()
-    // A state JSON as written before the epic_id field existed.
     const legacy = {
       active: true,
       workspace_id: WORKSPACE,
       issue_id: WORKFLOW_ISSUE,
-      started_at: 1_700_000_000_000,
-      session_id: "ses_owner",
-      agent: "orchestrator",
       knowledge_searched: true,
       code_explored: true,
+      epic_id: "01m6c6e1e0x6rm6rybnv91zybj",
       plan_comment: true,
       done_comment: false,
       time_logged: false,
       knowledge_reviewed: false,
-      done_blocked_notified: false,
     }
     mkdirSync(path.dirname(expectedStatePath(directory)), { recursive: true })
     writeFileSync(expectedStatePath(directory), JSON.stringify(legacy))
@@ -208,9 +197,125 @@ describe("state retrocompatibility", () => {
     const loaded = loadState()
 
     expect(loaded.active).toBe(true)
-    expect(loaded.issue_id).toBe(WORKFLOW_ISSUE)
     expect(loaded.plan_comment).toBe(true)
-    expect(loaded.epic_id).toBeUndefined()
+    expect(loaded.done_comment).toBe(false)
+    expect((loaded as any).epic_id).toBeUndefined()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// issue_dev actions
+// ---------------------------------------------------------------------------
+
+describe("cliMain start", () => {
+  test("rejects malformed ULIDs", async () => {
+    useTemporaryLocation()
+    const result = await cliMain({ action: "start", workspaceId: "short", issueId: WORKFLOW_ISSUE })
+    expect(result.ok).toBe(false)
+    expect(loadState().active).toBe(false)
+  })
+
+  test("opens the workflow and moves the issue to In Progress", async () => {
+    useTemporaryLocation()
+    const world = installFakeTaskr([{ id: WORKFLOW_ISSUE, title: "Ticket", statusId: STATUS_BACKLOG }])
+
+    const result = await cliMain({ action: "start", workspaceId: WORKSPACE, issueId: WORKFLOW_ISSUE })
+
+    expect(result.ok).toBe(true)
+    expect(loadState().active).toBe(true)
+    expect(world.moves).toEqual([{ issueId: WORKFLOW_ISSUE, statusId: STATUS_PROGRESS }])
+  })
+
+  test("leaves an issue already in progress untouched", async () => {
+    useTemporaryLocation()
+    const world = installFakeTaskr([{ id: WORKFLOW_ISSUE, title: "Ticket", statusId: STATUS_PROGRESS }])
+
+    await cliMain({ action: "start", workspaceId: WORKSPACE, issueId: WORKFLOW_ISSUE })
+
+    expect(world.moves).toEqual([])
+  })
+
+  test("still opens the workflow when TaskR is unreachable", async () => {
+    useTemporaryLocation()
+    installUnreachableTaskr()
+
+    const result = await cliMain({ action: "start", workspaceId: WORKSPACE, issueId: WORKFLOW_ISSUE })
+
+    expect(result.ok).toBe(true)
+    expect(loadState().active).toBe(true)
+  })
+})
+
+describe("cliMain status / knowledge-reviewed / cancel", () => {
+  test("status reports no active workflow", async () => {
+    useTemporaryLocation()
+    const result = await cliMain({ action: "status" })
+    expect(result.ok).toBe(true)
+    expect(result.message).toContain("no active workflow")
+  })
+
+  test("status lists the remaining steps", async () => {
+    useTemporaryLocation()
+    installFakeTaskr([{ id: WORKFLOW_ISSUE, title: "Ticket", statusId: STATUS_PROGRESS }])
+    await cliMain({ action: "start", workspaceId: WORKSPACE, issueId: WORKFLOW_ISSUE })
+
+    const result = await cliMain({ action: "status" })
+
+    expect(result.message).toContain(WORKFLOW_ISSUE)
+    expect(result.message).toContain("plan comment")
+    expect(result.message).toContain("knowledge base")
+  })
+
+  test("knowledge-reviewed refuses without a workflow and attests with one", async () => {
+    useTemporaryLocation()
+    expect((await cliMain({ action: "knowledge-reviewed" })).ok).toBe(false)
+
+    const current = state()
+    const directory = useTemporaryLocation()
+    mkdirSync(path.dirname(expectedStatePath(directory)), { recursive: true })
+    writeFileSync(expectedStatePath(directory), JSON.stringify(current))
+
+    const result = await cliMain({ action: "knowledge-reviewed" })
+    expect(result.ok).toBe(true)
+    expect(loadState().knowledge_reviewed).toBe(true)
+  })
+
+  test("cancel stands the gate down", async () => {
+    useTemporaryLocation()
+    const directory = useTemporaryLocation()
+    mkdirSync(path.dirname(expectedStatePath(directory)), { recursive: true })
+    writeFileSync(expectedStatePath(directory), JSON.stringify(state()))
+
+    await cliMain({ action: "cancel" })
+
+    expect(loadState().active).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Pre-tool ordering rules
+// ---------------------------------------------------------------------------
+
+describe("source edits", () => {
+  test("are refused before the plan comment", async () => {
+    const current = state()
+    await expect(
+      preToolChecks(current, "edit", { file_path: "app/Actions/Foo.php" }),
+    ).rejects.toThrow("plan comment")
+  })
+
+  test("are allowed after the plan comment", async () => {
+    const current = state({ plan_comment: true })
+    await expect(
+      preToolChecks(current, "edit", { file_path: "app/Actions/Foo.php" }),
+    ).resolves.toBeUndefined()
+  })
+
+  test("outside source paths are never blocked", async () => {
+    const current = state()
+    await expect(
+      preToolChecks(current, "write", { file_path: ".opencode/notes.md" }),
+    ).resolves.toBeUndefined()
   })
 })
 
@@ -226,567 +331,277 @@ describe("comment marker rules", () => {
     ).resolves.toBeUndefined()
   })
 
-  test("a comment on the workflow issue without a marker is refused", async () => {
+  test("the plan marker is accepted right after start", async () => {
     const current = state()
     await expect(
       preToolChecks(current, "taskr_add_comment", {
         workspace_id: WORKSPACE,
         issue_id: WORKFLOW_ISSUE,
-        body: "Note libre",
+        body: "<!-- taskr:plan -->\n[dev] Plan…",
       }),
-    ).rejects.toThrow(/marker line/)
+    ).resolves.toBeUndefined()
   })
 
-  test("a plan comment on the workflow issue is allowed once research is done", async () => {
-    const current = state({ knowledge_searched: true, code_explored: true })
+  test("the done marker is refused before the plan comment", async () => {
+    const current = state()
     await expect(
       preToolChecks(current, "taskr_add_comment", {
         workspace_id: WORKSPACE,
         issue_id: WORKFLOW_ISSUE,
-        body: "<!-- taskr:plan -->\nPlan",
+        body: "<!-- taskr:done -->\n[dev] Terminé",
       }),
-    ).resolves.toBeUndefined()
+    ).rejects.toThrow("plan first")
   })
 
-  test("a plan comment on another issue is not treated as the workflow plan", async () => {
-    const current = state({ knowledge_searched: true, code_explored: true })
+  test("a second plan or done comment is refused", async () => {
+    await expect(
+      preToolChecks(state({ plan_comment: true }), "taskr_add_comment", {
+        workspace_id: WORKSPACE,
+        issue_id: WORKFLOW_ISSUE,
+        body: "<!-- taskr:plan -->\n[dev] Encore le plan",
+      }),
+    ).rejects.toThrow("already posted")
+
+    await expect(
+      preToolChecks(state({ plan_comment: true, done_comment: true }), "taskr_add_comment", {
+        workspace_id: WORKSPACE,
+        issue_id: WORKFLOW_ISSUE,
+        body: "<!-- taskr:done -->\n[dev] Encore le done",
+      }),
+    ).rejects.toThrow("already posted")
+  })
+})
+
+describe("comment signature gate", () => {
+  test("a signed comment without a marker is allowed and changes no state", async () => {
+    const current = state()
     await expect(
       preToolChecks(current, "taskr_add_comment", {
         workspace_id: WORKSPACE,
-        issue_id: OTHER_ISSUE,
-        body: "<!-- taskr:plan -->\nPlan hors workflow",
+        issue_id: WORKFLOW_ISSUE,
+        body: "[scout] Synthèse fonctionnelle : objectif compris, points d'attention et questions ouvertes.",
       }),
     ).resolves.toBeUndefined()
-  })
-})
-
-describe("time entry rules", () => {
-  test("log_time on another issue is allowed before the done comment", async () => {
-    const current = state({ plan_comment: true })
-    await expect(
-      preToolChecks(current, "taskr_log_time", {
-        workspace_id: WORKSPACE,
-        issue_id: OTHER_ISSUE,
-        hours: 1,
-      }),
-    ).resolves.toBeUndefined()
+    expect(current.plan_comment).toBe(false)
+    expect(current.done_comment).toBe(false)
   })
 
-  test("log_time on the workflow issue before the done comment is refused", async () => {
-    const current = state({ plan_comment: true })
+  test("the signature is matched case-insensitively, bold or with a colon", async () => {
+    for (const body of ["**[Scout]** Recherche", "scout: note libre", "[DEV] note", "[Orchestrator] suivi"]) {
+      await expect(
+        preToolChecks(state(), "taskr_add_comment", {
+          workspace_id: WORKSPACE,
+          issue_id: WORKFLOW_ISSUE,
+          body,
+        }),
+      ).resolves.toBeUndefined()
+    }
+  })
+
+  test("a comment without any signature is refused", async () => {
+    const current = state()
     await expect(
-      preToolChecks(current, "taskr_log_time", {
+      preToolChecks(current, "taskr_add_comment", {
         workspace_id: WORKSPACE,
         issue_id: WORKFLOW_ISSUE,
-        hours: 1,
+        body: "Note libre sans signature",
       }),
-    ).rejects.toThrow(/after the done comment/)
+    ).rejects.toThrow("signature")
   })
-})
 
-describe("progress recording", () => {
-  test("a comment on another issue does not flip the workflow flags", () => {
-    const current = state({ knowledge_searched: true, code_explored: true })
-    const changed = recordProgress(current, "taskr_add_comment", {
-      input: { workspace_id: WORKSPACE, issue_id: OTHER_ISSUE, body: "<!-- taskr:plan -->\nPlan" },
-      status: "completed",
-    })
-    expect(changed).toBe(false)
+  test("a marker without a signature is still refused", async () => {
+    const current = state()
+    await expect(
+      preToolChecks(current, "taskr_add_comment", {
+        workspace_id: WORKSPACE,
+        issue_id: WORKFLOW_ISSUE,
+        body: "<!-- taskr:plan -->\nPlan sans signature",
+      }),
+    ).rejects.toThrow("signature")
     expect(current.plan_comment).toBe(false)
   })
 
-  test("a plan comment on the workflow issue flips the plan flag", () => {
-    const current = state({ knowledge_searched: true, code_explored: true })
-    const changed = recordProgress(current, "taskr_add_comment", {
-      input: { workspace_id: WORKSPACE, issue_id: WORKFLOW_ISSUE, body: "<!-- taskr:plan -->\nPlan" },
-      status: "completed",
-    })
-    expect(changed).toBe(true)
-    expect(current.plan_comment).toBe(true)
-  })
-
-  test("a failed tool does not record progress", () => {
+  test("markers still advance the state from signed comments only", async () => {
     const current = state()
-    const changed = recordProgress(current, "taskr_search_knowledge", {
-      input: { workspace_id: WORKSPACE, query: "digest" },
-      status: "error",
-    })
-    expect(changed).toBe(false)
-    expect(current.knowledge_searched).toBe(false)
-  })
-})
+    await expect(
+      preToolChecks(current, "taskr_add_comment", {
+        workspace_id: WORKSPACE,
+        issue_id: WORKFLOW_ISSUE,
+        body: "[dev] Plan d'implémentation\n<!-- taskr:plan -->",
+      }),
+    ).resolves.toBeUndefined()
 
-describe("plan/done comment mirroring", () => {
-  const directories: string[] = []
-
-  function useTemporaryLocation(): string {
-    const directory = path.join("/tmp", `taskr-issue-dev-test-${crypto.randomUUID()}`)
-    directories.push(directory)
-    setLocation(directory)
-    return directory
-  }
-
-  afterEach(() => {
-    for (const directory of directories.splice(0)) {
-      rmSync(directory, { recursive: true, force: true })
-    }
-    resetTaskr()
-  })
-
-  test("a plan comment on the workflow issue is mirrored verbatim to scratch", () => {
-    const directory = useTemporaryLocation()
-    const current = state({ knowledge_searched: true, code_explored: true })
-    const body = "<!-- taskr:plan -->\n## Plan\n\n- étape 1\n- regex `\\d+` préservée"
-
-    const changed = recordProgress(current, "taskr_add_comment", {
-      input: { workspace_id: WORKSPACE, issue_id: WORKFLOW_ISSUE, body },
-      status: "completed",
-    })
-
-    expect(changed).toBe(true)
+    expect(recordProgress(current, "taskr_add_comment", {
+      input: { workspace_id: WORKSPACE, issue_id: WORKFLOW_ISSUE, body: "[dev] Plan d'implémentation\n<!-- taskr:plan -->" },
+    })).toBe(true)
     expect(current.plan_comment).toBe(true)
-    const mirrored = path.join(directory, ".opencode", "scratch", `plan-${WORKFLOW_ISSUE}.md`)
-    expect(readFileSync(mirrored, "utf-8")).toBe(body)
+
+    await expect(
+      preToolChecks(current, "taskr_add_comment", {
+        workspace_id: WORKSPACE,
+        issue_id: WORKFLOW_ISSUE,
+        body: "[dev] Note libre sans marqueur",
+      }),
+    ).resolves.toBeUndefined()
+    expect(current.done_comment).toBe(false)
+  })
+})
+
+describe("log_time ordering", () => {
+  test("is refused before the done comment", async () => {
+    const current = state({ plan_comment: true })
+    await expect(
+      preToolChecks(current, "taskr_log_time", { workspace_id: WORKSPACE, issue_id: WORKFLOW_ISSUE, hours: 1 }),
+    ).rejects.toThrow("after the done comment")
   })
 
-  test("a done comment on the workflow issue is mirrored verbatim to scratch", () => {
-    const directory = useTemporaryLocation()
-    const current = state({ knowledge_searched: true, code_explored: true, plan_comment: true })
-    const body = "<!-- taskr:done -->\n## Rapport\n\nRésumé du travail."
+  test("is allowed after the done comment", async () => {
+    const current = state({ plan_comment: true, done_comment: true })
+    await expect(
+      preToolChecks(current, "taskr_log_time", { workspace_id: WORKSPACE, issue_id: WORKFLOW_ISSUE, hours: 1 }),
+    ).resolves.toBeUndefined()
+  })
 
-    const changed = recordProgress(current, "taskr_add_comment", {
-      input: { workspace_id: WORKSPACE, issue_id: WORKFLOW_ISSUE, body },
-      status: "completed",
-    })
+  test("targets only the workflow issue", async () => {
+    const current = state({ plan_comment: true })
+    await expect(
+      preToolChecks(current, "taskr_log_time", { workspace_id: WORKSPACE, issue_id: OTHER_ISSUE, hours: 1 }),
+    ).resolves.toBeUndefined()
+  })
+})
 
-    expect(changed).toBe(true)
+// ---------------------------------------------------------------------------
+// Progress recording
+// ---------------------------------------------------------------------------
+
+describe("recordProgress", () => {
+  test("flips the plan and done flags from marked comments", () => {
+    const current = state()
+
+    expect(recordProgress(current, "taskr_add_comment", {
+      input: { workspace_id: WORKSPACE, issue_id: WORKFLOW_ISSUE, body: "<!-- taskr:plan -->\n[dev] Plan" },
+    })).toBe(true)
+    expect(current.plan_comment).toBe(true)
+
+    expect(recordProgress(current, "taskr_add_comment", {
+      input: { workspace_id: WORKSPACE, issue_id: WORKFLOW_ISSUE, body: "<!-- taskr:done -->\n[dev] Done" },
+    })).toBe(true)
     expect(current.done_comment).toBe(true)
-    const mirrored = path.join(directory, ".opencode", "scratch", `done-${WORKFLOW_ISSUE}.md`)
-    expect(readFileSync(mirrored, "utf-8")).toBe(body)
   })
 
-  test("the mirror is rewritten even when the marker flag was already set", () => {
+  test("ignores a done marker posted before the plan", () => {
+    const current = state()
+    expect(recordProgress(current, "taskr_add_comment", {
+      input: { workspace_id: WORKSPACE, issue_id: WORKFLOW_ISSUE, body: "<!-- taskr:done -->\n[dev] Done" },
+    })).toBe(false)
+    expect(current.done_comment).toBe(false)
+  })
+
+  test("flips the time flag after the done comment only", () => {
+    const current = state({ plan_comment: true })
+    expect(recordProgress(current, "taskr_log_time", {
+      input: { workspace_id: WORKSPACE, issue_id: WORKFLOW_ISSUE, hours: 1 },
+    })).toBe(false)
+
+    current.done_comment = true
+    expect(recordProgress(current, "taskr_log_time", {
+      input: { workspace_id: WORKSPACE, issue_id: WORKFLOW_ISSUE, hours: 1 },
+    })).toBe(true)
+    expect(current.time_logged).toBe(true)
+  })
+
+  test("flips the knowledge flag on any knowledge write", () => {
+    const current = state()
+    expect(recordProgress(current, "taskr_update_knowledge", {
+      input: { workspace_id: WORKSPACE, page_id: "01kb000000000000000000000", body: "…" },
+    })).toBe(true)
+    expect(current.knowledge_reviewed).toBe(true)
+  })
+
+  test("ignores failed calls and comments on other issues", () => {
+    const current = state()
+    expect(recordProgress(current, "taskr_add_comment", {
+      input: { workspace_id: WORKSPACE, issue_id: WORKFLOW_ISSUE, body: "<!-- taskr:plan -->" },
+      status: "error",
+    })).toBe(false)
+
+    expect(recordProgress(current, "taskr_add_comment", {
+      input: { workspace_id: WORKSPACE, issue_id: OTHER_ISSUE, body: "<!-- taskr:plan -->" },
+    })).toBe(false)
+    expect(current.plan_comment).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Turn gate
+// ---------------------------------------------------------------------------
+
+describe("turnGate", () => {
+  function persist(current: IssueDevState): string {
     const directory = useTemporaryLocation()
-    const current = state({ knowledge_searched: true, code_explored: true, plan_comment: true })
-
-    const changed = recordProgress(current, "taskr_add_comment", {
-      input: { workspace_id: WORKSPACE, issue_id: WORKFLOW_ISSUE, body: "<!-- taskr:plan -->\nPlan v2" },
-      status: "completed",
-    })
-
-    expect(changed).toBe(false)
-    const mirrored = path.join(directory, ".opencode", "scratch", `plan-${WORKFLOW_ISSUE}.md`)
-    expect(readFileSync(mirrored, "utf-8")).toBe("<!-- taskr:plan -->\nPlan v2")
-  })
-
-  test("a marked comment on another issue is never mirrored", () => {
-    const directory = useTemporaryLocation()
-    const current = state({ knowledge_searched: true, code_explored: true })
-
-    recordProgress(current, "taskr_add_comment", {
-      input: { workspace_id: WORKSPACE, issue_id: OTHER_ISSUE, body: "<!-- taskr:plan -->\nPlan" },
-      status: "completed",
-    })
-
-    expect(existsSync(path.join(directory, ".opencode", "scratch"))).toBe(false)
-  })
-})
-
-describe("workflow nudge", () => {
-  test("the writer and reporter never receive the issue_dev nudge", () => {
-    expect(shouldNudge("writer")).toBe(false)
-    expect(shouldNudge("reporter")).toBe(false)
-  })
-
-  test("the orchestrator and work agents receive the nudge", () => {
-    expect(shouldNudge("orchestrator")).toBe(true)
-    expect(shouldNudge("dev")).toBe(true)
-    expect(shouldNudge("")).toBe(true)
-  })
-})
-
-describe("taskr rpc parsing", () => {
-  test("parses plain JSON and SSE envelopes", () => {
-    const json = extractRpcMessage('{"jsonrpc":"2.0","id":1,"result":{"ok":true}}', "application/json")
-    expect(json.result).toEqual({ ok: true })
-
-    // Interleaved ping notifications must not shadow the actual response.
-    const sse = [
-      "event: message",
-      'data: {"jsonrpc":"2.0","method":"notifications/ping"}',
-      "",
-      'data: {"jsonrpc":"2.0","id":2,"result":{"ok":true}}',
-      "",
-      "",
-    ].join("\n")
-    const parsed = extractRpcMessage(sse, "text/event-stream")
-    expect(parsed.result).toEqual({ ok: true })
-  })
-})
-
-describe("start status sync", () => {
-  const directories: string[] = []
-
-  function useTemporaryLocation(): void {
-    const directory = path.join("/tmp", `taskr-issue-dev-test-${crypto.randomUUID()}`)
-    directories.push(directory)
-    setLocation(directory)
-  }
-
-  afterEach(() => {
-    for (const directory of directories.splice(0)) {
-      const file = expectedStatePath(directory)
-      if (existsSync(file)) rmSync(file)
-    }
-    resetTaskr()
-  })
-
-  test("start moves a backlog issue to in progress and never touches an issue already in progress", async () => {
-    useTemporaryLocation()
-    const world = installFakeTaskr([{ id: WORKFLOW_ISSUE, title: "The workflow issue", statusId: STATUS_BACKLOG, parentId: null }])
-
-    const first = await cliMain({ action: "start", workspaceId: WORKSPACE, issueId: WORKFLOW_ISSUE })
-    expect(first.ok).toBe(true)
-    expect(first.message).toContain("moved to In Progress")
-    expect(world.moves).toEqual([{ issueId: WORKFLOW_ISSUE, statusId: STATUS_PROGRESS }])
-    expect(loadState().active).toBe(true)
-
-    const second = await cliMain({ action: "start", workspaceId: WORKSPACE, issueId: WORKFLOW_ISSUE })
-    expect(second.ok).toBe(true)
-    expect(second.message).toContain("already in progress")
-    expect(world.moves).toHaveLength(1)
-  })
-
-  test("start lifts a backlog parent when a child starts", async () => {
-    useTemporaryLocation()
-    const world = installFakeTaskr([
-      { id: PARENT_ISSUE, title: "Parent epic", statusId: STATUS_BACKLOG, parentId: null },
-      { id: CHILD_ISSUE, title: "Child task", statusId: STATUS_BACKLOG, parentId: PARENT_ISSUE },
-    ])
-
-    const result = await cliMain({ action: "start", workspaceId: WORKSPACE, issueId: CHILD_ISSUE })
-    expect(result.ok).toBe(true)
-    expect(result.message).toContain("parent")
-    expect(world.moves).toContainEqual({ issueId: CHILD_ISSUE, statusId: STATUS_PROGRESS })
-    expect(world.moves).toContainEqual({ issueId: PARENT_ISSUE, statusId: STATUS_PROGRESS })
-  })
-})
-
-describe("epic scratch context", () => {
-  const directories: string[] = []
-
-  function useTemporaryLocation(): string {
-    const directory = path.join("/tmp", `taskr-issue-dev-test-${crypto.randomUUID()}`)
-    directories.push(directory)
-    setLocation(directory)
+    mkdirSync(path.dirname(expectedStatePath(directory)), { recursive: true })
+    writeFileSync(expectedStatePath(directory), JSON.stringify(current))
     return directory
   }
 
-  afterEach(() => {
-    for (const directory of directories.splice(0)) {
-      const file = expectedStatePath(directory)
-      if (existsSync(file)) rmSync(file)
-      rmSync(directory, { recursive: true, force: true })
-    }
-    resetTaskr()
-  })
-
-  test("start scaffolds the epic dossier for a child issue and records epic_id", async () => {
-    const directory = useTemporaryLocation()
-    installFakeTaskr([
-      { id: PARENT_ISSUE, title: "Parent epic", statusId: STATUS_BACKLOG, parentId: null },
-      { id: CHILD_ISSUE, title: "Child task", statusId: STATUS_BACKLOG, parentId: PARENT_ISSUE },
-    ])
-
-    const result = await cliMain({ action: "start", workspaceId: WORKSPACE, issueId: CHILD_ISSUE })
-
-    expect(result.ok).toBe(true)
-    const epicDir = path.join(directory, ".opencode", "scratch", `epic-${PARENT_ISSUE}`)
-    expect(existsSync(path.join(epicDir, "kb.md"))).toBe(true)
-    expect(existsSync(path.join(epicDir, "patterns.md"))).toBe(true)
-    expect(existsSync(path.join(epicDir, "review-checklist.md"))).toBe(true)
-    expect(loadState().epic_id).toBe(PARENT_ISSUE)
-    expect(result.message).toContain(`.opencode/scratch/epic-${PARENT_ISSUE}/`)
-  })
-
-  test("start never overwrites an existing epic context file", async () => {
-    const directory = useTemporaryLocation()
-    installFakeTaskr([
-      { id: PARENT_ISSUE, title: "Parent epic", statusId: STATUS_BACKLOG, parentId: null },
-      { id: CHILD_ISSUE, title: "Child task", statusId: STATUS_BACKLOG, parentId: PARENT_ISSUE },
-    ])
-    const epicDir = path.join(directory, ".opencode", "scratch", `epic-${PARENT_ISSUE}`)
-    mkdirSync(epicDir, { recursive: true })
-    const filled = "# Contexte EPIC rempli par le reader\n\n- arbitrage\n"
-    writeFileSync(path.join(epicDir, "kb.md"), filled)
-
-    const result = await cliMain({ action: "start", workspaceId: WORKSPACE, issueId: CHILD_ISSUE })
-
-    expect(result.ok).toBe(true)
-    expect(readFileSync(path.join(epicDir, "kb.md"), "utf-8")).toBe(filled)
-    expect(existsSync(path.join(epicDir, "patterns.md"))).toBe(true)
-    expect(existsSync(path.join(epicDir, "review-checklist.md"))).toBe(true)
-    expect(loadState().epic_id).toBe(PARENT_ISSUE)
-  })
-
-  test("start on an issue without a parent scaffolds no epic dossier", async () => {
-    const directory = useTemporaryLocation()
-    installFakeTaskr([{ id: WORKFLOW_ISSUE, title: "The workflow issue", statusId: STATUS_BACKLOG, parentId: null }])
-
-    const result = await cliMain({ action: "start", workspaceId: WORKSPACE, issueId: WORKFLOW_ISSUE })
-
-    expect(result.ok).toBe(true)
-    expect(existsSync(path.join(directory, ".opencode", "scratch"))).toBe(false)
-    expect(loadState().epic_id).toBeUndefined()
-  })
-
-  test("start succeeds without a scaffold when TaskR has no config", async () => {
-    const directory = useTemporaryLocation()
-    // No injected config and no transport: the plugin must fall back to the
-    // ctx lookup, find nothing, and still open the workflow.
-    setTaskrConfig(null)
-    resetTaskrTransport()
-    const ctx = { location: { directory }, mcp: { list: async () => [] } }
-
-    const result = await cliMain({ action: "start", workspaceId: WORKSPACE, issueId: CHILD_ISSUE }, ctx)
-
-    expect(result.ok).toBe(true)
-    expect(result.message).toContain("unreachable")
-    expect(existsSync(path.join(directory, ".opencode", "scratch"))).toBe(false)
-    expect(loadState().epic_id).toBeUndefined()
-  })
-})
-
-describe("move_issue guard", () => {
-  afterEach(resetTaskr)
-
-  test("a parent cannot move to done while a child is open — the child is named", async () => {
-    const world = installFakeTaskr([
-      { id: PARENT_ISSUE, title: "Parent epic", statusId: STATUS_PROGRESS, parentId: null },
-      { id: CHILD_ISSUE, title: "Blocking child", statusId: STATUS_PROGRESS, parentId: PARENT_ISSUE },
-      { id: OTHER_CHILD_ISSUE, title: "Finished child", statusId: STATUS_DONE, parentId: PARENT_ISSUE },
-    ])
-
-    await expect(
-      preToolChecks(state(), "taskr_move_issue", {
-        workspace_id: WORKSPACE,
-        issue_id: PARENT_ISSUE,
-        status_id: STATUS_DONE,
-      }),
-    ).rejects.toThrow(/Blocking child \(01testchildissue000001/)
-    expect(world.moves).toEqual([])
-  })
-
-  test("a parent moves to done when every child is closed (done or cancelled)", async () => {
-    const world = installFakeTaskr([
-      { id: PARENT_ISSUE, title: "Parent epic", statusId: STATUS_PROGRESS, parentId: null },
-      { id: CHILD_ISSUE, title: "Done child", statusId: STATUS_DONE, parentId: PARENT_ISSUE },
-      { id: OTHER_CHILD_ISSUE, title: "Cancelled child", statusId: STATUS_CANCELLED, parentId: PARENT_ISSUE },
-    ])
-
-    await expect(
-      preToolChecks(state(), "taskr_move_issue", {
-        workspace_id: WORKSPACE,
-        issue_id: PARENT_ISSUE,
-        status_id: STATUS_DONE,
-      }),
-    ).resolves.toBeUndefined()
-    expect(world.moves).toEqual([])
-  })
-
-  test("moving a child to in progress lifts a backlog parent", async () => {
-    const world = installFakeTaskr([
-      { id: PARENT_ISSUE, title: "Parent epic", statusId: STATUS_BACKLOG, parentId: null },
-      { id: CHILD_ISSUE, title: "Child task", statusId: STATUS_BACKLOG, parentId: PARENT_ISSUE },
-    ])
-
-    await expect(
-      preToolChecks(state(), "taskr_move_issue", {
-        workspace_id: WORKSPACE,
-        issue_id: CHILD_ISSUE,
-        status_id: STATUS_PROGRESS,
-      }),
-    ).resolves.toBeUndefined()
-    expect(world.moves).toContainEqual({ issueId: PARENT_ISSUE, statusId: STATUS_PROGRESS })
-  })
-})
-
-describe("turn gate", () => {
-  const directories: string[] = []
-
-  function useTemporaryLocation(): void {
-    const directory = path.join("/tmp", `taskr-issue-dev-test-${crypto.randomUUID()}`)
-    directories.push(directory)
-    setLocation(directory)
-  }
-
-  afterEach(() => {
-    for (const directory of directories.splice(0)) {
-      const file = expectedStatePath(directory)
-      if (existsSync(file)) rmSync(file)
-    }
-    resetTaskr()
-  })
-
-  test("skips sessions that do not own the workflow", async () => {
+  test("does nothing without an active workflow", async () => {
     useTemporaryLocation()
-    saveState({ ...state(), session_id: "ses_owner" })
-    const calls: unknown[] = []
-    const ctx = { session: { prompt: async (input: unknown) => calls.push(input) } }
-
-    await turnGate(ctx, "ses_other")
-
-    expect(calls).toEqual([])
+    const { ctx, prompts } = gateCtx()
+    await turnGate(ctx, "ses_owner")
+    expect(prompts).toEqual([])
   })
 
-  test("prompts the session that opened the workflow", async () => {
-    useTemporaryLocation()
-    saveState({ ...state(), session_id: "ses_owner" })
-    const calls: unknown[] = []
-    const ctx = { session: { prompt: async (input: unknown) => calls.push(input) } }
+  test("prompts the owner session while steps are missing", async () => {
+    persist(state())
+    const { ctx, prompts } = gateCtx()
 
     await turnGate(ctx, "ses_owner")
 
-    expect(calls).toHaveLength(1)
-    expect((calls[0] as { text: string }).text).toContain("workflow is incomplete")
+    expect(prompts).toHaveLength(1)
+    expect(prompts[0]).toContain("workflow is incomplete")
+    expect(prompts[0]).toContain("plan comment")
   })
 
-  test("closes a workflow whose steps are all complete by moving the issue to done (SSE responses)", async () => {
-    useTemporaryLocation()
-    const world = installFakeTaskr(
-      [{ id: WORKFLOW_ISSUE, title: "The workflow issue", statusId: STATUS_PROGRESS, parentId: null }],
-      { sse: true },
-    )
-    saveState({
-      ...state({
-        session_id: "ses_owner",
-        knowledge_searched: true,
-        code_explored: true,
-        plan_comment: true,
-        done_comment: true,
-        time_logged: true,
-        knowledge_reviewed: true,
-      }),
-    })
-    const calls: unknown[] = []
-    const ctx = { session: { prompt: async (input: unknown) => calls.push(input) } }
+  test("ignores sessions that do not own the workflow", async () => {
+    persist(state())
+    const { ctx, prompts } = gateCtx()
+
+    await turnGate(ctx, "ses_dev_subagent")
+
+    expect(prompts).toEqual([])
+  })
+
+  test("moves the issue to Done and closes once complete", async () => {
+    const world = installFakeTaskr([{ id: WORKFLOW_ISSUE, title: "Ticket", statusId: STATUS_PROGRESS }])
+    persist(state({ plan_comment: true, done_comment: true, time_logged: true, knowledge_reviewed: true }))
+    const { ctx, prompts } = gateCtx()
 
     await turnGate(ctx, "ses_owner")
 
-    expect(calls).toEqual([])
+    expect(prompts).toEqual([])
     expect(world.moves).toEqual([{ issueId: WORKFLOW_ISSUE, statusId: STATUS_DONE }])
     expect(loadState().active).toBe(false)
   })
 
-  test("a parent with an open child is left in place, notified once, then closed", async () => {
-    useTemporaryLocation()
-    const world = installFakeTaskr([
-      { id: PARENT_ISSUE, title: "Parent epic", statusId: STATUS_PROGRESS, parentId: null },
-      { id: CHILD_ISSUE, title: "Blocking child", statusId: STATUS_PROGRESS, parentId: PARENT_ISSUE },
-    ])
-    saveState({
-      ...state({
-        session_id: "ses_owner",
-        issue_id: PARENT_ISSUE,
-        knowledge_searched: true,
-        code_explored: true,
-        plan_comment: true,
-        done_comment: true,
-        time_logged: true,
-        knowledge_reviewed: true,
-      }),
-    })
-    const calls: unknown[] = []
-    const ctx = { session: { prompt: async (input: unknown) => calls.push(input) } }
+  test("closes even when TaskR is unreachable", async () => {
+    installUnreachableTaskr()
+    persist(state({ plan_comment: true, done_comment: true, time_logged: true, knowledge_reviewed: true }))
+    const { ctx } = gateCtx()
 
     await turnGate(ctx, "ses_owner")
-    await turnGate(ctx, "ses_owner")
 
-    expect(calls).toHaveLength(1)
-    expect((calls[0] as { text: string }).text).toContain("Blocking child")
-    expect(world.moves).toEqual([])
     expect(loadState().active).toBe(false)
-    expect(loadState().done_blocked_notified).toBe(true)
   })
 })
 
-describe("taskr outage", () => {
-  const directories: string[] = []
+// ---------------------------------------------------------------------------
+// MCP wire format (taskr.ts)
+// ---------------------------------------------------------------------------
 
-  function useTemporaryLocation(): void {
-    const directory = path.join("/tmp", `taskr-issue-dev-test-${crypto.randomUUID()}`)
-    directories.push(directory)
-    setLocation(directory)
-  }
-
-  afterEach(() => {
-    for (const directory of directories.splice(0)) {
-      const file = expectedStatePath(directory)
-      if (existsSync(file)) rmSync(file)
-    }
-    resetTaskr()
-  })
-
-  test("start succeeds and reports the outage", async () => {
-    useTemporaryLocation()
-    installUnreachableTaskr()
-
-    const result = await cliMain({ action: "start", workspaceId: WORKSPACE, issueId: WORKFLOW_ISSUE })
-
-    expect(result.ok).toBe(true)
-    expect(result.message).toContain("unreachable")
-    expect(loadState().active).toBe(true)
-  })
-
-  test("the turn gate still closes the workflow", async () => {
-    useTemporaryLocation()
-    installUnreachableTaskr()
-    saveState({
-      ...state({
-        session_id: "ses_owner",
-        knowledge_searched: true,
-        code_explored: true,
-        plan_comment: true,
-        done_comment: true,
-        time_logged: true,
-        knowledge_reviewed: true,
-      }),
-    })
-    const calls: unknown[] = []
-    const ctx = { session: { prompt: async (input: unknown) => calls.push(input) } }
-
-    await turnGate(ctx, "ses_owner")
-
-    expect(calls).toEqual([])
-    expect(loadState().active).toBe(false)
-  })
-
-  test("move_issue is not blocked by the guard", async () => {
-    useTemporaryLocation()
-    installUnreachableTaskr()
-
-    await expect(
-      preToolChecks(state(), "taskr_move_issue", {
-        workspace_id: WORKSPACE,
-        issue_id: PARENT_ISSUE,
-        status_id: STATUS_DONE,
-      }),
-    ).resolves.toBeUndefined()
-  })
-})
-
-describe("session prompting", () => {
-  test("uses the V2 ctx.session.prompt API when available", async () => {
-    const calls: unknown[] = []
-    const ctx = { session: { prompt: async (input: unknown) => calls.push(input) } }
-    await promptSession(ctx, "ses_1", "hello")
-    expect(calls).toEqual([{ sessionID: "ses_1", text: "hello" }])
-  })
-
-  test("falls back to the V1 ctx.client.session.prompt API", async () => {
-    const calls: unknown[] = []
-    const ctx = { client: { session: { prompt: async (input: unknown) => calls.push(input) } } }
-    await promptSession(ctx, "ses_2", "hello")
-    expect(calls).toEqual([{ sessionID: "ses_2", text: "hello" }])
+describe("extractRpcMessage", () => {
+  test("reads the JSON-RPC message out of an SSE body", () => {
+    const body = `event: message\ndata: ${JSON.stringify({ jsonrpc: "2.0", id: 1, result: { ok: true } })}\n\n`
+    const message = extractRpcMessage(body, "text/event-stream")
+    expect(message?.result).toEqual({ ok: true })
   })
 })

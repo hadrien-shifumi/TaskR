@@ -15,9 +15,11 @@ use Illuminate\Support\Collection;
 class IssuePresenter
 {
     /**
-     * Full card of the transverse issues list (list view, MCP layer).
+     * Full card of the transverse issues list (list view, MCP layer). The
+     * knowledge badge rides the loaded knowledgePages relation: the count
+     * and the tooltip titles, sorted by title.
      *
-     * @return array{id: string, title: string, project: array{id: string, name: string}, status: array{id: string, name: string, category: string}, priority: string, dueDate: string|null, overdue: bool, blocked: bool, unblockable: bool, assignees: array<int, array{id: int, name: string}>, labels: array<int, array{id: string, name: string, color: string}>}
+     * @return array{id: string, title: string, project: array{id: string, name: string}, status: array{id: string, name: string, category: string}, priority: string, dueDate: string|null, overdue: bool, blocked: bool, unblockable: bool, assignees: array<int, array{id: int, name: string}>, labels: array<int, array{id: string, name: string, color: string}>, knowledgePagesCount: int, knowledgePageTitles: array<int, string>}
      */
     public static function card(Issue $issue): array
     {
@@ -33,6 +35,8 @@ class IssuePresenter
             'unblockable' => self::isUnblockable($issue),
             'assignees' => self::assignees($issue),
             'labels' => $issue->labels->map(fn ($label) => ['id' => $label->id, 'name' => $label->name, 'color' => $label->color])->values()->all(),
+            'knowledgePagesCount' => $issue->knowledgePages->count(),
+            'knowledgePageTitles' => self::knowledgePageTitles($issue),
         ];
     }
 
@@ -41,7 +45,7 @@ class IssuePresenter
      * project and status wrappers (the board already carries them).
      *
      * @param  array<string, mixed>  $card  A card() result
-     * @return array{id: string, title: string, priority: string, dueDate: string|null, overdue: bool, blocked: bool, unblockable: bool, assignees: array<int, array{id: int, name: string}>, labels: array<int, array{id: string, name: string, color: string}>}
+     * @return array{id: string, title: string, priority: string, dueDate: string|null, overdue: bool, blocked: bool, unblockable: bool, assignees: array<int, array{id: int, name: string}>, labels: array<int, array{id: string, name: string, color: string}>, knowledgePagesCount: int, knowledgePageTitles: array<int, string>}
      */
     public static function kanbanCard(array $card): array
     {
@@ -55,13 +59,16 @@ class IssuePresenter
             'unblockable' => $card['unblockable'],
             'assignees' => $card['assignees'],
             'labels' => $card['labels'],
+            'knowledgePagesCount' => $card['knowledgePagesCount'],
+            'knowledgePageTitles' => $card['knowledgePageTitles'],
         ];
     }
 
     /**
-     * Card of a project board column.
+     * Card of a project board column. The knowledge badge rides the loaded
+     * knowledgePages relation, like card().
      *
-     * @return array{id: string, title: string, priority: string, dueDate: string|null, overdue: bool, blocked: bool, unblockable: bool, assignees: array<int, array{id: int, name: string}>}
+     * @return array{id: string, title: string, priority: string, dueDate: string|null, overdue: bool, blocked: bool, unblockable: bool, assignees: array<int, array{id: int, name: string}>, knowledgePagesCount: int, knowledgePageTitles: array<int, string>}
      */
     public static function boardCard(Issue $issue): array
     {
@@ -74,6 +81,8 @@ class IssuePresenter
             'blocked' => self::hasOpenBlocker($issue),
             'unblockable' => self::isUnblockable($issue),
             'assignees' => self::assignees($issue),
+            'knowledgePagesCount' => $issue->knowledgePages->count(),
+            'knowledgePageTitles' => self::knowledgePageTitles($issue),
         ];
     }
 
@@ -127,6 +136,7 @@ class IssuePresenter
             'children' => collect($children)->map(fn (Issue $child) => self::childSummary($child))->values()->all(),
             'blockedBy' => $issue->blockedBy->map(fn (Issue $blocker) => self::dependencySummary($blocker))->values()->all(),
             'blocks' => $issue->blocks->map(fn (Issue $dependent) => self::dependencySummary($dependent))->values()->all(),
+            'knowledgePages' => self::knowledgePages($issue),
             'isBlocked' => self::hasOpenBlocker($issue),
             'isUnblockable' => self::isUnblockable($issue),
         ];
@@ -194,6 +204,43 @@ class IssuePresenter
             'statusName' => $blocker->status?->name,
             'statusCategory' => $blocker->status?->category?->value,
         ];
+    }
+
+    /**
+     * Knowledge pages linked to the issue, ordered by title. The relation
+     * must be loaded by the querying action; trashed pages are kept and
+     * flagged, they only show up when the action loaded them withTrashed.
+     *
+     * @return array<int, array{id: string, title: string, projectId: string|null, trashed: bool}>
+     */
+    private static function knowledgePages(Issue $issue): array
+    {
+        return $issue->knowledgePages
+            ->sortBy('title')
+            ->map(fn ($page) => [
+                'id' => $page->id,
+                'title' => $page->title,
+                'projectId' => $page->project_id,
+                'trashed' => $page->trashed(),
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Titles of the linked knowledge pages, ordered by title — the tooltip
+     * of the compact cards' 📖 badge. The relation must be loaded by the
+     * querying action.
+     *
+     * @return array<int, string>
+     */
+    private static function knowledgePageTitles(Issue $issue): array
+    {
+        return $issue->knowledgePages
+            ->sortBy('title')
+            ->map(fn ($page) => $page->title)
+            ->values()
+            ->all();
     }
 
     /**

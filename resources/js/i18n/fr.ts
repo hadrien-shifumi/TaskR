@@ -172,6 +172,7 @@ const fr: typeof en = {
     issueBadges: {
         blocked: "Bloqué",
         unblockable: "Déblocable",
+        knowledgeTooltip: "Base de connaissances : {{titles}}",
     },
 
     issueShow: {
@@ -259,6 +260,23 @@ const fr: typeof en = {
         dependenciesDialogHint:
             "Sélectionnez les tickets à terminer avant celui-ci · cycles interdits.",
         saveDependencies: "Enregistrer",
+        linkPages: "Lier des pages",
+        noKnowledgePages: "Aucune page liée.",
+        knowledgeHint: "La mémoire documentaire de l'espace — liez les pages utiles à ce ticket.",
+        knowledgeDialogTitle: "Gérer les pages liées",
+        knowledgeDialogHint:
+            "Recherchez sémantiquement et cochez les pages à lier — décocher retire le lien. L'enregistrement remplace la liste complète.",
+        knowledgeDialogEmpty: "Recherchez et cochez les pages à lier.",
+        knowledgeLinkedPages: "Pages liées",
+        knowledgeSearchResults: "Résultats",
+        knowledgeTrashed: "en corbeille",
+        knowledgeTrashedDetached:
+            "Une page en corbeille ne peut pas rester liée : l'enregistrement retire son lien.",
+        knowledgeLinkRefused: "Liaison refusée :",
+        knowledgeLinkError:
+            "au moins une page n'est pas liable — hors périmètre ou en corbeille.",
+        knowledgeSetError: "les pages n'ont pas pu être liées.",
+        knowledgeSearchError: "La recherche a échoué — réessayez.",
     },
 
     comments: {
@@ -823,6 +841,8 @@ const fr: typeof en = {
                 parent_removed: "Parent retiré",
                 archived: "Ticket archivé",
                 restored: "Ticket restauré",
+                knowledge_linked: "Pages liées",
+                knowledge_unlinked: "Pages déliées",
             },
             comment: {
                 created: "Commentaire ajouté",

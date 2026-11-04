@@ -48,6 +48,7 @@ use App\Mcp\Tools\SearchKnowledge;
 use App\Mcp\Tools\SetAssignees;
 use App\Mcp\Tools\SetIssueDependencies;
 use App\Mcp\Tools\SetIssueEstimate;
+use App\Mcp\Tools\SetIssueKnowledge;
 use App\Mcp\Tools\SetIssueParent;
 use App\Mcp\Tools\SetLabels;
 use App\Mcp\Tools\UpdateComment;
@@ -101,6 +102,7 @@ class TaskrServer extends Server
         SetAssignees::class,
         SetLabels::class,
         SetIssueEstimate::class,
+        SetIssueKnowledge::class,
         // Comments
         AddComment::class,
         ListComments::class,

@@ -3,6 +3,7 @@
 namespace App\Actions\Projects;
 
 use App\Actions\Concerns\AuthorizesWorkspaceAccess;
+use App\Actions\Issues\LoadIssueKnowledgePages;
 use App\Actions\Issues\ShowIssuePage;
 use App\Models\Issue;
 use App\Models\Project;
@@ -54,6 +55,7 @@ class ShowProjectBoard
         $issues = $project->issues()
             ->unarchived()
             ->with(['assignees', 'blockedBy.status'])
+            ->with(['knowledgePages' => LoadIssueKnowledgePages::cardConstraint($user)])
             ->when($parentsOnly, fn ($query) => $query->whereNull('parent_id'))
             ->when($assigneeId !== null, fn (Builder $query) => $query->whereHas('assignees', fn (Builder $q) => $q->where('users.id', $assigneeId)))
             ->orderBy('created_at')

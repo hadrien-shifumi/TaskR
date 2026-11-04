@@ -48,6 +48,7 @@ class ListIssues
 
         $query = Issue::query()
             ->with(['project', 'status', 'labels', 'assignees', 'blockedBy.status'])
+            ->with(['knowledgePages' => LoadIssueKnowledgePages::cardConstraint($user)])
             ->when($scope !== null, fn (Builder $issues) => $issues->whereIn('project_id', $scope));
 
         $this->applySort($query, $sort ?? ($filters['sort'] ?? null), $dir ?? ($filters['dir'] ?? null));

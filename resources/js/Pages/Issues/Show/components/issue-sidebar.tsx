@@ -25,6 +25,7 @@ import type { LabelRef, UserRef } from '@/types';
 import type { BlocksRef, IssueDetail } from '../types';
 import { EditDatesDialog } from './edit-dates-dialog';
 import { formatDate, formatHours, overdueDays } from './format';
+import { KnowledgeProjectBadge, LinkKnowledgeDialog } from './link-knowledge-dialog';
 import { SetDependenciesDialog } from './set-dependencies-dialog';
 import { SetParentDialog } from './set-parent-dialog';
 
@@ -35,6 +36,8 @@ type IssueSidebarProps = {
     labels: LabelRef[];
     candidates: { id: string; title: string }[];
     dependencyCandidates: { id: string; title: string }[];
+    /** Nameable projects of the workspace, for the knowledge pages' badges. */
+    projects: { id: string; name: string }[];
     /** Builds the parent link href — lets the board modal route in place. */
     buildIssueHref?: (issueId: string) => string;
 };
@@ -76,7 +79,8 @@ function PropAction({ children, ...props }: React.ComponentProps<'button'>) {
 
 /**
  * Maquette issue-properties: sticky card with the prop list — status,
- * priority, assignees, labels, due date, estimation, parent, dependencies.
+ * priority, assignees, labels, due date, estimation, parent, dependencies,
+ * knowledge pages.
  */
 export function IssueSidebar({
     issue,
@@ -85,12 +89,14 @@ export function IssueSidebar({
     labels,
     candidates,
     dependencyCandidates,
+    projects,
     buildIssueHref,
 }: IssueSidebarProps) {
     const { t } = useTranslation();
     const [datesOpen, setDatesOpen] = useState(false);
     const [parentOpen, setParentOpen] = useState(false);
     const [dependenciesOpen, setDependenciesOpen] = useState(false);
+    const [knowledgeOpen, setKnowledgeOpen] = useState(false);
     const [addingLabel, setAddingLabel] = useState(false);
 
     const issueHref = (issueId: string) => buildIssueHref?.(issueId) ?? route('issues.show', issueId);
@@ -511,6 +517,65 @@ export function IssueSidebar({
                             <span className="text-sm text-muted-foreground">—</span>
                         )}
                     </PropRow>
+
+                    <PropRow
+                        label={t('knowledge.title')}
+                        action={
+                            <PropAction
+                                data-test="knowledge-dialog-open"
+                                onClick={() => setKnowledgeOpen(true)}
+                            >
+                                {t('issueShow.linkPages')}
+                            </PropAction>
+                        }
+                        hint={t('issueShow.knowledgeHint')}
+                    >
+                        {issue.knowledgePages.length > 0 ? (
+                            <ul className="flex flex-col gap-1.5">
+                                {issue.knowledgePages.map((page) => (
+                                    <li key={page.id} className="flex items-center gap-2">
+                                        <Link
+                                            href={
+                                                page.projectId
+                                                    ? route('knowledge.show', {
+                                                          page: page.id,
+                                                          project: page.projectId,
+                                                      })
+                                                    : route('knowledge.show', page.id)
+                                            }
+                                            className="min-w-0 flex-1 truncate text-[13px] text-primary hover:underline"
+                                            data-test="knowledge-page-link"
+                                        >
+                                            {page.title}
+                                        </Link>
+                                        <KnowledgeProjectBadge
+                                            projectId={page.projectId}
+                                            name={
+                                                page.projectId
+                                                    ? (projects.find(
+                                                          (project) => project.id === page.projectId,
+                                                      )?.name ?? null)
+                                                    : null
+                                            }
+                                        />
+                                        {page.trashed ? (
+                                            <Badge
+                                                variant="secondary"
+                                                className="rounded-full bg-warning/10 text-warning"
+                                                data-test="knowledge-page-trashed"
+                                            >
+                                                {t('issueShow.knowledgeTrashed')}
+                                            </Badge>
+                                        ) : null}
+                                    </li>
+                                ))}
+                            </ul>
+                        ) : (
+                            <span className="text-sm text-muted-foreground" data-test="no-knowledge-pages">
+                                {t('issueShow.noKnowledgePages')}
+                            </span>
+                        )}
+                    </PropRow>
                 </CardContent>
             </Card>
 
@@ -526,6 +591,12 @@ export function IssueSidebar({
                 candidates={dependencyCandidates}
                 open={dependenciesOpen}
                 onClose={() => setDependenciesOpen(false)}
+            />
+            <LinkKnowledgeDialog
+                issue={issue}
+                projects={projects}
+                open={knowledgeOpen}
+                onClose={() => setKnowledgeOpen(false)}
             />
         </aside>
     );

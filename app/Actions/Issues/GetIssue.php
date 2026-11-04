@@ -31,6 +31,8 @@ class GetIssue
 
         $issue->load(['project', 'status', 'labels', 'assignees', 'timeEntries', 'creator', 'blockedBy.status', 'blocks.status']);
 
+        app(LoadIssueKnowledgePages::class)->handle($issue, $user);
+
         $parent = $issue->parent()
             ->with('status')
             ->first();

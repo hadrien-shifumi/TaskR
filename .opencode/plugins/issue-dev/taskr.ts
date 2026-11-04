@@ -1,7 +1,7 @@
 // taskr — minimal MCP JSON-RPC client for the TaskR server.
 //
 // The issue-dev plugin keeps the tracker statuses coherent with the
-// workflow (In Progress on start, Done at closure, parent/child rules).
+// workflow (In Progress on start, Done at closure).
 // It talks to the same remote MCP server the agent uses, over plain
 // fetch: initialize once per client, then tools/call with JSON or SSE
 // responses, inside a single ~8 s budget per operation.
@@ -21,14 +21,10 @@ export type TaskrConfig = { url: string; headers: Record<string, string> }
 
 export type TaskrStatus = { id: string; name: string; category: string; position: number }
 
-export type TaskrIssueRef = { id: string; title: string; statusName: string | null }
-
 export type TaskrIssue = {
   id: string
   title: string
   status: { id: string; name: string; category: string }
-  parent: TaskrIssueRef | null
-  children: TaskrIssueRef[]
 }
 
 // ---------------------------------------------------------------------------

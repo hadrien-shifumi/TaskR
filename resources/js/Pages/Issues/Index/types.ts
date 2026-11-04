@@ -12,6 +12,8 @@ export interface IssueRow {
     unblockable: boolean;
     assignees: UserRef[];
     labels: LabelRef[];
+    knowledgePagesCount: number;
+    knowledgePageTitles: string[];
 }
 
 export interface TemplateOption {
@@ -32,6 +34,8 @@ export interface KanbanIssue {
     unblockable: boolean;
     assignees: UserRef[];
     labels: LabelRef[];
+    knowledgePagesCount: number;
+    knowledgePageTitles: string[];
 }
 
 export interface KanbanColumn {

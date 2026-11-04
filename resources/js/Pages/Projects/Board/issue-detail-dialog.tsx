@@ -20,6 +20,8 @@ export type IssueDetailPayload = {
     labels: LabelRef[];
     candidates: { id: string; title: string }[];
     dependencyCandidates: { id: string; title: string }[];
+    /** Nameable projects of the workspace, for the knowledge pages' badges. */
+    projects: { id: string; name: string }[];
 };
 
 /**
@@ -96,6 +98,7 @@ export function IssueDetailDialog({ projectId, filters, parentsOnly, detail }: I
                         labels={detail.labels}
                         candidates={detail.candidates}
                         dependencyCandidates={detail.dependencyCandidates}
+                        projects={detail.projects}
                         buildIssueHref={(issueId) => boardIssueUrl(projectId, filters, parentsOnly, issueId)}
                     />
                 </div>
