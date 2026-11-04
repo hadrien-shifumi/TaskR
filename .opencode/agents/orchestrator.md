@@ -9,24 +9,24 @@ permissions:
     effect: deny
   - action: shell
     resource: "*"
-    effect: deny
+    effect: ask
   - action: shell
-    resource: "git diff*"
+    resource: "git diff *"
     effect: allow
   - action: shell
-    resource: "git status*"
+    resource: "git status *"
     effect: allow
   - action: shell
-    resource: "git log*"
+    resource: "git log *"
     effect: allow
   - action: shell
-    resource: "vendor/bin/phpunit*"
+    resource: "vendor/bin/phpunit *"
     effect: allow
   - action: shell
-    resource: "vendor/bin/pest*"
+    resource: "vendor/bin/pest *"
     effect: allow
   - action: shell
-    resource: "vendor/bin/pint --test*"
+    resource: "vendor/bin/pint --test *"
     effect: allow
   - action: subagent
     resource: "*"
