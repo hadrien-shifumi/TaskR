@@ -449,6 +449,22 @@ const fr: typeof en = {
             password: "Mot de passe",
             remember: "Se souvenir de moi",
             submit: "Se connecter",
+            forgot: "Mot de passe oublié ?",
+        },
+        forgot: {
+            title: "Mot de passe oublié",
+            subtitle: "Saisissez votre adresse e-mail et nous vous enverrons un lien de réinitialisation.",
+            email: "Email",
+            submit: "Envoyer le lien de réinitialisation",
+            backToLogin: "Retour à la connexion",
+        },
+        reset: {
+            title: "Choisissez un nouveau mot de passe",
+            subtitle: "Définissez le nouveau mot de passe de votre compte.",
+            email: "Email",
+            password: "Nouveau mot de passe",
+            confirmPassword: "Confirmez le nouveau mot de passe",
+            submit: "Mettre à jour le mot de passe",
         },
         register: {
             title: "Inscription",

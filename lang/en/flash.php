@@ -101,4 +101,9 @@ return [
 
     'joined_workspace' => 'You joined :name.',
 
+    'password' => [
+        'reset_link_sent' => 'If an account exists for this e-mail address, a reset link has been sent. It is valid for one hour.',
+        'reset_done' => 'Your password has been updated. You can now log in with your new password.',
+    ],
+
 ];

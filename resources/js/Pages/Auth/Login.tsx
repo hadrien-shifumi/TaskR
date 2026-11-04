@@ -93,6 +93,12 @@ export default function Login() {
                             <Label htmlFor="remember" className="text-sm font-normal">
                                 {t('auth.login.remember')}
                             </Label>
+                            <Link
+                                href={route('password.request')}
+                                className="ml-auto text-[13px] font-medium text-muted-foreground hover:text-foreground"
+                            >
+                                {t('auth.login.forgot')}
+                            </Link>
                         </div>
                         {/* The maquette sits the submit button 4px under the last field. */}
                         <Button type="submit" size="lg" className="-mt-2 w-full" disabled={processing}>

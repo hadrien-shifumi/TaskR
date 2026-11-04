@@ -38,4 +38,14 @@ return [
         ],
     ],
 
+    'reset' => [
+        'subject' => 'Réinitialisez votre mot de passe TaskR',
+        'greeting' => 'Bonjour :name,',
+        'intro' => 'Vous avez demandé la réinitialisation du mot de passe de votre compte TaskR. Cliquez sur le bouton ci-dessous pour choisir un nouveau mot de passe.',
+        'action' => 'Choisir un nouveau mot de passe',
+        'expiry' => 'Ce lien est valable une heure et ne peut être utilisé qu\'une seule fois.',
+        'ignore' => 'Si vous n\'êtes pas à l\'origine de cette demande, vous pouvez ignorer cet e-mail : votre mot de passe reste inchangé.',
+        'footer' => 'Cet e-mail a été envoyé par TaskR à la suite d\'une demande de réinitialisation pour :email.',
+    ],
+
 ];

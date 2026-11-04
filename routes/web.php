@@ -4,11 +4,15 @@ use App\Actions\Auth\CreateApiToken;
 use App\Actions\Auth\LoginUser;
 use App\Actions\Auth\LogoutUser;
 use App\Actions\Auth\RegisterUser;
+use App\Actions\Auth\ResetPassword;
 use App\Actions\Auth\RevokeApiToken;
+use App\Actions\Auth\SendPasswordResetLink;
 use App\Actions\Auth\ShowApiTokensPage;
+use App\Actions\Auth\ShowForgotPasswordPage;
 use App\Actions\Auth\ShowLoginPage;
 use App\Actions\Auth\ShowNotificationSettingsPage;
 use App\Actions\Auth\ShowRegistrationPage;
+use App\Actions\Auth\ShowResetPasswordPage;
 use App\Actions\Auth\UpdateNotificationPreferences;
 use App\Actions\Auth\UpdateUserLocale;
 use App\Actions\Comments\AddComment;
@@ -85,6 +89,11 @@ Route::middleware('guest')->group(function (): void {
     Route::post('/login', LoginUser::class)->name('login.attempt');
     Route::get('/register', ShowRegistrationPage::class)->name('register');
     Route::post('/register', RegisterUser::class)->name('register.store');
+
+    Route::get('/forgot-password', ShowForgotPasswordPage::class)->name('password.request');
+    Route::post('/forgot-password', SendPasswordResetLink::class)->name('password.email');
+    Route::get('/reset-password/{token}', ShowResetPasswordPage::class)->name('password.reset');
+    Route::post('/reset-password', ResetPassword::class)->name('password.update');
 });
 
 Route::post('/logout', LogoutUser::class)->middleware('auth')->name('logout');
