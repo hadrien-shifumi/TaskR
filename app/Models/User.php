@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Mail\ResetPasswordMail;
 use App\Support\HandleGenerator;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -14,6 +15,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Mail;
 use Laravel\Sanctum\HasApiTokens;
 
 #[Fillable(['name', 'email', 'password', 'locale', 'handle', 'current_workspace_id'])]
@@ -74,6 +76,15 @@ class User extends Authenticatable
     public function currentWorkspace(): BelongsTo
     {
         return $this->belongsTo(Workspace::class, 'current_workspace_id');
+    }
+
+    /**
+     * Password reset links use the TaskR reset mail (style and copy of the
+     * other transactional e-mails) instead of the framework default.
+     */
+    public function sendPasswordResetNotification($token): void
+    {
+        Mail::to($this->email)->locale($this->locale)->send(new ResetPasswordMail($this, $token));
     }
 
     /**

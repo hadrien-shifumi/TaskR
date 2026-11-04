@@ -446,6 +446,22 @@ const en = {
             password: "Password",
             remember: "Remember me",
             submit: "Log in",
+            forgot: "Forgot password?",
+        },
+        forgot: {
+            title: "Forgot password",
+            subtitle: "Enter your e-mail address and we will send you a reset link.",
+            email: "Email",
+            submit: "Send the reset link",
+            backToLogin: "Back to log in",
+        },
+        reset: {
+            title: "Choose a new password",
+            subtitle: "Define the new password for your account.",
+            email: "Email",
+            password: "New password",
+            confirmPassword: "Confirm new password",
+            submit: "Update password",
         },
         register: {
             title: "Register",

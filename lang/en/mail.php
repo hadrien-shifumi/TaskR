@@ -38,4 +38,14 @@ return [
         ],
     ],
 
+    'reset' => [
+        'subject' => 'Reset your TaskR password',
+        'greeting' => 'Hello :name,',
+        'intro' => 'You asked for a password reset for your TaskR account. Click the button below to choose a new password.',
+        'action' => 'Choose a new password',
+        'expiry' => 'This link is valid for one hour and can be used only once.',
+        'ignore' => 'If you did not request this reset, you can ignore this e-mail: your password stays unchanged.',
+        'footer' => 'This e-mail was sent by TaskR following a password reset request for :email.',
+    ],
+
 ];
