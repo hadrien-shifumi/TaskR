@@ -23,7 +23,7 @@ export default function InvitationEmailMismatch() {
                     <h1 className="text-[19px] font-semibold tracking-tight">
                         {t('auth.invitationMismatch.title')}
                     </h1>
-                    <p className="mt-1 text-sm text-muted-foreground">
+                    <p className="mt-1 text-sm text-muted-foreground" data-test="invitation-mismatch-message">
                         {t('auth.invitationMismatch.message', { email: invitation.email })}
                     </p>
                 </CardContent>

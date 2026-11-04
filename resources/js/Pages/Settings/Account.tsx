@@ -93,8 +93,12 @@ export default function Account() {
                             autoComplete="new-password"
                             value={form.data.password_confirmation}
                             onChange={(e) => form.setData('password_confirmation', e.target.value)}
+                            aria-invalid={form.errors.password_confirmation ? true : undefined}
                             data-test="account-confirm-password"
                         />
+                        {form.errors.password_confirmation ? (
+                            <p className="text-sm text-destructive">{form.errors.password_confirmation}</p>
+                        ) : null}
                     </div>
 
                     <div>

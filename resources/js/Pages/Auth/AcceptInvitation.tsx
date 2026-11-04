@@ -79,7 +79,7 @@ export default function AcceptInvitation() {
                         </div>
                     ) : null}
 
-                    <form className="grid gap-3" onSubmit={(e) => { e.preventDefault(); }}>
+                    <form className="grid gap-3" onSubmit={(e) => { e.preventDefault(); }} data-test="invitation-form">
                         <div className="grid gap-1.5">
                             <Label htmlFor="invitation-email">{t('auth.invitation.invitationEmail')}</Label>
                             <Input
@@ -88,6 +88,7 @@ export default function AcceptInvitation() {
                                 value={invitation.email}
                                 readOnly
                                 className="text-muted-foreground"
+                                data-test="invitation-email"
                             />
                         </div>
                         <Button
@@ -95,6 +96,7 @@ export default function AcceptInvitation() {
                             size="lg"
                             className="w-full"
                             onClick={() => router.get(route('login'), { redirect: invitation.acceptUrl })}
+                            data-test="invitation-accept"
                         >
                             {t('auth.invitation.accept')}
                         </Button>
@@ -103,6 +105,7 @@ export default function AcceptInvitation() {
                             variant="ghost"
                             className="w-full"
                             onClick={() => router.get(route('login'))}
+                            data-test="invitation-decline"
                         >
                             {t('auth.invitation.decline')}
                         </Button>

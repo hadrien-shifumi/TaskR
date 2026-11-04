@@ -34,7 +34,7 @@ export default function ForgotPassword() {
                         </Banner>
                     ) : null}
 
-                    <form onSubmit={submit} className="grid gap-3">
+                    <form onSubmit={submit} className="grid gap-3" data-test="forgot-password-form">
                         <div className="grid gap-1.5">
                             <Label htmlFor="email">{t('auth.forgot.email')}</Label>
                             <Input
@@ -46,10 +46,11 @@ export default function ForgotPassword() {
                                 value={data.email}
                                 onChange={(e) => setData('email', e.target.value)}
                                 aria-invalid={errors.email ? true : undefined}
+                                data-test="forgot-email"
                             />
                             {errors.email ? <p className="text-sm text-destructive">{errors.email}</p> : null}
                         </div>
-                        <Button type="submit" size="lg" className="w-full" disabled={processing}>
+                        <Button type="submit" size="lg" className="w-full" disabled={processing} data-test="forgot-submit">
                             {t('auth.forgot.submit')}
                         </Button>
                     </form>
