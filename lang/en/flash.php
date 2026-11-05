@@ -60,6 +60,10 @@ return [
         'updated' => 'Notification preferences saved.',
     ],
 
+    'general_settings' => [
+        'updated' => 'General settings saved.',
+    ],
+
     'token' => [
         'created' => 'API token created.',
         'revoked' => 'API token revoked.',

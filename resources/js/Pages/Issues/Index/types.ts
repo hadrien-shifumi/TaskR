@@ -10,6 +10,7 @@ export interface IssueRow {
     overdue: boolean;
     blocked: boolean;
     unblockable: boolean;
+    hasOpenChild: boolean;
     assignees: UserRef[];
     labels: LabelRef[];
     knowledgePagesCount: number;
@@ -32,6 +33,7 @@ export interface KanbanIssue {
     overdue: boolean;
     blocked: boolean;
     unblockable: boolean;
+    hasOpenChild: boolean;
     assignees: UserRef[];
     labels: LabelRef[];
     knowledgePagesCount: number;

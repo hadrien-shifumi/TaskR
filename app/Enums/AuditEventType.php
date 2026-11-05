@@ -16,6 +16,9 @@ enum AuditEventType: string
     case IssueUpdated = 'issue.updated';
     case IssueDeleted = 'issue.deleted';
     case IssueStatusChanged = 'issue.status_changed';
+    case IssueAutoCompleted = 'issue.auto_completed';
+    case IssueAutoCompletionEnabled = 'issue.auto_completion_enabled';
+    case IssueAutoCompletionDisabled = 'issue.auto_completion_disabled';
     case IssuePriorityChanged = 'issue.priority_changed';
     case IssueAssigned = 'issue.assigned';
     case IssueUnassigned = 'issue.unassigned';

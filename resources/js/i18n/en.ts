@@ -182,6 +182,8 @@ const en = {
         blocked: "Blocked",
         unblockable: "Unblockable",
         knowledgeTooltip: "Knowledge base: {{titles}}",
+        openChild: "child reopened",
+        openChildTooltip: "A sub-issue of this completed ticket has been reopened.",
     },
 
     issueShow: {
@@ -253,6 +255,11 @@ const en = {
         overdueForDays: "Overdue for {{count}} days.",
         softHierarchyHint: "Soft hierarchy — same workspace only, any depth.",
         setAction: "Set",
+        autoComplete: "Auto-completion",
+        autoCompleteHint:
+            "When every active sub-issue is done or cancelled, the parent follows automatically.",
+        autoCompleteNoChildren:
+            "This issue has no child issues yet — the option will have no effect.",
         dependencies: "Dependencies",
         dependenciesHint: "The dependency alerts, it never forbids — the workflow stays free.",
         blocked: "Blocked",
@@ -385,6 +392,10 @@ const en = {
         statOverdue: "Overdue",
         statOverdueHint: "Past due date, not done or cancelled",
         statHours: "Hours (open work)",
+        statWeighted: "Weighted",
+        statWeightedHint: "Estimated done / all estimated load",
+        statLeaf: "Leaves",
+        statLeafHint: "Tickets without sub-tickets only",
         consumption: "logged / estimated · {{percent}}% consumed",
         noEstimates: "No estimates on open work",
         projection: "Projection",
@@ -414,6 +425,16 @@ const en = {
         teamWorkload: "Team workload",
         member: "Member",
         hours: "Hours",
+        trends: "Issue trends",
+        trendsPeriod: "Period",
+        trendsPeriod30: "Last 30 days",
+        trendsPeriod90: "Last 90 days",
+        trendsPeriodAll: "Since creation",
+        trendsOpened: "Opened",
+        trendsClosed: "Closed",
+        trendsMoved: "Moved",
+        trendsJournalSince:
+            "Closed and moved are tracked since {{date}} (activity journal introduction): before that, days read as zero.",
         export: {
             button: "Export time",
             title: "Export time entries",
@@ -616,6 +637,7 @@ const en = {
         sectionsAria: "Settings sections",
         sections: {
             account: "Account",
+            general: "General",
             statuses: "Statuses",
             members: "Members",
             templates: "Issue templates",
@@ -628,6 +650,11 @@ const en = {
         ownerWord: "owners",
         readOnlySuffix: ".",
         pageTitle: "Settings",
+        generalTitle: "Workspace general settings",
+        generalDescription: "Cross-cutting settings, applied to every project of the workspace.",
+        parentsAsContainersLabel: "Parents = containers",
+        parentsAsContainersHint:
+            "The leaves of the tree carry the estimated load, not the containers. When enabled, the Health page's estimated hours exclude parent issues with at least one estimated sub-issue — for every project of the workspace, existing ones included.",
         statusesTitle: "Workspace statuses",
         statusesDescription: "Defined once for every project. The order below applies across the UI.",
         newStatus: "New status",
@@ -889,6 +916,9 @@ const en = {
                 restored: "Issue restored",
                 knowledge_linked: "Pages linked",
                 knowledge_unlinked: "Pages unlinked",
+                auto_completion_enabled: "Auto-completion enabled",
+                auto_completion_disabled: "Auto-completion disabled",
+                auto_completed: "Auto-completed",
             },
             comment: {
                 created: "Comment added",

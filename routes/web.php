@@ -28,6 +28,7 @@ use App\Actions\Issues\ExportIssues;
 use App\Actions\Issues\MoveIssue;
 use App\Actions\Issues\SearchIssueKnowledge;
 use App\Actions\Issues\SetAssignees;
+use App\Actions\Issues\SetIssueAutoCompletion;
 use App\Actions\Issues\SetIssueDependencies;
 use App\Actions\Issues\SetIssueKnowledge;
 use App\Actions\Issues\SetIssueParent;
@@ -85,8 +86,10 @@ use App\Actions\Workspaces\DownloadWorkspaceBackup;
 use App\Actions\Workspaces\InviteMember;
 use App\Actions\Workspaces\RemoveMember;
 use App\Actions\Workspaces\ResendInvitation;
+use App\Actions\Workspaces\ShowGeneralSettingsPage;
 use App\Actions\Workspaces\ShowMembersPage;
 use App\Actions\Workspaces\SwitchWorkspace;
+use App\Actions\Workspaces\UpdateGeneralSettings;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function (): void {
@@ -122,6 +125,10 @@ Route::middleware(['auth', 'workspace'])->group(function (): void {
     Route::delete('/workspaces/{workspace}/members/{user}', RemoveMember::class)->name('workspaces.members.destroy');
 
     Route::get('/settings/account', ShowAccountSettingsPage::class)->name('settings.account');
+
+    Route::get('/settings/general', ShowGeneralSettingsPage::class)->name('settings.general');
+    Route::match(['put', 'patch'], '/settings/general', UpdateGeneralSettings::class)
+        ->name('settings.general.update');
 
     Route::get('/settings/notifications', ShowNotificationSettingsPage::class)->name('settings.notifications');
     Route::match(['put', 'patch'], '/settings/notifications', UpdateNotificationPreferences::class)
@@ -170,6 +177,7 @@ Route::middleware(['auth', 'workspace'])->group(function (): void {
     Route::post('/issues/{issue}/dependencies', SetIssueDependencies::class)->name('issues.dependencies');
     Route::post('/issues/{issue}/assignees', SetAssignees::class)->name('issues.assignees');
     Route::post('/issues/{issue}/labels', SetLabels::class)->name('issues.labels');
+    Route::post('/issues/{issue}/auto-complete', SetIssueAutoCompletion::class)->name('issues.auto-complete');
     Route::post('/issues/{issue}/knowledge', SetIssueKnowledge::class)->name('issues.knowledge');
     Route::get('/issues/{issue}/knowledge/search', SearchIssueKnowledge::class)->name('issues.knowledge-search');
     Route::post('/issues/{issue}/archive', ArchiveIssue::class)->name('issues.archive');

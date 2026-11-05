@@ -92,3 +92,32 @@ it('recalculates the projection when the target date is edited', function () {
 
     $page->assertNoSmoke();
 });
+
+it('shows the daily trend chart with its period selector', function () {
+    [$owner, $workspace] = setupBrowserWorkspace();
+    $project = seedProjectWithHealth($workspace, $owner);
+    $this->actingAs($owner);
+
+    $page = visit('/projects/'.$project->id.'/health');
+
+    // Scenario "Graphiques d'évolution": the trends card renders with its
+    // three series legend (opened / closed / moved) and the period selector.
+    $page->assertVisible('@trends')
+        ->assertSee('Issue trends')
+        ->assertSee('Opened')
+        ->assertSee('Moved')
+        ->assertSeeIn('@trends-period', 'Last 30 days');
+
+    // The ten seeded issues were all created today: the opened series
+    // carries them on the last day of the window.
+    $page->assertVisible('@trends-chart');
+
+    // Switching the period recomputes the series server-side and updates
+    // the selector label in place.
+    $page->click('@trends-period')
+        ->click('[role="option"]:has-text("Last 90 days")')
+        ->wait(1)
+        ->assertSeeIn('@trends-period', 'Last 90 days');
+
+    $page->assertNoSmoke();
+});

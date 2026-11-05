@@ -24,6 +24,8 @@ class ProjectHealth
         public readonly ?float $expectedPercentage,
         public readonly ?string $status,
         public readonly ?string $targetDate,
+        public readonly ?float $weightedCompletionPercentage = null,
+        public readonly ?float $leafCompletionPercentage = null,
     ) {}
 
     /**
@@ -42,6 +44,8 @@ class ProjectHealth
             'expectedPercentage' => $this->expectedPercentage,
             'status' => $this->status,
             'targetDate' => $this->targetDate,
+            'weightedCompletionPercentage' => $this->weightedCompletionPercentage,
+            'leafCompletionPercentage' => $this->leafCompletionPercentage,
         ];
     }
 }

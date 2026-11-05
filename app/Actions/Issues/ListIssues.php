@@ -44,7 +44,18 @@ class ListIssues
     {
         $query = $this->scopedQuery($workspace, $filters, $user, $sort, $dir)
             ->with(['project', 'status', 'labels', 'assignees', 'blockedBy.status'])
-            ->with(['knowledgePages' => LoadIssueKnowledgePages::cardConstraint($user)]);
+            ->with(['knowledgePages' => LoadIssueKnowledgePages::cardConstraint($user)])
+            // The reopened-child signal: a scalar EXISTS subquery, never a
+            // per-card query. Archived children left the parent's scope, and
+            // a terminal child does not reopen the work.
+            ->withExists([
+                'children' => fn (Builder $query) => $query
+                    ->whereNull('archived_at')
+                    ->whereHas('status', fn (Builder $status) => $status->whereNotIn('category', [
+                        StatusCategory::Done,
+                        StatusCategory::Cancelled,
+                    ])),
+            ]);
 
         // Scope-wide count, before any other filter: the issues page shows
         // it next to the filtered count ("visible / total").
