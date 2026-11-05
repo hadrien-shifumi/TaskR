@@ -60,6 +60,10 @@ return [
         'updated' => 'Préférences de notification enregistrées.',
     ],
 
+    'general_settings' => [
+        'updated' => 'Réglages généraux enregistrés.',
+    ],
+
     'token' => [
         'created' => "Jeton d'API créé.",
         'revoked' => "Jeton d'API révoqué.",

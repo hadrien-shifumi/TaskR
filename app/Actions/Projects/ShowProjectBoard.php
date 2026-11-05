@@ -5,6 +5,7 @@ namespace App\Actions\Projects;
 use App\Actions\Concerns\AuthorizesWorkspaceAccess;
 use App\Actions\Issues\LoadIssueKnowledgePages;
 use App\Actions\Issues\ShowIssuePage;
+use App\Enums\StatusCategory;
 use App\Models\Issue;
 use App\Models\Project;
 use App\Models\User;
@@ -56,6 +57,16 @@ class ShowProjectBoard
             ->unarchived()
             ->with(['assignees', 'blockedBy.status'])
             ->with(['knowledgePages' => LoadIssueKnowledgePages::cardConstraint($user)])
+            // The reopened-child signal: a scalar EXISTS subquery, never a
+            // per-card query (same constraint as ListIssues).
+            ->withExists([
+                'children' => fn (Builder $query) => $query
+                    ->whereNull('archived_at')
+                    ->whereHas('status', fn (Builder $status) => $status->whereNotIn('category', [
+                        StatusCategory::Done,
+                        StatusCategory::Cancelled,
+                    ])),
+            ])
             ->when($parentsOnly, fn ($query) => $query->whereNull('parent_id'))
             ->when($assigneeId !== null, fn (Builder $query) => $query->whereHas('assignees', fn (Builder $q) => $q->where('users.id', $assigneeId)))
             ->orderBy('created_at')

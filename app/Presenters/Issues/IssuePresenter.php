@@ -33,6 +33,7 @@ class IssuePresenter
             'overdue' => $issue->isOverdue(),
             'blocked' => self::hasOpenBlocker($issue),
             'unblockable' => self::isUnblockable($issue),
+            'hasOpenChild' => self::hasOpenChild($issue),
             'assignees' => self::assignees($issue),
             'labels' => $issue->labels->map(fn ($label) => ['id' => $label->id, 'name' => $label->name, 'color' => $label->color])->values()->all(),
             'knowledgePagesCount' => $issue->knowledgePages->count(),
@@ -57,6 +58,7 @@ class IssuePresenter
             'overdue' => $card['overdue'],
             'blocked' => $card['blocked'],
             'unblockable' => $card['unblockable'],
+            'hasOpenChild' => $card['hasOpenChild'],
             'assignees' => $card['assignees'],
             'labels' => $card['labels'],
             'knowledgePagesCount' => $card['knowledgePagesCount'],
@@ -80,6 +82,7 @@ class IssuePresenter
             'overdue' => $issue->isOverdue(),
             'blocked' => self::hasOpenBlocker($issue),
             'unblockable' => self::isUnblockable($issue),
+            'hasOpenChild' => self::hasOpenChild($issue),
             'assignees' => self::assignees($issue),
             'knowledgePagesCount' => $issue->knowledgePages->count(),
             'knowledgePageTitles' => self::knowledgePageTitles($issue),
@@ -139,6 +142,7 @@ class IssuePresenter
             'knowledgePages' => self::knowledgePages($issue),
             'isBlocked' => self::hasOpenBlocker($issue),
             'isUnblockable' => self::isUnblockable($issue),
+            'autoCompleteChildren' => $issue->auto_complete_children,
         ];
     }
 
@@ -255,6 +259,16 @@ class IssuePresenter
         return $issue->blockedBy->contains(
             fn (Issue $blocker) => ! in_array($blocker->status?->category, [StatusCategory::Done, StatusCategory::Cancelled], true),
         );
+    }
+
+    /**
+     * A reopened child signal: at least one active child of this issue
+     * carries a non-terminal category. The flag rides the `withExists`
+     * subquery applied by the listing actions; absent there, it reads false.
+     */
+    private static function hasOpenChild(Issue $issue): bool
+    {
+        return (bool) $issue->getAttribute('children_exists');
     }
 
     /**

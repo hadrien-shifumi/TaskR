@@ -3,6 +3,7 @@ import { PRIORITIES } from '@/components/priority-select';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -130,6 +131,10 @@ export function IssueSidebar({
             ? current.filter((id) => id !== String(userId))
             : [...current, String(userId)];
         router.post(route('issues.assignees', issue.id), { assignees: next });
+    };
+
+    const toggleAutoCompletion = (enabled: boolean) => {
+        router.post(route('issues.auto-complete', issue.id), { enabled });
     };
 
     const toggleLabel = (labelId: string) => {
@@ -417,6 +422,22 @@ export function IssueSidebar({
                         ) : (
                             <span className="text-sm text-muted-foreground">—</span>
                         )}
+                    </PropRow>
+
+                    <PropRow
+                        label={t('issueShow.autoComplete')}
+                        hint={
+                            issue.children.length > 0
+                                ? t('issueShow.autoCompleteHint')
+                                : t('issueShow.autoCompleteNoChildren')
+                        }
+                    >
+                        <Checkbox
+                            data-test="auto-complete-toggle"
+                            aria-label={t('issueShow.autoComplete')}
+                            checked={issue.autoCompleteChildren}
+                            onCheckedChange={(checked) => toggleAutoCompletion(checked === true)}
+                        />
                     </PropRow>
 
                     <PropRow

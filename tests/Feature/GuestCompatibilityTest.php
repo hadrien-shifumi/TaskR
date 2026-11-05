@@ -123,6 +123,24 @@ class GuestCompatibilityTest extends TestCase
         $this->assertArrayNotHasKey('myWorkload', $health);
         $this->assertSame(0, $health['health']['totalIssues']);
 
+        // Anti-rename guard: the member health contract is the twelve keys,
+        // in order — the two hierarchy indicators are additive, never a
+        // replacement or a reorder.
+        $this->assertSame([
+            'issuesByCategory',
+            'totalIssues',
+            'completionPercentage',
+            'overdueIssues',
+            'estimatedHours',
+            'loggedHours',
+            'consumptionRatio',
+            'expectedPercentage',
+            'status',
+            'targetDate',
+            'weightedCompletionPercentage',
+            'leafCompletionPercentage',
+        ], array_keys($health['health']));
+
         // The project issues resource stays readable with the same shape.
         $result = TaskrServer::actingAs($member)
             ->resource(ProjectIssues::class, ['workspace_id' => $workspace->id, 'project_id' => $beta->id])

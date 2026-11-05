@@ -28,6 +28,7 @@ class Issue extends BaseModel
         'estimated_hours',
         'created_by',
         'archived_at',
+        'auto_complete_children',
     ];
 
     protected $casts = [
@@ -35,6 +36,7 @@ class Issue extends BaseModel
         'due_date' => 'date',
         'estimated_hours' => 'decimal:2',
         'archived_at' => 'datetime',
+        'auto_complete_children' => 'boolean',
     ];
 
     /**

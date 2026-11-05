@@ -253,6 +253,11 @@ class McpGuestScopeTest extends TestCase
         $this->assertFalse($payload['canSeeGlobalKpis']);
         $this->assertSame($guest->id, $payload['myWorkload']['userId']);
         $this->assertSame(1, $payload['myWorkload']['openIssues']);
+
+        // The hierarchy indicators are global KPIs: they must not leak
+        // into the guest contributor view.
+        $this->assertArrayNotHasKey('weightedCompletionPercentage', $payload['myWorkload']);
+        $this->assertArrayNotHasKey('leafCompletionPercentage', $payload['myWorkload']);
     }
 
     // ── Invitations guest via MCP : parité et garde croisée ───────────

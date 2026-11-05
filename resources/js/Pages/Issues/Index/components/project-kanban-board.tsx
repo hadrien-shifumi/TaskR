@@ -1,4 +1,4 @@
-import { AvatarStack, BlockedBadge, KnowledgeBadge, PriorityBadge, StatusBadge } from '@/components/issue-badges';
+import { AvatarStack, BlockedBadge, KnowledgeBadge, OpenChildBadge, PriorityBadge, StatusBadge } from '@/components/issue-badges';
 import { Banner } from '@/components/banner';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -123,6 +123,7 @@ export function ProjectKanbanBoard({ board }: ProjectKanbanBoardProps) {
                                         onDragStart={(e) => e.stopPropagation()}
                                     >
                                         <BlockedBadge blocked={issue.blocked} unblockable={issue.unblockable} />
+                                        <OpenChildBadge hasOpenChild={issue.hasOpenChild} statusCategory={column.category} />
                                         <KnowledgeBadge count={issue.knowledgePagesCount} titles={issue.knowledgePageTitles} />
                                         <PriorityBadge priority={issue.priority} />
                                         <div className="ml-auto" />
