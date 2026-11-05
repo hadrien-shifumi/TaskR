@@ -4,6 +4,14 @@ import { FilterMultiSelect } from '@/components/filter-multi-select';
 import { FilterSelect } from '@/components/filter-select';
 import { FlashBanner } from '@/components/flash-banner';
 import { Button } from '@/components/ui/button';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuGroup,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import {
     Table,
@@ -14,9 +22,10 @@ import {
 } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
 import { Head, router, usePage } from '@inertiajs/react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { downloadExport } from '@/lib/download-export';
 import type { LabelRef, UserRef } from '@/types';
 import { CreateLabelDialog } from './Index/components/create-label-dialog';
 import { IssuesViewSwitcher } from './Index/components/issues-view-switcher';
@@ -88,6 +97,7 @@ export default function Index() {
     const { t } = useTranslation();
     const [creating, setCreating] = useState(false);
     const [creatingLabel, setCreatingLabel] = useState(false);
+    const [exportError, setExportError] = useState<string | null>(null);
     const [search, setSearch] = useState(readFilter(filters, 'q'));
 
     /** Sets one URL filter; an empty value removes the param so filtered
@@ -138,6 +148,25 @@ export default function Index() {
             next.page = String(target);
         }
         router.get(route('issues.index'), next, { preserveState: true });
+    };
+
+    /** Downloads the current filtered selection as CSV or JSON. The page
+     *  filters travel untouched — what is on screen is what gets exported —
+     *  while the view and pagination params stay behind. A refusal (beyond
+     *  the row limit) shows the server's localized message. */
+    const exportIssues = async (format: 'csv' | 'json') => {
+        setExportError(null);
+
+        const { view: _view, page: _page, ...exportFilters } = filters;
+        const result = await downloadExport(
+            route('issues.export'),
+            { ...exportFilters, format },
+            t('issuesPage.export.failed'),
+        );
+
+        if (!result.ok) {
+            setExportError(result.error);
+        }
     };
 
     // Debounced title search: the query param follows the input with a beat.
@@ -207,6 +236,34 @@ export default function Index() {
             subtitle={t('issuesPage.subtitle')}
             actions={
                 <>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger
+                            render={
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    data-test="issues-export"
+                                    aria-label={t('issuesPage.export.aria')}
+                                />
+                            }
+                        >
+                            <Download aria-hidden />
+                            {t('issuesPage.export.button', { count: filteredTotal })}
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuGroup>
+                                <DropdownMenuLabel>
+                                    {t('issuesPage.export.label')}
+                                </DropdownMenuLabel>
+                                <DropdownMenuItem data-test="issues-export-csv" onClick={() => exportIssues('csv')}>
+                                    {t('issuesPage.export.csv')}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem data-test="issues-export-json" onClick={() => exportIssues('json')}>
+                                    {t('issuesPage.export.json')}
+                                </DropdownMenuItem>
+                            </DropdownMenuGroup>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                     <IssuesViewSwitcher active={view} filters={filters} />
                     <Button variant="outline" size="sm" onClick={() => setCreatingLabel(true)}>
                         {t('issuesPage.newLabel')}
@@ -220,6 +277,12 @@ export default function Index() {
             <Head title={t('issuesPage.title')} />
 
             <FlashBanner />
+
+            {exportError ? (
+                <p role="alert" data-test="export-error" className="mb-3.5 text-sm text-destructive">
+                    {exportError}
+                </p>
+            ) : null}
 
             <FilterBar
                 search={search}
