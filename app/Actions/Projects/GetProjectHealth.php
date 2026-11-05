@@ -14,7 +14,8 @@ use App\Support\ProjectHealth;
 use App\Support\WorkspaceContext;
 use Carbon\Carbon;
 use Illuminate\Database\Query\Builder;
-use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
+use Lorisleiva\Actions\ActionRequest;
 use Lorisleiva\Actions\Concerns\AsController;
 use Lorisleiva\Actions\Concerns\AsObject;
 use Symfony\Component\HttpFoundation\Response;
@@ -28,6 +29,16 @@ class GetProjectHealth
     public function authorize(): bool
     {
         return $this->currentUserCanUseWorkspace();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function rules(): array
+    {
+        return [
+            'period' => ['nullable', Rule::in(['30', '90', 'all'])],
+        ];
     }
 
     /**
@@ -75,7 +86,7 @@ class GetProjectHealth
         return $health;
     }
 
-    public function asController(Request $request, Project $project, ProjectHealthResponder $responder): Response
+    public function asController(ActionRequest $request, Project $project, ProjectHealthResponder $responder): Response
     {
         $user = $request->user();
 
@@ -96,10 +107,17 @@ class GetProjectHealth
             ? $this->computeTeamWorkload($project)
             : null;
 
+        // Trend charts share the global-KPI perimeter: a guest never
+        // receives the series payload.
+        $trends = $canSeeGlobalKpis
+            ? app(GetProjectTrends::class)->handle($project, $request->validated('period') ?? '30')
+            : null;
+
         return $responder->toResponse($request, [
             'project' => ProjectPresenter::summary($project),
             'health' => $health?->toArray(),
             'canSeeGlobalKpis' => $canSeeGlobalKpis,
+            'trends' => $trends?->toArray(),
             'myWorkload' => $myWorkload?->toArray(),
             'teamWorkload' => array_map(fn ($w) => $w->toArray(), $teamWorkload ?? []),
             'lateIssues' => $canSeeGlobalKpis ? $project->issues()

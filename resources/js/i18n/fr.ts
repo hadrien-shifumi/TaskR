@@ -416,6 +416,16 @@ const fr: typeof en = {
         teamWorkload: "Charge de l'équipe",
         member: "Membre",
         hours: "Heures",
+        trends: "Évolution des tickets",
+        trendsPeriod: "Période",
+        trendsPeriod30: "30 derniers jours",
+        trendsPeriod90: "90 derniers jours",
+        trendsPeriodAll: "Depuis la création",
+        trendsOpened: "Ouverts",
+        trendsClosed: "Fermés",
+        trendsMoved: "Déplacés",
+        trendsJournalSince:
+            "Fermés et déplacés sont suivis depuis le {{date}} (mise en place du journal d'activité) : avant, chaque jour vaut zéro.",
         export: {
             button: "Exporter le temps",
             title: "Exporter les saisies de temps",

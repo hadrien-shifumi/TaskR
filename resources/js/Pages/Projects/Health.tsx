@@ -1,4 +1,5 @@
 import { ProjectMenu } from '@/components/project-menu';
+import { ProjectTrends, type TrendsData } from '@/components/project-trends';
 import { ProjectViewSwitcher } from '@/components/project-view-switcher';
 import { Avatar, HealthBadge, PriorityBadge, StatusBadge } from '@/components/issue-badges';
 import { Progress, type ProgressColor } from '@/components/progress';
@@ -59,6 +60,7 @@ type PageProps = {
     };
     health: HealthData | null;
     canSeeGlobalKpis: boolean;
+    trends: TrendsData | null;
     myWorkload: PersonWorkload | null;
     teamWorkload: PersonWorkload[] | null;
     lateIssues: LateIssue[];
@@ -83,7 +85,7 @@ function currentMonthBounds(): { after: string; before: string } {
 }
 
 export default function Health() {
-    const { project, health, canSeeGlobalKpis, myWorkload, teamWorkload, lateIssues } = usePage<PageProps>().props;
+    const { project, health, canSeeGlobalKpis, trends, myWorkload, teamWorkload, lateIssues } = usePage<PageProps>().props;
     const { t } = useTranslation();
 
     const targetForm = useForm({
@@ -349,6 +351,9 @@ export default function Health() {
                                     ))}
                                 </CardContent>
                             </Card>
+
+                            {/* Daily trend chart (opened / closed / moved) */}
+                            {trends ? <ProjectTrends projectId={project.id} trends={trends} /> : null}
 
                             {/* Team workload table */}
                             {teamWorkload && teamWorkload.length > 0 ? (
