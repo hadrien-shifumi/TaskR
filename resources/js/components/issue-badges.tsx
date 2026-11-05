@@ -94,6 +94,30 @@ export function KnowledgeBadge({ count, titles }: { count: number; titles: strin
     );
 }
 
+/** Reopened-child signal on done parents' cards: a warning badge while at
+ *  least one active child carries a non-terminal category, nothing otherwise.
+ *  The front gates on the done category — the raw flag rides the card
+ *  payloads, computed server-side without a per-card query. */
+export function OpenChildBadge({ hasOpenChild, statusCategory }: { hasOpenChild: boolean; statusCategory: string }) {
+    const { t } = useTranslation();
+
+    if (!hasOpenChild || statusCategory !== 'done') {
+        return null;
+    }
+
+    return (
+        <Badge
+            variant="secondary"
+            className="rounded-full bg-warning/10 text-warning"
+            title={t('issueBadges.openChildTooltip')}
+            data-test="open-child-badge"
+        >
+            <span className={DOT} />
+            {t('issueBadges.openChild')}
+        </Badge>
+    );
+}
+
 export function HealthBadge({ status }: { status: string | null }) {
     const { t } = useTranslation();
 

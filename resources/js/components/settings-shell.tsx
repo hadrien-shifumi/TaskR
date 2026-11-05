@@ -7,6 +7,7 @@ import type { PageSharedProps } from '@/types';
 
 const SECTIONS = [
     { path: '/settings/account', name: 'settings.account', label: 'settings.sections.account' },
+    { path: '/settings/general', name: 'settings.general', label: 'settings.sections.general' },
     { path: '/settings/statuses', name: 'settings.statuses', label: 'settings.sections.statuses' },
     { path: '/settings/members', name: 'settings.members', label: 'settings.sections.members' },
     { path: '/settings/templates', name: 'settings.templates', label: 'settings.sections.templates' },

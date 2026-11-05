@@ -111,7 +111,7 @@ class PresentersTest extends TestCase
         $kanban = IssuePresenter::kanbanCard(IssuePresenter::card($issue));
 
         $this->assertSame(
-            ['id', 'title', 'priority', 'dueDate', 'overdue', 'blocked', 'unblockable', 'assignees', 'labels', 'knowledgePagesCount', 'knowledgePageTitles'],
+            ['id', 'title', 'priority', 'dueDate', 'overdue', 'blocked', 'unblockable', 'hasOpenChild', 'assignees', 'labels', 'knowledgePagesCount', 'knowledgePageTitles'],
             array_keys($kanban),
         );
         $this->assertSame($issue->id, $kanban['id']);
@@ -130,7 +130,7 @@ class PresentersTest extends TestCase
         $board = IssuePresenter::boardCard($issue->load('assignees'));
 
         $this->assertSame(
-            ['id', 'title', 'priority', 'dueDate', 'overdue', 'blocked', 'unblockable', 'assignees', 'knowledgePagesCount', 'knowledgePageTitles'],
+            ['id', 'title', 'priority', 'dueDate', 'overdue', 'blocked', 'unblockable', 'hasOpenChild', 'assignees', 'knowledgePagesCount', 'knowledgePageTitles'],
             array_keys($board),
         );
         $this->assertSame('2026-12-01', $board['dueDate']);
