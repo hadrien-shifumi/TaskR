@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import AppLayout from '@/layouts/app-layout';
 import { ActivitySection } from '@/Pages/Issues/Show/components/activity-section';
 import type { ActivityEvent } from '@/Pages/Issues/Show/types';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Head, router, usePage } from '@inertiajs/react';
 import { useTranslation } from 'react-i18next';
 
@@ -20,6 +20,14 @@ type PageProps = {
     };
     issuesCount: number;
     events: ActivityEvent[];
+    pagination: {
+        currentPage: number;
+        lastPage: number;
+        perPage: number;
+        total: number;
+        from: number | null;
+        to: number | null;
+    };
     actors: { id: number; name: string }[];
     types: string[];
     transitions: { from: string; to: string; count: number }[];
@@ -32,7 +40,7 @@ const readParam = (url: string, key: string): string => {
 };
 
 export default function Activity() {
-    const { project, issuesCount, events, actors, types, transitions } = usePage<PageProps>().props;
+    const { project, issuesCount, events, pagination, actors, types, transitions } = usePage<PageProps>().props;
     const { url } = usePage();
     const { t } = useTranslation();
 
@@ -43,7 +51,8 @@ export default function Activity() {
     const typeOptions = types.map((type) => ({ value: type, label: t(`audit.types.${type}`) }));
 
     /** Pushes both filters as the full query string; empty values drop their
-     *  param so filtered URLs stay clean and shareable. */
+     *  param so filtered URLs stay clean and shareable. The page param is
+     *  never carried over: changing a filter lands back on page 1. */
     const setFilter = (key: 'actor_id' | 'type', value: string) => {
         const next: Record<string, string> = {};
         const nextActor = key === 'actor_id' ? value : actorFilter;
@@ -55,6 +64,14 @@ export default function Activity() {
             next.type = nextType;
         }
         router.get(route('projects.activity', project.id), next, { preserveState: true });
+    };
+
+    /** Navigates to a page, keeping the active filters. */
+    const goToPage = (page: number) => {
+        const params: Record<string, string> = { page: String(page) };
+        if (actorFilter) params.actor_id = actorFilter;
+        if (typeFilter) params.type = typeFilter;
+        router.get(route('projects.activity', project.id), params, { preserveState: true });
     };
 
     return (
@@ -103,11 +120,51 @@ export default function Activity() {
             </div>
 
             <div className="grid items-start gap-6 lg:grid-cols-[1fr_320px]">
-                <Card className="py-5" data-test="activity-events">
-                    <CardContent className="px-5">
-                        <ActivitySection events={events} />
-                    </CardContent>
-                </Card>
+                <div className="min-w-0">
+                    <Card className="py-5" data-test="activity-events">
+                        <CardContent className="px-5">
+                            <ActivitySection events={events} />
+                        </CardContent>
+                    </Card>
+
+                    {pagination.lastPage > 1 && (
+                        <div
+                            className="mt-4 flex items-center justify-end gap-2"
+                            data-test="activity-pagination"
+                        >
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={pagination.currentPage <= 1}
+                                onClick={() => goToPage(pagination.currentPage - 1)}
+                                data-test="activity-pagination-prev"
+                            >
+                                <ChevronLeft aria-hidden />
+                                {t('audit.pagination.previous')}
+                            </Button>
+                            <span
+                                className="text-sm text-muted-foreground"
+                                data-test="activity-pagination-counter"
+                            >
+                                {t('audit.pagination.page', {
+                                    current: pagination.currentPage,
+                                    last: pagination.lastPage,
+                                    total: pagination.total,
+                                })}
+                            </span>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={pagination.currentPage >= pagination.lastPage}
+                                onClick={() => goToPage(pagination.currentPage + 1)}
+                                data-test="activity-pagination-next"
+                            >
+                                {t('audit.pagination.next')}
+                                <ChevronRight aria-hidden />
+                            </Button>
+                        </div>
+                    )}
+                </div>
 
                 <Card className="py-5" data-test="transitions-card">
                     <CardContent className="grid gap-3.5 px-5">

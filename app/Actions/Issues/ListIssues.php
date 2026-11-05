@@ -42,26 +42,9 @@ class ListIssues
      */
     public function handle(Workspace $workspace, array $filters = [], ?int $limit = null, int $offset = 0, ?User $user = null, ?string $sort = null, ?string $dir = null): array
     {
-        $scope = $user instanceof User
-            ? app(WorkspaceContext::class)->accessibleProjectIds($user)
-            : null;
-
-        $query = Issue::query()
+        $query = $this->scopedQuery($workspace, $filters, $user, $sort, $dir)
             ->with(['project', 'status', 'labels', 'assignees', 'blockedBy.status'])
-            ->with(['knowledgePages' => LoadIssueKnowledgePages::cardConstraint($user)])
-            ->when($scope !== null, fn (Builder $issues) => $issues->whereIn('project_id', $scope));
-
-        $this->applySort($query, $sort ?? ($filters['sort'] ?? null), $dir ?? ($filters['dir'] ?? null));
-
-        // Archived visibility: excluded by default (every active view), or
-        // explicitly included / listed only. Applied before the unfiltered
-        // count: the "total" shown next to filters is the active total.
-        $archived = $filters['archived'] ?? 'exclude';
-        if ($archived === 'only') {
-            $query->whereNotNull('issues.archived_at');
-        } elseif ($archived !== 'include') {
-            $query->whereNull('issues.archived_at');
-        }
+            ->with(['knowledgePages' => LoadIssueKnowledgePages::cardConstraint($user)]);
 
         // Scope-wide count, before any other filter: the issues page shows
         // it next to the filtered count ("visible / total").
@@ -86,6 +69,53 @@ class ListIssues
             'total' => $total,
             'totalUnfiltered' => $totalUnfiltered,
         ];
+    }
+
+    /**
+     * The fully filtered query — perimeter, archived visibility, sort and
+     * data filters — the single source of truth shared by the list
+     * presentation and the exports: an export always matches the filters
+     * of the page. Eager loads stay with the consumer.
+     *
+     * @param  array<string, string|array<int, string>|null>  $filters  project|status|category|priority|label|assignee|overdue|blocked|due_before|due_after|q|sort|dir
+     */
+    public function filteredQuery(Workspace $workspace, array $filters = [], ?User $user = null, ?string $sort = null, ?string $dir = null): Builder
+    {
+        $query = $this->scopedQuery($workspace, $filters, $user, $sort, $dir);
+
+        $this->applyFilters($query, $filters);
+
+        return $query;
+    }
+
+    /**
+     * The scoped, visibility-aware, sorted query — perimeter, archived
+     * handling and ordering, everything but the data filters.
+     *
+     * @param  array<string, string|array<int, string>|null>  $filters
+     */
+    private function scopedQuery(Workspace $workspace, array $filters, ?User $user, ?string $sort, ?string $dir): Builder
+    {
+        $scope = $user instanceof User
+            ? app(WorkspaceContext::class)->accessibleProjectIds($user)
+            : null;
+
+        $query = Issue::query()
+            ->when($scope !== null, fn (Builder $issues) => $issues->whereIn('project_id', $scope));
+
+        $this->applySort($query, $sort ?? ($filters['sort'] ?? null), $dir ?? ($filters['dir'] ?? null));
+
+        // Archived visibility: excluded by default (every active view), or
+        // explicitly included / listed only. Applied before the unfiltered
+        // count: the "total" shown next to filters is the active total.
+        $archived = $filters['archived'] ?? 'exclude';
+        if ($archived === 'only') {
+            $query->whereNotNull('issues.archived_at');
+        } elseif ($archived !== 'include') {
+            $query->whereNull('issues.archived_at');
+        }
+
+        return $query;
     }
 
     /**

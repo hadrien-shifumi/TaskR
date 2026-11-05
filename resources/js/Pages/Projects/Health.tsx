@@ -5,14 +5,32 @@ import { Avatar, HealthBadge, PriorityBadge, StatusBadge } from '@/components/is
 import { Progress, type ProgressColor } from '@/components/progress';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Download } from 'lucide-react';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { HealthData } from '@/types';
 import { formatDate } from '@/lib/format-date';
+import { downloadExport } from '@/lib/download-export';
 
 interface LateIssue {
     id: string;
@@ -53,6 +71,19 @@ function formatHours(hours: number): string {
     return hours.toFixed(1).replace(/\.0$/, '');
 }
 
+/** First and last day of the current month, `Y-m-d` — the export window
+ *  default, mirroring the server's own fallback: the export is always
+ *  bounded, and a cleared bound falls back to the matching month edge. */
+function currentMonthBounds(): { after: string; before: string } {
+    const now = new Date();
+    const after = new Date(now.getFullYear(), now.getMonth(), 1);
+    const before = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    const format = (date: Date) =>
+        `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+
+    return { after: format(after), before: format(before) };
+}
+
 export default function Health() {
     const { project, health, canSeeGlobalKpis, trends, myWorkload, teamWorkload, lateIssues } = usePage<PageProps>().props;
     const { t } = useTranslation();
@@ -62,6 +93,35 @@ export default function Health() {
         description: project.description ?? '',
         target_date: project.targetDate ?? '',
     });
+
+    // Time entries export: format plus a bounded period, defaulting to the
+    // current month. The export is open to every reader of the page — the
+    // server enforces each account's perimeter.
+    const [exporting, setExporting] = useState(false);
+    const [exportError, setExportError] = useState<string | null>(null);
+    const [timeExport, setTimeExport] = useState(() => ({ format: 'csv', ...currentMonthBounds() }));
+
+    const exportTimeEntries = async (event: React.FormEvent) => {
+        event.preventDefault();
+        setExportError(null);
+
+        const result = await downloadExport(
+            route('time-entries.export'),
+            {
+                project: project.id,
+                worked_after: timeExport.after,
+                worked_before: timeExport.before,
+                format: timeExport.format,
+            },
+            t('projectHealth.export.failed'),
+        );
+
+        if (result.ok) {
+            setExporting(false);
+        } else {
+            setExportError(result.error);
+        }
+    };
 
     const saveTargetDate = (event: React.FormEvent) => {
         event.preventDefault();
@@ -157,6 +217,15 @@ export default function Health() {
                             {targetPassed ? t('projectBoard.overdueSuffix') : ''}
                         </span>
                     ) : null}
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        data-test="time-export"
+                        onClick={() => setExporting(true)}
+                    >
+                        <Download aria-hidden />
+                        {t('projectHealth.export.button')}
+                    </Button>
                     <ProjectViewSwitcher projectId={project.id} active="health" />
                     <ProjectMenu project={project} issuesCount={health?.totalIssues ?? 0} />
                 </>
@@ -455,6 +524,81 @@ export default function Health() {
                     </div>
                 </>
             ) : null}
+
+            <Dialog open={exporting} onOpenChange={setExporting}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>{t('projectHealth.export.title')}</DialogTitle>
+                        <DialogDescription>
+                            {t('projectHealth.export.description', { name: project.name })}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <form className="grid gap-4" onSubmit={exportTimeEntries}>
+                        <div className="grid gap-2">
+                            <Label htmlFor="time-export-format">{t('projectHealth.export.format')}</Label>
+                            <Select
+                                value={timeExport.format}
+                                onValueChange={(value) =>
+                                    value && setTimeExport((state) => ({ ...state, format: value }))
+                                }
+                            >
+                                <SelectTrigger id="time-export-format" data-test="time-export-format" className="w-full">
+                                    <SelectValue>
+                                        {timeExport.format === 'json'
+                                            ? t('projectHealth.export.json')
+                                            : t('projectHealth.export.csv')}
+                                    </SelectValue>
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="csv">{t('projectHealth.export.csv')}</SelectItem>
+                                    <SelectItem value="json">{t('projectHealth.export.json')}</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="grid gap-4 sm:grid-cols-2">
+                            <label className="grid gap-1.5 text-sm" htmlFor="time-export-after">
+                                <span className="text-muted-foreground">
+                                    {t('projectHealth.export.workedAfter')}
+                                </span>
+                                <Input
+                                    id="time-export-after"
+                                    type="date"
+                                    data-test="time-export-after"
+                                    value={timeExport.after}
+                                    onChange={(event) =>
+                                        setTimeExport((state) => ({ ...state, after: event.target.value }))
+                                    }
+                                />
+                            </label>
+                            <label className="grid gap-1.5 text-sm" htmlFor="time-export-before">
+                                <span className="text-muted-foreground">
+                                    {t('projectHealth.export.workedBefore')}
+                                </span>
+                                <Input
+                                    id="time-export-before"
+                                    type="date"
+                                    data-test="time-export-before"
+                                    value={timeExport.before}
+                                    onChange={(event) =>
+                                        setTimeExport((state) => ({ ...state, before: event.target.value }))
+                                    }
+                                />
+                            </label>
+                        </div>
+                        {exportError ? (
+                            <p role="alert" data-test="export-error" className="text-sm text-destructive">
+                                {exportError}
+                            </p>
+                        ) : null}
+                        <DialogFooter>
+                            <Button type="submit" data-test="time-export-submit">
+                                <Download aria-hidden />
+                                {t('projectHealth.export.submit')}
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
         </AppLayout>
     );
 }

@@ -73,6 +73,11 @@ return [
         'project_out_of_scope' => "Ce projet est en dehors de votre périmètre d'accès.",
         'blocker_out_of_scope' => "Un ticket bloqueur est en dehors de votre périmètre d'accès.",
         'knowledge_page_out_of_scope' => "Une page de la base de connaissance est en dehors de votre périmètre d'accès.",
+        'export_too_many' => "L'export est limité à :max tickets. Affinez les filtres pour réduire le volume à exporter.",
+    ],
+
+    'time_entry' => [
+        'export_too_many' => "L'export est limité à :max saisies de temps. Affinez les filtres pour réduire le volume à exporter.",
     ],
 
     'knowledge' => [
