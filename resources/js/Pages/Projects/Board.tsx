@@ -1,6 +1,6 @@
 import { ProjectMenu } from '@/components/project-menu';
 import { ProjectViewSwitcher } from '@/components/project-view-switcher';
-import { Avatar, AvatarStack, BlockedBadge, HealthBadge, KnowledgeBadge, PriorityBadge, StatusBadge } from '@/components/issue-badges';
+import { Avatar, AvatarStack, BlockedBadge, HealthBadge, KnowledgeBadge, OpenChildBadge, PriorityBadge, StatusBadge } from '@/components/issue-badges';
 import { Banner } from '@/components/banner';
 import { FlashBanner } from '@/components/flash-banner';
 import { Badge } from '@/components/ui/badge';
@@ -41,6 +41,7 @@ interface BoardIssue {
     overdue: boolean;
     blocked: boolean;
     unblockable: boolean;
+    hasOpenChild: boolean;
     assignees: { id: number; name: string }[];
     knowledgePagesCount: number;
     knowledgePageTitles: string[];
@@ -352,6 +353,7 @@ export default function Board() {
                                     >
                                         <StatusBadge name={column.name} category={column.category} />
                                         <BlockedBadge blocked={issue.blocked} unblockable={issue.unblockable} />
+                                        <OpenChildBadge hasOpenChild={issue.hasOpenChild} statusCategory={column.category} />
                                         <KnowledgeBadge count={issue.knowledgePagesCount} titles={issue.knowledgePageTitles} />
                                         <PriorityBadge priority={issue.priority} />
                                         <div className="ml-auto" />

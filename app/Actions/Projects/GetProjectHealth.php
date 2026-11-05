@@ -14,7 +14,8 @@ use App\Support\ProjectHealth;
 use App\Support\WorkspaceContext;
 use Carbon\Carbon;
 use Illuminate\Database\Query\Builder;
-use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
+use Lorisleiva\Actions\ActionRequest;
 use Lorisleiva\Actions\Concerns\AsController;
 use Lorisleiva\Actions\Concerns\AsObject;
 use Symfony\Component\HttpFoundation\Response;
@@ -28,6 +29,16 @@ class GetProjectHealth
     public function authorize(): bool
     {
         return $this->currentUserCanUseWorkspace();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function rules(): array
+    {
+        return [
+            'period' => ['nullable', Rule::in(['30', '90', 'all'])],
+        ];
     }
 
     /**
@@ -75,7 +86,7 @@ class GetProjectHealth
         return $health;
     }
 
-    public function asController(Request $request, Project $project, ProjectHealthResponder $responder): Response
+    public function asController(ActionRequest $request, Project $project, ProjectHealthResponder $responder): Response
     {
         $user = $request->user();
 
@@ -96,10 +107,17 @@ class GetProjectHealth
             ? $this->computeTeamWorkload($project)
             : null;
 
+        // Trend charts share the global-KPI perimeter: a guest never
+        // receives the series payload.
+        $trends = $canSeeGlobalKpis
+            ? app(GetProjectTrends::class)->handle($project, $request->validated('period') ?? '30')
+            : null;
+
         return $responder->toResponse($request, [
             'project' => ProjectPresenter::summary($project),
             'health' => $health?->toArray(),
             'canSeeGlobalKpis' => $canSeeGlobalKpis,
+            'trends' => $trends?->toArray(),
             'myWorkload' => $myWorkload?->toArray(),
             'teamWorkload' => array_map(fn ($w) => $w->toArray(), $teamWorkload ?? []),
             'lateIssues' => $canSeeGlobalKpis ? $project->issues()
@@ -198,6 +216,13 @@ class GetProjectHealth
     {
         $workspaceId = app(WorkspaceContext::class)->id();
 
+        // Workspace setting "parents as containers": when enabled, the
+        // estimated-hours sums (open KPI and weighted completion) ignore
+        // parents that carry at least one estimated, non-archived child —
+        // the leaves carry the load, not the containers. Counts, leaf
+        // completion and time entries stay untouched.
+        $excludeContainers = (bool) app(WorkspaceContext::class)->get()?->parents_as_containers;
+
         // Count issues per status category, plus overdue count.
         $issueCounts = $this->issuesBaseQuery($projectIds, $workspaceId)
             ->selectRaw('project_id')
@@ -217,7 +242,7 @@ class GetProjectHealth
 
         // Sum estimated hours over open issues (backlog + in_progress) per project.
         // Estimates of done/cancelled issues are no longer objectives to consume.
-        $estimates = $this->issuesBaseQuery($projectIds, $workspaceId)
+        $estimates = $this->excludeContainerParents($this->issuesBaseQuery($projectIds, $workspaceId), $excludeContainers)
             ->whereIn('statuses.category', [StatusCategory::Backlog->value, StatusCategory::InProgress->value])
             ->selectRaw('project_id, COALESCE(SUM(estimated_hours), 0) AS estimated_hours')
             ->groupBy('project_id')
@@ -237,11 +262,43 @@ class GetProjectHealth
             ->get()
             ->keyBy('project_id');
 
+        // Weighted completion: estimated hours over ALL estimated issues
+        // (done included — an issue estimated then finished still weighs).
+        // Archived issues stay excluded via the base query.
+        $weighted = $this->excludeContainerParents($this->issuesBaseQuery($projectIds, $workspaceId), $excludeContainers)
+            ->whereNotNull('issues.estimated_hours')
+            ->selectRaw('issues.project_id, COALESCE(SUM(issues.estimated_hours), 0) AS estimated_hours_all')
+            ->selectRaw('COALESCE(SUM(CASE WHEN statuses.category = ? THEN issues.estimated_hours END), 0) AS estimated_hours_done', [StatusCategory::Done->value])
+            ->groupBy('issues.project_id')
+            ->get()
+            ->keyBy('project_id');
+
+        // Leaf issues: no non-archived child. Archived children are ignored
+        // in the detection — a parent whose children are all archived stays
+        // a leaf (a container, not a unit of progress).
+        $leaves = $this->issuesBaseQuery($projectIds, $workspaceId)
+            ->selectRaw('issues.project_id')
+            ->selectRaw('SUM(CASE WHEN NOT EXISTS (
+                SELECT 1 FROM issues children
+                WHERE children.parent_id = issues.id
+                  AND children.archived_at IS NULL
+            ) THEN 1 ELSE 0 END) AS leaf_total_issues')
+            ->selectRaw('SUM(CASE WHEN statuses.category = ? AND NOT EXISTS (
+                SELECT 1 FROM issues children
+                WHERE children.parent_id = issues.id
+                  AND children.archived_at IS NULL
+            ) THEN 1 ELSE 0 END) AS leaf_done_issues', [StatusCategory::Done->value])
+            ->groupBy('issues.project_id')
+            ->get()
+            ->keyBy('project_id');
+
         $result = [];
         foreach ($projectIds as $projectId) {
             $counts = $issueCounts->get($projectId);
             $est = $estimates->get($projectId);
             $log = $logged->get($projectId);
+            $weights = $weighted->get($projectId);
+            $leaf = $leaves->get($projectId);
 
             $result[$projectId] = [
                 'backlog' => (int) ($counts->cnt_backlog ?? 0),
@@ -252,10 +309,34 @@ class GetProjectHealth
                 'overdue_issues' => (int) ($counts->overdue_issues ?? 0),
                 'estimated_hours' => (float) ($est->estimated_hours ?? 0),
                 'logged_hours' => (float) ($log->logged_hours ?? 0),
+                'estimated_hours_all' => (float) ($weights->estimated_hours_all ?? 0),
+                'estimated_hours_done' => (float) ($weights->estimated_hours_done ?? 0),
+                'leaf_total_issues' => (int) ($leaf->leaf_total_issues ?? 0),
+                'leaf_done_issues' => (int) ($leaf->leaf_done_issues ?? 0),
             ];
         }
 
         return $result;
+    }
+
+    /**
+     * Apply the "parents as containers" exclusion to an estimates query:
+     * parents owning at least one estimated, non-archived child leave the
+     * sum when the workspace setting is enabled.
+     */
+    private function excludeContainerParents(Builder $query, bool $exclude): Builder
+    {
+        if (! $exclude) {
+            return $query;
+        }
+
+        return $query->whereNotExists(function ($q): void {
+            $q->selectRaw('1')
+                ->from('issues as children')
+                ->whereColumn('children.parent_id', 'issues.id')
+                ->whereNull('children.archived_at')
+                ->whereNotNull('children.estimated_hours');
+        });
     }
 
     /**
@@ -286,6 +367,10 @@ class GetProjectHealth
             'overdue_issues' => 0,
             'estimated_hours' => 0.0,
             'logged_hours' => 0.0,
+            'estimated_hours_all' => 0.0,
+            'estimated_hours_done' => 0.0,
+            'leaf_total_issues' => 0,
+            'leaf_done_issues' => 0,
         ];
     }
 
@@ -307,6 +392,27 @@ class GetProjectHealth
 
         $consumptionRatio = $estimatedHours > 0
             ? round($loggedHours / $estimatedHours * 100, 1)
+            : null;
+
+        // Weighted completion: estimated hours of done issues over the
+        // estimated hours of ALL estimated issues (cancelled included —
+        // they carry an estimate but never count as done). Absent when
+        // no issue carries an estimate: no misleading "0 %".
+        $estimatedAll = $aggregates['estimated_hours_all'];
+        $estimatedDone = $aggregates['estimated_hours_done'];
+
+        $weightedCompletionPercentage = $estimatedAll > 0.0
+            ? round($estimatedDone / $estimatedAll * 100, 1)
+            : null;
+
+        // Leaf completion: issues without children only — parents are
+        // containers, not units of progress. Same cancelled rule as the
+        // raw count: denominator, never numerator.
+        $leafTotal = $aggregates['leaf_total_issues'];
+        $leafDone = $aggregates['leaf_done_issues'];
+
+        $leafCompletionPercentage = $leafTotal > 0
+            ? round($leafDone / $leafTotal * 100, 1)
             : null;
 
         // Projection: only when target_date is set.
@@ -334,6 +440,8 @@ class GetProjectHealth
             expectedPercentage: $expectedPercentage,
             status: $status,
             targetDate: $project->target_date?->toDateString(),
+            weightedCompletionPercentage: $weightedCompletionPercentage,
+            leafCompletionPercentage: $leafCompletionPercentage,
         );
     }
 

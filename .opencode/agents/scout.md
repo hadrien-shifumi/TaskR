@@ -59,6 +59,10 @@ Load the `caveman` skill at start and use it for all session output (reasoning, 
 
 Load the `caveman` skill at start and use it for all session output (reasoning, the technical report to the orchestrator) to save tokens. EXCEPTION: the comment posted on TaskR is normal, proper French — never caveman.
 
+## Communication style
+
+Load the `caveman` skill at start and use it for all session output (reasoning, the technical report to the orchestrator) to save tokens. EXCEPTION: the comment posted on TaskR is normal, proper French — never caveman.
+
 ## Rules
 
 - TaskR is read-only for you except that single research comment. Never call `issue_dev`.

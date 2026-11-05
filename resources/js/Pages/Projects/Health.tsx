@@ -1,4 +1,5 @@
 import { ProjectMenu } from '@/components/project-menu';
+import { ProjectTrends, type TrendsData } from '@/components/project-trends';
 import { ProjectViewSwitcher } from '@/components/project-view-switcher';
 import { Avatar, HealthBadge, PriorityBadge, StatusBadge } from '@/components/issue-badges';
 import { Progress, type ProgressColor } from '@/components/progress';
@@ -59,6 +60,7 @@ type PageProps = {
     };
     health: HealthData | null;
     canSeeGlobalKpis: boolean;
+    trends: TrendsData | null;
     myWorkload: PersonWorkload | null;
     teamWorkload: PersonWorkload[] | null;
     lateIssues: LateIssue[];
@@ -83,7 +85,7 @@ function currentMonthBounds(): { after: string; before: string } {
 }
 
 export default function Health() {
-    const { project, health, canSeeGlobalKpis, myWorkload, teamWorkload, lateIssues } = usePage<PageProps>().props;
+    const { project, health, canSeeGlobalKpis, trends, myWorkload, teamWorkload, lateIssues } = usePage<PageProps>().props;
     const { t } = useTranslation();
 
     const targetForm = useForm({
@@ -135,6 +137,12 @@ export default function Health() {
     const expected = health?.expectedPercentage !== null && health?.expectedPercentage !== undefined
         ? Math.round(health.expectedPercentage)
         : null;
+    const weighted = health?.weightedCompletionPercentage !== null && health?.weightedCompletionPercentage !== undefined
+        ? Math.round(health.weightedCompletionPercentage)
+        : null;
+    const leaf = health?.leafCompletionPercentage !== null && health?.leafCompletionPercentage !== undefined
+        ? Math.round(health.leafCompletionPercentage)
+        : null;
     const paceGap = completion !== null && expected !== null ? expected - completion : null;
     const targetPassed =
         project.targetDate !== null && project.targetDate < new Date().toISOString().slice(0, 10);
@@ -182,6 +190,20 @@ export default function Health() {
                       health.consumptionRatio !== null
                           ? t('projectHealth.consumption', { percent: Math.round(health.consumptionRatio) })
                           : t('projectHealth.noEstimates'),
+              },
+              {
+                  key: 'stat-weighted',
+                  label: t('projectHealth.statWeighted'),
+                  value: weighted !== null ? String(weighted) : '—',
+                  suffix: weighted !== null ? ' %' : '',
+                  hint: t('projectHealth.statWeightedHint'),
+              },
+              {
+                  key: 'stat-leaf',
+                  label: t('projectHealth.statLeaf'),
+                  value: leaf !== null ? String(leaf) : '—',
+                  suffix: leaf !== null ? ' %' : '',
+                  hint: t('projectHealth.statLeafHint'),
               },
           ]
         : [];
@@ -284,7 +306,7 @@ export default function Health() {
             {/* ── Owner/Manager view: global KPIs + team workload ── */}
             {canSeeGlobalKpis && health ? (
                 <>
-                    <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+                    <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-6">
                         {statCards.map((card) => (
                             <Card key={card.key} data-test={card.key} className="gap-2 py-5">
                                 <CardContent className="grid gap-1.5 px-5">
@@ -349,6 +371,9 @@ export default function Health() {
                                     ))}
                                 </CardContent>
                             </Card>
+
+                            {/* Daily trend chart (opened / closed / moved) */}
+                            {trends ? <ProjectTrends projectId={project.id} trends={trends} /> : null}
 
                             {/* Team workload table */}
                             {teamWorkload && teamWorkload.length > 0 ? (
