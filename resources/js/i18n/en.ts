@@ -400,8 +400,6 @@ const en = {
         consumption: "logged / estimated · {{percent}}% consumed",
         noEstimates: "No estimates on open work",
         projection: "Projection",
-        projectionHint: "{{completion}}% done · {{expected}}% expected at this date",
-        noProjectionHint: "No target date — no projection",
         distribution: "Issues distribution",
         issuesCount: "{{count}} issues",
         lateIssues: "Late issues in this project",

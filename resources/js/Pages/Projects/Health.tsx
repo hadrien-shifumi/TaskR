@@ -191,20 +191,6 @@ export default function Health() {
                           ? t('projectHealth.consumption', { percent: Math.round(health.consumptionRatio) })
                           : t('projectHealth.noEstimates'),
               },
-              {
-                  key: 'stat-weighted',
-                  label: t('projectHealth.statWeighted'),
-                  value: weighted !== null ? String(weighted) : '—',
-                  suffix: weighted !== null ? ' %' : '',
-                  hint: t('projectHealth.statWeightedHint'),
-              },
-              {
-                  key: 'stat-leaf',
-                  label: t('projectHealth.statLeaf'),
-                  value: leaf !== null ? String(leaf) : '—',
-                  suffix: leaf !== null ? ' %' : '',
-                  hint: t('projectHealth.statLeafHint'),
-              },
           ]
         : [];
 
@@ -306,7 +292,7 @@ export default function Health() {
             {/* ── Owner/Manager view: global KPIs + team workload ── */}
             {canSeeGlobalKpis && health ? (
                 <>
-                    <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-6">
+                    <div className="mb-6 grid gap-4 sm:grid-cols-3">
                         {statCards.map((card) => (
                             <Card key={card.key} data-test={card.key} className="gap-2 py-5">
                                 <CardContent className="grid gap-1.5 px-5">
@@ -325,19 +311,6 @@ export default function Health() {
                                 </CardContent>
                             </Card>
                         ))}
-                        <Card data-test="stat-projection" className="gap-2 py-5">
-                            <CardContent className="grid gap-1.5 px-5">
-                                <p className="text-xs text-muted-foreground">{t('projectHealth.projection')}</p>
-                                <div className="flex h-[28px] items-center gap-2">
-                                    <HealthBadge status={health.status} />
-                                </div>
-                                <p className="text-xs text-muted-foreground">
-                                    {expected !== null
-                                        ? t('projectHealth.projectionHint', { completion: completion ?? 0, expected })
-                                        : t('projectHealth.noProjectionHint')}
-                                </p>
-                            </CardContent>
-                        </Card>
                     </div>
 
                     <div className="grid items-start gap-7 lg:grid-cols-[1fr_280px]">
@@ -475,13 +448,32 @@ export default function Health() {
 
                         <Card className="py-5">
                             <CardContent className="grid gap-3.5 px-5">
-                                <h2 className="text-base font-semibold">{t('projectHealth.projection')}</h2>
+                                <div className="flex items-center justify-between gap-2">
+                                    <h2 className="text-base font-semibold">{t('projectHealth.projection')}</h2>
+                                    <span data-test="projection-status">
+                                        <HealthBadge status={health.status} />
+                                    </span>
+                                </div>
                                 <div data-test="projection-done">
                                     <div className="mb-1.5 flex items-center justify-between text-sm">
                                         <span className="text-muted-foreground">{t('projectHealth.doneToDate')}</span>
                                         <span className="font-mono font-semibold tabular-nums">{completion ?? 0}%</span>
                                     </div>
                                     <Progress value={completion ?? 0} color="success" />
+                                    <p className="mt-1.5 flex flex-wrap gap-x-3 text-xs text-muted-foreground">
+                                        <span data-test="stat-weighted" title={t('projectHealth.statWeightedHint')}>
+                                            {t('projectHealth.statWeighted')}{' '}
+                                            <span className="font-mono text-foreground tabular-nums">
+                                                {weighted !== null ? `${weighted} %` : '—'}
+                                            </span>
+                                        </span>
+                                        <span data-test="stat-leaf" title={t('projectHealth.statLeafHint')}>
+                                            {t('projectHealth.statLeaf')}{' '}
+                                            <span className="font-mono text-foreground tabular-nums">
+                                                {leaf !== null ? `${leaf} %` : '—'}
+                                            </span>
+                                        </span>
+                                    </p>
                                 </div>
                                 <div data-test="projection-expected">
                                     <div className="mb-1.5 flex items-center justify-between text-sm">

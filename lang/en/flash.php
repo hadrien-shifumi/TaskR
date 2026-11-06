@@ -56,6 +56,10 @@ return [
         'deleted' => 'Template deleted.',
     ],
 
+    'saved_view' => [
+        'created' => 'View ":name" saved.',
+    ],
+
     'notification_preferences' => [
         'updated' => 'Notification preferences saved.',
     ],

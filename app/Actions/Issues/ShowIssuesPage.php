@@ -11,11 +11,9 @@ use App\Presenters\Projects\ProjectPresenter;
 use App\Presenters\Statuses\StatusPresenter;
 use App\Presenters\Templates\TemplatePresenter;
 use App\Responders\Issues\IssuesPageResponder;
+use App\Support\IssueFilterSanitizer;
 use App\Support\WorkspaceContext;
-use Carbon\CarbonImmutable;
-use Carbon\Exceptions\InvalidFormatException;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 use Lorisleiva\Actions\Concerns\AsController;
 use Lorisleiva\Actions\Concerns\AsObject;
 use Symfony\Component\HttpFoundation\Response;
@@ -125,18 +123,18 @@ class ShowIssuesPage
         $data = $this->handle($workspace, [
             'view' => $request->query('view'),
             'project' => $request->query('project'),
-            'status' => $this->sanitizeIdFilter($request->query('status')),
+            'status' => IssueFilterSanitizer::ulid($request->query('status')),
             'category' => $request->query('category'),
             'priority' => $request->query('priority'),
-            'label' => $this->sanitizeLabelFilter($request->query('label')),
+            'label' => IssueFilterSanitizer::labels($request->query('label')),
             'assignee' => $request->query('assignee'),
             'overdue' => $request->query('overdue'),
             'blocked' => $request->query('blocked'),
-            'due_before' => $this->sanitizeDateFilter($request->query('due_before')),
-            'due_after' => $this->sanitizeDateFilter($request->query('due_after')),
+            'due_before' => IssueFilterSanitizer::date($request->query('due_before')),
+            'due_after' => IssueFilterSanitizer::date($request->query('due_after')),
             'q' => $request->query('q'),
-            'sort' => $this->sanitizeSort($request->query('sort')),
-            'dir' => $this->sanitizeDir($request->query('dir')),
+            'sort' => IssueFilterSanitizer::sort($request->query('sort')),
+            'dir' => IssueFilterSanitizer::direction($request->query('dir')),
         ], $request->user(), $this->sanitizePage($request->query('page')));
 
         $data['labels'] = $workspace->labels()->orderBy('name')->get()->map(fn ($label) => LabelPresenter::present($label))->all();
@@ -151,26 +149,6 @@ class ShowIssuesPage
     }
 
     /**
-     * Normalize the sort key read from the query string. Unknown keys are
-     * ignored silently — the default order applies.
-     */
-    private function sanitizeSort(mixed $value): ?string
-    {
-        return is_string($value) && in_array($value, ['created', 'priority', 'due_date', 'status', 'project'], true)
-            ? $value
-            : null;
-    }
-
-    /**
-     * Normalize the sort direction read from the query string. Unknown
-     * directions are ignored silently — the default direction applies.
-     */
-    private function sanitizeDir(mixed $value): ?string
-    {
-        return is_string($value) && in_array($value, ['asc', 'desc'], true) ? $value : null;
-    }
-
-    /**
      * Normalize the page number read from the query string. Anything that is
      * not a positive integer falls back to the first page.
      */
@@ -181,68 +159,6 @@ class ShowIssuesPage
         }
 
         return max(1, (int) trim($value));
-    }
-
-    /**
-     * Normalize a single-ULID filter read from the query string. Anything that
-     * is not a ULID is ignored silently.
-     */
-    private function sanitizeIdFilter(mixed $value): ?string
-    {
-        return is_string($value) && Str::isUlid($value) ? $value : null;
-    }
-
-    /**
-     * Normalize the label filter read from the query string: a single ULID,
-     * a `label[]` list, or a comma-separated list all work. Invalid values
-     * are dropped silently — a shared URL must never 422.
-     *
-     * @return string|array<int, string>|null
-     */
-    private function sanitizeLabelFilter(mixed $label): string|array|null
-    {
-        $values = is_array($label) ? $label : explode(',', (string) $label);
-
-        $ids = array_values(array_filter(
-            array_map(fn (mixed $value) => is_string($value) ? trim($value) : '', $values),
-            fn (string $value) => $value !== '' && Str::isUlid($value),
-        ));
-
-        if ($ids === []) {
-            return null;
-        }
-
-        return count($ids) === 1 ? $ids[0] : $ids;
-    }
-
-    /**
-     * Normalize a due-date bound read from the query string. Anything that is
-     * not a strict `Y-m-d` date is ignored silently.
-     */
-    private function sanitizeDateFilter(mixed $value): ?string
-    {
-        if (! is_string($value)) {
-            return null;
-        }
-
-        $value = trim($value);
-
-        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $value) !== 1) {
-            return null;
-        }
-
-        try {
-            $date = CarbonImmutable::createFromFormat('!Y-m-d', $value);
-        } catch (InvalidFormatException|InvalidArgumentException) {
-            return null;
-        }
-
-        // Rejects overflowing dates such as 2026-13-45, which Carbon rolls over.
-        if ($date === false || $date->format('Y-m-d') !== $value) {
-            return null;
-        }
-
-        return $value;
     }
 
     /**

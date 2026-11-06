@@ -8,6 +8,7 @@ use App\Models\Issue;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Presenters\Issues\IssuePresenter;
+use App\Support\IssueFilterSanitizer;
 use App\Support\WorkspaceContext;
 use Illuminate\Database\Eloquent\Builder;
 use Lorisleiva\Actions\Concerns\AsObject;
@@ -15,9 +16,6 @@ use Lorisleiva\Actions\Concerns\AsObject;
 class ListIssues
 {
     use AsObject;
-
-    /** Sort keys accepted by the issues list; anything else falls back to created. */
-    private const SORT_KEYS = ['created', 'priority', 'due_date', 'status', 'project'];
 
     /**
      * Crockford base32 alphabet of a ULID, without the ambiguous I, L, O and U.
@@ -145,7 +143,7 @@ class ListIssues
      */
     private function applySort(Builder $query, mixed $sort, mixed $dir): void
     {
-        $key = is_string($sort) && in_array($sort, self::SORT_KEYS, true) ? $sort : 'created';
+        $key = is_string($sort) && in_array($sort, IssueFilterSanitizer::SORT_KEYS, true) ? $sort : 'created';
 
         $direction = is_string($dir) && in_array($dir, ['asc', 'desc'], true)
             ? $dir

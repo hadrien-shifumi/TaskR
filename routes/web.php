@@ -64,6 +64,7 @@ use App\Actions\Projects\ShowProjectMembers;
 use App\Actions\Projects\ShowProjectsPage;
 use App\Actions\Projects\UpdateProject;
 use App\Actions\Projects\UpdateProjectMemberRole;
+use App\Actions\SavedViews\CreateSavedView;
 use App\Actions\Statuses\CreateStatus;
 use App\Actions\Statuses\DeleteStatus;
 use App\Actions\Statuses\ReorderStatuses;
@@ -181,6 +182,11 @@ Route::middleware(['auth', 'workspace'])->group(function (): void {
     Route::post('/issues/{issue}/knowledge', SetIssueKnowledge::class)->name('issues.knowledge');
     Route::get('/issues/{issue}/knowledge/search', SearchIssueKnowledge::class)->name('issues.knowledge-search');
     Route::post('/issues/{issue}/archive', ArchiveIssue::class)->name('issues.archive');
+
+    // Saved views of the issues page: a named, workspace-shared snapshot
+    // of the URL filters and sort (creation only for now — the selector,
+    // rename and delete come with their own tickets).
+    Route::post('/views', CreateSavedView::class)->name('views.store');
 
     Route::post('/issues/{issue}/comments', AddComment::class)->name('comments.store');
     Route::match(['put', 'patch'], '/issues/{issue}/comments/{comment}', UpdateComment::class)

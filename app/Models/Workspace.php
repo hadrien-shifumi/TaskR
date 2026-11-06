@@ -84,6 +84,14 @@ class Workspace extends BaseModel
         return $this->hasMany(IssueTemplate::class)->orderBy('name');
     }
 
+    /**
+     * @return HasMany<SavedView, $this>
+     */
+    public function savedViews(): HasMany
+    {
+        return $this->hasMany(SavedView::class)->orderBy('name');
+    }
+
     public function hasMember(User $user): bool
     {
         return $this->members()->where('users.id', $user->getKey())->exists();

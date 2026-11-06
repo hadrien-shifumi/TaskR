@@ -56,6 +56,10 @@ return [
         'deleted' => 'Gabarit supprimé.',
     ],
 
+    'saved_view' => [
+        'created' => 'Vue « :name » sauvegardée.',
+    ],
+
     'notification_preferences' => [
         'updated' => 'Préférences de notification enregistrées.',
     ],
