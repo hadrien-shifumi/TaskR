@@ -256,7 +256,7 @@ export default function Health() {
                                     <p className="text-xs text-muted-foreground">{myWorkload.userName}</p>
                                 </div>
                             </div>
-                            <div className="grid grid-cols-3 gap-4">
+                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                                 <div>
                                     <p className="text-xs text-muted-foreground">{t('projectHealth.openIssues')}</p>
                                     <p className="font-mono text-2xl font-semibold tabular-nums">

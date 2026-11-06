@@ -93,16 +93,63 @@ it('keeps the nav usable on a mobile viewport', function () {
 
     $page = visit('/')->on()->mobile();
 
-    // Section labels are desktop-only; every link stays in the horizontal bar.
-    $page->assertScript("getComputedStyle(document.querySelector('nav[aria-label=\"Main\"] [data-test=\"nav-section\"] p')).display === 'none'")
-        ->assertPresent('nav[aria-label="Main"] a[href$="/"]')
-        ->assertPresent('nav[aria-label="Main"] a[href$="/projects"]')
-        ->assertPresent('nav[aria-label="Main"] a[href$="/issues"]')
-        ->assertPresent('nav[aria-label="Main"] a[href$="/mentions"]')
-        ->assertPresent('nav[aria-label="Main"] a[href$="/knowledge"]')
-        ->assertPresent('nav[aria-label="Main"] a[href$="/knowledge/trash"]')
-        ->assertPresent('nav[aria-label="Main"] a[href$="/settings/statuses"]')
-        ->assertNoSmoke();
+    // On mobile the sidebar folds into a drawer. The harness re-delivers the
+    // document between commands there, so the scenario runs as one probe:
+    // wait for the app to remount (the Inertia title replaces the raw server
+    // title), open the drawer, and report the families and their entries.
+    $result = $page->script(<<<'JS'
+        new Promise((resolve) => {
+            const start = Date.now();
+            const wait = () => {
+                const button = document.querySelector('[data-test="mobile-menu-button"]');
+                if (button && document.title !== 'Laravel') {
+                    button.click();
+                    const opened = Date.now();
+                    const check = () => {
+                        const drawer = document.querySelector('[data-test="mobile-nav-drawer"]');
+                        if (drawer) {
+                            resolve({
+                                opened: true,
+                                projectFamily: drawer.textContent.includes('Project management'),
+                                homeLink: !!drawer.querySelector('a[href$="/"]'),
+                                projectsLink: !!drawer.querySelector('a[href$="/projects"]'),
+                                issuesLink: !!drawer.querySelector('a[href$="/issues"]'),
+                                mentionsLink: !!drawer.querySelector('a[href$="/mentions"]'),
+                                knowledgeLink: !!drawer.querySelector('a[href$="/knowledge"]'),
+                                trashLink: !!drawer.querySelector('a[href$="/knowledge/trash"]'),
+                                settingsLink: !!drawer.querySelector('a[href$="/settings/statuses"]'),
+                            });
+                            return;
+                        }
+                        if (Date.now() - opened > 5000) {
+                            resolve({ opened: false });
+                            return;
+                        }
+                        setTimeout(check, 50);
+                    };
+                    check();
+                    return;
+                }
+                if (Date.now() - start > 15000) {
+                    resolve({ opened: false, timeout: true });
+                    return;
+                }
+                setTimeout(wait, 100);
+            };
+            wait();
+        })
+        JS);
+
+    expect($result['opened'])->toBeTrue('the menu button must open the drawer')
+        ->and($result['projectFamily'])->toBeTrue('the project family label must be visible')
+        ->and($result['projectsLink'])->toBeTrue()
+        ->and($result['issuesLink'])->toBeTrue()
+        ->and($result['mentionsLink'])->toBeTrue()
+        ->and($result['knowledgeLink'])->toBeTrue()
+        ->and($result['trashLink'])->toBeTrue()
+        ->and($result['settingsLink'])->toBeTrue();
+
+    $page->assertNoSmoke();
 });
 
 it('has no accessibility issues in the grouped nav, desktop and mobile', function () {

@@ -285,7 +285,7 @@ export default function KnowledgeIndex() {
                 onSearchChange={setSearch}
                 searchPlaceholder={t('knowledge.searchPlaceholder')}
                 searchAriaLabel={t('knowledge.searchAria')}
-                searchClassName="w-72"
+                searchClassName="w-full sm:w-72"
                 visible={results !== undefined ? results.length : pages.length}
                 total={pages.length}
             />

@@ -83,7 +83,7 @@ export function IssueDetailDialog({ projectId, filters, parentsOnly, detail }: I
             >
                 <div
                     data-test="issue-modal-header"
-                    className="flex shrink-0 items-center justify-between border-b px-6 py-3"
+                    className="flex shrink-0 items-center justify-between border-b px-4 py-3 sm:px-6"
                 >
                     <div className="flex items-center gap-1.5">
                         <span
@@ -99,7 +99,7 @@ export function IssueDetailDialog({ projectId, filters, parentsOnly, detail }: I
                         <span className="sr-only">Close</span>
                     </DialogClose>
                 </div>
-                <div data-test="issue-detail-scroll" className="min-h-0 flex-1 overflow-y-auto p-6">
+                <div data-test="issue-detail-scroll" className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:p-6">
                     <IssueDetail
                         issue={detail.issue}
                         comments={detail.comments}
