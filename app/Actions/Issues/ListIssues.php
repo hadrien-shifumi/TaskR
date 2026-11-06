@@ -73,7 +73,14 @@ class ListIssues
             $query->limit($limit);
         }
 
-        $issues = $query->get()->map(fn (Issue $issue) => IssuePresenter::card($issue))->values()->all();
+        $issues = $query->get();
+
+        // The active-descendant summary rides every card: the kanban view
+        // needs it to offer the cascade before a parent moves. One query
+        // per depth level, never one per card.
+        $descendants = app(LoadActiveDescendants::class)->run($issues, $user);
+
+        $issues = $issues->map(fn (Issue $issue) => IssuePresenter::card($issue, $descendants))->values()->all();
 
         return [
             'issues' => $issues,

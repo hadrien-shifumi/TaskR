@@ -242,6 +242,7 @@ const fr: typeof en = {
         editedBy: "Modifié par {{name}} · à l'instant",
         noDescription: "Pas encore de description — utilisez Modifier pour en ajouter une.",
         statusHint: "Changement libre : Backlog → Terminé directement est autorisé.",
+        moveRefused: "Le déplacement a été refusé.",
         statusAria: "Statut — changement libre, aucune transition imposée",
         allAssigned: "Tous les membres sont assignés",
         addAssignee: "Ajouter un assigné",
@@ -568,6 +569,15 @@ const fr: typeof en = {
         noTemplate: "Aucun gabarit",
         templateHint:
             "Pré-remplit la description, la priorité et les étiquettes — tout reste modifiable.",
+        moveCascade: {
+            title: "Déplacer aussi les sous-tickets ?",
+            descriptionOne:
+                'Ce ticket a un sous-ticket dans un autre statut. Déplacer aussi tout le sous-arbre vers « {{status}} » ?',
+            descriptionMany:
+                'Ce ticket a {{count}} sous-tickets dans un autre statut. Déplacer aussi tout le sous-arbre vers « {{status}} » ?',
+            accept: "Oui, déplacer tout le sous-arbre",
+            decline: "Non, seulement ce ticket",
+        },
         fields: {
             title: "Titre",
             description: "Description",

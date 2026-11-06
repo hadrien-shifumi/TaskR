@@ -242,6 +242,7 @@ const en = {
         editedBy: "Edited by {{name}} · just now",
         noDescription: "No description yet — use Edit to add one.",
         statusHint: "Free change: Backlog → Done directly is allowed.",
+        moveRefused: "The move was refused.",
         statusAria: "Status — free change, no imposed transition",
         allAssigned: "All members are assigned",
         addAssignee: "Add assignee",
@@ -564,6 +565,15 @@ const en = {
         template: "Template",
         noTemplate: "No template",
         templateHint: "Pre-fills description, priority and labels — everything stays editable.",
+        moveCascade: {
+            title: "Move the sub-tickets too?",
+            descriptionOne:
+                'This ticket has one sub-ticket in another status. Move the whole sub-tree to "{{status}}" as well?',
+            descriptionMany:
+                'This ticket has {{count}} sub-tickets in another status. Move the whole sub-tree to "{{status}}" as well?',
+            accept: "Yes, move the whole sub-tree",
+            decline: "No, only this ticket",
+        },
         fields: {
             title: "Title",
             description: "Description",

@@ -247,12 +247,18 @@ class GetProjectTrendsTest extends TestCase
             $theirStatuses[$status->category->value] = $status;
         }
 
-        $theirIssue = CreateIssue::run($otherWorkspace, [
-            'project_id' => $otherProject->id,
-            'title' => 'Foreign issue',
-            'status_id' => $theirStatuses['backlog']->id,
-        ]);
-        MoveIssue::run($theirIssue, $theirStatuses['done']->id);
+        $theirIssue = null;
+        app(WorkspaceContext::class)->set($otherWorkspace);
+        try {
+            $theirIssue = CreateIssue::run($otherWorkspace, [
+                'project_id' => $otherProject->id,
+                'title' => 'Foreign issue',
+                'status_id' => $theirStatuses['backlog']->id,
+            ]);
+            MoveIssue::run($theirIssue, $theirStatuses['done']->id);
+        } finally {
+            app(WorkspaceContext::class)->set($this->workspace);
+        }
 
         $this->createIssue('backlog', 'Mine', now());
 

@@ -1,4 +1,4 @@
-import type { LabelRef, UserRef } from '@/types';
+import type { DescendantsSummary, LabelRef, UserRef } from '@/types';
 
 export interface IssueRow {
     id: string;
@@ -11,6 +11,7 @@ export interface IssueRow {
     blocked: boolean;
     unblockable: boolean;
     hasOpenChild: boolean;
+    descendants: DescendantsSummary;
     assignees: UserRef[];
     labels: LabelRef[];
     knowledgePagesCount: number;
@@ -34,6 +35,7 @@ export interface KanbanIssue {
     blocked: boolean;
     unblockable: boolean;
     hasOpenChild: boolean;
+    descendants: DescendantsSummary;
     assignees: UserRef[];
     labels: LabelRef[];
     knowledgePagesCount: number;
