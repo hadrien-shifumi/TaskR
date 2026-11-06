@@ -222,63 +222,7 @@ export default function Board() {
                         })}
                         {health.status === 'late' ? t('projectBoard.overdueSuffix') : ''}
                     </span>
-                    {/* Assignee filter */}
-                    <Select
-                        value={currentAssignee || 'all'}
-                        onValueChange={(value) => setAssigneeFilter(value ?? '')}
-                    >
-                        <SelectTrigger
-                            className="h-7.5 w-40 text-[13px]"
-                            aria-label={t('projectBoard.filterByAssignee')}
-                            data-test="board-assignee-filter"
-                        >
-                            <User className="size-3.5 text-muted-foreground" aria-hidden />
-                            <SelectValue placeholder={t('projectBoard.allAssignees')} />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">{t('projectBoard.allAssignees')}</SelectItem>
-                            {currentUserId !== null ? (
-                                <SelectItem value={String(currentUserId)} data-test="board-filter-me">
-                                    {t('projectBoard.me')}
-                                </SelectItem>
-                            ) : null}
-                            {projectPeople
-                                .filter((person) => person.id !== currentUserId)
-                                .map((person) => (
-                                    <SelectItem key={person.id} value={String(person.id)}>
-                                        <span className="flex items-center gap-2">
-                                            <Avatar name={person.name} className="size-4" />
-                                            {person.name}
-                                        </span>
-                                    </SelectItem>
-                                ))}
-                        </SelectContent>
-                    </Select>
                     <ProjectViewSwitcher projectId={project.id} active="board" />
-                    <Button
-                        variant={parentsOnly ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() =>
-                            router.get(
-                                route('projects.board', project.id),
-                                parentsOnly ? {} : { parents: '1' },
-                                { preserveState: true },
-                            )
-                        }
-                    >
-                        {t('projectBoard.parentsOnly')}
-                    </Button>
-                    {canArchiveCompleted ? (
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            data-test="board-archive-completed"
-                            onClick={() => setArchivingCompleted(true)}
-                        >
-                            <Archive className="size-3.5" aria-hidden />
-                            {t('projectBoard.archiveCompleted')}
-                        </Button>
-                    ) : null}
                     <ProjectMenu project={project} issuesCount={health.totalIssues} />
                     <Button
                         size="sm"
@@ -302,6 +246,64 @@ export default function Board() {
             </p>
 
             <FlashBanner />
+
+            <div className="mb-3.5 flex flex-wrap items-center gap-2" data-test="board-toolbar">
+                <Select
+                    value={currentAssignee || 'all'}
+                    onValueChange={(value) => setAssigneeFilter(value ?? '')}
+                >
+                    <SelectTrigger
+                        className="h-7.5 w-40 text-[13px]"
+                        aria-label={t('projectBoard.filterByAssignee')}
+                        data-test="board-assignee-filter"
+                    >
+                        <User className="size-3.5 text-muted-foreground" aria-hidden />
+                        <SelectValue placeholder={t('projectBoard.allAssignees')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">{t('projectBoard.allAssignees')}</SelectItem>
+                        {currentUserId !== null ? (
+                            <SelectItem value={String(currentUserId)} data-test="board-filter-me">
+                                {t('projectBoard.me')}
+                            </SelectItem>
+                        ) : null}
+                        {projectPeople
+                            .filter((person) => person.id !== currentUserId)
+                            .map((person) => (
+                                <SelectItem key={person.id} value={String(person.id)}>
+                                    <span className="flex items-center gap-2">
+                                        <Avatar name={person.name} className="size-4" />
+                                        {person.name}
+                                    </span>
+                                </SelectItem>
+                            ))}
+                    </SelectContent>
+                </Select>
+                <Button
+                    variant={parentsOnly ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() =>
+                        router.get(
+                            route('projects.board', project.id),
+                            parentsOnly ? {} : { parents: '1' },
+                            { preserveState: true },
+                        )
+                    }
+                >
+                    {t('projectBoard.parentsOnly')}
+                </Button>
+                {canArchiveCompleted ? (
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        data-test="board-archive-completed"
+                        onClick={() => setArchivingCompleted(true)}
+                    >
+                        <Archive className="size-3.5" aria-hidden />
+                        {t('projectBoard.archiveCompleted')}
+                    </Button>
+                ) : null}
+            </div>
 
             {moveError ? (
                 <Banner variant="danger" role="alert" icon={null} className="mb-4 px-4 py-2.5">

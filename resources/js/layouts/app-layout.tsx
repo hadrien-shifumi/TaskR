@@ -446,33 +446,40 @@ export default function AppLayout({
 
             <div className="flex min-w-0 flex-col">
                 {title || actions || leading ? (
-                    <header className="sticky top-0 z-20 flex flex-wrap items-center gap-4 border-b bg-background/88 px-4 py-3.5 backdrop-blur lg:px-7">
-                        {auth.user ? (
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className="-ml-2 lg:hidden"
-                                aria-label={t("layout.menu")}
-                                aria-haspopup="dialog"
-                                onClick={() => setMenuOpen(true)}
-                                data-test="mobile-menu-button"
-                            >
-                                <Menu aria-hidden />
-                            </Button>
-                        ) : null}
-                        {leading}
-                        {title ? (
-                            <h1 className="flex flex-wrap items-center gap-2.5 text-[17px] leading-tight font-semibold tracking-tight">
-                                {title}
-                            </h1>
-                        ) : null}
-                        {subtitle ? (
-                            <span className="hidden text-sm text-muted-foreground sm:inline">
-                                {subtitle}
-                            </span>
-                        ) : null}
-                        <span className="flex-1" />
-                        {actions}
+                    <header className="sticky top-0 z-20 border-b bg-background/88 backdrop-blur">
+                        <div className="flex flex-wrap items-center gap-3 px-4 py-3 lg:gap-4 lg:px-7 lg:py-3.5">
+                            <div className="flex min-w-0 flex-wrap items-center gap-2.5">
+                                {auth.user ? (
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="-ml-2 lg:hidden"
+                                        aria-label={t("layout.menu")}
+                                        aria-haspopup="dialog"
+                                        onClick={() => setMenuOpen(true)}
+                                        data-test="mobile-menu-button"
+                                    >
+                                        <Menu aria-hidden />
+                                    </Button>
+                                ) : null}
+                                {leading}
+                                {title ? (
+                                    <h1 className="flex flex-wrap items-center gap-2.5 text-[17px] leading-tight font-semibold tracking-tight">
+                                        {title}
+                                    </h1>
+                                ) : null}
+                                {subtitle ? (
+                                    <span className="hidden text-sm text-muted-foreground sm:inline">
+                                        {subtitle}
+                                    </span>
+                                ) : null}
+                            </div>
+                            {actions ? (
+                                <div className="flex w-full flex-wrap items-center gap-2 lg:w-auto lg:flex-1 lg:justify-end lg:gap-4">
+                                    {actions}
+                                </div>
+                            ) : null}
+                        </div>
                     </header>
                 ) : null}
 
