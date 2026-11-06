@@ -1,7 +1,7 @@
 ---
 description: Research on the local model - reads the TaskR issue and knowledge base, locates the concerned code, posts one short functional comment on the issue and reports the technical analysis to the orchestrator; never edits anything
 mode: subagent
-model: zai-coding-plan/glm-5.3-flash
+model: ollama/flint:latest
 permissions:
     - action: edit
       resource: "*"
