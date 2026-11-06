@@ -401,8 +401,6 @@ const fr: typeof en = {
         consumption: "saisies / estimées · {{percent}} % consommé",
         noEstimates: "Aucune estimation sur le travail ouvert",
         projection: "Projection",
-        projectionHint: "{{completion}} % fait · {{expected}} % attendu à cette date",
-        noProjectionHint: "Pas de date cible — pas de projection",
         distribution: "Répartition des tickets",
         issuesCount: "{{count}} tickets",
         lateIssues: "Tickets en retard dans ce projet",

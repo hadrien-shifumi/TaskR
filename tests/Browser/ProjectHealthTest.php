@@ -47,14 +47,18 @@ it('shows the project health overview badge and the health page indicators', fun
         ->assertSee('logged / estimated · 80% consumed');
 
     // Scenario "Projet en retard": target date passed, 40% done, expected 100%.
-    $page->assertSeeIn('@stat-projection', '40% done · 100% expected at this date');
+    $page->assertSeeIn('@projection-status', 'Late');
 
     // The late issues table exposes the overdue issue.
     $page->assertSee('IP1');
 
-    // Aside projection: done vs expected at this date.
+    // Aside projection: done vs expected at this date, with the weighted and
+    // leaf completion variants under the done bar.
     $page->assertSeeIn('@projection-done', '40%')
-        ->assertSeeIn('@projection-expected', '100%');
+        ->assertSeeIn('@projection-expected', '100%')
+        ->assertPresent('@stat-weighted')
+        ->assertPresent('@stat-leaf');
+    $page->assertMissing('@stat-projection');
 
     app(WorkspaceContext::class)->set($workspace);
     expect($project->name)->toBe('Refonte site vitrine');
@@ -70,7 +74,7 @@ it('recalculates the projection when the target date is edited', function () {
     $page = visit('/projects/'.$project->id.'/health');
 
     // The project starts late: target date passed, 100% expected at this date.
-    $page->assertSeeIn('@stat-projection', '100% expected at this date');
+    $page->assertSeeIn('@projection-expected', '100%');
 
     // Scenario "Édition de la date cible": moving the target date forward
     // recalculates the projection immediately (projects.update).
@@ -82,8 +86,9 @@ it('recalculates the projection when the target date is edited', function () {
     // The recalculated projection renders on the health page itself: nothing
     // has elapsed yet, so 0% is expected and the project is back on track.
     $page->assertPathIs('/projects/'.$project->id.'/health')
-        ->assertSeeIn('@stat-projection', '40% done · 0% expected at this date')
-        ->assertSee('On track')
+        ->assertSeeIn('@projection-done', '40%')
+        ->assertSeeIn('@projection-expected', '0%')
+        ->assertSeeIn('@projection-status', 'On track')
         ->assertSeeIn('@pagebar-meta', 'target:')
         ->assertDontSeeIn('@pagebar-meta', 'overdue');
 
