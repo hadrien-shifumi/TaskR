@@ -44,6 +44,16 @@ export interface LabelRef {
     color: string;
 }
 
+/**
+ * Active-descendant summary of an issue: the total and the count per
+ * status id. A screen compares it with the target status to decide whether
+ * a move must offer to bring the whole sub-tree along.
+ */
+export interface DescendantsSummary {
+    total: number;
+    byStatus: Record<string, number>;
+}
+
 /** Computed health indicators of a project (always calculated, never stored). */
 export interface HealthData {
     issuesByCategory: { backlog: number; in_progress: number; done: number; cancelled: number };

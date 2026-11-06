@@ -21,7 +21,7 @@ class IssuePresenter
      *
      * @return array{id: string, title: string, project: array{id: string, name: string}, status: array{id: string, name: string, category: string}, priority: string, dueDate: string|null, overdue: bool, blocked: bool, unblockable: bool, assignees: array<int, array{id: int, name: string}>, labels: array<int, array{id: string, name: string, color: string}>, knowledgePagesCount: int, knowledgePageTitles: array<int, string>}
      */
-    public static function card(Issue $issue): array
+    public static function card(Issue $issue, ?Collection $activeDescendants = null): array
     {
         return [
             'id' => $issue->id,
@@ -34,6 +34,7 @@ class IssuePresenter
             'blocked' => self::hasOpenBlocker($issue),
             'unblockable' => self::isUnblockable($issue),
             'hasOpenChild' => self::hasOpenChild($issue),
+            'descendants' => self::descendantSummary($issue, $activeDescendants),
             'assignees' => self::assignees($issue),
             'labels' => $issue->labels->map(fn ($label) => ['id' => $label->id, 'name' => $label->name, 'color' => $label->color])->values()->all(),
             'knowledgePagesCount' => $issue->knowledgePages->count(),
@@ -59,6 +60,7 @@ class IssuePresenter
             'blocked' => $card['blocked'],
             'unblockable' => $card['unblockable'],
             'hasOpenChild' => $card['hasOpenChild'],
+            'descendants' => $card['descendants'],
             'assignees' => $card['assignees'],
             'labels' => $card['labels'],
             'knowledgePagesCount' => $card['knowledgePagesCount'],
@@ -72,7 +74,7 @@ class IssuePresenter
      *
      * @return array{id: string, title: string, priority: string, dueDate: string|null, overdue: bool, blocked: bool, unblockable: bool, assignees: array<int, array{id: int, name: string}>, knowledgePagesCount: int, knowledgePageTitles: array<int, string>}
      */
-    public static function boardCard(Issue $issue): array
+    public static function boardCard(Issue $issue, ?Collection $activeDescendants = null): array
     {
         return [
             'id' => $issue->id,
@@ -83,6 +85,7 @@ class IssuePresenter
             'blocked' => self::hasOpenBlocker($issue),
             'unblockable' => self::isUnblockable($issue),
             'hasOpenChild' => self::hasOpenChild($issue),
+            'descendants' => self::descendantSummary($issue, $activeDescendants),
             'assignees' => self::assignees($issue),
             'knowledgePagesCount' => $issue->knowledgePages->count(),
             'knowledgePageTitles' => self::knowledgePageTitles($issue),
@@ -114,7 +117,7 @@ class IssuePresenter
      * @param  Collection<int, Issue>|iterable  $children
      * @return array<string, mixed>
      */
-    public static function detail(Issue $issue, ?Issue $parent = null, iterable $children = []): array
+    public static function detail(Issue $issue, ?Issue $parent = null, iterable $children = [], ?Collection $activeDescendants = null): array
     {
         return [
             'id' => $issue->id,
@@ -137,6 +140,7 @@ class IssuePresenter
             'labels' => $issue->labels->map(fn ($label) => ['id' => $label->id, 'name' => $label->name, 'color' => $label->color])->values()->all(),
             'parent' => $parent !== null ? self::parentSummary($parent) : null,
             'children' => collect($children)->map(fn (Issue $child) => self::childSummary($child))->values()->all(),
+            'descendants' => self::descendantSummary($issue, $activeDescendants),
             'blockedBy' => $issue->blockedBy->map(fn (Issue $blocker) => self::dependencySummary($blocker))->values()->all(),
             'blocks' => $issue->blocks->map(fn (Issue $dependent) => self::dependencySummary($dependent))->values()->all(),
             'knowledgePages' => self::knowledgePages($issue),
@@ -161,18 +165,64 @@ class IssuePresenter
     }
 
     /**
-     * Child teaser listed on the fiche.
+     * Child teaser listed on the fiche. The status id and category let a
+     * screen compare a child with a target status without a round trip.
      *
-     * @return array{id: string, title: string, statusName: string|null, assignees: array<int, array{id: int, name: string}>}
+     * @return array{id: string, title: string, statusId: string|null, statusName: string|null, statusCategory: string|null, assignees: array<int, array{id: int, name: string}>}
      */
     public static function childSummary(Issue $issue): array
     {
         return [
             'id' => $issue->id,
             'title' => $issue->title,
+            'statusId' => $issue->status?->id,
             'statusName' => $issue->status?->name,
+            'statusCategory' => $issue->status?->category?->value,
             'assignees' => self::assignees($issue),
         ];
+    }
+
+    /**
+     * Active-descendant summary of an issue: the total and the count per
+     * status id. The screens compare it with the target status to decide
+     * whether a move must offer to bring the whole subtree along — and the
+     * move action enforces its Done guard on the very same set. The flat
+     * descendant collection comes from LoadActiveDescendants (archived
+     * descendants and out-of-scope subtrees already excluded); a null
+     * collection means "nothing to count" — the truthful answer for an
+     * archived issue, whose whole subtree left the scope with it.
+     *
+     * @param  Collection<int, Issue>  $descendants
+     * @return array{total: int, byStatus: array<string, int>}
+     */
+    public static function descendantSummary(Issue $issue, ?Collection $descendants = null): array
+    {
+        if ($descendants === null || $descendants->isEmpty()) {
+            return ['total' => 0, 'byStatus' => []];
+        }
+
+        $byParent = $descendants->groupBy('parent_id');
+
+        $total = 0;
+        $byStatus = [];
+        $parentIds = [$issue->getKey()];
+
+        while ($parentIds !== []) {
+            $parentId = array_pop($parentIds);
+
+            foreach ($byParent->get($parentId, collect()) as $descendant) {
+                $total++;
+
+                $statusId = $descendant->status?->id;
+                if ($statusId !== null) {
+                    $byStatus[$statusId] = ($byStatus[$statusId] ?? 0) + 1;
+                }
+
+                $parentIds[] = $descendant->getKey();
+            }
+        }
+
+        return ['total' => $total, 'byStatus' => $byStatus];
     }
 
     /**

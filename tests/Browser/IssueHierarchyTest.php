@@ -1,7 +1,6 @@
 <?php
 
 use App\Actions\Issues\CreateIssue;
-use App\Actions\Issues\MoveIssue;
 use App\Actions\Issues\SetIssueParent;
 use App\Actions\Projects\CreateProject;
 use App\Actions\TimeTracking\SetIssueEstimate;
@@ -71,6 +70,69 @@ function createHierarchyGuest(Workspace $workspace, Project $project): User
 
     return $guest;
 }
+
+it('proposes to bring the whole sub-tree along when a parent moves, and refuses a lone Done while a child is open', function () {
+    ['owner' => $owner, 'workspace' => $workspace, 'statuses' => $statuses, 'parent' => $parent, 'childOne' => $childOne, 'childTwo' => $childTwo] = seedHierarchyScenario();
+    $this->actingAs($owner);
+
+    // The parent's fiche: moving it offers to bring the sub-tree along —
+    // the dialog names the count and the target status.
+    $page = visit('/issues/'.$parent->id);
+    $page->click('@status-select')
+        ->click('[role="option"]:has-text("In Progress")');
+    $page->assertPresent('[data-test="cascade-move-dialog"]')
+        ->assertSee('This ticket has 2 sub-tickets in another status.')
+        ->click('[data-test="cascade-move-accept"]');
+    // The fiche only shows the new status once the move landed: the
+    // assertion (auto-retried) closes the race with the request.
+    $page->assertSeeIn('@status-select', 'In Progress');
+
+    app(WorkspaceContext::class)->set($workspace);
+    expect($parent->fresh()->status->name)->toBe('In Progress')
+        ->and($childOne->fresh()->status->name)->toBe('In Progress')
+        ->and($childTwo->fresh()->status->name)->toBe('In Progress');
+
+    // A child whose descendants all share the target status: the move is
+    // direct, no dialog.
+    $page = visit('/issues/'.$childOne->id);
+    $page->click('@status-select')
+        ->click('[role="option"]:has-text("Backlog")');
+    $page->assertSeeIn('@status-select', 'Backlog')
+        ->assertNotPresent('[data-test="cascade-move-dialog"]');
+
+    app(WorkspaceContext::class)->set($workspace);
+    expect($childOne->fresh()->status->name)->toBe('Backlog');
+
+    // The Done guard: a lone parent-to-done is refused — the sub-tree
+    // answer "No" keeps the sub-tickets, the refusal surfaces on the fiche.
+    $page = visit('/issues/'.$parent->id);
+    $page->click('@status-select')
+        ->click('[role="option"]:has-text("Done")');
+    $page->assertPresent('[data-test="cascade-move-dialog"]')
+        ->click('[data-test="cascade-move-decline"]');
+    $page->assertPresent('[data-test="move-error"]')
+        ->assertSee('The move was refused.');
+
+    app(WorkspaceContext::class)->set($workspace);
+    expect($parent->fresh()->status->name)->toBe('In Progress')
+        ->and($childOne->fresh()->status->name)->toBe('Backlog');
+
+    // The sub-tree answer "Yes" closes the whole tree: the guard is
+    // satisfied by the cascade, the parent follows.
+    $page = visit('/issues/'.$parent->id);
+    $page->click('@status-select')
+        ->click('[role="option"]:has-text("Done")');
+    $page->assertPresent('[data-test="cascade-move-dialog"]')
+        ->click('[data-test="cascade-move-accept"]');
+    $page->assertSeeIn('@status-select', 'Done');
+
+    app(WorkspaceContext::class)->set($workspace);
+    expect($parent->fresh()->status->name)->toBe('Done')
+        ->and($childOne->fresh()->status->name)->toBe('Done')
+        ->and($childTwo->fresh()->status->name)->toBe('Done');
+
+    $page->assertNoSmoke();
+});
 
 it('completes the parent through the UI once every child is done, and a reopened child never reopens it', function () {
     ['owner' => $owner, 'workspace' => $workspace, 'parent' => $parent, 'childOne' => $childOne, 'childTwo' => $childTwo] = seedHierarchyScenario();
@@ -171,8 +233,9 @@ it('flags a done parent with a reopened child on every card surface, tooltip inc
     app(WorkspaceContext::class)->set($workspace);
 
     // The parent is done while its child stays open: the alert signal rides
-    // the parent's cards.
-    MoveIssue::run($parent, $statuses['done']->id, $owner);
+    // the parent's cards. The state is written directly: the move action
+    // refuses a lone parent-to-done while a child is open.
+    $parent->update(['status_id' => $statuses['done']->id]);
 
     $this->actingAs($owner);
 

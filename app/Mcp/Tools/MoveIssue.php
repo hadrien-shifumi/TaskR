@@ -13,7 +13,7 @@ use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Attributes\Name;
 
 #[Name('move_issue')]
-#[Description('Move an issue to another status of its workspace.')]
+#[Description('Move an issue to another status of its workspace. With cascade_children, the whole active sub-tree (descendants at every level) follows into the target status.')]
 class MoveIssue extends AgentTool
 {
     /**
@@ -25,6 +25,7 @@ class MoveIssue extends AgentTool
             'workspace_id' => $schema->string()->description('ULID of the workspace')->required(),
             'issue_id' => $schema->string()->description('ULID of the issue to move')->required(),
             'status_id' => $schema->string()->description('ULID of the target status')->required(),
+            'cascade_children' => $schema->boolean()->description('Move every active descendant issue to the same status (default false). Archived descendants are never touched. A parent cannot move to a done status while an active descendant is still open, unless the cascade moves it along.'),
         ];
     }
 
@@ -35,10 +36,15 @@ class MoveIssue extends AgentTool
         $issue = Issue::query()->findOrFail($request->get('issue_id'));
 
         $action = app(MoveIssueAction::class);
-        $statusId = $request->validate($action->rules())['status_id'];
+        $validated = $request->validate($action->rules());
 
         return Response::structured([
-            'issue' => $this->presentIssue($action->handle($issue, $statusId, $this->currentUser($request))),
+            'issue' => $this->presentIssue($action->handle(
+                $issue,
+                $validated['status_id'],
+                $this->currentUser($request),
+                (bool) ($validated['cascade_children'] ?? false),
+            )),
         ]);
     }
 }

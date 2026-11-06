@@ -1,4 +1,4 @@
-import type { LabelRef, UserRef } from '@/types';
+import type { DescendantsSummary, LabelRef, UserRef } from '@/types';
 
 /** Dependency teaser listed on the fiche (blocker or blocked issue). */
 export type DependencyRef = {
@@ -49,9 +49,13 @@ export type IssueDetail = {
     children: {
         id: string;
         title: string;
+        statusId: string | null;
         statusName: string | null;
+        statusCategory: string | null;
         assignees: UserRef[];
     }[];
+    /** Active sub-tickets per status: the move dialog's decision data. */
+    descendants: DescendantsSummary;
     blockedBy: DependencyRef[];
     blocks: BlocksRef[];
     isBlocked: boolean;

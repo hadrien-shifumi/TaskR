@@ -42,6 +42,12 @@ class GetIssue
             ->orderBy('created_at')
             ->get();
 
-        return IssuePresenter::detail($issue, $parent, $children);
+        // The active-descendant summary rides the fiche and the MCP body:
+        // the same payload, the same semantics (archived descendants and
+        // out-of-scope subtrees excluded — an agent cascades exactly what
+        // a screen would offer).
+        $descendants = app(LoadActiveDescendants::class)->run(collect([$issue]), $user);
+
+        return IssuePresenter::detail($issue, $parent, $children, $descendants);
     }
 }

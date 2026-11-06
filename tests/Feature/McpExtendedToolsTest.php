@@ -25,6 +25,7 @@ use App\Mcp\Tools\GetProjectHealth;
 use App\Mcp\Tools\InviteMember;
 use App\Mcp\Tools\ListMembers;
 use App\Mcp\Tools\ListTemplates;
+use App\Mcp\Tools\MoveIssue as MoveIssueTool;
 use App\Mcp\Tools\RemoveMember;
 use App\Mcp\Tools\ReorderStatuses;
 use App\Mcp\Tools\SetIssueEstimate;
@@ -926,6 +927,80 @@ class McpExtendedToolsTest extends TestCase
 
         $this->assertSame('not_found', $response->payload()['error']);
         $this->assertDatabaseCount('issues', 0);
+    }
+
+    // ─── move_issue — cascade_children ─────────────────────────────────
+
+    public function test_move_issue_schema_exposes_cascade_children(): void
+    {
+        [$owner] = $this->setupWorkspace();
+
+        $properties = TaskrServer::actingAs($owner)->tools()->schemaFor('move_issue');
+
+        $this->assertArrayHasKey('cascade_children', $properties);
+        $this->assertSame('boolean', $properties['cascade_children']['type'] ?? null);
+    }
+
+    public function test_move_issue_with_cascade_children_moves_the_descendants(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspace();
+        $statuses = $this->statusesByCategory($workspace);
+
+        $parent = CreateIssueAction::run($workspace, ['project_id' => $project->id, 'title' => 'Parent']);
+        $child = CreateIssueAction::run($workspace, ['project_id' => $project->id, 'title' => 'Child']);
+        SetIssueParent::run($child, $parent->id);
+
+        TaskrServer::actingAs($owner)->tool(MoveIssueTool::class, [
+            'workspace_id' => $workspace->id,
+            'issue_id' => $parent->id,
+            'status_id' => $statuses['in_progress']->id,
+            'cascade_children' => true,
+        ])->assertOk();
+
+        $this->assertSame($statuses['in_progress']->id, $parent->fresh()->status_id);
+        $this->assertSame($statuses['in_progress']->id, $child->fresh()->status_id);
+    }
+
+    public function test_move_issue_without_cascade_keeps_the_descendants(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspace();
+        $statuses = $this->statusesByCategory($workspace);
+
+        $parent = CreateIssueAction::run($workspace, ['project_id' => $project->id, 'title' => 'Parent']);
+        $child = CreateIssueAction::run($workspace, ['project_id' => $project->id, 'title' => 'Child']);
+        SetIssueParent::run($child, $parent->id);
+
+        TaskrServer::actingAs($owner)->tool(MoveIssueTool::class, [
+            'workspace_id' => $workspace->id,
+            'issue_id' => $parent->id,
+            'status_id' => $statuses['in_progress']->id,
+        ])->assertOk();
+
+        $this->assertSame($statuses['in_progress']->id, $parent->fresh()->status_id);
+        $this->assertSame($statuses['backlog']->id, $child->fresh()->status_id);
+    }
+
+    public function test_move_issue_to_done_with_an_open_child_returns_a_business_rule(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspace();
+        $statuses = $this->statusesByCategory($workspace);
+
+        $parent = CreateIssueAction::run($workspace, ['project_id' => $project->id, 'title' => 'Parent']);
+        $child = CreateIssueAction::run($workspace, ['project_id' => $project->id, 'title' => 'Child']);
+        SetIssueParent::run($child, $parent->id);
+
+        $response = TaskrServer::actingAs($owner)->tool(MoveIssueTool::class, [
+            'workspace_id' => $workspace->id,
+            'issue_id' => $parent->id,
+            'status_id' => $statuses['done']->id,
+        ]);
+
+        $this->assertSame('business_rule', $response->payload()['error']);
+        $this->assertStringContainsString($child->title, $response->payload()['message']);
+
+        // The refusal is server-side: nothing moved at all.
+        $this->assertSame($statuses['backlog']->id, $parent->fresh()->status_id);
+        $this->assertSame($statuses['backlog']->id, $child->fresh()->status_id);
     }
 
     // ─── Helpers ────────────────────────────────────────────────────────

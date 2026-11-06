@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Actions\Comments\AddComment;
 use App\Actions\Issues\CreateIssue;
+use App\Actions\Issues\LoadActiveDescendants;
+use App\Actions\Issues\SetIssueParent;
 use App\Actions\Knowledge\CreateKnowledgePage;
 use App\Actions\Labels\CreateLabel;
 use App\Actions\Projects\AddProjectMember;
@@ -111,7 +113,7 @@ class PresentersTest extends TestCase
         $kanban = IssuePresenter::kanbanCard(IssuePresenter::card($issue));
 
         $this->assertSame(
-            ['id', 'title', 'priority', 'dueDate', 'overdue', 'blocked', 'unblockable', 'hasOpenChild', 'assignees', 'labels', 'knowledgePagesCount', 'knowledgePageTitles'],
+            ['id', 'title', 'priority', 'dueDate', 'overdue', 'blocked', 'unblockable', 'hasOpenChild', 'descendants', 'assignees', 'labels', 'knowledgePagesCount', 'knowledgePageTitles'],
             array_keys($kanban),
         );
         $this->assertSame($issue->id, $kanban['id']);
@@ -130,7 +132,7 @@ class PresentersTest extends TestCase
         $board = IssuePresenter::boardCard($issue->load('assignees'));
 
         $this->assertSame(
-            ['id', 'title', 'priority', 'dueDate', 'overdue', 'blocked', 'unblockable', 'hasOpenChild', 'assignees', 'knowledgePagesCount', 'knowledgePageTitles'],
+            ['id', 'title', 'priority', 'dueDate', 'overdue', 'blocked', 'unblockable', 'hasOpenChild', 'descendants', 'assignees', 'knowledgePagesCount', 'knowledgePageTitles'],
             array_keys($board),
         );
         $this->assertSame('2026-12-01', $board['dueDate']);
@@ -194,7 +196,7 @@ class PresentersTest extends TestCase
         $this->assertSame(['id', 'title', 'statusName'], array_keys($parentSummary));
 
         $childSummary = IssuePresenter::childSummary($child);
-        $this->assertSame(['id', 'title', 'statusName', 'assignees'], array_keys($childSummary));
+        $this->assertSame(['id', 'title', 'statusId', 'statusName', 'statusCategory', 'assignees'], array_keys($childSummary));
     }
 
     public function test_issue_late_issue_shape(): void
@@ -446,5 +448,56 @@ class PresentersTest extends TestCase
         $this->assertSame('Les règles.', $detail['body']);
         $this->assertSame($this->owner->name, $detail['lastEditor']);
         $this->assertSame($page->updated_at->toISOString(), $detail['updatedAt']);
+    }
+
+    // ── IssuePresenter — childSummary ────────────────────────────────
+
+    public function test_child_summary_exposes_the_status_id_and_category(): void
+    {
+        $this->setupWorkspace();
+        $status = $this->workspace->statuses()->where('category', 'in_progress')->first();
+
+        $issue = CreateIssue::run($this->workspace, [
+            'project_id' => $this->project->id,
+            'title' => 'Enfant',
+            'status_id' => $status->id,
+        ]);
+
+        $child = IssuePresenter::childSummary($issue);
+
+        $this->assertSame($issue->id, $child['id']);
+        $this->assertSame('Enfant', $child['title']);
+        $this->assertSame($status->id, $child['statusId']);
+        $this->assertSame($status->name, $child['statusName']);
+        $this->assertSame('in_progress', $child['statusCategory']);
+        $this->assertSame([], $child['assignees']);
+    }
+
+    // ── IssuePresenter — detail ──────────────────────────────────────
+
+    public function test_detail_includes_the_descendant_summary(): void
+    {
+        $this->setupWorkspace();
+        $backlog = $this->workspace->statuses()->where('category', 'backlog')->first();
+        $done = $this->workspace->statuses()->where('category', 'done')->first();
+
+        $parent = CreateIssue::run($this->workspace, ['project_id' => $this->project->id, 'title' => 'Parent']);
+        $child = CreateIssue::run($this->workspace, ['project_id' => $this->project->id, 'title' => 'Child']);
+        $grandchild = CreateIssue::run($this->workspace, ['project_id' => $this->project->id, 'title' => 'Grandchild', 'status_id' => $done->id]);
+        SetIssueParent::run($child, $parent->id);
+        SetIssueParent::run($grandchild, $child->id);
+
+        // An archived descendant never counts.
+        $archived = CreateIssue::run($this->workspace, ['project_id' => $this->project->id, 'title' => 'Archived']);
+        SetIssueParent::run($archived, $parent->id);
+        $archived->update(['archived_at' => now()]);
+
+        $descendants = app(LoadActiveDescendants::class)->run(collect([$parent]));
+        $detail = IssuePresenter::detail($parent, null, [], $descendants);
+
+        $this->assertSame(['total' => 2, 'byStatus' => [
+            $backlog->id => 1,
+            $done->id => 1,
+        ]], $detail['descendants']);
     }
 }

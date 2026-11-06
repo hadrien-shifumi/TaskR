@@ -15,7 +15,8 @@ import { MoveRight } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatShortDate } from '@/lib/format-date';
-import type { ProjectBoard } from '../types';
+import { CascadeMoveDialog, pendingDescendantsCount } from '@/components/cascade-move-dialog';
+import type { KanbanIssue, ProjectBoard } from '../types';
 
 type ProjectKanbanBoardProps = {
     board: ProjectBoard;
@@ -30,25 +31,55 @@ export function ProjectKanbanBoard({ board }: ProjectKanbanBoardProps) {
     const [draggingId, setDraggingId] = useState<string | null>(null);
     const [overColumn, setOverColumn] = useState<string | null>(null);
     const [moveError, setMoveError] = useState<string | null>(null);
+    /** A parent move waiting for the sub-tree answer. */
+    const [pendingMove, setPendingMove] = useState<{ issueId: string; statusId: string; count: number } | null>(
+        null,
+    );
 
-    const move = (issueId: string, statusId: string) => {
+    const move = (issueId: string, statusId: string, cascade = false) => {
         setMoveError(null);
         router.post(
             route('issues.move', issueId),
-            { status_id: statusId },
+            { status_id: statusId, cascade_children: cascade },
             {
                 preserveState: true,
                 onError: (errors) => {
                     setMoveError(errors.status_id ?? t('issuesPage.kanban.moveRefused'));
                 },
+                onHttpException: () => {
+                    setMoveError(t('issuesPage.kanban.moveRefused'));
+                    return false;
+                },
             },
         );
+    };
+
+    // A parent with sub-tickets in another status asks first: the dialog
+    // offers to bring the whole active sub-tree along. The server enforces
+    // the rule either way — a refusal surfaces in the banner.
+    const requestMove = (issue: KanbanIssue, statusId: string) => {
+        const count = pendingDescendantsCount(issue.descendants, statusId);
+        if (count > 0) {
+            setPendingMove({ issueId: issue.id, statusId, count });
+        } else {
+            move(issue.id, statusId);
+        }
+    };
+
+    const confirmMove = (cascade: boolean) => {
+        const pending = pendingMove;
+        setPendingMove(null);
+        if (pending) move(pending.issueId, pending.statusId, cascade);
     };
 
     const drop = (columnId: string) => {
         setOverColumn(null);
         if (draggingId === null) return;
-        move(draggingId, columnId);
+        const dragged = board.columns.flatMap((column) => column.issues).find((issue) => issue.id === draggingId);
+        if (dragged) {
+            requestMove(dragged, columnId);
+        }
+        setDraggingId(null);
     };
 
     return (
@@ -158,7 +189,7 @@ export function ProjectKanbanBoard({ board }: ProjectKanbanBoardProps) {
                                                         .map((candidate) => (
                                                             <DropdownMenuItem
                                                                 key={candidate.id}
-                                                                onClick={() => move(issue.id, candidate.id)}
+                                                                onClick={() => requestMove(issue, candidate.id)}
                                                             >
                                                                 {candidate.name}
                                                             </DropdownMenuItem>
@@ -178,6 +209,17 @@ export function ProjectKanbanBoard({ board }: ProjectKanbanBoardProps) {
                     </section>
                 ))}
             </div>
+
+            {pendingMove ? (
+                <CascadeMoveDialog
+                    count={pendingMove.count}
+                    targetStatusName={
+                        board.columns.find((column) => column.id === pendingMove.statusId)?.name ?? ''
+                    }
+                    onConfirm={confirmMove}
+                    onClose={() => setPendingMove(null)}
+                />
+            ) : null}
         </section>
     );
 }
