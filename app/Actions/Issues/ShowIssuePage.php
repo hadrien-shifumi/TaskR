@@ -50,6 +50,11 @@ class ShowIssuePage
             ->orderBy('created_at')
             ->get();
 
+        // The active-descendant summary rides the fiche: the status change
+        // offers to bring the whole subtree along, so the screen must know
+        // which descendants differ from the target — all generations.
+        $descendants = app(LoadActiveDescendants::class)->run(collect([$issue]), $user);
+
         $comments = $issue->comments()
             ->with('author')
             ->orderBy('created_at')
@@ -75,7 +80,7 @@ class ShowIssuePage
 
         app(LoadIssueKnowledgePages::class)->handle($issue, $user);
 
-        $detail = IssuePresenter::detail($issue, $parent, $children);
+        $detail = IssuePresenter::detail($issue, $parent, $children, $descendants);
         $detail['blocks'] = $this->withDependentBlockerIds($detail['blocks'], $issue);
 
         return [

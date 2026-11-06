@@ -23,6 +23,7 @@ import { Plus, X } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
+import { CascadeMoveDialog, pendingDescendantsCount } from '@/components/cascade-move-dialog';
 import type { LabelRef, UserRef } from '@/types';
 import type { BlocksRef, IssueDetail } from '../types';
 import { EditDatesDialog } from './edit-dates-dialog';
@@ -107,11 +108,45 @@ export function IssueSidebar({
     const [dependenciesOpen, setDependenciesOpen] = useState(false);
     const [knowledgeOpen, setKnowledgeOpen] = useState(false);
     const [addingLabel, setAddingLabel] = useState(false);
+    /** A parent move waiting for the sub-tree answer: {statusId, count}. */
+    const [pendingMove, setPendingMove] = useState<{ statusId: string; count: number } | null>(null);
+    const [moveError, setMoveError] = useState<string | null>(null);
 
     const issueHref = (issueId: string) => buildIssueHref?.(issueId) ?? route('issues.show', issueId);
 
-    const move = (statusId: string) => {
-        router.post(route('issues.move', issue.id), { status_id: statusId });
+    const move = (statusId: string, cascade = false) => {
+        setMoveError(null);
+        router.post(
+            route('issues.move', issue.id),
+            { status_id: statusId, cascade_children: cascade },
+            {
+                onError: (errors) => setMoveError(errors.status_id ?? t('issueShow.moveRefused')),
+                onHttpException: () => {
+                    setMoveError(t('issueShow.moveRefused'));
+                    return false;
+                },
+            },
+        );
+    };
+
+    // A parent with sub-tickets in another status asks first: the dialog
+    // offers to bring the whole active sub-tree along. The server enforces
+    // the rule either way — a refusal surfaces right here.
+    const requestMove = (statusId: string) => {
+        if (statusId === issue.status.id) return;
+
+        const count = pendingDescendantsCount(issue.descendants, statusId);
+        if (count > 0) {
+            setPendingMove({ statusId, count });
+        } else {
+            move(statusId);
+        }
+    };
+
+    const confirmMove = (cascade: boolean) => {
+        const pending = pendingMove;
+        setPendingMove(null);
+        if (pending) move(pending.statusId, cascade);
     };
 
     // The update action requires the title and rewrites every field it
@@ -222,7 +257,7 @@ export function IssueSidebar({
             <Card className="py-5">
                 <CardContent className="flex flex-col px-5">
                     <PropRow label={t('issues.fields.status')} hint={t('issueShow.statusHint')}>
-                        <Select value={issue.status.id} onValueChange={(value) => value && move(value)}>
+                        <Select value={issue.status.id} onValueChange={(value) => value && requestMove(value)}>
                             <SelectTrigger
                                 data-test="status-select"
                                 className="w-full"
@@ -238,6 +273,11 @@ export function IssueSidebar({
                                 ))}
                             </SelectContent>
                         </Select>
+                        {moveError ? (
+                            <p role="alert" data-test="move-error" className="text-sm text-destructive">
+                                {moveError}
+                            </p>
+                        ) : null}
                     </PropRow>
 
                     <PropRow label={t('issues.fields.priority')}>
@@ -627,6 +667,17 @@ export function IssueSidebar({
                 open={knowledgeOpen}
                 onClose={() => setKnowledgeOpen(false)}
             />
+
+            {pendingMove ? (
+                <CascadeMoveDialog
+                    count={pendingMove.count}
+                    targetStatusName={
+                        statuses.find((status) => status.id === pendingMove.statusId)?.name ?? ''
+                    }
+                    onConfirm={confirmMove}
+                    onClose={() => setPendingMove(null)}
+                />
+            ) : null}
         </aside>
     );
 }

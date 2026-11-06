@@ -229,7 +229,10 @@ class IssueAutoCompletionToggleTest extends TestCase
         $child = $this->createIssue($project, 'Child');
         $child->update(['parent_id' => $parent->id]);
 
-        MoveIssue::run($parent, $statuses['done']->id, $owner);
+        // The parent is done while its child stays open: the alert signal rides
+        // the parent's cards. The state is written directly: the move action
+        // refuses a lone parent-to-done while a child is open.
+        $parent->update(['status_id' => $statuses['done']->id]);
 
         // The default workspace statuses ship in a fixed order — backlog(0),
         // in_progress(1), done(2), cancelled(3) — so the done column is
@@ -304,9 +307,11 @@ class IssueAutoCompletionToggleTest extends TestCase
         $child1->update(['parent_id' => $parent->id]);
         $child2->update(['parent_id' => $parent->id]);
 
-        MoveIssue::run($parent, $statuses['done']->id, $owner);
+        // The children close first: a lone parent-to-done is refused while
+        // they are still open.
         MoveIssue::run($child1, $statuses['done']->id, $owner);
         MoveIssue::run($child2, $statuses['cancelled']->id, $owner);
+        MoveIssue::run($parent, $statuses['done']->id, $owner);
 
         $this->actingAs($owner)->get(route('issues.index'))
             ->assertOk()
