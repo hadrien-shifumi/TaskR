@@ -51,6 +51,7 @@ export function QuickCreateIssueDialog({ open, onClose, projects }: QuickCreateI
             description={t('issues.quickDescription')}
             submitLabel={t('issues.create')}
             processing={form.processing}
+            contentClassName="sm:max-w-lg"
             onSubmit={submit}
         >
             <div className="grid gap-2">

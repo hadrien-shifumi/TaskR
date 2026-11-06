@@ -174,49 +174,76 @@ export default function Home() {
                         {t('home.viewAllIssues')}
                     </Button>
                 </div>
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>{t('columns.title')}</TableHead>
-                            <TableHead>{t('columns.project')}</TableHead>
-                            <TableHead>{t('columns.status')}</TableHead>
-                            <TableHead>{t('columns.priority')}</TableHead>
-                            <TableHead>{t('columns.dueDate')}</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {myIssues.map((issue) => (
-                            <TableRow key={issue.id}>
-                                <TableCell>
-                                    <Link href={route('issues.show', issue.id)} className="font-medium hover:text-primary">
+                {myIssues.length === 0 ? (
+                    <p className="px-5 py-6 text-center text-muted-foreground">
+                        {t('home.noAssignedIssues')}
+                    </p>
+                ) : (
+                    <>
+                        {/* Mobile: a compact list, no table scroll. */}
+                        <ul className="divide-y md:hidden" data-test="my-issues-mobile-list">
+                            {myIssues.map((issue) => (
+                                <li key={issue.id} className="flex items-center gap-2.5 px-4 py-3">
+                                    <Link
+                                        href={route('issues.show', issue.id)}
+                                        className="min-w-0 flex-1 truncate text-sm font-medium hover:text-primary"
+                                    >
                                         {issue.title}
                                     </Link>
-                                </TableCell>
-                                <TableCell className="text-muted-foreground">{issue.projectName}</TableCell>
-                                <TableCell>
                                     <StatusBadge name={issue.statusName} category={issue.statusCategory} />
-                                </TableCell>
-                                <TableCell>
-                                    <PriorityBadge priority={issue.priority} />
-                                </TableCell>
-                                <TableCell
-                                    className={`font-mono text-xs tabular-nums ${
-                                        issue.overdue ? 'font-medium text-destructive' : 'text-muted-foreground'
-                                    }`}
-                                >
-                                    {issue.dueDate ? formatDate(issue.dueDate) : '—'}
-                                </TableCell>
-                            </TableRow>
-                        ))}
-                        {myIssues.length === 0 ? (
-                            <TableRow>
-                                <TableCell colSpan={5} className="py-6 text-center text-muted-foreground">
-                                    {t('home.noAssignedIssues')}
-                                </TableCell>
-                            </TableRow>
-                        ) : null}
-                    </TableBody>
-                </Table>
+                                    {issue.dueDate ? (
+                                        <span
+                                            className={`font-mono text-xs tabular-nums ${
+                                                issue.overdue ? 'font-medium text-destructive' : 'text-muted-foreground'
+                                            }`}
+                                        >
+                                            {formatDate(issue.dueDate)}
+                                        </span>
+                                    ) : null}
+                                </li>
+                            ))}
+                        </ul>
+                        {/* Desktop: the table, unchanged. */}
+                        <div className="hidden md:block">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>{t('columns.title')}</TableHead>
+                                        <TableHead>{t('columns.project')}</TableHead>
+                                        <TableHead>{t('columns.status')}</TableHead>
+                                        <TableHead>{t('columns.priority')}</TableHead>
+                                        <TableHead>{t('columns.dueDate')}</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {myIssues.map((issue) => (
+                                        <TableRow key={issue.id}>
+                                            <TableCell>
+                                                <Link href={route('issues.show', issue.id)} className="font-medium hover:text-primary">
+                                                    {issue.title}
+                                                </Link>
+                                            </TableCell>
+                                            <TableCell className="text-muted-foreground">{issue.projectName}</TableCell>
+                                            <TableCell>
+                                                <StatusBadge name={issue.statusName} category={issue.statusCategory} />
+                                            </TableCell>
+                                            <TableCell>
+                                                <PriorityBadge priority={issue.priority} />
+                                            </TableCell>
+                                            <TableCell
+                                                className={`font-mono text-xs tabular-nums ${
+                                                    issue.overdue ? 'font-medium text-destructive' : 'text-muted-foreground'
+                                                }`}
+                                            >
+                                                {issue.dueDate ? formatDate(issue.dueDate) : '—'}
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    </>
+                )}
             </section>
 
             <QuickCreateIssueDialog

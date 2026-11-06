@@ -1,8 +1,10 @@
 import { Fragment, useState, type FormEvent, type ReactNode } from "react";
 import { FormDialog } from "@/components/form-dialog";
 import { initials } from "@/components/issue-badges";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -22,6 +24,7 @@ import {
     Home,
     ListChecks,
     LogOut,
+    Menu,
     Plus,
     SlidersHorizontal,
     Trash2,
@@ -119,31 +122,11 @@ const NAV_SECTIONS: NavSection[] = [
     },
 ];
 
-/** Maquette shell: fixed sidebar (brand, workspace switcher, nav, user) +
- * sticky pagebar (title, subtitle, actions) above the page body. */
-export default function AppLayout({
-    title,
-    subtitle,
-    leading,
-    actions,
-    narrow,
-    children,
-}: AppLayoutProps) {
-    const { auth, workspace, workspaces, unreadMentions } =
-        usePage<PageSharedProps>().props;
-    const { url } = usePage();
+/** Workspace switcher dropdown + creation dialog, shared by the desktop
+ *  sidebar and the mobile navigation drawer. */
+function WorkspaceSwitcher() {
+    const { workspace, workspaces } = usePage<PageSharedProps>().props;
     const { t } = useTranslation();
-
-    const isActive = (item: NavItem) => {
-        if (item.prefix === "/") return url === "/";
-        // Knowledge stays active on its sub-pages, except the trash
-        // which has its own nav entry.
-        if (item.route === "knowledge.index") {
-            return url.startsWith("/knowledge") && !url.startsWith("/knowledge/trash");
-        }
-        return url.startsWith(item.prefix);
-    };
-
     const [creatingWorkspace, setCreatingWorkspace] = useState(false);
     const workspaceForm = useForm({ name: "" });
 
@@ -157,10 +140,250 @@ export default function AppLayout({
         });
     };
 
+    if (!workspace) {
+        return null;
+    }
+
+    return (
+        <>
+            <DropdownMenu>
+                <DropdownMenuTrigger
+                    aria-label={t("layout.switchWorkspace")}
+                    className="flex w-full items-center gap-2 rounded-lg border bg-card px-2.5 py-2 text-left shadow-xs transition-colors hover:bg-accent"
+                >
+                    <span className="grid size-5.5 shrink-0 place-items-center rounded-md bg-primary/25 text-[11px] font-bold text-primary">
+                        {initials(workspace.name)}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-[13px] font-medium">
+                        {workspace.name}
+                    </span>
+                    <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-56">
+                    <DropdownMenuGroup>
+                        <DropdownMenuLabel>
+                            {t("layout.yourWorkspaces")}
+                        </DropdownMenuLabel>
+                        {workspaces.map((ws) => (
+                            <DropdownMenuItem
+                                key={ws.id}
+                                onClick={() =>
+                                    router.post(
+                                        route(
+                                            "workspaces.switch",
+                                            ws.id,
+                                        ),
+                                    )
+                                }
+                            >
+                                {ws.name}
+                                {ws.id === workspace.id ? (
+                                    <span
+                                        aria-hidden
+                                        className="ml-auto text-primary"
+                                    >
+                                        •
+                                    </span>
+                                ) : null}
+                            </DropdownMenuItem>
+                        ))}
+                    </DropdownMenuGroup>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                        onClick={() => setCreatingWorkspace(true)}
+                    >
+                        <Plus aria-hidden />
+                        {t("layout.createWorkspace")}…
+                    </DropdownMenuItem>
+                </DropdownMenuContent>
+            </DropdownMenu>
+            <FormDialog
+                open={creatingWorkspace}
+                onOpenChange={setCreatingWorkspace}
+                title={t("layout.createWorkspace")}
+                description={t("layout.createWorkspaceDescription")}
+                submitLabel={t("layout.createWorkspace")}
+                processing={workspaceForm.processing}
+                onSubmit={submitWorkspace}
+            >
+                <div className="grid gap-2">
+                    <Label htmlFor="new-workspace-name">{t("common.name")}</Label>
+                    <Input
+                        id="new-workspace-name"
+                        name="name"
+                        placeholder="Studio Nova"
+                        autoFocus
+                        value={workspaceForm.data.name}
+                        onChange={(event) =>
+                            workspaceForm.setData(
+                                "name",
+                                event.target.value,
+                            )
+                        }
+                        aria-invalid={workspaceForm.errors.name ? true : undefined}
+                    />
+                    {workspaceForm.errors.name ? (
+                        <p className="text-sm text-destructive">
+                            {workspaceForm.errors.name}
+                        </p>
+                    ) : null}
+                </div>
+            </FormDialog>
+        </>
+    );
+}
+
+/** Navigation entries grouped by families. `onNavigate` lets the mobile
+ *  drawer close itself after a link tap; the desktop sidebar omits it. */
+function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
+    const { unreadMentions } = usePage<PageSharedProps>().props;
+    const { url } = usePage();
+    const { t } = useTranslation();
+
+    const isActive = (item: NavItem) => {
+        if (item.prefix === "/") return url === "/";
+        // Knowledge stays active on its sub-pages, except the trash
+        // which has its own nav entry.
+        if (item.route === "knowledge.index") {
+            return url.startsWith("/knowledge") && !url.startsWith("/knowledge/trash");
+        }
+        return url.startsWith(item.prefix);
+    };
+
+    return (
+        <>
+            {NAV_SECTIONS.map((section, sectionIndex) => {
+                const items = section.items.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                        <Link
+                            key={item.label}
+                            href={route(item.route)}
+                            onClick={onNavigate}
+                            aria-current={
+                                isActive(item) ? "page" : undefined
+                            }
+                            className="flex items-center gap-2.5 rounded-lg px-2.5 py-1.75 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground aria-[current=page]:bg-secondary aria-[current=page]:font-medium aria-[current=page]:text-foreground"
+                        >
+                            <Icon className="size-4 shrink-0" aria-hidden />
+                            <span>
+                                {t(item.label)}
+                            </span>
+                            {item.badge === "unreadMentions" &&
+                            unreadMentions > 0 ? (
+                                <span
+                                    data-test="mentions-badge"
+                                    title={t("mentions.title")}
+                                    className="ml-auto grid min-w-5 shrink-0 place-items-center rounded-full bg-primary px-1.5 text-[10px] font-semibold leading-4 text-primary-foreground"
+                                >
+                                    {unreadMentions}
+                                </span>
+                            ) : null}
+                        </Link>
+                    );
+                });
+
+                // Labelled families get a mono section label above their
+                // links, in the sidebar as in the mobile drawer.
+                if (!section.label) {
+                    // Flat entries stay direct children of the nav.
+                    return items.map((item, itemIndex) => (
+                        <Fragment key={`ungrouped-${sectionIndex}-${itemIndex}`}>{item}</Fragment>
+                    ));
+                }
+
+                return (
+                    <section
+                        key={section.label}
+                        data-test="nav-section"
+                        className="flex w-full flex-col gap-1.5"
+                    >
+                        <p className="px-2 pt-3.5 pb-1 font-mono text-[12px] tracking-[0.08em] uppercase text-muted-foreground">
+                            {t(section.label)}
+                        </p>
+                        {items}
+                    </section>
+                );
+            })}
+        </>
+    );
+}
+
+/** Language switcher + account menu, pinned to the bottom of the sidebar
+ *  and of the mobile drawer. */
+function AccountBlock() {
+    const { auth, workspace } = usePage<PageSharedProps>().props;
+    const { t } = useTranslation();
+
+    if (!auth.user) {
+        return null;
+    }
+
+    return (
+        <div className="mt-auto flex flex-col gap-1 border-t px-2 pt-3 pb-3.5">
+            <LanguageSwitcher />
+            <DropdownMenu>
+                <DropdownMenuTrigger
+                    aria-label={t("layout.accountMenu")}
+                    className="flex w-full items-center gap-2.5 rounded-lg py-1 text-left"
+                >
+                    <span className="grid size-6.5 shrink-0 place-items-center rounded-full border border-primary/25 bg-primary/20 text-[10px] font-semibold tracking-wide text-primary">
+                        {initials(auth.user.name)}
+                    </span>
+                    <span className="min-w-0">
+                        <span className="block truncate text-[13px] font-medium">
+                            {auth.user.name}
+                        </span>
+                        <span className="block text-[11px] text-muted-foreground">
+                            {t(
+                                `layout.roles.${workspace?.role ?? "member"}`,
+                            )}
+                        </span>
+                    </span>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                    align="start"
+                    side="top"
+                    className="w-48"
+                >
+                    <DropdownMenuGroup>
+                        <DropdownMenuLabel>
+                            {auth.user.email}
+                        </DropdownMenuLabel>
+                        <DropdownMenuItem
+                            onClick={() =>
+                                router.post(route("logout"))
+                            }
+                        >
+                            <LogOut aria-hidden />
+                            {t("layout.logOut")}
+                        </DropdownMenuItem>
+                    </DropdownMenuGroup>
+                </DropdownMenuContent>
+            </DropdownMenu>
+        </div>
+    );
+}
+
+/** Maquette shell: fixed sidebar (brand, workspace switcher, nav, user) +
+ *  sticky pagebar (title, subtitle, actions) above the page body. On mobile
+ *  the sidebar becomes a drawer opened from the pagebar's menu button. */
+export default function AppLayout({
+    title,
+    subtitle,
+    leading,
+    actions,
+    narrow,
+    children,
+}: AppLayoutProps) {
+    const { auth } = usePage<PageSharedProps>().props;
+    const { t } = useTranslation();
+    const [menuOpen, setMenuOpen] = useState(false);
+
     return (
         <div className="grid min-h-dvh grid-cols-1 bg-background lg:grid-cols-[232px_1fr]">
-            <aside className="flex gap-1 overflow-x-auto border-b bg-sidebar px-3.5 py-2.5 text-sidebar-foreground max-lg:items-center lg:sticky lg:top-0 lg:h-dvh lg:flex-col lg:gap-1 lg:overflow-y-auto lg:border-b-0 lg:border-r lg:px-3 lg:py-0">
-                <div className="flex items-center gap-2.5 px-2 pt-4 pb-3.5 max-lg:p-0">
+            <aside className="hidden lg:sticky lg:top-0 lg:flex lg:h-dvh lg:flex-col lg:gap-1 lg:overflow-y-auto lg:border-r lg:bg-sidebar lg:px-3 lg:text-sidebar-foreground">
+                <div className="flex items-center gap-2.5 px-2 pt-4 pb-3.5">
                     <img
                         src="/assets/taskr-app-icon.svg"
                         alt=""
@@ -172,206 +395,71 @@ export default function AppLayout({
                     </span>
                 </div>
 
-                {workspace ? (
-                    <>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger
-                                aria-label={t("layout.switchWorkspace")}
-                                className="flex w-full items-center gap-2 rounded-lg border bg-card px-2.5 py-2 text-left shadow-xs transition-colors hover:bg-accent max-lg:w-auto max-lg:shrink-0"
-                            >
-                                <span className="grid size-5.5 shrink-0 place-items-center rounded-md bg-primary/25 text-[11px] font-bold text-primary">
-                                    {initials(workspace.name)}
-                                </span>
-                                <span className="min-w-0 flex-1 truncate text-[13px] font-medium">
-                                    {workspace.name}
-                                </span>
-                                <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" />
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="start" className="w-56">
-                                <DropdownMenuGroup>
-                                    <DropdownMenuLabel>
-                                        {t("layout.yourWorkspaces")}
-                                    </DropdownMenuLabel>
-                                    {workspaces.map((ws) => (
-                                        <DropdownMenuItem
-                                            key={ws.id}
-                                            onClick={() =>
-                                                router.post(
-                                                    route(
-                                                        "workspaces.switch",
-                                                        ws.id,
-                                                    ),
-                                                )
-                                            }
-                                        >
-                                            {ws.name}
-                                            {ws.id === workspace.id ? (
-                                                <span
-                                                    aria-hidden
-                                                    className="ml-auto text-primary"
-                                                >
-                                                    •
-                                                </span>
-                                            ) : null}
-                                        </DropdownMenuItem>
-                                    ))}
-                                </DropdownMenuGroup>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem
-                                    onClick={() => setCreatingWorkspace(true)}
-                                >
-                                    <Plus aria-hidden />
-                                    {t("layout.createWorkspace")}…
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                        <FormDialog
-                            open={creatingWorkspace}
-                            onOpenChange={setCreatingWorkspace}
-                            title={t("layout.createWorkspace")}
-                            description={t("layout.createWorkspaceDescription")}
-                            submitLabel={t("layout.createWorkspace")}
-                            processing={workspaceForm.processing}
-                            onSubmit={submitWorkspace}
-                        >
-                            <div className="grid gap-2">
-                                <Label htmlFor="new-workspace-name">{t("common.name")}</Label>
-                                <Input
-                                    id="new-workspace-name"
-                                    name="name"
-                                    placeholder="Studio Nova"
-                                    autoFocus
-                                    value={workspaceForm.data.name}
-                                    onChange={(event) =>
-                                        workspaceForm.setData(
-                                            "name",
-                                            event.target.value,
-                                        )
-                                    }
-                                    aria-invalid={workspaceForm.errors.name ? true : undefined}
-                                />
-                                {workspaceForm.errors.name ? (
-                                    <p className="text-sm text-destructive">
-                                        {workspaceForm.errors.name}
-                                    </p>
-                                ) : null}
-                            </div>
-                        </FormDialog>
-                    </>
-                ) : null}
+                <WorkspaceSwitcher />
 
-                <p className="px-2 pt-3.5 pb-1 font-mono text-[12px] tracking-[0.08em] uppercase text-muted-foreground max-lg:hidden">
+                <p className="px-2 pt-3.5 pb-1 font-mono text-[12px] tracking-[0.08em] uppercase text-muted-foreground">
                     {t("layout.workspaceLabel")}
                 </p>
 
                 <nav
-                    className="flex items-start gap-1.5 max-lg:flex-none lg:flex-col"
+                    className="flex w-full flex-col items-start gap-1.5"
                     aria-label={t("nav.mainNav")}
                 >
-                    {NAV_SECTIONS.map((section, sectionIndex) => {
-                        const items = section.items.map((item) => {
-                            const Icon = item.icon;
-                            return (
-                                <Link
-                                    key={item.label}
-                                    href={route(item.route)}
-                                    aria-current={
-                                        isActive(item) ? "page" : undefined
-                                    }
-                                    className="flex items-center gap-2.5 rounded-lg px-2.5 py-1.75 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground aria-[current=page]:bg-secondary aria-[current=page]:font-medium aria-[current=page]:text-foreground max-lg:px-2.5 max-lg:py-2"
-                                >
-                                    <Icon className="size-4 shrink-0" aria-hidden />
-                                    <span className="max-lg:hidden">
-                                        {t(item.label)}
-                                    </span>
-                                    {item.badge === "unreadMentions" &&
-                                    unreadMentions > 0 ? (
-                                        <span
-                                            data-test="mentions-badge"
-                                            title={t("mentions.title")}
-                                            className="ml-auto grid min-w-5 shrink-0 place-items-center rounded-full bg-primary px-1.5 text-[10px] font-semibold leading-4 text-primary-foreground max-lg:ml-1"
-                                        >
-                                            {unreadMentions}
-                                        </span>
-                                    ) : null}
-                                </Link>
-                            );
-                        });
-
-                        // Labelled families get a mono section label; on
-                        // mobile the wrapper dissolves so every link stays
-                        // in the horizontal bar and the label hides.
-                        if (!section.label) {
-                            // Flat entries stay direct children of the nav.
-                            return items.map((item, itemIndex) => (
-                                <Fragment key={`ungrouped-${sectionIndex}-${itemIndex}`}>{item}</Fragment>
-                            ));
-                        }
-
-                        return (
-                            <section
-                                key={section.label}
-                                data-test="nav-section"
-                                className="max-lg:contents lg:flex lg:flex-col lg:gap-1.5"
-                            >
-                                <p className="px-2 pt-3.5 pb-1 font-mono text-[12px] tracking-[0.08em] uppercase text-muted-foreground max-lg:hidden">
-                                    {t(section.label)}
-                                </p>
-                                {items}
-                            </section>
-                        );
-                    })}
+                    <NavLinks />
                 </nav>
 
-                {auth.user ? (
-                    <div className="mt-auto flex items-center gap-1 max-lg:ml-auto max-lg:p-0 lg:flex-col lg:border-t lg:px-2 lg:pt-3 lg:pb-3.5">
-                        <LanguageSwitcher />
-                        <DropdownMenu>
-                            <DropdownMenuTrigger
-                                aria-label={t("layout.accountMenu")}
-                                className="flex w-full items-center gap-2.5 rounded-lg py-1 text-left max-lg:w-auto max-lg:px-1"
-                            >
-                                <span className="grid size-6.5 shrink-0 place-items-center rounded-full border border-primary/25 bg-primary/20 text-[10px] font-semibold tracking-wide text-primary">
-                                    {initials(auth.user.name)}
-                                </span>
-                                <span className="min-w-0 max-lg:hidden">
-                                    <span className="block truncate text-[13px] font-medium">
-                                        {auth.user.name}
-                                    </span>
-                                    <span className="block text-[11px] text-muted-foreground">
-                                        {t(
-                                            `layout.roles.${workspace?.role ?? "member"}`,
-                                        )}
-                                    </span>
-                                </span>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent
-                                align="start"
-                                side="top"
-                                className="w-48"
-                            >
-                                <DropdownMenuGroup>
-                                    <DropdownMenuLabel>
-                                        {auth.user.email}
-                                    </DropdownMenuLabel>
-                                    <DropdownMenuItem
-                                        onClick={() =>
-                                            router.post(route("logout"))
-                                        }
-                                    >
-                                        <LogOut aria-hidden />
-                                        {t("layout.logOut")}
-                                    </DropdownMenuItem>
-                                </DropdownMenuGroup>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    </div>
-                ) : null}
+                {auth.user ? <AccountBlock /> : null}
             </aside>
+
+            <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
+                <SheetContent side="left" className="p-0" data-test="mobile-nav-drawer">
+                    <div className="flex items-center gap-2.5 px-4 pt-4 pb-3.5">
+                        <img
+                            src="/assets/taskr-app-icon.svg"
+                            alt=""
+                            aria-hidden
+                            className="size-6.5 shrink-0 rounded-[7px]"
+                        />
+                        <span className="text-[15px] font-semibold tracking-tight">
+                            Taskr
+                        </span>
+                    </div>
+
+                    <div className="px-3">
+                        <WorkspaceSwitcher />
+                    </div>
+
+                    <p className="px-4 pt-3.5 pb-1 font-mono text-[12px] tracking-[0.08em] uppercase text-muted-foreground">
+                        {t("layout.workspaceLabel")}
+                    </p>
+
+                    <nav
+                        className="flex w-full flex-col items-start gap-1.5 px-3 pb-4"
+                        aria-label={t("nav.mainNav")}
+                    >
+                        <NavLinks onNavigate={() => setMenuOpen(false)} />
+                    </nav>
+
+                    {auth.user ? <AccountBlock /> : null}
+                </SheetContent>
+            </Sheet>
 
             <div className="flex min-w-0 flex-col">
                 {title || actions || leading ? (
                     <header className="sticky top-0 z-20 flex flex-wrap items-center gap-4 border-b bg-background/88 px-4 py-3.5 backdrop-blur lg:px-7">
+                        {auth.user ? (
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="-ml-2 lg:hidden"
+                                aria-label={t("layout.menu")}
+                                aria-haspopup="dialog"
+                                onClick={() => setMenuOpen(true)}
+                                data-test="mobile-menu-button"
+                            >
+                                <Menu aria-hidden />
+                            </Button>
+                        ) : null}
                         {leading}
                         {title ? (
                             <h1 className="flex flex-wrap items-center gap-2.5 text-[17px] leading-tight font-semibold tracking-tight">

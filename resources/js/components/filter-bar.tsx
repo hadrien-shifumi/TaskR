@@ -35,7 +35,7 @@ export function FilterBar({
 }: FilterBarProps) {
     return (
         <div className="mb-3.5 flex flex-wrap items-center gap-2" data-test="filter-bar">
-            <div className="relative">
+            <div className="relative w-full sm:w-auto">
                 <Search
                     className="pointer-events-none absolute top-2 left-2.5 size-3.5 text-muted-foreground"
                     aria-hidden

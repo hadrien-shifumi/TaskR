@@ -29,6 +29,7 @@ import { downloadExport } from '@/lib/download-export';
 import type { LabelRef, UserRef } from '@/types';
 import { CreateLabelDialog } from './Index/components/create-label-dialog';
 import { IssuesViewSwitcher } from './Index/components/issues-view-switcher';
+import { IssueCard } from './Index/components/issue-card';
 import { IssueTableRow } from './Index/components/issue-row';
 import { ProjectKanbanBoard } from './Index/components/project-kanban-board';
 import { SavedViewsPicker } from './Index/components/saved-views-picker';
@@ -292,6 +293,7 @@ export default function Index() {
                 onSearchChange={setSearch}
                 searchPlaceholder={t('issuesPage.searchPlaceholder')}
                 searchAriaLabel={t('issuesPage.searchAria')}
+                searchClassName="w-full sm:w-50"
                 visible={visibleCount}
                 total={totalUnfiltered}
             >
@@ -406,68 +408,78 @@ export default function Index() {
                 </>
             ) : (
                 <>
-                    <div className="overflow-hidden rounded-xl border bg-card">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <SortableHead
-                                        sortKey="project"
-                                        label={t('columns.title')}
-                                        activeSort={activeSort}
-                                        activeDir={activeDir}
-                                        onSort={sortBy}
-                                        className="w-[30%]"
-                                    />
-                                    <SortableHead
-                                        sortKey="status"
-                                        label={t('columns.status')}
-                                        activeSort={activeSort}
-                                        activeDir={activeDir}
-                                        onSort={sortBy}
-                                    />
-                                    <SortableHead
-                                        sortKey="priority"
-                                        label={t('columns.priority')}
-                                        activeSort={activeSort}
-                                        activeDir={activeDir}
-                                        onSort={sortBy}
-                                    />
-                                    <TableHead className="hidden md:table-cell">{t('columns.labels')}</TableHead>
-                                    <TableHead>{t('columns.assignees')}</TableHead>
-                                    <SortableHead
-                                        sortKey="due_date"
-                                        label={t('columns.dueDate')}
-                                        activeSort={activeSort}
-                                        activeDir={activeDir}
-                                        onSort={sortBy}
-                                    />
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
+                    {visibleCount === 0 ? (
+                        <div data-test="issues-empty" className="rounded-xl border bg-card px-5 py-10 text-center">
+                            <p className="font-medium">
+                                {hasActiveFilters ? t('issuesPage.emptyFiltered') : t('issuesPage.empty')}
+                            </p>
+                            <p className="mt-1 text-sm text-muted-foreground">
+                                {hasActiveFilters
+                                    ? t('issuesPage.emptyFilteredHint')
+                                    : t('issuesPage.emptyHint')}
+                            </p>
+                        </div>
+                    ) : (
+                        <>
+                            {/* Mobile: adaptive cards, one per issue. */}
+                            <div data-test="issues-card-list" className="grid gap-2.5 md:hidden">
                                 {(issues ?? []).map((issue) => (
-                                    <IssueTableRow key={issue.id} issue={issue} />
+                                    <IssueCard key={issue.id} issue={issue} />
                                 ))}
-                            </TableBody>
-                        </Table>
-                        {visibleCount === 0 ? (
-                            <div data-test="issues-empty" className="px-5 py-10 text-center">
-                                <p className="font-medium">
-                                    {hasActiveFilters ? t('issuesPage.emptyFiltered') : t('issuesPage.empty')}
-                                </p>
-                                <p className="mt-1 text-sm text-muted-foreground">
-                                    {hasActiveFilters
-                                        ? t('issuesPage.emptyFilteredHint')
-                                        : t('issuesPage.emptyHint')}
-                                </p>
                             </div>
-                        ) : null}
-                    </div>
+                            {/* Desktop: the table, unchanged. */}
+                            <div className="hidden overflow-hidden rounded-xl border bg-card md:block">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <SortableHead
+                                                sortKey="project"
+                                                label={t('columns.title')}
+                                                activeSort={activeSort}
+                                                activeDir={activeDir}
+                                                onSort={sortBy}
+                                                className="w-[30%]"
+                                            />
+                                            <SortableHead
+                                                sortKey="status"
+                                                label={t('columns.status')}
+                                                activeSort={activeSort}
+                                                activeDir={activeDir}
+                                                onSort={sortBy}
+                                            />
+                                            <SortableHead
+                                                sortKey="priority"
+                                                label={t('columns.priority')}
+                                                activeSort={activeSort}
+                                                activeDir={activeDir}
+                                                onSort={sortBy}
+                                            />
+                                            <TableHead className="hidden md:table-cell">{t('columns.labels')}</TableHead>
+                                            <TableHead>{t('columns.assignees')}</TableHead>
+                                            <SortableHead
+                                                sortKey="due_date"
+                                                label={t('columns.dueDate')}
+                                                activeSort={activeSort}
+                                                activeDir={activeDir}
+                                                onSort={sortBy}
+                                            />
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {(issues ?? []).map((issue) => (
+                                            <IssueTableRow key={issue.id} issue={issue} />
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        </>
+                    )}
 
                     {lastPage > 1 ? (
                         <nav
                             aria-label={t('issuesPage.pagination.aria')}
                             data-test="issues-pagination"
-                            className="mt-4 flex items-center justify-between"
+                            className="mt-4 flex flex-col items-center gap-2.5 sm:flex-row sm:justify-between"
                         >
                             <Button
                                 variant="outline"
@@ -475,11 +487,12 @@ export default function Index() {
                                 disabled={currentPage <= 1}
                                 onClick={() => goToPage(currentPage - 1)}
                                 data-test="issues-pagination-prev"
+                                className="w-full justify-center sm:w-auto"
                             >
                                 <ChevronLeft aria-hidden />
                                 {t('issuesPage.pagination.previous')}
                             </Button>
-                            <span className="text-sm text-muted-foreground tabular-nums" data-test="issues-pagination-counter">
+                            <span className="order-first text-center text-sm text-muted-foreground tabular-nums" data-test="issues-pagination-counter">
                                 {t('issuesPage.pagination.page', {
                                     current: currentPage,
                                     last: lastPage,
@@ -492,6 +505,7 @@ export default function Index() {
                                 disabled={currentPage >= lastPage}
                                 onClick={() => goToPage(currentPage + 1)}
                                 data-test="issues-pagination-next"
+                                className="w-full justify-center sm:w-auto"
                             >
                                 {t('issuesPage.pagination.next')}
                                 <ChevronRight aria-hidden />

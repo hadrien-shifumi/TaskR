@@ -56,6 +56,7 @@ const en = {
         createWorkspaceDescription:
             "Your new workspace starts with the 4 default statuses: Backlog, In Progress, Done, Cancelled.",
         workspaceLabel: "Workspace",
+        menu: "Menu",
         accountMenu: "Account menu",
         logOut: "Log out",
         language: "Language",

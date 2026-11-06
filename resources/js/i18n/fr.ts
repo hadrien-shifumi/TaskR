@@ -54,6 +54,7 @@ const fr: typeof en = {
         createWorkspaceDescription:
             "Votre nouvel espace démarre avec les 4 statuts par défaut : Backlog, En cours, Terminé, Annulé.",
         workspaceLabel: "Espace",
+        menu: "Menu",
         accountMenu: "Menu du compte",
         logOut: "Se déconnecter",
         language: "Langue",
