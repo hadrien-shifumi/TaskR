@@ -41,7 +41,7 @@ export function CascadeMoveDialog({
                 if (!open) onClose();
             }}
         >
-            <DialogContent data-test="cascade-move-dialog">
+            <DialogContent data-test="cascade-move-dialog" className="sm:max-w-lg">
                 <DialogHeader>
                     <DialogTitle>{t('issues.moveCascade.title')}</DialogTitle>
                     <DialogDescription>
