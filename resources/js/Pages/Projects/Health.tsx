@@ -137,6 +137,12 @@ export default function Health() {
     const expected = health?.expectedPercentage !== null && health?.expectedPercentage !== undefined
         ? Math.round(health.expectedPercentage)
         : null;
+    const weighted = health?.weightedCompletionPercentage !== null && health?.weightedCompletionPercentage !== undefined
+        ? Math.round(health.weightedCompletionPercentage)
+        : null;
+    const leaf = health?.leafCompletionPercentage !== null && health?.leafCompletionPercentage !== undefined
+        ? Math.round(health.leafCompletionPercentage)
+        : null;
     const paceGap = completion !== null && expected !== null ? expected - completion : null;
     const targetPassed =
         project.targetDate !== null && project.targetDate < new Date().toISOString().slice(0, 10);
@@ -184,6 +190,20 @@ export default function Health() {
                       health.consumptionRatio !== null
                           ? t('projectHealth.consumption', { percent: Math.round(health.consumptionRatio) })
                           : t('projectHealth.noEstimates'),
+              },
+              {
+                  key: 'stat-weighted',
+                  label: t('projectHealth.statWeighted'),
+                  value: weighted !== null ? String(weighted) : '—',
+                  suffix: weighted !== null ? ' %' : '',
+                  hint: t('projectHealth.statWeightedHint'),
+              },
+              {
+                  key: 'stat-leaf',
+                  label: t('projectHealth.statLeaf'),
+                  value: leaf !== null ? String(leaf) : '—',
+                  suffix: leaf !== null ? ' %' : '',
+                  hint: t('projectHealth.statLeafHint'),
               },
           ]
         : [];
@@ -286,7 +306,7 @@ export default function Health() {
             {/* ── Owner/Manager view: global KPIs + team workload ── */}
             {canSeeGlobalKpis && health ? (
                 <>
-                    <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+                    <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-6">
                         {statCards.map((card) => (
                             <Card key={card.key} data-test={card.key} className="gap-2 py-5">
                                 <CardContent className="grid gap-1.5 px-5">

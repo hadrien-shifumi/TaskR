@@ -3,8 +3,10 @@
 namespace Tests\Feature;
 
 use App\Actions\Issues\CreateIssue as CreateIssueAction;
+use App\Actions\Issues\SetIssueParent;
 use App\Actions\Projects\CreateProject;
 use App\Actions\TimeTracking\CreateTimeEntry;
+use App\Actions\TimeTracking\SetIssueEstimate as SetIssueEstimateAction;
 use App\Actions\Workspaces\CreateWorkspace;
 use App\Mcp\Servers\TaskrServer;
 use App\Mcp\Tools\AddComment;
@@ -68,6 +70,13 @@ class McpExtendedToolsTest extends TestCase
             $tool = collect($this->items)->firstWhere('name', $name) ?? [];
 
             return $tool['inputSchema']['properties'] ?? [];
+        });
+
+        TestListResponse::macro('descriptionFor', function (string $name): ?string {
+            /** @var TestListResponse $this */
+            $tool = collect($this->items)->firstWhere('name', $name) ?? [];
+
+            return $tool['description'] ?? null;
         });
     }
 
@@ -143,6 +152,179 @@ class McpExtendedToolsTest extends TestCase
 
         $this->assertArrayHasKey('health', $result);
         $this->assertSame(1, $result['health']['totalIssues']);
+    }
+
+    // ─── GetProjectHealth : hiérarchie (complétion pondérée + feuilles) ──
+
+    public function test_get_project_health_returns_weighted_and_leaf_completion(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspace();
+        app(WorkspaceContext::class)->set($workspace);
+        $statuses = $this->statusesByCategory($workspace);
+
+        $parent = CreateIssueAction::run($workspace, [
+            'project_id' => $project->id,
+            'title' => 'Parent',
+            'status_id' => $statuses['in_progress']->id,
+        ]);
+        SetIssueEstimateAction::run($parent, 10.0);
+
+        $child = CreateIssueAction::run($workspace, [
+            'project_id' => $project->id,
+            'title' => 'Child done',
+            'status_id' => $statuses['done']->id,
+        ]);
+        SetIssueEstimateAction::run($child, 4.0);
+        SetIssueParent::run($child, $parent->id);
+
+        $leafDone = CreateIssueAction::run($workspace, [
+            'project_id' => $project->id,
+            'title' => 'Leaf done',
+            'status_id' => $statuses['done']->id,
+        ]);
+        SetIssueEstimateAction::run($leafDone, 6.0);
+
+        CreateIssueAction::run($workspace, [
+            'project_id' => $project->id,
+            'title' => 'Leaf open',
+            'status_id' => $statuses['backlog']->id,
+        ]);
+
+        $result = TaskrServer::actingAs($owner)->tool(GetProjectHealth::class, [
+            'workspace_id' => $workspace->id,
+            'project_id' => $project->id,
+        ])->assertOk()->payload();
+
+        // Retrocompatibility contract: the twelve keys, in order — the two
+        // hierarchy indicators are added at the end, nothing renamed or dropped.
+        $this->assertSame([
+            'issuesByCategory',
+            'totalIssues',
+            'completionPercentage',
+            'overdueIssues',
+            'estimatedHours',
+            'loggedHours',
+            'consumptionRatio',
+            'expectedPercentage',
+            'status',
+            'targetDate',
+            'weightedCompletionPercentage',
+            'leafCompletionPercentage',
+        ], array_keys($result['health']));
+
+        // Weighted: 10 estimated-done hours (4 + 6) over 20 estimated hours → 50 %.
+        $this->assertSame(50.0, $result['health']['weightedCompletionPercentage']);
+
+        // Leaves: the parent is a container; 2 done leaves over 3 → 66,7 %.
+        $this->assertSame(66.7, $result['health']['leafCompletionPercentage']);
+
+        // Existing fields stay untouched: 2 done over 4 issues.
+        $this->assertSame(4, $result['health']['totalIssues']);
+        $this->assertSame(50.0, $result['health']['completionPercentage']);
+    }
+
+    public function test_get_project_health_returns_null_completion_fields_when_not_computable(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspace();
+        app(WorkspaceContext::class)->set($workspace);
+        $statuses = $this->statusesByCategory($workspace);
+
+        // One unestimated issue: weighted completion is absent (never a
+        // fake 0 %), leaf completion is a real 0 % — the issue is a leaf.
+        CreateIssueAction::run($workspace, [
+            'project_id' => $project->id,
+            'title' => 'Unestimated',
+            'status_id' => $statuses['backlog']->id,
+        ]);
+
+        $empty = CreateProject::run($workspace, $owner, ['name' => 'Empty']);
+
+        $unestimated = TaskrServer::actingAs($owner)->tool(GetProjectHealth::class, [
+            'workspace_id' => $workspace->id,
+            'project_id' => $project->id,
+        ])->assertOk()->payload();
+
+        $this->assertArrayHasKey('weightedCompletionPercentage', $unestimated['health']);
+        $this->assertNull($unestimated['health']['weightedCompletionPercentage']);
+        $this->assertArrayHasKey('leafCompletionPercentage', $unestimated['health']);
+        $this->assertSame(0.0, $unestimated['health']['leafCompletionPercentage']);
+
+        // A project without issues carries both keys, both null.
+        $noIssues = TaskrServer::actingAs($owner)->tool(GetProjectHealth::class, [
+            'workspace_id' => $workspace->id,
+            'project_id' => $empty->id,
+        ])->assertOk()->payload();
+
+        $this->assertArrayHasKey('weightedCompletionPercentage', $noIssues['health']);
+        $this->assertNull($noIssues['health']['weightedCompletionPercentage']);
+        $this->assertArrayHasKey('leafCompletionPercentage', $noIssues['health']);
+        $this->assertNull($noIssues['health']['leafCompletionPercentage']);
+    }
+
+    public function test_get_project_health_weighted_completion_reflects_parents_as_containers_setting(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspace();
+        app(WorkspaceContext::class)->set($workspace);
+        $statuses = $this->statusesByCategory($workspace);
+
+        $parent = CreateIssueAction::run($workspace, [
+            'project_id' => $project->id,
+            'title' => 'Parent',
+            'status_id' => $statuses['in_progress']->id,
+        ]);
+        SetIssueEstimateAction::run($parent, 10.0);
+
+        $child = CreateIssueAction::run($workspace, [
+            'project_id' => $project->id,
+            'title' => 'Child',
+            'status_id' => $statuses['backlog']->id,
+        ]);
+        SetIssueEstimateAction::run($child, 4.0);
+        SetIssueParent::run($child, $parent->id);
+
+        $leafDone = CreateIssueAction::run($workspace, [
+            'project_id' => $project->id,
+            'title' => 'Leaf done',
+            'status_id' => $statuses['done']->id,
+        ]);
+        SetIssueEstimateAction::run($leafDone, 6.0);
+
+        // Off by default: the parent keeps its weight — 6 done hours
+        // over 20 estimated → 30 %.
+        $off = TaskrServer::actingAs($owner)->tool(GetProjectHealth::class, [
+            'workspace_id' => $workspace->id,
+            'project_id' => $project->id,
+        ])->assertOk()->payload();
+
+        $this->assertFalse($workspace->fresh()->parents_as_containers);
+        $this->assertSame(30.0, $off['health']['weightedCompletionPercentage']);
+        $this->assertSame(50.0, $off['health']['leafCompletionPercentage']);
+
+        $workspace->update(['parents_as_containers' => true]);
+
+        // On: the container parent leaves the weighted sums — 6 over 10
+        // → 60 %. The leaf completion is untouched by the setting.
+        $on = TaskrServer::actingAs($owner)->tool(GetProjectHealth::class, [
+            'workspace_id' => $workspace->id,
+            'project_id' => $project->id,
+        ])->assertOk()->payload();
+
+        $this->assertSame(60.0, $on['health']['weightedCompletionPercentage']);
+        $this->assertSame(50.0, $on['health']['leafCompletionPercentage']);
+    }
+
+    public function test_get_project_health_description_mentions_hierarchy_indicators(): void
+    {
+        [$owner] = $this->setupWorkspace();
+
+        $description = TaskrServer::actingAs($owner)->tools()->descriptionFor('get_project_health');
+
+        // The catalog description is the agents' discovery contract: it
+        // must advertise the hierarchy indicators and the container rule.
+        $this->assertNotNull($description);
+        $this->assertStringContainsString('weighted completion', $description);
+        $this->assertStringContainsString('leaf completion', $description);
+        $this->assertStringContainsString('parents as containers', $description);
     }
 
     public function test_delete_knowledge_removes_page(): void
@@ -760,5 +942,20 @@ class McpExtendedToolsTest extends TestCase
         $project = CreateProject::run($workspace, $owner, ['name' => 'Site vitrine']);
 
         return [$owner, $workspace, $project];
+    }
+
+    /**
+     * Map the workspace default statuses by status category.
+     *
+     * @return array<string, Status>
+     */
+    private function statusesByCategory(Workspace $workspace): array
+    {
+        $statuses = [];
+        foreach ($workspace->statuses as $status) {
+            $statuses[$status->category->value] = $status;
+        }
+
+        return $statuses;
     }
 }

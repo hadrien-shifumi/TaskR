@@ -44,6 +44,8 @@ export type IssueDetail = {
     assignees: UserRef[];
     labels: LabelRef[];
     parent: { id: string; title: string; statusName: string | null } | null;
+    /** Auto-completion option: the parent follows its children into a terminal category. */
+    autoCompleteChildren: boolean;
     children: {
         id: string;
         title: string;

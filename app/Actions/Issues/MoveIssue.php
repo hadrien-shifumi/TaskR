@@ -61,6 +61,11 @@ class MoveIssue
             ]);
         }
 
+        // Auto-completion option: once every child of the parent reaches a
+        // terminal category, the parent follows — reviewed on every status
+        // transition of a child, whatever the caller (web or MCP).
+        PropagateParentCompletion::run($issue, $user);
+
         return $issue;
     }
 

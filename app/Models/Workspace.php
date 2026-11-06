@@ -11,7 +11,11 @@ class Workspace extends BaseModel
 {
     use HasFactory;
 
-    protected $fillable = ['name'];
+    protected $fillable = ['name', 'parents_as_containers'];
+
+    protected $casts = [
+        'parents_as_containers' => 'boolean',
+    ];
 
     /**
      * @return HasMany<Membership, $this>
