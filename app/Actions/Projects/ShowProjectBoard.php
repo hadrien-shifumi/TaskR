@@ -3,6 +3,7 @@
 namespace App\Actions\Projects;
 
 use App\Actions\Concerns\AuthorizesWorkspaceAccess;
+use App\Actions\Issues\LoadActiveDescendants;
 use App\Actions\Issues\LoadIssueKnowledgePages;
 use App\Actions\Issues\ShowIssuePage;
 use App\Enums\StatusCategory;
@@ -71,7 +72,15 @@ class ShowProjectBoard
             ->when($assigneeId !== null, fn (Builder $query) => $query->whereHas('assignees', fn (Builder $q) => $q->where('users.id', $assigneeId)))
             ->orderBy('created_at')
             ->orderBy('id')
-            ->get()
+            ->get();
+
+        // The active-descendant summary rides every card: the board needs it
+        // to offer the cascade before a parent moves. The parentsOnly filter
+        // hides the children from the columns, not from this summary — the
+        // loader walks the whole tree from the fetched issues.
+        $descendants = app(LoadActiveDescendants::class)->run($issues, $user);
+
+        $issues = $issues
             ->groupBy('status_id');
 
         // People on the project = roster ∪ users already assigned to issues of the project.
@@ -101,7 +110,7 @@ class ShowProjectBoard
                     'category' => $status->category->value,
                     'issuesCount' => $issues->get($status->id)?->count() ?? 0,
                     'issues' => ($issues->get($status->id) ?? collect())
-                        ->map(fn (Issue $issue) => IssuePresenter::boardCard($issue))
+                        ->map(fn (Issue $issue) => IssuePresenter::boardCard($issue, $descendants))
                         ->values()
                         ->all(),
                 ])

@@ -26,7 +26,8 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
 import { Archive, ArrowLeft, MoveRight, Plus, User } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { HealthData, LabelRef, UserRef } from '@/types';
+import { CascadeMoveDialog, pendingDescendantsCount } from '@/components/cascade-move-dialog';
+import type { DescendantsSummary, HealthData, LabelRef, UserRef } from '@/types';
 import type { TemplateOption } from '@/Pages/Issues/Index/types';
 import { formatShortDate, formatDate } from '@/lib/format-date';
 import { BoardCreateIssueDialog } from './Board/create-issue-dialog';
@@ -42,6 +43,7 @@ interface BoardIssue {
     blocked: boolean;
     unblockable: boolean;
     hasOpenChild: boolean;
+    descendants: DescendantsSummary;
     assignees: { id: number; name: string }[];
     knowledgePagesCount: number;
     knowledgePageTitles: string[];
@@ -109,6 +111,10 @@ export default function Board() {
     /** Status preselected in the creation dialog (column "+" button). */
     const [createDefaultStatusId, setCreateDefaultStatusId] = useState<string | null>(null);
     const [archivingCompleted, setArchivingCompleted] = useState(false);
+    /** A parent move waiting for the sub-tree answer. */
+    const [pendingMove, setPendingMove] = useState<{ issueId: string; statusId: string; count: number } | null>(
+        null,
+    );
 
     const completedCounts = columns.reduce(
         (counts, column) => {
@@ -144,23 +150,49 @@ export default function Board() {
      * route and the board syncs on the response. On refusal the card simply
      * never left its column — only the error surfaces.
      */
-    const move = (issueId: string, statusId: string) => {
+    const move = (issueId: string, statusId: string, cascade = false) => {
         setMoveError(null);
         router.post(
             route('issues.move', issueId),
-            { status_id: statusId },
+            { status_id: statusId, cascade_children: cascade },
             {
                 onError: (errors) => {
                     setMoveError(errors.status_id ?? t('projectBoard.moveRefused'));
+                },
+                onHttpException: () => {
+                    setMoveError(t('projectBoard.moveRefused'));
+                    return false;
                 },
             },
         );
     };
 
+    // A parent with sub-tickets in another status asks first: the dialog
+    // offers to bring the whole active sub-tree along. The server enforces
+    // the rule either way — a refusal surfaces in the banner.
+    const requestMove = (issue: BoardIssue, statusId: string) => {
+        const count = pendingDescendantsCount(issue.descendants, statusId);
+        if (count > 0) {
+            setPendingMove({ issueId: issue.id, statusId, count });
+        } else {
+            move(issue.id, statusId);
+        }
+    };
+
+    const confirmMove = (cascade: boolean) => {
+        const pending = pendingMove;
+        setPendingMove(null);
+        if (pending) move(pending.issueId, pending.statusId, cascade);
+    };
+
     const drop = (columnId: string) => {
         setOverColumn(null);
         if (draggingId === null) return;
-        move(draggingId, columnId);
+        const dragged = columns.flatMap((column) => column.issues).find((issue) => issue.id === draggingId);
+        if (dragged) {
+            requestMove(dragged, columnId);
+        }
+        setDraggingId(null);
     };
 
     return (
@@ -388,7 +420,7 @@ export default function Board() {
                                                         .map((candidate) => (
                                                             <DropdownMenuItem
                                                                 key={candidate.id}
-                                                                onClick={() => move(issue.id, candidate.id)}
+                                                                onClick={() => requestMove(issue, candidate.id)}
                                                             >
                                                                 {candidate.name}
                                                             </DropdownMenuItem>
@@ -435,6 +467,15 @@ export default function Board() {
                 cancelledCount={completedCounts.cancelled}
                 onClose={() => setArchivingCompleted(false)}
             />
+
+            {pendingMove ? (
+                <CascadeMoveDialog
+                    count={pendingMove.count}
+                    targetStatusName={columns.find((column) => column.id === pendingMove.statusId)?.name ?? ''}
+                    onConfirm={confirmMove}
+                    onClose={() => setPendingMove(null)}
+                />
+            ) : null}
 
             {issueDetail ? (
                 <IssueDetailDialog
