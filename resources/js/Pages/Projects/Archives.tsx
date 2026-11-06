@@ -69,7 +69,7 @@ export default function Archives() {
     /** Sets one URL filter; an empty value removes the param and resets
      *  to page 1 so filtered URLs stay clean and shareable. */
     const setFilter = (key: string, value: string) => {
-        const next: Record<string, string> = {
+        const next: Record<string, string | undefined> = {
             status: filters.status || undefined,
             priority: filters.priority || undefined,
             assignee: filters.assignee || undefined,

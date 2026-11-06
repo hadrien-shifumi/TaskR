@@ -34,6 +34,8 @@ use App\Mcp\Tools\ListKnowledgeVersions;
 use App\Mcp\Tools\ListLabels;
 use App\Mcp\Tools\ListMembers;
 use App\Mcp\Tools\ListProjects;
+use App\Mcp\Tools\ListSavedViewIssues;
+use App\Mcp\Tools\ListSavedViews;
 use App\Mcp\Tools\ListStatuses;
 use App\Mcp\Tools\ListTemplates;
 use App\Mcp\Tools\ListTimeEntries;
@@ -139,6 +141,9 @@ class TaskrServer extends Server
         CreateTemplate::class,
         UpdateTemplate::class,
         DeleteTemplate::class,
+        // Saved views
+        ListSavedViews::class,
+        ListSavedViewIssues::class,
         // Audit
         ListActivity::class,
     ];

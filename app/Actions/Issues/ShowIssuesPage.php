@@ -8,6 +8,7 @@ use App\Presenters\Issues\IssuePresenter;
 use App\Presenters\Labels\LabelPresenter;
 use App\Presenters\Projects\ProjectMemberPresenter;
 use App\Presenters\Projects\ProjectPresenter;
+use App\Presenters\SavedViews\SavedViewPresenter;
 use App\Presenters\Statuses\StatusPresenter;
 use App\Presenters\Templates\TemplatePresenter;
 use App\Responders\Issues\IssuesPageResponder;
@@ -143,6 +144,10 @@ class ShowIssuesPage
             ->with('labels')
             ->get()
             ->map(fn ($template) => TemplatePresenter::present($template))
+            ->all();
+        $data['savedViews'] = $workspace->savedViews()
+            ->get()
+            ->map(fn ($view) => SavedViewPresenter::present($view))
             ->all();
 
         return $responder->toResponse($request, $data);

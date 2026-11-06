@@ -253,7 +253,7 @@ export default function Members() {
                             </label>
                             <Select
                                 value={addForm.data.role}
-                                onValueChange={(value) => addForm.setData('role', value)}
+                                onValueChange={(value) => value && addForm.setData('role', value)}
                             >
                                 <SelectTrigger id="role-select">
                                     <SelectValue />

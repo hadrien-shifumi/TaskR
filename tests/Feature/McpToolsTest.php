@@ -18,6 +18,8 @@ use App\Mcp\Tools\ListComments;
 use App\Mcp\Tools\ListIssues;
 use App\Mcp\Tools\ListLabels;
 use App\Mcp\Tools\ListProjects;
+use App\Mcp\Tools\ListSavedViewIssues;
+use App\Mcp\Tools\ListSavedViews;
 use App\Mcp\Tools\ListStatuses;
 use App\Mcp\Tools\ListTimeEntries;
 use App\Mcp\Tools\ListWorkspaces as ListWorkspacesTool;
@@ -67,6 +69,7 @@ class McpToolsTest extends TestCase
             AddComment::class, ListComments::class,
             ListStatuses::class, ListLabels::class,
             LogTime::class, ListTimeEntries::class,
+            ListSavedViews::class, ListSavedViewIssues::class,
         ]);
     }
 

@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Actions\Issues\CreateIssue;
 use App\Actions\Projects\CreateProject;
+use App\Actions\SavedViews\CreateSavedView;
 use App\Actions\Workspaces\CreateWorkspace;
 use App\Mcp\Resources\ProjectIssues;
 use App\Mcp\Servers\TaskrServer;
@@ -16,6 +17,8 @@ use App\Mcp\Tools\GetProjectHealth;
 use App\Mcp\Tools\InviteMember;
 use App\Mcp\Tools\ListLabels;
 use App\Mcp\Tools\ListMembers;
+use App\Mcp\Tools\ListSavedViewIssues;
+use App\Mcp\Tools\ListSavedViews;
 use App\Mcp\Tools\ListStatuses;
 use App\Mcp\Tools\ListTemplates;
 use App\Mcp\Tools\UpdateProject as UpdateProjectTool;
@@ -316,6 +319,42 @@ class McpGuestScopeTest extends TestCase
         TaskrServer::actingAs($guest)->tool(ListTemplates::class, [
             'workspace_id' => $workspace->id,
         ])->assertOk();
+    }
+
+    // ── Vues sauvegardées : définitions visibles, résultats scopés ─────
+
+    public function test_guest_mcp_sees_all_saved_views_but_scoped_view_issues(): void
+    {
+        [$owner, $workspace, $inScope, $outOfScope, $guest] = $this->setupScopedGuest();
+        app(WorkspaceContext::class)->set($workspace);
+
+        $inScopeHigh = CreateIssue::run($workspace, ['project_id' => $inScope->id, 'title' => 'Haute visible', 'priority' => 'high']);
+        CreateIssue::run($workspace, ['project_id' => $outOfScope->id, 'title' => 'Haute secrète', 'priority' => 'high']);
+
+        // A workspace-wide view created by the owner: the definition is
+        // never filtered by who looks at it — the results are.
+        $view = CreateSavedView::run($workspace, $owner, [
+            'name' => 'Priorités hautes',
+            'filters' => ['priority' => 'high'],
+            'sort' => null,
+            'dir' => null,
+        ]);
+
+        $listing = TaskrServer::actingAs($guest)->tool(ListSavedViews::class, [
+            'workspace_id' => $workspace->id,
+        ])->assertOk()->payload();
+
+        $this->assertSame(['Priorités hautes'], array_column($listing['views'], 'name'));
+
+        $response = TaskrServer::actingAs($guest)->tool(ListSavedViewIssues::class, [
+            'workspace_id' => $workspace->id,
+            'view_id' => $view->id,
+        ]);
+
+        $result = $response->assertOk()->payload();
+        $this->assertSame([$inScopeHigh->id], array_column($result['issues'], 'id'));
+        $this->assertSame(1, $result['total']);
+        $response->assertDontSee('Haute secrète');
     }
 
     // ── GetIssue : périmètre guest et refus sans fuite ────────────────

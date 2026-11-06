@@ -65,6 +65,8 @@ use App\Actions\Projects\ShowProjectsPage;
 use App\Actions\Projects\UpdateProject;
 use App\Actions\Projects\UpdateProjectMemberRole;
 use App\Actions\SavedViews\CreateSavedView;
+use App\Actions\SavedViews\DeleteSavedView;
+use App\Actions\SavedViews\UpdateSavedView;
 use App\Actions\Statuses\CreateStatus;
 use App\Actions\Statuses\DeleteStatus;
 use App\Actions\Statuses\ReorderStatuses;
@@ -184,9 +186,11 @@ Route::middleware(['auth', 'workspace'])->group(function (): void {
     Route::post('/issues/{issue}/archive', ArchiveIssue::class)->name('issues.archive');
 
     // Saved views of the issues page: a named, workspace-shared snapshot
-    // of the URL filters and sort (creation only for now — the selector,
-    // rename and delete come with their own tickets).
+    // of the URL filters and sort. Renaming is Owner-only; deletion is the
+    // Owner's for every view, or the creator's for their own.
     Route::post('/views', CreateSavedView::class)->name('views.store');
+    Route::match(['put', 'patch'], '/views/{view}', UpdateSavedView::class)->name('views.update');
+    Route::delete('/views/{view}', DeleteSavedView::class)->name('views.destroy');
 
     Route::post('/issues/{issue}/comments', AddComment::class)->name('comments.store');
     Route::match(['put', 'patch'], '/issues/{issue}/comments/{comment}', UpdateComment::class)

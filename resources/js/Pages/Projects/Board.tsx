@@ -225,7 +225,7 @@ export default function Board() {
                     {/* Assignee filter */}
                     <Select
                         value={currentAssignee || 'all'}
-                        onValueChange={setAssigneeFilter}
+                        onValueChange={(value) => setAssigneeFilter(value ?? '')}
                     >
                         <SelectTrigger
                             className="h-7.5 w-40 text-[13px]"

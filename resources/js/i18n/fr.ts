@@ -110,6 +110,22 @@ const fr: typeof en = {
             kanban: "Kanban",
             aria: "Mode d'affichage",
         },
+        savedViews: {
+            label: "Vues",
+            aria: "Appliquer une vue sauvegardée",
+            empty: "Aucune vue sauvegardée pour l'instant",
+            save: "Sauvegarder cette vue",
+            saveAria: "Sauvegarder les filtres et le tri en cours comme une vue",
+            dialogDescription:
+                "Nommez les filtres et le tri en cours — la vue est partagée avec tout le workspace.",
+            rename: "Renommer",
+            manageAria: 'Gérer la vue « {{name}} »',
+            renameTitle: "Renommer la vue",
+            renameDescription: "Le nouveau nom doit rester unique dans le workspace.",
+            deleteTitle: "Supprimer la vue",
+            deleteDescription:
+                'La vue « {{name}} » disparaît pour tous les membres du workspace. Cette action est irréversible.',
+        },
         kanban: {
             emptyColumn: "Aucun ticket — déposez une carte ici",
             moveRefused: "Le déplacement a été refusé.",

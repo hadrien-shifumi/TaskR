@@ -58,6 +58,8 @@ return [
 
     'saved_view' => [
         'created' => 'Vue « :name » sauvegardée.',
+        'updated' => 'Vue « :name » renommée.',
+        'deleted' => 'Vue « :name » supprimée.',
     ],
 
     'notification_preferences' => [

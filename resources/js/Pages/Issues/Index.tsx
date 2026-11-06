@@ -31,9 +31,10 @@ import { CreateLabelDialog } from './Index/components/create-label-dialog';
 import { IssuesViewSwitcher } from './Index/components/issues-view-switcher';
 import { IssueTableRow } from './Index/components/issue-row';
 import { ProjectKanbanBoard } from './Index/components/project-kanban-board';
+import { SavedViewsPicker } from './Index/components/saved-views-picker';
 import { SortableHead } from './Index/components/sortable-head';
 import type { SortKey } from './Index/components/sortable-head';
-import type { IssueRow, ProjectBoard, TemplateOption } from './Index/types';
+import type { IssueRow, ProjectBoard, SavedViewOption, TemplateOption } from './Index/types';
 
 type PageProps = {
     issues?: IssueRow[];
@@ -52,6 +53,7 @@ type PageProps = {
     labels: LabelRef[];
     members: UserRef[];
     templates: TemplateOption[];
+    savedViews: SavedViewOption[];
 };
 
 /** All status categories offered by the category filter select. */
@@ -93,6 +95,7 @@ export default function Index() {
         labels,
         members,
         templates,
+        savedViews,
     } = usePage<PageProps>().props;
     const { t } = useTranslation();
     const [creating, setCreating] = useState(false);
@@ -292,6 +295,7 @@ export default function Index() {
                 visible={visibleCount}
                 total={totalUnfiltered}
             >
+                <SavedViewsPicker views={savedViews} filters={filters} />
                 <FilterSelect
                     testId="filter-select-category"
                     value={readFilter(filters, 'category')}

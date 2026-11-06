@@ -27,4 +27,26 @@ class SavedViewRedirectResponder
             ->route('issues.index', $params)
             ->with('status', __('flash.saved_view.created', ['name' => $view->name]));
     }
+
+    /**
+     * After a rename, back on the issues page; the flash carries the new
+     * name.
+     */
+    public function updated(SavedView $view): RedirectResponse
+    {
+        return redirect()
+            ->route('issues.index')
+            ->with('status', __('flash.saved_view.updated', ['name' => $view->name]));
+    }
+
+    /**
+     * After a deletion, back on the issues page — the view is gone for
+     * every member of the workspace.
+     */
+    public function deleted(SavedView $view): RedirectResponse
+    {
+        return redirect()
+            ->route('issues.index')
+            ->with('status', __('flash.saved_view.deleted', ['name' => $view->name]));
+    }
 }

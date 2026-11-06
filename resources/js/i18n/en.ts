@@ -112,6 +112,22 @@ const en = {
             kanban: "Kanban",
             aria: "View mode",
         },
+        savedViews: {
+            label: "Views",
+            aria: "Apply a saved view",
+            empty: "No saved views yet",
+            save: "Save this view",
+            saveAria: "Save the current filters and sort as a view",
+            dialogDescription:
+                "Name the current filters and sort — the view is shared with the whole workspace.",
+            rename: "Rename",
+            manageAria: 'Manage view "{{name}}"',
+            renameTitle: "Rename view",
+            renameDescription: "The new name must stay unique in the workspace.",
+            deleteTitle: "Delete view",
+            deleteDescription:
+                '"{{name}}" disappears for every member of the workspace. This cannot be undone.',
+        },
         kanban: {
             emptyColumn: "No issue — drop a card here",
             moveRefused: "The move was refused.",

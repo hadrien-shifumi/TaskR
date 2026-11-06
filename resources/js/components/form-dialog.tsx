@@ -59,7 +59,7 @@ export function FormDialog({
 
     const footer = (
         <DialogFooter>
-            <Button type="submit" disabled={processing}>
+            <Button type="submit" disabled={processing} data-test="form-dialog-submit">
                 {submitLabel}
             </Button>
         </DialogFooter>

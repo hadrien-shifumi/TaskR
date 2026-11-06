@@ -1,4 +1,5 @@
 import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';
 
 /**
@@ -154,11 +155,14 @@ export function initials(name: string): string {
     return `${parts[0][0] ?? ''}${parts[parts.length - 1][0] ?? ''}`.toUpperCase();
 }
 
-export function Avatar({ name, title }: { name: string; title?: string }) {
+export function Avatar({ name, title, className }: { name: string; title?: string; className?: string }) {
     return (
         <span
             title={title ?? name}
-            className="grid size-5 shrink-0 place-items-center rounded-full border border-primary/25 bg-primary/20 text-[9px] font-semibold tracking-wide text-primary"
+            className={cn(
+                'grid size-5 shrink-0 place-items-center rounded-full border border-primary/25 bg-primary/20 text-[9px] font-semibold tracking-wide text-primary',
+                className,
+            )}
         >
             {initials(name)}
         </span>

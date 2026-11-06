@@ -26,6 +26,18 @@ export interface TemplateOption {
     labels: { id: string; name: string }[];
 }
 
+export interface SavedViewOption {
+    id: string;
+    name: string;
+    summary: string | null;
+    /** Stored filter definition — the URL params the view applies. */
+    filters: Record<string, string | string[]>;
+    sort: string | null;
+    dir: string | null;
+    /** Creator's user id — drives the "my view" delete permission. */
+    createdBy: number | null;
+}
+
 export interface KanbanIssue {
     id: string;
     title: string;

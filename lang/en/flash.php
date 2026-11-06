@@ -58,6 +58,8 @@ return [
 
     'saved_view' => [
         'created' => 'View ":name" saved.',
+        'updated' => 'View ":name" renamed.',
+        'deleted' => 'View ":name" deleted.',
     ],
 
     'notification_preferences' => [
