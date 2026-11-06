@@ -146,6 +146,8 @@ class AuditEventTest extends TestCase
     {
         $expected = [
             'issue.created', 'issue.updated', 'issue.deleted', 'issue.status_changed',
+            'issue.auto_completed',
+            'issue.auto_completion_enabled', 'issue.auto_completion_disabled',
             'issue.priority_changed', 'issue.assigned', 'issue.unassigned',
             'issue.due_date_changed', 'issue.estimate_changed', 'issue.parent_set',
             'issue.parent_removed', 'issue.archived', 'issue.restored',

@@ -14,7 +14,7 @@ use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Attributes\Name;
 
 #[Name('get_project_health')]
-#[Description('Get health indicators for a project: completion percentage, overdue issues, time consumption, projection status. Guests receive only their own workload (myWorkload), never the global KPIs.')]
+#[Description('Get health indicators for a project: completion percentage, weighted completion (estimate-based), leaf completion (issues without sub-issues), overdue issues, time consumption, projection status. When the workspace setting "parents as containers" is enabled, container parents leave the weighted completion. Guests receive only their own workload (myWorkload), never the global KPIs.')]
 class GetProjectHealth extends AgentTool
 {
     /**

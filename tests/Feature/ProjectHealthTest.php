@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Actions\Issues\CreateIssue;
 use App\Actions\Issues\MoveIssue;
+use App\Actions\Issues\SetIssueParent;
 use App\Actions\Projects\CreateProject;
 use App\Actions\Projects\GetProjectHealth;
 use App\Actions\TimeTracking\CreateTimeEntry;
@@ -604,6 +605,118 @@ class ProjectHealthTest extends TestCase
         $this->assertSame(1, $health->totalIssues);
     }
 
+    // ── 5.5 Complétion pondérée + complétion feuilles ───────────────
+
+    public function test_weighted_completion_is_null_when_no_issue_is_estimated(): void
+    {
+        [$owner, $workspace, $project, $statuses] = $this->setupProjectWithStatuses();
+
+        $this->createIssue($project, $statuses, 'backlog');
+
+        $health = GetProjectHealth::run($project);
+
+        $this->assertNull($health->weightedCompletionPercentage);
+    }
+
+    public function test_weighted_completion_uses_estimated_done_over_all_estimates(): void
+    {
+        [$owner, $workspace, $project, $statuses] = $this->setupProjectWithStatuses();
+
+        $done = $this->createIssue($project, $statuses, 'done', 'Done');
+        SetIssueEstimate::run($done, 4.0);
+
+        $open = $this->createIssue($project, $statuses, 'in_progress', 'Open');
+        SetIssueEstimate::run($open, 6.0);
+
+        $cancelled = $this->createIssue($project, $statuses, 'cancelled', 'Cancelled');
+        SetIssueEstimate::run($cancelled, 2.0);
+
+        $health = GetProjectHealth::run($project);
+
+        // 4 done sur 12 estimés (annulés compris) : 33,3 %.
+        $this->assertSame(33.3, $health->weightedCompletionPercentage);
+    }
+
+    public function test_weighted_completion_excludes_cancelled_issues_from_numerator(): void
+    {
+        [$owner, $workspace, $project, $statuses] = $this->setupProjectWithStatuses();
+
+        $done = $this->createIssue($project, $statuses, 'done', 'Done');
+        SetIssueEstimate::run($done, 4.0);
+
+        $cancelled = $this->createIssue($project, $statuses, 'cancelled', 'Cancelled');
+        SetIssueEstimate::run($cancelled, 4.0);
+
+        $health = GetProjectHealth::run($project);
+
+        // 4 done sur 8 estimés : 50 % — pas 100 %.
+        $this->assertSame(50.0, $health->weightedCompletionPercentage);
+    }
+
+    public function test_leaf_completion_excludes_parents_with_children(): void
+    {
+        [$owner, $workspace, $project, $statuses] = $this->setupProjectWithStatuses();
+
+        $parent = $this->createIssue($project, $statuses, 'done', 'Parent');
+        $childDone = $this->createIssue($project, $statuses, 'done', 'Child done');
+        SetIssueParent::run($childDone, $parent->id);
+        $leafDone = $this->createIssue($project, $statuses, 'done', 'Leaf done');
+        $leafOpen = $this->createIssue($project, $statuses, 'backlog', 'Leaf open');
+
+        $health = GetProjectHealth::run($project);
+
+        // Raw: 3 done over 4 issues (75 %). Leaves: 2 done over 3 leaves —
+        // the parent is a container, its child is a leaf.
+        $this->assertSame(75.0, $health->completionPercentage);
+        $this->assertSame(66.7, $health->leafCompletionPercentage);
+    }
+
+    public function test_parent_with_only_archived_children_counts_as_leaf(): void
+    {
+        [$owner, $workspace, $project, $statuses] = $this->setupProjectWithStatuses();
+
+        $parent = $this->createIssue($project, $statuses, 'backlog', 'Parent');
+        $archivedDone = $this->createIssue($project, $statuses, 'done', 'Archived done');
+        SetIssueParent::run($archivedDone, $parent->id);
+        $archivedDone->update(['archived_at' => now()]);
+
+        $health = GetProjectHealth::run($project);
+
+        // Archived children leave the calculations: the parent is a leaf,
+        // open and not done → 0 %, never 33 %.
+        $this->assertSame(0.0, $health->completionPercentage);
+        $this->assertSame(0.0, $health->leafCompletionPercentage);
+    }
+
+    public function test_leaf_completion_counts_cancelled_leaves_in_denominator_only(): void
+    {
+        [$owner, $workspace, $project, $statuses] = $this->setupProjectWithStatuses();
+
+        $this->createIssue($project, $statuses, 'done', 'Leaf done');
+        $this->createIssue($project, $statuses, 'cancelled', 'Leaf cancelled');
+
+        $health = GetProjectHealth::run($project);
+
+        // 1 done over 2 leaves: 50 % — not 100 %.
+        $this->assertSame(50.0, $health->leafCompletionPercentage);
+    }
+
+    public function test_raw_completion_and_estimates_are_unchanged_alongside_new_indicators(): void
+    {
+        [$owner, $workspace, $project, $statuses] = $this->setupProjectWithStatuses();
+
+        $done = $this->createIssue($project, $statuses, 'done', 'Done');
+        SetIssueEstimate::run($done, 3.0);
+        $this->createIssue($project, $statuses, 'backlog', 'Open');
+
+        $health = GetProjectHealth::run($project);
+
+        // Raw count untouched: 1 done over 2 issues. Estimated hours stay
+        // open-only: the 3 h estimated on the done issue is not consumed.
+        $this->assertSame(50.0, $health->completionPercentage);
+        $this->assertSame(0.0, $health->estimatedHours);
+    }
+
     public function test_handle_for_projects_returns_health_for_all_projects(): void
     {
         [$owner, $workspace, $project, $statuses] = $this->setupProjectWithStatuses();
@@ -687,5 +800,137 @@ class ProjectHealthTest extends TestCase
                 'target_date' => 'not-a-date',
             ])
             ->assertSessionHasErrors('target_date');
+    }
+
+    // ── Réglage workspace « parents = conteneurs » ──────────────────
+
+    public function test_default_setting_keeps_parents_in_estimated_sums(): void
+    {
+        [$owner, $workspace, $project, $statuses] = $this->setupProjectWithStatuses();
+
+        // Off by default: the parent keeps its weight in the estimated
+        // hours KPI and in the weighted completion denominator.
+        $parent = $this->createIssue($project, $statuses, 'in_progress', 'Parent');
+        SetIssueEstimate::run($parent, 10.0);
+        $child = $this->createIssue($project, $statuses, 'backlog', 'Child');
+        SetIssueEstimate::run($child, 4.0);
+        SetIssueParent::run($child, $parent->id);
+
+        $this->assertFalse($workspace->fresh()->parents_as_containers);
+
+        $health = GetProjectHealth::run($project);
+
+        $this->assertSame(14.0, $health->estimatedHours);
+        $this->assertSame(0.0, $health->weightedCompletionPercentage);
+    }
+
+    public function test_enabled_setting_excludes_container_parents_from_estimated_hours_and_weighted_completion(): void
+    {
+        [$owner, $workspace, $project, $statuses] = $this->setupProjectWithStatuses();
+
+        $parent = $this->createIssue($project, $statuses, 'in_progress', 'Parent');
+        SetIssueEstimate::run($parent, 10.0);
+        $child = $this->createIssue($project, $statuses, 'backlog', 'Child');
+        SetIssueEstimate::run($child, 4.0);
+        SetIssueParent::run($child, $parent->id);
+        $leaf = $this->createIssue($project, $statuses, 'done', 'Leaf done');
+        SetIssueEstimate::run($leaf, 6.0);
+
+        $workspace->update(['parents_as_containers' => false]);
+
+        // Off: parent counted everywhere — 14 h open, 6 done over 20 h.
+        $health = GetProjectHealth::run($project);
+        $this->assertSame(14.0, $health->estimatedHours);
+        $this->assertSame(30.0, $health->weightedCompletionPercentage);
+
+        $workspace->update(['parents_as_containers' => true]);
+
+        // On: the container parent leaves the three estimated sums —
+        // open hours 4 (child only), weighted 6 done over 10 h total.
+        $health = GetProjectHealth::run($project->fresh());
+        $this->assertSame(4.0, $health->estimatedHours);
+        $this->assertSame(60.0, $health->weightedCompletionPercentage);
+    }
+
+    public function test_parent_with_unestimated_children_still_counts_when_enabled(): void
+    {
+        [$owner, $workspace, $project, $statuses] = $this->setupProjectWithStatuses();
+
+        $parent = $this->createIssue($project, $statuses, 'in_progress', 'Parent');
+        SetIssueEstimate::run($parent, 10.0);
+        $child = $this->createIssue($project, $statuses, 'backlog', 'Child without estimate');
+        SetIssueParent::run($child, $parent->id);
+
+        $workspace->update(['parents_as_containers' => true]);
+
+        $health = GetProjectHealth::run($project);
+
+        // Children carry no estimate: the parent is not a container.
+        $this->assertSame(10.0, $health->estimatedHours);
+    }
+
+    public function test_archived_estimated_children_do_not_make_parent_a_container(): void
+    {
+        [$owner, $workspace, $project, $statuses] = $this->setupProjectWithStatuses();
+
+        $parent = $this->createIssue($project, $statuses, 'in_progress', 'Parent');
+        SetIssueEstimate::run($parent, 10.0);
+        $child = $this->createIssue($project, $statuses, 'backlog', 'Archived child');
+        SetIssueEstimate::run($child, 4.0);
+        SetIssueParent::run($child, $parent->id);
+        $child->update(['archived_at' => now()]);
+
+        $workspace->update(['parents_as_containers' => true]);
+
+        $health = GetProjectHealth::run($project);
+
+        // Archived children leave the tree: the parent stays a leaf.
+        $this->assertSame(10.0, $health->estimatedHours);
+    }
+
+    public function test_raw_counts_and_leaf_completion_unchanged_when_enabled(): void
+    {
+        [$owner, $workspace, $project, $statuses] = $this->setupProjectWithStatuses();
+
+        $parent = $this->createIssue($project, $statuses, 'done', 'Parent');
+        $child = $this->createIssue($project, $statuses, 'done', 'Child');
+        SetIssueEstimate::run($child, 4.0);
+        SetIssueParent::run($child, $parent->id);
+        $this->createIssue($project, $statuses, 'backlog', 'Leaf open');
+
+        $workspace->update(['parents_as_containers' => true]);
+
+        $health = GetProjectHealth::run($project);
+
+        // Raw completion: 2 done over 3. Leaves: the parent is excluded
+        // (it has a child), 1 done leaf over 2 → 50 %.
+        $this->assertSame(66.7, $health->completionPercentage);
+        $this->assertSame(50.0, $health->leafCompletionPercentage);
+    }
+
+    public function test_setting_applies_to_all_workspace_projects(): void
+    {
+        [$owner, $workspace, $project, $statuses] = $this->setupProjectWithStatuses();
+
+        $project2 = CreateProject::run($workspace, $owner, ['name' => 'Second project']);
+
+        foreach ([$project, $project2] as $p) {
+            $parent = $this->createIssue($p, $statuses, 'in_progress', 'Parent');
+            SetIssueEstimate::run($parent, 10.0);
+            $child = $this->createIssue($p, $statuses, 'backlog', 'Child');
+            SetIssueEstimate::run($child, 4.0);
+            SetIssueParent::run($child, $parent->id);
+        }
+
+        $workspace->update(['parents_as_containers' => true]);
+
+        $healthMap = app(GetProjectHealth::class)->handleForProjects(
+            $workspace->projects()->get()->all(),
+        );
+
+        // The workspace-wide setting reaches every project through the
+        // shared computation.
+        $this->assertSame(4.0, $healthMap[$project->id]->estimatedHours);
+        $this->assertSame(4.0, $healthMap[$project2->id]->estimatedHours);
     }
 }

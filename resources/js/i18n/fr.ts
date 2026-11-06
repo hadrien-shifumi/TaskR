@@ -181,6 +181,8 @@ const fr: typeof en = {
         blocked: "Bloqué",
         unblockable: "Déblocable",
         knowledgeTooltip: "Base de connaissances : {{titles}}",
+        openChild: "un enfant ouvert",
+        openChildTooltip: "Un sous-ticket de ce ticket terminé a été rouvert.",
     },
 
     issueShow: {
@@ -253,6 +255,11 @@ const fr: typeof en = {
         overdueForDays: "En retard de {{count}} jours.",
         softHierarchyHint: "Hiérarchie souple — même espace uniquement, toute profondeur.",
         setAction: "Définir",
+        autoComplete: "Complétion automatique",
+        autoCompleteHint:
+            "Quand tous les sous-tickets actifs sont terminés ou annulés, le parent bascule automatiquement.",
+        autoCompleteNoChildren:
+            "Ce ticket n'a pas encore de sous-tickets — l'option restera sans effet.",
         dependencies: "Dépendances",
         dependenciesHint: "La dépendance alerte, elle n'interdit pas — le workflow reste libre.",
         blocked: "Bloqué",
@@ -386,6 +393,10 @@ const fr: typeof en = {
         statOverdue: "En retard",
         statOverdueHint: "Échéance dépassée, non terminés ni annulés",
         statHours: "Heures (travail ouvert)",
+        statWeighted: "Pondéré",
+        statWeightedHint: "Charge estimée terminée / charge estimée totale",
+        statLeaf: "Feuilles",
+        statLeafHint: "Tickets sans sous-ticket uniquement",
         consumption: "saisies / estimées · {{percent}} % consommé",
         noEstimates: "Aucune estimation sur le travail ouvert",
         projection: "Projection",
@@ -630,6 +641,7 @@ const fr: typeof en = {
         sectionsAria: "Sections des réglages",
         sections: {
             account: "Compte",
+            general: "Général",
             statuses: "Statuts",
             members: "Membres",
             templates: "Gabarits de tickets",
@@ -642,6 +654,11 @@ const fr: typeof en = {
         ownerWord: "propriétaires",
         readOnlySuffix: " de l'espace de travail.",
         pageTitle: "Réglages",
+        generalTitle: "Réglages généraux de l'espace de travail",
+        generalDescription: "Des réglages transverses, appliqués à tous les projets de l'espace.",
+        parentsAsContainersLabel: "Parents = conteneurs",
+        parentsAsContainersHint:
+            "Les feuilles de l'arborescence portent la charge estimée, pas les conteneurs. Activée, l'option retire des heures estimées de la page Santé les tickets parents dont au moins un sous-ticket porte une estimation — pour tous les projets de l'espace, y compris ceux déjà existants.",
         statusesTitle: "Statuts de l'espace de travail",
         statusesDescription:
             "Définis une seule fois pour chaque projet. L'ordre ci-dessous s'applique dans toute l'interface.",
@@ -917,6 +934,9 @@ const fr: typeof en = {
                 restored: "Ticket restauré",
                 knowledge_linked: "Pages liées",
                 knowledge_unlinked: "Pages déliées",
+                auto_completion_enabled: "Complétion automatique activée",
+                auto_completion_disabled: "Complétion automatique désactivée",
+                auto_completed: "Complété automatiquement",
             },
             comment: {
                 created: "Commentaire ajouté",

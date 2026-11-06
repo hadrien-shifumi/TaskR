@@ -54,6 +54,8 @@ export interface HealthData {
     loggedHours: number;
     consumptionRatio: number | null;
     expectedPercentage: number | null;
+    weightedCompletionPercentage: number | null;
+    leafCompletionPercentage: number | null;
     status: string | null;
     targetDate: string | null;
 }
