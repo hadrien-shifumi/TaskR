@@ -70,20 +70,40 @@ class Workspace extends BaseModel
      * exactly like the relation. Every write path flushes the cache (see
      * StatusObserver and ReorderStatuses).
      *
+     * The cache holds plain attribute rows, never Eloquent objects: Laravel's
+     * hardened stores unserialize with allowed_classes disabled by default
+     * (cache.serializable_classes = false), which would degrade any cached
+     * model into an __PHP_Incomplete_Class. The rows are re-hydrated into
+     * real Status models — casts included — without touching the database.
+     *
      * @return Collection<int, Status>
      */
     public function cachedStatuses()
     {
-        return Cache::remember(
-            "ws:{$this->getKey()}:statuses",
+        $rows = Cache::remember(
+            self::statusesCacheKey($this->getKey()),
             self::STATUSES_CACHE_TTL,
-            fn () => $this->statuses()->get(),
+            fn () => $this->statuses()
+                ->get()
+                ->map(fn (Status $status) => $status->getAttributes())
+                ->all(),
         );
+
+        return Status::hydrate($rows);
+    }
+
+    /**
+     * Versioned cache key: the v2 suffix discards pre-hardening entries that
+     * stored serialized model objects and would fail to unserialize.
+     */
+    public static function statusesCacheKey(string $workspaceId): string
+    {
+        return "ws:{$workspaceId}:statuses:v2";
     }
 
     public static function flushStatusesCache(string $workspaceId): void
     {
-        Cache::forget("ws:{$workspaceId}:statuses");
+        Cache::forget(self::statusesCacheKey($workspaceId));
     }
 
     /**

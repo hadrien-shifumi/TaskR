@@ -7,10 +7,12 @@ use App\Actions\Projects\CreateProject;
 use App\Actions\Statuses\CreateStatus;
 use App\Actions\Statuses\ReorderStatuses;
 use App\Actions\Workspaces\CreateWorkspace;
+use App\Models\Status;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Support\WorkspaceContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Inertia\Testing\AssertableInertia;
 use Tests\TestCase;
@@ -70,6 +72,55 @@ class WorkspaceStatusesCacheTest extends TestCase
             ->assertInertia(fn (AssertableInertia $page) => $page->has('statuses', 4));
 
         $this->assertSame(0, $this->statusReadCount());
+    }
+
+    public function test_statuses_cache_payload_survives_restricted_unserialization(): void
+    {
+        [, $workspace] = $this->setupWorkspace();
+
+        // Prime the cache.
+        $workspace->cachedStatuses();
+
+        $payload = Cache::get(Workspace::statusesCacheKey($workspace->id));
+
+        // Laravel 13 hardened its cache stores: by default they unserialize
+        // with allowed_classes = false (cache.serializable_classes), so any
+        // PHP object in the payload degrades to __PHP_Incomplete_Class and
+        // the first ->map() crashes. The payload must be plain rows that
+        // survive this round-trip untouched.
+        $roundTripped = unserialize(serialize($payload), ['allowed_classes' => false]);
+
+        $this->assertIsArray($roundTripped);
+        $this->assertNotEmpty($roundTripped);
+        foreach ($roundTripped as $row) {
+            $this->assertIsArray($row);
+            $this->assertIsString($row['id']);
+            $this->assertIsString($row['name']);
+            $this->assertIsString($row['category']);
+        }
+
+        // Same statuses, same position order as the relation query.
+        $this->assertSame(
+            $workspace->statuses()->pluck('id')->all(),
+            array_column($roundTripped, 'id'),
+        );
+    }
+
+    public function test_cached_statuses_are_returned_as_hydrated_models(): void
+    {
+        [, $workspace] = $this->setupWorkspace();
+
+        // Prime the cache, then read it back.
+        $workspace->cachedStatuses();
+        $fromCache = $workspace->cachedStatuses();
+
+        $this->assertContainsOnlyInstancesOf(Status::class, $fromCache);
+
+        $expected = $workspace->statuses()->get();
+        $this->assertSame(
+            $expected->map(fn (Status $status) => [$status->id, $status->name, $status->category->value])->all(),
+            $fromCache->map(fn (Status $status) => [$status->id, $status->name, $status->category->value])->all(),
+        );
     }
 
     public function test_statuses_cache_is_refreshed_on_status_writes(): void
