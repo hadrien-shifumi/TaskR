@@ -187,23 +187,71 @@ class GetProjectHealth
     }
 
     /**
-     * Compute workload for all roster members of a project.
+     * Compute workload for all roster members of a project, in two
+     * grouped aggregates over the whole roster instead of one batch of
+     * queries per member.
      *
      * @return array<int, PersonWorkload>
      */
     private function computeTeamWorkload(Project $project): array
     {
+        $workspaceId = app(WorkspaceContext::class)->id();
+
         $roster = $project->projectMembers()
             ->with('user')
             ->orderBy('created_at')
             ->get();
 
-        $workloads = [];
-        foreach ($roster as $pm) {
-            $workloads[] = $this->computeWorkloadFor($project, $pm->user);
-        }
+        $openCategories = [StatusCategory::Backlog->value, StatusCategory::InProgress->value];
 
-        return $workloads;
+        // Issue counts and estimates per assignee (open work only for the
+        // estimate, matching computeWorkloadFor).
+        $issueAggregates = \DB::table('issues')
+            ->join('statuses', 'statuses.id', '=', 'issues.status_id')
+            ->join('issue_assignees', 'issue_assignees.issue_id', '=', 'issues.id')
+            ->where('issues.workspace_id', $workspaceId)
+            ->where('issues.project_id', $project->id)
+            ->whereNull('issues.archived_at')
+            ->groupBy('issue_assignees.user_id')
+            ->selectRaw('issue_assignees.user_id as user_id')
+            ->selectRaw('COUNT(*) as total_issues')
+            ->selectRaw('SUM(CASE WHEN statuses.category IN (?, ?) THEN 1 ELSE 0 END) as open_issues', $openCategories)
+            ->selectRaw('SUM(CASE WHEN statuses.category IN (?, ?) AND issues.due_date IS NOT NULL AND issues.due_date < ? THEN 1 ELSE 0 END) as overdue_issues', [
+                ...$openCategories,
+                now()->toDateString(),
+            ])
+            ->selectRaw('SUM(CASE WHEN statuses.category IN (?, ?) THEN COALESCE(issues.estimated_hours, 0) ELSE 0 END) as estimated_hours', $openCategories)
+            ->get()
+            ->keyBy('user_id');
+
+        // Logged hours per assignee, open work only (same perimeter as
+        // computeWorkloadFor's logged query).
+        $loggedAggregates = \DB::table('time_entries')
+            ->join('issues', 'issues.id', '=', 'time_entries.issue_id')
+            ->join('issue_assignees', 'issue_assignees.issue_id', '=', 'issues.id')
+            ->join('statuses', 'statuses.id', '=', 'issues.status_id')
+            ->where('issues.workspace_id', $workspaceId)
+            ->where('issues.project_id', $project->id)
+            ->whereNull('issues.archived_at')
+            ->whereIn('statuses.category', $openCategories)
+            ->groupBy('issue_assignees.user_id')
+            ->selectRaw('issue_assignees.user_id as user_id')
+            ->selectRaw('SUM(time_entries.hours) as logged_hours')
+            ->get()
+            ->keyBy('user_id');
+
+        return $roster
+            ->map(fn ($membership) => new PersonWorkload(
+                userId: $membership->user->id,
+                userName: $membership->user->name,
+                openIssues: (int) ($issueAggregates[$membership->user_id]->open_issues ?? 0),
+                totalIssues: (int) ($issueAggregates[$membership->user_id]->total_issues ?? 0),
+                overdueIssues: (int) ($issueAggregates[$membership->user_id]->overdue_issues ?? 0),
+                estimatedHours: (float) ($issueAggregates[$membership->user_id]->estimated_hours ?? 0),
+                loggedHours: (float) ($loggedAggregates[$membership->user_id]->logged_hours ?? 0),
+            ))
+            ->values()
+            ->all();
     }
 
     /**

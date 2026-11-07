@@ -73,7 +73,10 @@ class ExportUiTest extends TestCase
         // The kanban carries no `total` prop: the export count is summed
         // client-side from the column counts, which must therefore be exact.
         $this->actingAs($owner)
-            ->get('/issues?view=kanban')
+            ->get('/issues?view=kanban', [
+                'X-Inertia-Partial-Component' => 'Issues/Index',
+                'X-Inertia-Partial-Data' => 'projectBoards',
+            ])
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->missing('total')

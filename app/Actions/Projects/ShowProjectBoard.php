@@ -102,8 +102,7 @@ class ShowProjectBoard
                 ->get()
                 ->map(fn ($template) => TemplatePresenter::present($template))
                 ->all(),
-            'columns' => $workspace->statuses()
-                ->get()
+            'columns' => $workspace->cachedStatuses()
                 ->map(fn ($status) => [
                     'id' => $status->id,
                     'name' => $status->name,

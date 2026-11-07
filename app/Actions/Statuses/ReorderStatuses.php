@@ -45,6 +45,10 @@ class ReorderStatuses
                     ->update(['position' => $position]);
             }
         });
+
+        // The bulk update bypasses model events: drop the statuses cache
+        // explicitly so the next read sees the new order.
+        Workspace::flushStatusesCache($workspace->getKey());
     }
 
     public function asController(ActionRequest $request, StatusRedirectResponder $responder): RedirectResponse

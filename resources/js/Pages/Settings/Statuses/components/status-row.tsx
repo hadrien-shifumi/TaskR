@@ -52,7 +52,7 @@ export function StatusRowItem({
             } ${over && !dragging ? 'border-primary ring-2 ring-ring' : ''} ${dragging ? 'opacity-40' : ''}`}
         >
             {isOwner ? (
-                <span aria-label={t('settings.reorder')} className="cursor-grab text-muted-foreground">
+                <span aria-hidden="true" className="cursor-grab text-muted-foreground">
                     <GripVertical className="size-4" />
                 </span>
             ) : null}

@@ -6,16 +6,37 @@ use App\Enums\WorkspaceRole;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 
 class Workspace extends BaseModel
 {
     use HasFactory;
+
+    /**
+     * Statuses are read on every issues surface and written through the
+     * four owner paths only (create, update, delete, reorder — the
+     * reorder flushes explicitly, its bulk update bypasses model events).
+     */
+    public const STATUSES_CACHE_TTL = 3600;
 
     protected $fillable = ['name', 'parents_as_containers'];
 
     protected $casts = [
         'parents_as_containers' => 'boolean',
     ];
+
+    /**
+     * Per-instance memo of the membership roles resolved on this workspace.
+     * A request resolves the acting user's role many times (authorization,
+     * Inertia shares, scoping): the first lookup is cached per user for the
+     * lifetime of the instance. Instances are per-request (the context
+     * singleton is reset by ResolveCurrentWorkspace), so the memo never
+     * outlives the request that populated it.
+     *
+     * @var array<int|string, ?WorkspaceRole>
+     */
+    protected array $membershipRoles = [];
 
     /**
      * @return HasMany<Membership, $this>
@@ -42,6 +63,27 @@ class Workspace extends BaseModel
     public function statuses(): HasMany
     {
         return $this->hasMany(Status::class)->orderBy('position');
+    }
+
+    /**
+     * Workspace statuses from the per-workspace cache. Ordered by position,
+     * exactly like the relation. Every write path flushes the cache (see
+     * StatusObserver and ReorderStatuses).
+     *
+     * @return Collection<int, Status>
+     */
+    public function cachedStatuses()
+    {
+        return Cache::remember(
+            "ws:{$this->getKey()}:statuses",
+            self::STATUSES_CACHE_TTL,
+            fn () => $this->statuses()->get(),
+        );
+    }
+
+    public static function flushStatusesCache(string $workspaceId): void
+    {
+        Cache::forget("ws:{$workspaceId}:statuses");
     }
 
     /**
@@ -94,25 +136,51 @@ class Workspace extends BaseModel
 
     public function hasMember(User $user): bool
     {
-        return $this->members()->where('users.id', $user->getKey())->exists();
+        return $this->membershipRole($user) !== null;
     }
 
     public function roleOf(User $user): ?WorkspaceRole
     {
-        $membership = $this->memberships()
-            ->where('user_id', $user->getKey())
-            ->first();
-
-        return $membership?->role;
+        return $this->membershipRole($user);
     }
 
     public function hasOwner(User $user): bool
     {
-        return $this->roleOf($user) === WorkspaceRole::Owner;
+        return $this->membershipRole($user) === WorkspaceRole::Owner;
     }
 
     public function isGuest(User $user): bool
     {
-        return $this->roleOf($user) === WorkspaceRole::Guest;
+        return $this->membershipRole($user) === WorkspaceRole::Guest;
+    }
+
+    /**
+     * Forget the memoized membership roles (all users, or one). Membership
+     * writes that need a fresh read on the same instance within a single
+     * request call this after mutating the memberships table.
+     */
+    public function flushMembershipRoleCache(?User $user = null): void
+    {
+        if ($user === null) {
+            $this->membershipRoles = [];
+
+            return;
+        }
+
+        unset($this->membershipRoles[$user->getKey()]);
+    }
+
+    private function membershipRole(User $user): ?WorkspaceRole
+    {
+        $key = $user->getKey();
+
+        if (! array_key_exists($key, $this->membershipRoles)) {
+            $this->membershipRoles[$key] = $this->memberships()
+                ->where('user_id', $key)
+                ->first()
+                ?->role;
+        }
+
+        return $this->membershipRoles[$key];
     }
 }

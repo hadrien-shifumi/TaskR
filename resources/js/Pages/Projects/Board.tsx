@@ -24,7 +24,7 @@ import {
 import AppLayout from '@/layouts/app-layout';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { Archive, ArrowLeft, MoveRight, Plus, User } from 'lucide-react';
-import { useState } from 'react';
+import { memo, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CascadeMoveDialog, pendingDescendantsCount } from '@/components/cascade-move-dialog';
 import type { DescendantsSummary, HealthData, LabelRef, UserRef } from '@/types';
@@ -56,6 +56,110 @@ interface BoardColumn {
     issuesCount: number;
     issues: BoardIssue[];
 }
+
+type BoardCardProps = {
+    issue: BoardIssue;
+    column: Pick<BoardColumn, 'id' | 'name' | 'category'>;
+    isDragging: boolean;
+    otherColumns: Array<Pick<BoardColumn, 'id' | 'name'>>;
+    buildIssueHref: (issueId: string) => string;
+    onDragStart: (issueId: string) => void;
+    onDragEnd: () => void;
+    onRequestMove: (issue: BoardIssue, statusId: string) => void;
+};
+
+/**
+ * One board card. Memoized: during a drag, the drag/over state lives in
+ * the page and re-renders it on every change of pointer target — the
+ * cards themselves only re-render when their own issue or dragging flag
+ * changes, keeping a busy board responsive.
+ */
+const BoardCard = memo(function BoardCard({
+    issue,
+    column,
+    isDragging,
+    otherColumns,
+    buildIssueHref,
+    onDragStart,
+    onDragEnd,
+    onRequestMove,
+}: BoardCardProps) {
+    const { t } = useTranslation();
+
+    return (
+        <article
+            draggable
+            data-test={`board-card-${issue.id}`}
+            onDragStart={(e) => {
+                e.dataTransfer.setData('text/plain', issue.id);
+                onDragStart(issue.id);
+            }}
+            onDragEnd={onDragEnd}
+            className={`flex cursor-grab flex-col gap-2 rounded-lg border bg-card px-3 py-2.75 shadow-xs hover:border-primary/40 ${
+                isDragging ? 'opacity-35' : ''
+            }`}
+        >
+            <Link
+                href={buildIssueHref(issue.id)}
+                className={`text-[13.5px] leading-snug font-medium hover:text-primary ${
+                    column.category === 'cancelled'
+                        ? 'font-normal text-muted-foreground line-through'
+                        : ''
+                }`}
+            >
+                {issue.title}
+            </Link>
+            <div
+                className="flex min-h-5.5 flex-wrap items-center gap-2"
+                onDragStart={(e) => e.stopPropagation()}
+            >
+                <StatusBadge name={column.name} category={column.category} />
+                <BlockedBadge blocked={issue.blocked} unblockable={issue.unblockable} />
+                <OpenChildBadge hasOpenChild={issue.hasOpenChild} statusCategory={column.category} />
+                <KnowledgeBadge count={issue.knowledgePagesCount} titles={issue.knowledgePageTitles} />
+                <PriorityBadge priority={issue.priority} />
+                <div className="ml-auto" />
+                {issue.dueDate ? (
+                    <span
+                        className={`font-mono text-[11px] tabular-nums ${
+                            issue.overdue
+                                ? 'font-medium text-destructive'
+                                : 'text-muted-foreground'
+                        }`}
+                    >
+                        {formatShortDate(issue.dueDate)}
+                    </span>
+                ) : null}
+                <span className="flex">
+                    <AvatarStack people={issue.assignees} />
+                </span>
+                <DropdownMenu>
+                    <DropdownMenuTrigger
+                        aria-label={t('projectBoard.moveToAria', { title: issue.title })}
+                        className="inline-flex h-6 cursor-pointer items-center gap-1 rounded-md px-1.5 font-mono text-[11px] text-muted-foreground outline-none hover:bg-accent hover:text-foreground"
+                    >
+                        <MoveRight className="size-3" />
+                        {t('projectBoard.moveTo')}
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuGroup>
+                            <DropdownMenuLabel>{t('projectBoard.moveTo')}</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            {otherColumns.map((candidate) => (
+                                <DropdownMenuItem
+                                    key={candidate.id}
+                                    onClick={() => onRequestMove(issue, candidate.id)}
+                                >
+                                    {candidate.name}
+                                </DropdownMenuItem>
+                            ))}
+                        </DropdownMenuGroup>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </div>
+        </article>
+    );
+});
 
 interface ProjectPerson {
     id: number;
@@ -129,7 +233,9 @@ export default function Board() {
     const completedTotal = completedCounts.done + completedCounts.cancelled;
     const canArchiveCompleted = workspace?.role === 'owner' && completedTotal > 0;
 
-    /** Sets the assignee filter via URL query param (preserveState). */
+    /** Sets the assignee filter via URL query param (preserveState). The
+     *  partial reload keeps every other prop (project, members, labels…)
+     *  behind: only the columns and the URL-derived filters refetch. */
     const setAssigneeFilter = (value: string) => {
         const params: Record<string, string> = { ...filters };
         if (value === '' || value === 'all') {
@@ -140,7 +246,10 @@ export default function Board() {
         if (parentsOnly) {
             params.parents = '1';
         }
-        router.get(route('projects.board', project.id), params, { preserveState: true });
+        router.get(route('projects.board', project.id), params, {
+            preserveState: true,
+            only: ['columns', 'filters', 'health'],
+        });
     };
 
     const currentAssignee = filters.assignee ?? '';
@@ -148,14 +257,18 @@ export default function Board() {
     /**
      * The drop is never optimistic: it calls the existing `issues.move`
      * route and the board syncs on the response. On refusal the card simply
-     * never left its column — only the error surfaces.
+     * never left its column — only the error surfaces. The synced reload
+     * only refetches the columns and the health badge, not the shell.
      */
-    const move = (issueId: string, statusId: string, cascade = false) => {
+    const move = useCallback((issueId: string, statusId: string, cascade = false) => {
         setMoveError(null);
         router.post(
             route('issues.move', issueId),
             { status_id: statusId, cascade_children: cascade },
             {
+                // `flash` rides along so the move confirmation banner shows
+                // on the partial response; every other prop stays behind.
+                only: ['columns', 'health', 'flash'],
                 onError: (errors) => {
                     setMoveError(errors.status_id ?? t('projectBoard.moveRefused'));
                 },
@@ -165,20 +278,35 @@ export default function Board() {
                 },
             },
         );
-    };
+    }, [t]);
+
+    // Stable handlers keep the memoized cards from re-rendering on every
+    // drag-state change of the page.
+    const handleCardDragStart = useCallback((issueId: string) => {
+        setDraggingId(issueId);
+    }, []);
+    const handleCardDragEnd = useCallback(() => {
+        setDraggingId(null);
+    }, []);
+    const handleRequestMove = useCallback(
+        (issue: BoardIssue, statusId: string) => {
+            const count = pendingDescendantsCount(issue.descendants, statusId);
+            if (count > 0) {
+                setPendingMove({ issueId: issue.id, statusId, count });
+            } else {
+                move(issue.id, statusId);
+            }
+        },
+        [move],
+    );
+    const buildIssueHref = useCallback(
+        (issueId: string) => boardIssueUrl(project.id, filters, parentsOnly, issueId),
+        [project.id, filters, parentsOnly],
+    );
 
     // A parent with sub-tickets in another status asks first: the dialog
     // offers to bring the whole active sub-tree along. The server enforces
     // the rule either way — a refusal surfaces in the banner.
-    const requestMove = (issue: BoardIssue, statusId: string) => {
-        const count = pendingDescendantsCount(issue.descendants, statusId);
-        if (count > 0) {
-            setPendingMove({ issueId: issue.id, statusId, count });
-        } else {
-            move(issue.id, statusId);
-        }
-    };
-
     const confirmMove = (cascade: boolean) => {
         const pending = pendingMove;
         setPendingMove(null);
@@ -190,7 +318,7 @@ export default function Board() {
         if (draggingId === null) return;
         const dragged = columns.flatMap((column) => column.issues).find((issue) => issue.id === draggingId);
         if (dragged) {
-            requestMove(dragged, columnId);
+            handleRequestMove(dragged, columnId);
         }
         setDraggingId(null);
     };
@@ -358,80 +486,17 @@ export default function Board() {
                             }`}
                         >
                             {column.issues.map((issue) => (
-                                <article
+                                <BoardCard
                                     key={issue.id}
-                                    draggable
-                                    data-test={`board-card-${issue.id}`}
-                                    onDragStart={(e) => {
-                                        e.dataTransfer.setData('text/plain', issue.id);
-                                        setDraggingId(issue.id);
-                                    }}
-                                    onDragEnd={() => setDraggingId(null)}
-                                    className={`flex cursor-grab flex-col gap-2 rounded-lg border bg-card px-3 py-2.75 shadow-xs hover:border-primary/40 ${
-                                        draggingId === issue.id ? 'opacity-35' : ''
-                                    }`}
-                                >
-                                    <Link
-                                        href={boardIssueUrl(project.id, filters, parentsOnly, issue.id)}
-                                        className={`text-[13.5px] leading-snug font-medium hover:text-primary ${
-                                            column.category === 'cancelled'
-                                                ? 'font-normal text-muted-foreground line-through'
-                                                : ''
-                                        }`}
-                                    >
-                                        {issue.title}
-                                    </Link>
-                                    <div
-                                        className="flex min-h-5.5 flex-wrap items-center gap-2"
-                                        onDragStart={(e) => e.stopPropagation()}
-                                    >
-                                        <StatusBadge name={column.name} category={column.category} />
-                                        <BlockedBadge blocked={issue.blocked} unblockable={issue.unblockable} />
-                                        <OpenChildBadge hasOpenChild={issue.hasOpenChild} statusCategory={column.category} />
-                                        <KnowledgeBadge count={issue.knowledgePagesCount} titles={issue.knowledgePageTitles} />
-                                        <PriorityBadge priority={issue.priority} />
-                                        <div className="ml-auto" />
-                                        {issue.dueDate ? (
-                                            <span
-                                                className={`font-mono text-[11px] tabular-nums ${
-                                                    issue.overdue
-                                                        ? 'font-medium text-destructive'
-                                                        : 'text-muted-foreground'
-                                                }`}
-                                            >
-                                                {formatShortDate(issue.dueDate)}
-                                            </span>
-                                        ) : null}
-                                        <span className="flex">
-                                            <AvatarStack people={issue.assignees} />
-                                        </span>
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger
-                                                aria-label={t('projectBoard.moveToAria', { title: issue.title })}
-                                                className="inline-flex h-6 cursor-pointer items-center gap-1 rounded-md px-1.5 font-mono text-[11px] text-muted-foreground outline-none hover:bg-accent hover:text-foreground"
-                                            >
-                                                <MoveRight className="size-3" />
-                                                {t('projectBoard.moveTo')}
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end">
-                                                <DropdownMenuGroup>
-                                                    <DropdownMenuLabel>{t('projectBoard.moveTo')}</DropdownMenuLabel>
-                                                    <DropdownMenuSeparator />
-                                                    {columns
-                                                        .filter((candidate) => candidate.id !== column.id)
-                                                        .map((candidate) => (
-                                                            <DropdownMenuItem
-                                                                key={candidate.id}
-                                                                onClick={() => requestMove(issue, candidate.id)}
-                                                            >
-                                                                {candidate.name}
-                                                            </DropdownMenuItem>
-                                                        ))}
-                                                </DropdownMenuGroup>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    </div>
-                                </article>
+                                    issue={issue}
+                                    column={column}
+                                    isDragging={draggingId === issue.id}
+                                    otherColumns={columns.filter((candidate) => candidate.id !== column.id)}
+                                    buildIssueHref={buildIssueHref}
+                                    onDragStart={handleCardDragStart}
+                                    onDragEnd={handleCardDragEnd}
+                                    onRequestMove={handleRequestMove}
+                                />
                             ))}
                             {column.issues.length === 0 ? (
                                 <p className="rounded-lg border border-dashed px-2.5 py-5 text-center text-xs text-muted-foreground">

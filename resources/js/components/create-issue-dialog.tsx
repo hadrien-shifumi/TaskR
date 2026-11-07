@@ -3,7 +3,11 @@ import { LabelPicker } from "@/components/label-picker";
 import { PrioritySelect } from "@/components/priority-select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { MarkdownEditor } from "@/components/ui/markdown-editor";
+// TipTap (the markdown editor's engine) is a heavy dependency: it rides a
+// lazy chunk loaded on first dialog open, not with the page bundle.
+const MarkdownEditor = lazy(() =>
+    import("@/components/ui/markdown-editor").then((m) => ({ default: m.MarkdownEditor })),
+);
 import {
     Select,
     SelectContent,
@@ -11,6 +15,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { lazy, Suspense } from "react";
 import { useForm } from "@inertiajs/react";
 import { useTranslation } from "react-i18next";
 import type { LabelRef } from "@/types";
@@ -182,13 +187,19 @@ export function CreateIssueDialog({
                     className="flex min-h-64 flex-1 flex-col gap-2"
                 >
                     <Label>{t("issues.fields.description")}</Label>
-                    <MarkdownEditor
-                        fill
-                        value={createForm.data.description}
-                        onChange={(markdown) =>
-                            createForm.setData("description", markdown)
+                    <Suspense
+                        fallback={
+                            <div className="min-h-64 animate-pulse rounded-lg border bg-muted/40" aria-hidden="true" />
                         }
-                    />
+                    >
+                        <MarkdownEditor
+                            fill
+                            value={createForm.data.description}
+                            onChange={(markdown) =>
+                                createForm.setData("description", markdown)
+                            }
+                        />
+                    </Suspense>
                 </div>
             </div>
             <div

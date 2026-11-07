@@ -15,7 +15,11 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { MarkdownEditor } from '@/components/ui/markdown-editor';
+// TipTap (the markdown editor's engine) is a heavy dependency: it rides a
+// lazy chunk loaded on first editor open, not with the page bundle.
+const MarkdownEditor = lazy(() =>
+    import('@/components/ui/markdown-editor').then((m) => ({ default: m.MarkdownEditor })),
+);
 import {
     Table,
     TableBody,
@@ -28,7 +32,7 @@ import { SettingsShell } from '@/components/settings-shell';
 import AppLayout from '@/layouts/app-layout';
 import { Head, router, useForm, usePage } from '@inertiajs/react';
 import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { PageSharedProps } from '@/types';
 
@@ -140,10 +144,16 @@ export default function Templates() {
             </div>
             <div className="grid gap-2">
                 <Label>{t('templatesPage.defaultDescription')}</Label>
-                <MarkdownEditor
-                    value={form.data.description}
-                    onChange={(markdown) => form.setData('description', markdown)}
-                />
+                <Suspense
+                    fallback={
+                        <div className="min-h-48 animate-pulse rounded-lg border bg-muted/40" aria-hidden="true" />
+                    }
+                >
+                    <MarkdownEditor
+                        value={form.data.description}
+                        onChange={(markdown) => form.setData('description', markdown)}
+                    />
+                </Suspense>
             </div>
         </>
     );

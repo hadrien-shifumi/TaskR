@@ -22,14 +22,19 @@ import type { ActivityEvent, CommentItem, IssueDetail as IssueDetailType, TimeEn
 
 type PageProps = {
     issue: IssueDetailType;
-    comments: CommentItem[];
+    /**
+     * Deferred props: absent from the first paint, delivered by the
+     * client's parallel partial reload. The shell renders with empty
+     * threads until they land.
+     */
+    comments?: CommentItem[];
     timeEntries: TimeEntry[];
-    activity: ActivityEvent[];
+    activity?: ActivityEvent[];
     statuses: { id: string; name: string; category: string }[];
     members: UserRef[];
     labels: LabelRef[];
-    candidates: { id: string; title: string }[];
-    dependencyCandidates: { id: string; title: string }[];
+    candidates?: { id: string; title: string }[];
+    dependencyCandidates?: { id: string; title: string }[];
     projects: { id: string; name: string }[];
     workspace?: { role?: string } | null;
 };
@@ -39,6 +44,13 @@ export default function Show() {
     const { t } = useTranslation();
     const [editingTitle, setEditingTitle] = useState(false);
     const [deleting, setDeleting] = useState(false);
+
+    // Deferred props render their sections empty until the parallel
+    // partial reload lands; the dialogs read the same lists.
+    const resolvedComments = comments ?? [];
+    const resolvedActivity = activity ?? [];
+    const resolvedCandidates = candidates ?? [];
+    const resolvedDependencyCandidates = dependencyCandidates ?? [];
 
     // Archiving is an owner-only workspace management action, reserved to
     // closed issues (done or cancelled); unarchiving applies when archived.
@@ -118,21 +130,21 @@ export default function Show() {
 
             <IssueDetail
                 issue={issue}
-                comments={comments}
+                comments={resolvedComments}
                 timeEntries={timeEntries}
-                activity={activity}
+                activity={resolvedActivity}
                 statuses={statuses}
                 members={members}
                 labels={labels}
-                candidates={candidates}
-                dependencyCandidates={dependencyCandidates}
+                candidates={resolvedCandidates}
+                dependencyCandidates={resolvedDependencyCandidates}
                 projects={projects}
             />
 
             <EditIssueDialog issue={issue} open={editingTitle} onClose={() => setEditingTitle(false)} />
             <DeleteIssueDialog
                 issue={deleting ? issue : null}
-                commentsCount={comments.length}
+                commentsCount={resolvedComments.length}
                 onClose={() => setDeleting(false)}
             />
         </AppLayout>

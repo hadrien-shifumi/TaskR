@@ -39,6 +39,23 @@ class IssuesKanbanViewTest extends TestCase
         return [$owner, $workspace, $project, $statuses];
     }
 
+    /**
+     * The boards ride a deferred prop: the payload assertions ask for a
+     * partial reload requesting them, exactly like the client does after
+     * the first paint (view and filters ride along, like the client's own
+     * filter partial reloads).
+     *
+     * @param  list<string>  $only
+     * @return array<string, string>
+     */
+    private function partial(array $only = ['projectBoards', 'view', 'filters']): array
+    {
+        return [
+            'X-Inertia-Partial-Component' => 'Issues/Index',
+            'X-Inertia-Partial-Data' => implode(',', $only),
+        ];
+    }
+
     public function test_list_view_is_the_default_when_no_view_param(): void
     {
         [$owner, $workspace, $project, $statuses] = $this->setupWorkspace();
@@ -76,7 +93,7 @@ class IssuesKanbanViewTest extends TestCase
         ]);
 
         $this->actingAs($owner)
-            ->get('/issues?view=kanban')
+            ->get('/issues?view=kanban', $this->partial())
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Issues/Index')
@@ -99,7 +116,7 @@ class IssuesKanbanViewTest extends TestCase
         [$owner, $workspace, $project, $statuses] = $this->setupWorkspace();
 
         $this->actingAs($owner)
-            ->get('/issues?view=kanban')
+            ->get('/issues?view=kanban', $this->partial())
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->has('projectBoards.0.columns', 4)
@@ -130,7 +147,7 @@ class IssuesKanbanViewTest extends TestCase
         ]);
 
         $this->actingAs($owner)
-            ->get('/issues?view=kanban')
+            ->get('/issues?view=kanban', $this->partial())
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->has('projectBoards', 2)
@@ -157,7 +174,7 @@ class IssuesKanbanViewTest extends TestCase
         ]);
 
         $this->actingAs($owner)
-            ->get("/issues?view=kanban&project={$project->id}")
+            ->get("/issues?view=kanban&project={$project->id}", $this->partial())
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->has('projectBoards', 1)
@@ -181,7 +198,7 @@ class IssuesKanbanViewTest extends TestCase
         ]);
 
         $this->actingAs($owner)
-            ->get('/issues?view=kanban&category=in_progress')
+            ->get('/issues?view=kanban&category=in_progress', $this->partial())
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->where('projectBoards.0.columns.0.issuesCount', 0)
@@ -206,7 +223,7 @@ class IssuesKanbanViewTest extends TestCase
         ]);
 
         $this->actingAs($owner)
-            ->get('/issues?view=kanban&overdue=1')
+            ->get('/issues?view=kanban&overdue=1', $this->partial())
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->where('projectBoards.0.columns.0.issuesCount', 1)
@@ -232,7 +249,7 @@ class IssuesKanbanViewTest extends TestCase
         ]);
 
         $this->actingAs($owner)
-            ->get('/issues?view=kanban')
+            ->get('/issues?view=kanban', $this->partial())
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->has('projectBoards', 1)
@@ -264,7 +281,7 @@ class IssuesKanbanViewTest extends TestCase
         app(WorkspaceContext::class)->set($workspace);
 
         $this->actingAs($owner)
-            ->get('/issues?view=kanban')
+            ->get('/issues?view=kanban', $this->partial())
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->has('projectBoards', 1)
@@ -295,7 +312,7 @@ class IssuesKanbanViewTest extends TestCase
         $issue->labels()->attach($label);
 
         $this->actingAs($owner)
-            ->get('/issues?view=kanban')
+            ->get('/issues?view=kanban', $this->partial())
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->where('projectBoards.0.columns.1.issues.0.id', $issue->id)
@@ -317,7 +334,7 @@ class IssuesKanbanViewTest extends TestCase
         $alpha = CreateProject::run($workspace, $owner, ['name' => 'Alpha']);
 
         $this->actingAs($owner)
-            ->get('/issues?view=kanban')
+            ->get('/issues?view=kanban', $this->partial())
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->has('projectBoards', 3)
@@ -331,7 +348,7 @@ class IssuesKanbanViewTest extends TestCase
         [$owner, $workspace, $project, $statuses] = $this->setupWorkspace();
 
         $this->actingAs($owner)
-            ->get('/issues?view=kanban')
+            ->get('/issues?view=kanban', $this->partial())
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->where('filters.view', 'kanban'));
@@ -342,7 +359,7 @@ class IssuesKanbanViewTest extends TestCase
         [$owner, $workspace, $project, $statuses] = $this->setupWorkspace();
 
         $this->actingAs($owner)
-            ->get('/issues?view=kanban')
+            ->get('/issues?view=kanban', $this->partial())
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->has('projectBoards', 1)
@@ -380,7 +397,7 @@ class IssuesKanbanViewTest extends TestCase
         ]);
 
         $this->actingAs($owner)
-            ->get("/issues?view=kanban&assignee={$member->id}")
+            ->get("/issues?view=kanban&assignee={$member->id}", $this->partial())
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->where('projectBoards.0.columns.0.issuesCount', 1)
@@ -403,7 +420,7 @@ class IssuesKanbanViewTest extends TestCase
         ]);
 
         $this->actingAs($owner)
-            ->get('/issues?view=kanban&q=webhook')
+            ->get('/issues?view=kanban&q=webhook', $this->partial())
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->where('projectBoards.0.columns.0.issuesCount', 1)
@@ -425,7 +442,7 @@ class IssuesKanbanViewTest extends TestCase
         // The kanban is a full load: page/sort params are ignored and every
         // issue lands on its board column.
         $this->actingAs($owner)
-            ->get('/issues?view=kanban&page=2&sort=priority&dir=asc')
+            ->get('/issues?view=kanban&page=2&sort=priority&dir=asc', $this->partial())
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Issues/Index')

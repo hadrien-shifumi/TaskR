@@ -10,7 +10,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import { MarkdownView } from '@/components/ui/markdown-editor';
+import { MarkdownView } from '@/components/ui/markdown-view';
 import { Head, router, usePage } from '@inertiajs/react';
 import { ArrowLeft, Eye, History, RotateCcw } from 'lucide-react';
 import { useState } from 'react';

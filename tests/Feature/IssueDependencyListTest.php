@@ -149,7 +149,10 @@ class IssueDependencyListTest extends TestCase
         $this->makeDependencyFixtures($workspace, $project, $statuses);
 
         $this->actingAs($owner)
-            ->get('/issues?view=kanban&blocked=1')
+            ->get('/issues?view=kanban&blocked=1', [
+                'X-Inertia-Partial-Component' => 'Issues/Index',
+                'X-Inertia-Partial-Data' => 'projectBoards',
+            ])
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Issues/Index')

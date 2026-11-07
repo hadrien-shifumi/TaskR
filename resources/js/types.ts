@@ -20,8 +20,12 @@ export interface PageSharedProps {
     locale: string;
     /** Unread @mentions of the account in the current workspace. */
     unreadMentions: number;
-    /** Members and projects mentionable in comments, within the account's perimeter. */
-    mentionables: Mentionable[];
+    /**
+     * Members and projects mentionable in comments, within the account's
+     * perimeter. Deferred prop: absent until the client's parallel partial
+     * reload lands.
+     */
+    mentionables?: Mentionable[];
 }
 
 /** Autocomplete entry for the comment @mention picker. */

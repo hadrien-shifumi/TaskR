@@ -54,7 +54,7 @@ export function MentionAutocomplete({
     const options =
         query === null
             ? []
-            : mentionables
+            : (mentionables ?? [])
                   .filter(
                       (mentionable) =>
                           mentionable.handle.startsWith(query.query) ||

@@ -506,7 +506,7 @@ export function IssueSidebar({
                                 {issue.isUnblockable ? (
                                     <Badge
                                         variant="secondary"
-                                        className="rounded-full bg-success/10 text-success"
+                                        className="rounded-full bg-success/10 text-success-strong"
                                         data-test="unblockable-badge"
                                     >
                                         {t('issueShow.unblockable')}

@@ -84,7 +84,10 @@ export default function Archives() {
         const cleaned = Object.fromEntries(
             Object.entries(next).filter(([_, v]) => v !== undefined && v !== ''),
         );
-        router.get(route('projects.archives', project.id), cleaned, { preserveState: true });
+        router.get(route('projects.archives', project.id), cleaned, {
+            preserveState: true,
+            only: ['issues', 'pagination', 'filters'],
+        });
     };
 
     /** Navigates to a page, keeping the active filters. */
@@ -95,7 +98,10 @@ export default function Archives() {
         if (filters.assignee) params.assignee = filters.assignee;
         if (filters.archivedFrom) params.archived_from = filters.archivedFrom;
         if (filters.archivedTo) params.archived_to = filters.archivedTo;
-        router.get(route('projects.archives', project.id), params, { preserveState: true });
+        router.get(route('projects.archives', project.id), params, {
+            preserveState: true,
+            only: ['issues', 'pagination', 'filters'],
+        });
     };
 
     const hasActiveFilters =

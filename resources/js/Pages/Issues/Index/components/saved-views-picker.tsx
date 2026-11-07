@@ -69,7 +69,13 @@ export function SavedViewsPicker({ views, filters }: SavedViewsPickerProps) {
         if (typeof mode === 'string' && mode !== '') {
             next.view = mode;
         }
-        router.get(route('issues.index'), next, { preserveState: true });
+        router.get(route('issues.index'), next, {
+            preserveState: true,
+            // Applying a view only refetches the data area, not the shell.
+            only: mode === 'kanban'
+                ? ['projectBoards', 'filters']
+                : ['issues', 'total', 'totalUnfiltered', 'page', 'perPage', 'filters'],
+        });
     };
 
     /** Saves the current configuration: every URL filter except the display

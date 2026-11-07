@@ -1,7 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/react'
 import { useState } from 'react'
 
-import { MarkdownEditor, MarkdownView } from '@/components/ui/markdown-editor'
+import { MarkdownEditor } from '@/components/ui/markdown-editor'
+import { MarkdownView } from '@/components/ui/markdown-view'
 
 const SAMPLE = `## Launch checklist
 

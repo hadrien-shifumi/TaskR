@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { MarkdownView } from '@/components/ui/markdown-editor';
+import { MarkdownView } from '@/components/ui/markdown-view';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
