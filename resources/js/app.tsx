@@ -5,6 +5,14 @@ import i18n, { initI18n } from './i18n';
 
 const pages = import.meta.glob<{ default: ComponentType }>(['./Pages/**/*.tsx', '!./Pages/**/components/**/*.tsx']);
 
+// PWA: register the shell service worker once the page is loaded (production
+// builds only — the dev server serves unbundled assets that must not be cached).
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+    window.addEventListener('load', () => {
+        void navigator.serviceWorker.register('/sw.js', { scope: '/' });
+    });
+}
+
 createInertiaApp({
     title: (title) => `${title} - Taskr`,
     resolve: async (name) => {

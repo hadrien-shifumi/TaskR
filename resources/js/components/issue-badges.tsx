@@ -12,9 +12,9 @@ const DOT = 'size-1.5 shrink-0 rounded-full bg-current';
 export function StatusBadge({ name, category }: { name: string; category: string }) {
     const tone =
         category === 'in_progress'
-            ? 'bg-info/10 text-info'
+            ? 'bg-info/10 text-info-strong'
             : category === 'done'
-              ? 'bg-success/10 text-success'
+              ? 'bg-success/10 text-success-strong'
               : 'bg-secondary/70 text-muted-foreground';
 
     return (
@@ -40,7 +40,7 @@ export function PriorityBadge({ priority }: { priority: string }) {    const { t
             ? 'bg-destructive/10 text-destructive'
             : priority === 'high'
               ? 'bg-warning/10 text-warning'
-              : 'bg-info/10 text-info';
+              : 'bg-info/10 text-info-strong';
 
     return <Badge variant="secondary" className={`rounded-full ${tone}`}>{t(`priority.${priority}`)}</Badge>;
 }
@@ -65,7 +65,7 @@ export function BlockedBadge({ blocked, unblockable }: { blocked: boolean; unblo
     }
 
     return (
-        <Badge variant="secondary" className="rounded-full bg-success/10 text-success">
+        <Badge variant="secondary" className="rounded-full bg-success/10 text-success-strong">
             <span className={DOT} />
             {t('issueBadges.unblockable')}
         </Badge>
@@ -132,7 +132,7 @@ export function HealthBadge({ status }: { status: string | null }) {
 
     const tone =
         status === 'ok'
-            ? 'bg-success/10 text-success'
+            ? 'bg-success/10 text-success-strong'
             : status === 'at-risk'
               ? 'bg-warning/10 text-warning'
               : 'bg-destructive/10 text-destructive';
@@ -160,7 +160,7 @@ export function Avatar({ name, title, className }: { name: string; title?: strin
         <span
             title={title ?? name}
             className={cn(
-                'grid size-5 shrink-0 place-items-center rounded-full border border-primary/25 bg-primary/20 text-[9px] font-semibold tracking-wide text-primary',
+                'grid size-5 shrink-0 place-items-center rounded-full border border-primary/25 bg-primary/20 text-[9px] font-semibold tracking-wide text-primary-strong',
                 className,
             )}
         >

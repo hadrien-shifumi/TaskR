@@ -5,6 +5,7 @@ use App\Jobs\SendAccountDigest;
 use App\Jobs\VectorizeKnowledgePage;
 use App\Models\KnowledgePage;
 use App\Models\User;
+use App\Support\AppIconFactory;
 use App\Support\WebpConverter;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Inspiring;
@@ -49,6 +50,19 @@ Artisan::command('images:webp {input : Path to the source JPG or PNG} {--sizes=1
 
     return 0;
 })->purpose('Convert a JPG/PNG to optimized webp size variants, or generate the site icon set with --icon');
+
+Artisan::command('images:app-icons {--output-dir= : Directory for the generated icons, default is the public directory}', function (): int {
+    $target = $this->option('output-dir') ?? public_path();
+    $files = (new AppIconFactory)->writeIcons($target);
+
+    $this->info('App icons generated in '.$target.':');
+
+    foreach ($files as $file) {
+        $this->line('  '.$file);
+    }
+
+    return 0;
+})->purpose('Draw the PWA icon set (apple-touch + android-chrome, maskable variant) in pure GD from the brand SVG geometry');
 
 Artisan::command('notifications:send-digests', function (): void {
     $userIds = SendDueDigests::run(CarbonImmutable::now());

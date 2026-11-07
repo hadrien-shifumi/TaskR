@@ -225,7 +225,7 @@ export default function Members() {
                                         variant="secondary"
                                         className={`rounded-full ${
                                             invitation.status === 'sent'
-                                                ? 'bg-success/10 text-success'
+                                                ? 'bg-success/10 text-success-strong'
                                                 : 'bg-warning/10 text-warning'
                                         }`}
                                     >

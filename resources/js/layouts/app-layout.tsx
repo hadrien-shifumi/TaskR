@@ -151,7 +151,7 @@ function WorkspaceSwitcher() {
                     aria-label={t("layout.switchWorkspace")}
                     className="flex w-full items-center gap-2 rounded-lg border bg-card px-2.5 py-2 text-left shadow-xs transition-colors hover:bg-accent"
                 >
-                    <span className="grid size-5.5 shrink-0 place-items-center rounded-md bg-primary/25 text-[11px] font-bold text-primary">
+                    <span className="grid size-5.5 shrink-0 place-items-center rounded-md bg-primary/25 text-[11px] font-bold text-primary-strong">
                         {initials(workspace.name)}
                     </span>
                     <span className="min-w-0 flex-1 truncate text-[13px] font-medium">
@@ -327,7 +327,7 @@ function AccountBlock() {
                     aria-label={t("layout.accountMenu")}
                     className="flex w-full items-center gap-2.5 rounded-lg py-1 text-left"
                 >
-                    <span className="grid size-6.5 shrink-0 place-items-center rounded-full border border-primary/25 bg-primary/20 text-[10px] font-semibold tracking-wide text-primary">
+                    <span className="grid size-6.5 shrink-0 place-items-center rounded-full border border-primary/25 bg-primary/20 text-[10px] font-semibold tracking-wide text-primary-strong">
                         {initials(auth.user.name)}
                     </span>
                     <span className="min-w-0">
@@ -413,7 +413,7 @@ export default function AppLayout({
 
             <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
                 <SheetContent side="left" className="p-0" data-test="mobile-nav-drawer">
-                    <div className="flex items-center gap-2.5 px-4 pt-4 pb-3.5">
+                    <div className="flex items-center gap-2.5 pl-[max(1rem,env(safe-area-inset-left))] pr-4 pt-[max(1rem,env(safe-area-inset-top))] pb-3.5">
                         <img
                             src="/assets/taskr-app-icon.svg"
                             alt=""
@@ -425,16 +425,16 @@ export default function AppLayout({
                         </span>
                     </div>
 
-                    <div className="px-3">
+                    <div className="pl-[max(0.75rem,env(safe-area-inset-left))] pr-3">
                         <WorkspaceSwitcher />
                     </div>
 
-                    <p className="px-4 pt-3.5 pb-1 font-mono text-[12px] tracking-[0.08em] uppercase text-muted-foreground">
+                    <p className="pl-[max(1rem,env(safe-area-inset-left))] pr-4 pt-3.5 pb-1 font-mono text-[12px] tracking-[0.08em] uppercase text-muted-foreground">
                         {t("layout.workspaceLabel")}
                     </p>
 
                     <nav
-                        className="flex w-full flex-col items-start gap-1.5 px-3 pb-4"
+                        className="flex w-full flex-col items-start gap-1.5 pl-[max(0.75rem,env(safe-area-inset-left))] pr-3 pb-[max(1rem,env(safe-area-inset-bottom))]"
                         aria-label={t("nav.mainNav")}
                     >
                         <NavLinks onNavigate={() => setMenuOpen(false)} />
@@ -447,7 +447,7 @@ export default function AppLayout({
             <div className="flex min-w-0 flex-col">
                 {title || actions || leading ? (
                     <header className="sticky top-0 z-20 border-b bg-background/88 backdrop-blur">
-                        <div className="flex flex-wrap items-center gap-3 px-4 py-3 lg:gap-4 lg:px-7 lg:py-3.5">
+                        <div className="flex flex-wrap items-center gap-3 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:gap-4 lg:px-7 lg:py-3.5">
                             <div className="flex min-w-0 flex-wrap items-center gap-2.5">
                                 {auth.user ? (
                                     <Button
@@ -484,7 +484,7 @@ export default function AppLayout({
                 ) : null}
 
                 <main
-                    className={`mx-auto w-full px-4 py-7 lg:px-7 ${narrow ? "max-w-[820px]" : "max-w-[1280px]"}`}
+                    className={`mx-auto w-full pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-[max(1.75rem,env(safe-area-inset-top))] pb-[max(1.75rem,env(safe-area-inset-bottom))] lg:px-7 ${narrow ? "max-w-[820px]" : "max-w-[1280px]"}`}
                 >
                     {children}
                 </main>
