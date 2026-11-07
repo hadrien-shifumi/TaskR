@@ -35,6 +35,21 @@ class CommentTest extends TestCase
         return [$owner, $member, $issue];
     }
 
+    /**
+     * The comment thread rides a deferred prop on the fiche: payload
+     * assertions ask for a partial reload requesting it, exactly like the
+     * client does after the first paint.
+     *
+     * @return array<string, string>
+     */
+    private function partialComments(): array
+    {
+        return [
+            'X-Inertia-Partial-Component' => 'Issues/Show',
+            'X-Inertia-Partial-Data' => 'comments',
+        ];
+    }
+
     public function test_comment_is_added_to_the_thread(): void
     {
         [$owner, $member, $issue] = $this->setupIssue();
@@ -51,7 +66,7 @@ class CommentTest extends TestCase
         ]);
 
         $this->actingAs($owner)
-            ->get("/issues/{$issue->id}")
+            ->get("/issues/{$issue->id}", $this->partialComments())
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->has('comments', 1)
@@ -67,7 +82,7 @@ class CommentTest extends TestCase
         AddComment::run($issue, $member, 'Deuxieme');
 
         $this->actingAs(User::first())
-            ->get("/issues/{$issue->id}")
+            ->get("/issues/{$issue->id}", $this->partialComments())
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->where('comments.0.body', 'Premier')

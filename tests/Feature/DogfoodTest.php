@@ -96,7 +96,10 @@ class DogfoodTest extends TestCase
 
         // The story shows its own child (the task) and the comment.
         $this->actingAs($owner)
-            ->get("/issues/{$story->id}")
+            ->get("/issues/{$story->id}", [
+                'X-Inertia-Partial-Component' => 'Issues/Show',
+                'X-Inertia-Partial-Data' => 'issue,comments',
+            ])
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->where('issue.parent.id', $epic->id)

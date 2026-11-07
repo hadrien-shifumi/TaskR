@@ -115,7 +115,10 @@ class IssueScopeTest extends TestCase
         [$owner, $workspace, $inScopeIssue, $outOfScopeIssue, $guest] = $this->setupScopedGuest();
 
         $this->actingAs($guest)
-            ->get(route('issues.index', ['view' => 'kanban']))
+            ->get(route('issues.index', ['view' => 'kanban']), [
+                'X-Inertia-Partial-Component' => 'Issues/Index',
+                'X-Inertia-Partial-Data' => 'projectBoards',
+            ])
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->has('projectBoards', 1)
@@ -157,7 +160,10 @@ class IssueScopeTest extends TestCase
         $child = CreateIssue::run($workspace, ['project_id' => $inScopeIssue->project_id, 'title' => 'Enfant']);
 
         $this->actingAs($guest)
-            ->get(route('issues.show', $child->id))
+            ->get(route('issues.show', $child->id), [
+                'X-Inertia-Partial-Component' => 'Issues/Show',
+                'X-Inertia-Partial-Data' => 'candidates',
+            ])
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $props) => $props
                 ->has('candidates', 1)

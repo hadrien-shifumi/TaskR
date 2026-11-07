@@ -17,11 +17,22 @@ use App\Models\Workspace;
 use App\Support\WorkspaceContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia;
+use Laravel\Mcp\Server\Testing\TestResponse;
 use Tests\TestCase;
 
 class IssueArchiveTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        TestResponse::macro('payload', function (): array {
+            /** @var TestResponse $this */
+            return $this->response->toArray()['result']['structuredContent'] ?? [];
+        });
+    }
 
     /**
      * Shared skeleton for the archive epic: a workspace with its default
@@ -471,7 +482,10 @@ class IssueArchiveTest extends TestCase
         $archived->update(['archived_at' => now()]);
 
         $this->actingAs($owner)
-            ->get("/issues/{$issue->id}")
+            ->get("/issues/{$issue->id}", [
+                'X-Inertia-Partial-Component' => 'Issues/Show',
+                'X-Inertia-Partial-Data' => 'candidates',
+            ])
             ->assertOk()
             ->assertInertia(
                 fn (AssertableInertia $page) => $page

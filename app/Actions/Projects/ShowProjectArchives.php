@@ -88,8 +88,7 @@ class ShowProjectArchives
                 'archivedFrom' => $filters['archived_from'] ?? '',
                 'archivedTo' => $filters['archived_to'] ?? '',
             ],
-            'statuses' => $workspace->statuses()
-                ->get()
+            'statuses' => $workspace->cachedStatuses()
                 ->map(fn ($status) => StatusPresenter::option($status))
                 ->all(),
             'members' => $workspace->members()

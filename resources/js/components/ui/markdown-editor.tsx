@@ -37,6 +37,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
+import { markdownProse } from "@/components/ui/markdown-view"
 
 const extensions = [
   StarterKit.configure({
@@ -54,30 +55,6 @@ const extensions = [
   }),
 ]
 
-const prose = cn(
-  "*:first-child:mt-0 *:last-child:mb-0",
-  "[&_a]:font-medium [&_a]:text-primary [&_a]:underline [&_a]:underline-offset-2",
-  "[&_blockquote]:my-2 [&_blockquote]:border-l-2 [&_blockquote]:border-border [&_blockquote]:pl-3 [&_blockquote]:text-muted-foreground",
-  "[&_code]:rounded [&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-xs",
-  "[&_pre]:my-2 [&_pre]:overflow-x-auto [&_pre]:rounded-md [&_pre]:bg-muted [&_pre]:p-3 [&_pre_code]:bg-transparent [&_pre_code]:px-0 [&_pre_code]:py-0",
-  "[&_h1]:mb-2 [&_h1]:mt-5 [&_h1]:text-lg [&_h1]:font-semibold",
-  "[&_h2]:mb-2 [&_h2]:mt-5 [&_h2]:font-semibold",
-  "[&_h3]:mb-1 [&_h3]:mt-3 [&_h3]:font-semibold",
-  "[&_hr]:my-3 [&_hr]:border-border",
-  "[&_img]:max-w-full [&_img]:rounded-md",
-  "[&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-5",
-  "[&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-5",
-  "[&_li]:my-0.5 [&_li>p]:my-0",
-  "[&_p]:my-2 [&_p]:leading-relaxed",
-  "[&_table]:my-3 [&_table]:w-full [&_table]:border-collapse",
-  "[&_th]:border [&_th]:border-border [&_th]:bg-muted/50 [&_th]:px-2 [&_th]:py-1 [&_th]:text-left [&_th]:font-medium",
-  "[&_td]:border [&_td]:border-border [&_td]:px-2 [&_td]:py-1",
-  "[&_[data-type=taskItem]]:my-1 [&_[data-type=taskItem]]:flex [&_[data-type=taskItem]]:items-start [&_[data-type=taskItem]]:gap-2",
-  "[&_[data-type=taskItem]_label]:mt-0.5 [&_[data-type=taskItem]_label]:shrink-0",
-  "[&_[data-type=taskItem]_div]:min-w-0 [&_[data-type=taskItem]_div]:flex-1",
-  "[&_[data-type=taskList]]:list-none [&_[data-type=taskList]]:my-2 [&_[data-type=taskList]]:pl-0",
-  "[&_input]:size-3.5 [&_input]:accent-primary"
-)
 
 function toMarkdown(editor: Editor): string {
   const storage = editor.storage as unknown as { markdown: MarkdownStorage }
@@ -334,24 +311,11 @@ function MarkdownEditor({
             ? "[&_.ProseMirror]:min-h-full [&_.ProseMirror]:outline-none"
             : "[&_.ProseMirror]:min-h-48 [&_.ProseMirror]:outline-none",
           "[&_.is-empty:first-child::before]:content-(attr(data-placeholder)) [&_.is-empty:first-child::before]:float-left [&_.is-empty:first-child::before]:h-0 [&_.is-empty:first-child::before]:pointer-events-none [&_.is-empty:first-child::before]:text-muted-foreground",
-          prose
+          markdownProse
         )}
       />
     </div>
   )
 }
 
-/**
- * Read-only markdown renderer sharing the editor document schema.
- */
-function MarkdownView({ value, className }: { value: string; className?: string }) {
-  const editor = useMarkdownDocument(value)
-
-  if (!editor) {
-    return null
-  }
-
-  return <EditorContent editor={editor} className={cn("text-sm", prose, className)} />
-}
-
-export { MarkdownEditor, MarkdownView }
+export { MarkdownEditor }

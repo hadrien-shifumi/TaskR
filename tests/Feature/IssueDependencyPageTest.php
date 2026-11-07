@@ -67,7 +67,10 @@ class IssueDependencyPageTest extends TestCase
         $a->blockedBy()->sync([$b->id, $c->id]);
 
         $this->actingAs($owner)
-            ->get("/issues/{$a->id}")
+            ->get("/issues/{$a->id}", [
+                'X-Inertia-Partial-Component' => 'Issues/Show',
+                'X-Inertia-Partial-Data' => 'issue,dependencyCandidates',
+            ])
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Issues/Show')
@@ -135,7 +138,10 @@ class IssueDependencyPageTest extends TestCase
         ]);
 
         $this->actingAs($guest)
-            ->get("/issues/{$x->id}")
+            ->get("/issues/{$x->id}", [
+                'X-Inertia-Partial-Component' => 'Issues/Show',
+                'X-Inertia-Partial-Data' => 'dependencyCandidates',
+            ])
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->has('dependencyCandidates', 1)

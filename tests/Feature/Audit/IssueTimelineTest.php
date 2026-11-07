@@ -41,6 +41,22 @@ class IssueTimelineTest extends TestCase
     }
 
     /**
+     * The journal rides a deferred prop on the fiche: the payload
+     * assertions ask for a partial reload requesting it, exactly like the
+     * client does after the first paint.
+     *
+     * @param  list<string>  $only
+     * @return array<string, string>
+     */
+    private function partial(array $only): array
+    {
+        return [
+            'X-Inertia-Partial-Component' => 'Issues/Show',
+            'X-Inertia-Partial-Data' => implode(',', $only),
+        ];
+    }
+
+    /**
      * The journal is append-only: tests redate rows through the query
      * builder (no model events) to make the descending order deterministic —
      * timestamps() only carries second precision, so same-second inserts
@@ -91,7 +107,7 @@ class IssueTimelineTest extends TestCase
         $this->redate($priorityChanged, '2026-01-03 10:00:00');
 
         $this->actingAs($owner)
-            ->get(route('issues.show', $issue->id))
+            ->get(route('issues.show', $issue->id), $this->partial(['activity', 'issue']))
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Issues/Show')
@@ -123,7 +139,7 @@ class IssueTimelineTest extends TestCase
         $this->redate($systemEvent, '2026-05-01 10:00:00');
 
         $this->actingAs($owner)
-            ->get(route('issues.show', $issue->id))
+            ->get(route('issues.show', $issue->id), $this->partial(['activity']))
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->where('activity.0.type', 'issue.created')

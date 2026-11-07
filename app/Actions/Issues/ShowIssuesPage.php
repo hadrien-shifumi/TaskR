@@ -15,6 +15,7 @@ use App\Responders\Issues\IssuesPageResponder;
 use App\Support\IssueFilterSanitizer;
 use App\Support\WorkspaceContext;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
 use Lorisleiva\Actions\Concerns\AsController;
 use Lorisleiva\Actions\Concerns\AsObject;
 use Symfony\Component\HttpFoundation\Response;
@@ -34,9 +35,10 @@ class ShowIssuesPage
      * server-side: `page` (1-based, out-of-range values clamp to the last
      * page) and `perPage` are exposed next to the issues.
      *
-     * With view=kanban, issues are grouped into one board per active project,
-     * each board carrying one column per workspace status (in workspace order).
-     * The kanban is a full load: sort and page params are ignored.
+     * With view=kanban, the shell only is returned: the boards — the
+     * heaviest payload of the app — ride a deferred prop built by
+     * projectBoards(), fetched by the client in a parallel partial reload
+     * right after the first paint. Sort and page params are ignored.
      *
      * @param  array<string, string|null>  $filters  view|project|status|category|priority|label|assignee|overdue|blocked|q|sort|dir
      * @param  int  $page  Requested list page, 1-based; invalid values fall back to 1
@@ -51,7 +53,6 @@ class ShowIssuesPage
             : null;
 
         $data = [
-            ...$this->listIssues($workspace, $filters, $user, $view === 'list' ? $page : 1, $view === 'list'),
             'view' => $view,
             'filters' => array_filter($filters, fn ($value) => $value !== null && $value !== ''),
             'projects' => $workspace->projects()
@@ -61,15 +62,32 @@ class ShowIssuesPage
                 ->get()
                 ->map(fn ($project) => ProjectPresenter::option($project))
                 ->all(),
-            'statuses' => $workspace->statuses()->get()->map(fn ($status) => StatusPresenter::option($status))->all(),
+            'statuses' => $workspace->cachedStatuses()->map(fn ($status) => StatusPresenter::option($status))->all(),
         ];
 
-        if ($view === 'kanban') {
-            $data['projectBoards'] = $this->buildProjectBoards($workspace, $data['issues'], $filters, $scope);
-            unset($data['issues'], $data['total'], $data['page'], $data['perPage']);
+        if ($view === 'list') {
+            $data = [...$data, ...$this->listIssues($workspace, $filters, $user, $page, true)];
         }
 
         return $data;
+    }
+
+    /**
+     * The kanban boards: one board per active project, built from the full
+     * unpaginated issue list. Called lazily from the deferred prop.
+     *
+     * @param  array<string, string|null>  $filters
+     * @return array<int, array<string, mixed>>
+     */
+    public function projectBoards(Workspace $workspace, array $filters, ?User $user): array
+    {
+        $scope = $user instanceof User
+            ? app(WorkspaceContext::class)->accessibleProjectIds($user)
+            : null;
+
+        $issues = ListIssues::run($workspace, $filters, null, 0, $user);
+
+        return $this->buildProjectBoards($workspace, $issues['issues'], $filters, $scope);
     }
 
     /**
@@ -121,7 +139,7 @@ class ShowIssuesPage
     {
         $workspace = app(WorkspaceContext::class)->getOrFail();
 
-        $data = $this->handle($workspace, [
+        $filters = [
             'view' => $request->query('view'),
             'project' => $request->query('project'),
             'status' => IssueFilterSanitizer::ulid($request->query('status')),
@@ -136,7 +154,18 @@ class ShowIssuesPage
             'q' => $request->query('q'),
             'sort' => IssueFilterSanitizer::sort($request->query('sort')),
             'dir' => IssueFilterSanitizer::direction($request->query('dir')),
-        ], $request->user(), $this->sanitizePage($request->query('page')));
+        ];
+
+        $data = $this->handle($workspace, $filters, $request->user(), $this->sanitizePage($request->query('page')));
+
+        // The kanban boards ride a deferred prop: the page shell renders
+        // immediately and the client fetches the boards in a parallel
+        // partial reload — the full-load list never blocks the first paint.
+        if (($data['view'] ?? 'list') === 'kanban') {
+            $data['projectBoards'] = Inertia::defer(
+                fn (): array => $this->projectBoards($workspace, $filters, $request->user()),
+            );
+        }
 
         $data['labels'] = $workspace->labels()->orderBy('name')->get()->map(fn ($label) => LabelPresenter::present($label))->all();
         $data['members'] = $workspace->members()->orderBy('name')->get()->map(fn ($member) => ProjectMemberPresenter::person($member))->all();
@@ -177,7 +206,7 @@ class ShowIssuesPage
      */
     private function buildProjectBoards(Workspace $workspace, array $issues, array $filters = [], ?array $scope = null): array
     {
-        $statuses = $workspace->statuses()->get();
+        $statuses = $workspace->cachedStatuses();
 
         // Group issues by project id.
         $issuesByProject = collect($issues)->groupBy('project.id');

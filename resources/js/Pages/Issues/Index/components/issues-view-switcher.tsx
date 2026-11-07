@@ -20,7 +20,15 @@ export function IssuesViewSwitcher({ active, filters }: IssuesViewSwitcherProps)
         } else {
             next.view = view;
         }
-        router.get(route('issues.index'), next, { preserveState: true });
+        router.get(route('issues.index'), next, {
+            preserveState: true,
+            // Only the target view's data changes: the shell (statuses,
+            // projects, labels…) rides along untouched. `view` itself must
+            // ride along or the client keeps rendering the old branch.
+            only: view === 'kanban'
+                ? ['view', 'projectBoards', 'filters']
+                : ['view', 'issues', 'total', 'totalUnfiltered', 'page', 'perPage', 'filters'],
+        });
     };
 
     const items = [

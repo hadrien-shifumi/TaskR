@@ -63,7 +63,12 @@ export default function Activity() {
         if (nextType) {
             next.type = nextType;
         }
-        router.get(route('projects.activity', project.id), next, { preserveState: true });
+        router.get(route('projects.activity', project.id), next, {
+            preserveState: true,
+            // Filters are read from the URL client-side: only the journal
+            // and its pagination refetch.
+            only: ['events', 'pagination'],
+        });
     };
 
     /** Navigates to a page, keeping the active filters. */
@@ -71,7 +76,10 @@ export default function Activity() {
         const params: Record<string, string> = { page: String(page) };
         if (actorFilter) params.actor_id = actorFilter;
         if (typeFilter) params.type = typeFilter;
-        router.get(route('projects.activity', project.id), params, { preserveState: true });
+        router.get(route('projects.activity', project.id), params, {
+            preserveState: true,
+            only: ['events', 'pagination'],
+        });
     };
 
     return (

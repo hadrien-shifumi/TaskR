@@ -184,11 +184,13 @@ class BuildDigest
     private function workload(DigestContext $context, ?array $projectIds): PersonWorkload
     {
         $issues = $this->openIssuesAssignedTo($context, $projectIds)
-            ->with('timeEntries')
+            // The logged-hours sum rides the query instead of loading
+            // every time entry row of every open issue.
+            ->withSum('timeEntries as logged_hours_sum', 'hours')
             ->get();
 
         $estimatedHours = (float) $issues->sum(fn (Issue $issue) => (float) $issue->estimated_hours);
-        $loggedHours = (float) $issues->sum(fn (Issue $issue) => $issue->logged_hours);
+        $loggedHours = (float) $issues->sum(fn (Issue $issue) => (float) ($issue->logged_hours_sum ?? 0));
 
         return new PersonWorkload(
             userId: $context->user->getKey(),

@@ -96,7 +96,10 @@ class IssueKnowledgeBadgeTest extends TestCase
                 ->where('issues.0.knowledgePageTitles', ['Alpha page', 'Zeta page']));
 
         // Kanban strip card.
-        $this->actingAs($owner)->get(route('issues.index', ['view' => 'kanban']))
+        $this->actingAs($owner)->get(route('issues.index', ['view' => 'kanban']), [
+            'X-Inertia-Partial-Component' => 'Issues/Index',
+            'X-Inertia-Partial-Data' => 'projectBoards',
+        ])
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->where('projectBoards.0.columns.0.issues.0.knowledgePagesCount', 2)

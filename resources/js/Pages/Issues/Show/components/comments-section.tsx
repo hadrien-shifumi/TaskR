@@ -1,7 +1,7 @@
 import { Avatar } from '@/components/issue-badges';
 import { MentionAutocomplete } from '@/components/mention-autocomplete';
 import { Button } from '@/components/ui/button';
-import { MarkdownView } from '@/components/ui/markdown-editor';
+import { MarkdownView } from '@/components/ui/markdown-view';
 import { router, useForm, usePage } from '@inertiajs/react';
 import { ChevronDown, ChevronRight, Pencil, Trash2 } from 'lucide-react';
 import { useLayoutEffect, useRef, useState } from 'react';

@@ -17,6 +17,7 @@ use App\Presenters\TimeTracking\TimeEntryPresenter;
 use App\Responders\Issues\IssuePageResponder;
 use App\Support\WorkspaceContext;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
 use Lorisleiva\Actions\Concerns\AsController;
 use Lorisleiva\Actions\Concerns\AsObject;
 use Symfony\Component\HttpFoundation\Response;
@@ -30,6 +31,25 @@ class ShowIssuePage
      * @param  array<string, mixed>
      */
     public function handle(Workspace $workspace, Issue $issue, ?User $user = null): array
+    {
+        return [
+            ...$this->handleShell($workspace, $issue, $user),
+            'comments' => $this->comments($issue),
+            'activity' => $this->activity($issue),
+            'candidates' => $this->candidateParents($issue, $user),
+            'dependencyCandidates' => $this->dependencyCandidates($issue, $user),
+        ];
+    }
+
+    /**
+     * The fiche without its heavy extras (comment thread, audit journal,
+     * candidate lists): everything needed for the first paint. The HTTP
+     * response defers the extras; object callers (board modal, tests,
+     * agents) compose them via handle().
+     *
+     * @return array<string, mixed>
+     */
+    public function handleShell(Workspace $workspace, Issue $issue, ?User $user = null): array
     {
         // Out-of-scope issues fail exactly like non-existent ones.
         // Without an explicit user this is a trusted internal object run:
@@ -55,19 +75,51 @@ class ShowIssuePage
         // which descendants differ from the target — all generations.
         $descendants = app(LoadActiveDescendants::class)->run(collect([$issue]), $user);
 
-        $comments = $issue->comments()
-            ->with('author')
-            ->orderBy('created_at')
-            ->get();
-
         $timeEntries = $issue->timeEntries
             ->sortByDesc('worked_at')
             ->sortByDesc('created_at')
             ->values();
 
-        // Descending audit timeline, newest first; the id breaks ties within
-        // the same second. Capped at 100 rows to keep the payload bounded.
-        $activity = AuditEvent::query()
+        app(LoadIssueKnowledgePages::class)->handle($issue, $user);
+
+        $detail = IssuePresenter::detail($issue, $parent, $children, $descendants);
+        $detail['blocks'] = $this->withDependentBlockerIds($detail['blocks'], $issue);
+
+        return [
+            'issue' => $detail,
+            'timeEntries' => $timeEntries->map(fn ($entry) => TimeEntryPresenter::detail($entry))->values()->all(),
+            'statuses' => $workspace->cachedStatuses()->map(fn ($status) => StatusPresenter::option($status))->all(),
+            'members' => $workspace->members()->orderBy('name')->get()->map(fn ($member) => ProjectMemberPresenter::person($member))->all(),
+            'labels' => $workspace->labels()->orderBy('name')->get()->map(fn ($label) => LabelPresenter::present($label))->all(),
+            'projects' => $this->projectOptions($workspace, $user),
+        ];
+    }
+
+    /**
+     * The comment thread, ordered, with authors.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function comments(Issue $issue): array
+    {
+        return $issue->comments()
+            ->with('author')
+            ->orderBy('created_at')
+            ->get()
+            ->map(fn ($comment) => CommentPresenter::detail($comment))
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Descending audit timeline, newest first; the id breaks ties within
+     * the same second. Capped at 100 rows to keep the payload bounded.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function activity(Issue $issue): array
+    {
+        return AuditEvent::query()
             ->where('issue_id', $issue->id)
             ->with('actor')
             ->orderByDesc('created_at')
@@ -77,31 +129,25 @@ class ShowIssuePage
             ->map(fn ($event) => AuditEventPresenter::detail($event))
             ->values()
             ->all();
-
-        app(LoadIssueKnowledgePages::class)->handle($issue, $user);
-
-        $detail = IssuePresenter::detail($issue, $parent, $children, $descendants);
-        $detail['blocks'] = $this->withDependentBlockerIds($detail['blocks'], $issue);
-
-        return [
-            'issue' => $detail,
-            'comments' => $comments->map(fn ($comment) => CommentPresenter::detail($comment))->values()->all(),
-            'timeEntries' => $timeEntries->map(fn ($entry) => TimeEntryPresenter::detail($entry))->values()->all(),
-            'activity' => $activity,
-            'statuses' => $workspace->statuses()->get()->map(fn ($status) => StatusPresenter::option($status))->all(),
-            'members' => $workspace->members()->orderBy('name')->get()->map(fn ($member) => ProjectMemberPresenter::person($member))->all(),
-            'labels' => $workspace->labels()->orderBy('name')->get()->map(fn ($label) => LabelPresenter::present($label))->all(),
-            'candidates' => $this->candidateParents($issue, $user),
-            'dependencyCandidates' => $this->dependencyCandidates($issue, $user),
-            'projects' => $this->projectOptions($workspace, $user),
-        ];
     }
 
     public function asController(Request $request, Issue $issue, IssuePageResponder $responder): Response
     {
         $workspace = app(WorkspaceContext::class)->getOrFail();
+        $user = $request->user();
 
-        return $responder->toResponse($request, $this->handle($workspace, $issue, $request->user()));
+        // The heavy extras ride deferred props: the fiche shell paints
+        // immediately and the client fetches thread, journal and candidate
+        // lists in a parallel partial reload.
+        $data = [
+            ...$this->handleShell($workspace, $issue, $user),
+            'comments' => Inertia::defer(fn (): array => $this->comments($issue)),
+            'activity' => Inertia::defer(fn (): array => $this->activity($issue)),
+            'candidates' => Inertia::defer(fn (): array => $this->candidateParents($issue, $user)),
+            'dependencyCandidates' => Inertia::defer(fn (): array => $this->dependencyCandidates($issue, $user)),
+        ];
+
+        return $responder->toResponse($request, $data);
     }
 
     /**

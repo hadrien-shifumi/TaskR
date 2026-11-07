@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { MarkdownView } from '@/components/ui/markdown-editor';
+import { MarkdownView } from '@/components/ui/markdown-view';
 import { Textarea } from '@/components/ui/textarea';
 import { useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';

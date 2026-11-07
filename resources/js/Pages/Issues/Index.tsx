@@ -21,7 +21,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
-import { Head, router, usePage } from '@inertiajs/react';
+import { Deferred, Head, router, usePage } from '@inertiajs/react';
 import { ChevronLeft, ChevronRight, Download } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -104,6 +104,15 @@ export default function Index() {
     const [exportError, setExportError] = useState<string | null>(null);
     const [search, setSearch] = useState(readFilter(filters, 'q'));
 
+    /** Props that change when the list refetches: the partial reload
+     *  keeps every other prop (labels, members, templates, saved views…)
+     *  untouched, so a filter change only pays for the list itself. */
+    const listOnly = ['issues', 'total', 'totalUnfiltered', 'page', 'perPage', 'filters'];
+
+    /** Props that change when the kanban refetches: the boards are a
+     *  deferred prop, everything else stays behind. */
+    const kanbanOnly = ['projectBoards', 'filters'];
+
     /** Sets one URL filter; an empty value removes the param so filtered
      *  URLs stay clean and shareable. Array values serialize as `key[]`. */
     const setFilter = (key: string, value: string | string[]) => {
@@ -113,7 +122,10 @@ export default function Index() {
         } else {
             next[key] = value;
         }
-        router.get(route('issues.index'), next, { preserveState: true });
+        router.get(route('issues.index'), next, {
+            preserveState: true,
+            only: view === 'kanban' ? kanbanOnly : listOnly,
+        });
     };
 
     /** Current sort key — `created` (newest first) is the default order. */
@@ -140,7 +152,10 @@ export default function Index() {
             next.sort = sort;
             next.dir = dir;
         }
-        router.get(route('issues.index'), next, { preserveState: true });
+        router.get(route('issues.index'), next, {
+            preserveState: true,
+            only: listOnly,
+        });
     };
 
     /** Navigates to a list page, keeping every active filter and the sort. */
@@ -151,7 +166,10 @@ export default function Index() {
         } else {
             next.page = String(target);
         }
-        router.get(route('issues.index'), next, { preserveState: true });
+        router.get(route('issues.index'), next, {
+            preserveState: true,
+            only: listOnly,
+        });
     };
 
     /** Downloads the current filtered selection as CSV or JSON. The page
@@ -389,11 +407,31 @@ export default function Index() {
             </FilterBar>
 
             {view === 'kanban' ? (
-                <>
+                <Deferred
+                    data="projectBoards"
+                    fallback={
+                        <div
+                            data-test="kanban-loading"
+                            className="space-y-4"
+                            aria-busy="true"
+                        >
+                            {[0, 1].map((index) => (
+                                <div
+                                    key={index}
+                                    className="h-40 animate-pulse rounded-xl border bg-muted/50"
+                                />
+                            ))}
+                        </div>
+                    }
+                >
+                    {/* Children render only once the boards have landed:
+                     * the page has re-rendered with the resolved prop. */}
                     {(projectBoards ?? []).map((board) => (
                         <ProjectKanbanBoard key={board.project.id} board={board} />
                     ))}
-                    {visibleCount === 0 ? (
+                    {(projectBoards ?? []).every((board) =>
+                        board.columns.every((column) => column.issuesCount === 0),
+                    ) ? (
                         <div data-test="issues-empty" className="px-5 py-10 text-center">
                             <p className="font-medium">
                                 {hasActiveFilters ? t('issuesPage.emptyFiltered') : t('issuesPage.empty')}
@@ -405,7 +443,7 @@ export default function Index() {
                             </p>
                         </div>
                     ) : null}
-                </>
+                </Deferred>
             ) : (
                 <>
                     {visibleCount === 0 ? (

@@ -260,6 +260,7 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
                             key={item.label}
                             href={route(item.route)}
                             onClick={onNavigate}
+                            prefetch="hover"
                             aria-current={
                                 isActive(item) ? "page" : undefined
                             }

@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Link, router } from '@inertiajs/react';
 import { MoveRight } from 'lucide-react';
-import { useState } from 'react';
+import { memo, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatShortDate } from '@/lib/format-date';
 import { CascadeMoveDialog, pendingDescendantsCount } from '@/components/cascade-move-dialog';
@@ -21,6 +21,110 @@ import type { KanbanIssue, ProjectBoard } from '../types';
 type ProjectKanbanBoardProps = {
     board: ProjectBoard;
 };
+
+/** A column of the board, minus the issues — the move menu source. */
+type ColumnRef = { id: string; name: string; category: string };
+
+type KanbanCardProps = {
+    issue: KanbanIssue;
+    column: ColumnRef;
+    isDragging: boolean;
+    otherColumns: ColumnRef[];
+    onDragStart: (issueId: string) => void;
+    onDragEnd: () => void;
+    onRequestMove: (issue: KanbanIssue, statusId: string) => void;
+};
+
+/**
+ * One kanban card. Memoized: during a drag, the drag/over state lives in
+ * the board and re-renders it on every change of pointer target — the
+ * cards themselves only re-render when their own issue or dragging flag
+ * changes, keeping a 200-card board responsive.
+ */
+const KanbanCard = memo(function KanbanCard({
+    issue,
+    column,
+    isDragging,
+    otherColumns,
+    onDragStart,
+    onDragEnd,
+    onRequestMove,
+}: KanbanCardProps) {
+    const { t } = useTranslation();
+
+    return (
+        <article
+            draggable
+            data-test={`kanban-card-${issue.id}`}
+            onDragStart={(e) => {
+                e.dataTransfer.setData('text/plain', issue.id);
+                onDragStart(issue.id);
+            }}
+            onDragEnd={onDragEnd}
+            className={`flex cursor-grab flex-col gap-2 rounded-lg border bg-card px-3 py-2.75 shadow-xs hover:border-primary/40 ${
+                isDragging ? 'opacity-35' : ''
+            }`}
+        >
+            <Link
+                href={route('issues.show', issue.id)}
+                className={`text-[13.5px] leading-snug font-medium hover:text-primary ${
+                    column.category === 'cancelled'
+                        ? 'font-normal text-muted-foreground line-through'
+                        : ''
+                }`}
+            >
+                {issue.title}
+            </Link>
+            <div
+                className="flex min-h-5.5 flex-wrap items-center gap-2"
+                onDragStart={(e) => e.stopPropagation()}
+            >
+                <BlockedBadge blocked={issue.blocked} unblockable={issue.unblockable} />
+                <OpenChildBadge hasOpenChild={issue.hasOpenChild} statusCategory={column.category} />
+                <KnowledgeBadge count={issue.knowledgePagesCount} titles={issue.knowledgePageTitles} />
+                <PriorityBadge priority={issue.priority} />
+                <div className="ml-auto" />
+                {issue.dueDate ? (
+                    <span
+                        className={`font-mono text-[11px] tabular-nums ${
+                            issue.overdue
+                                ? 'font-medium text-destructive'
+                                : 'text-muted-foreground'
+                        }`}
+                    >
+                        {formatShortDate(issue.dueDate)}
+                    </span>
+                ) : null}
+                <span className="flex">
+                    <AvatarStack people={issue.assignees} />
+                </span>
+                <DropdownMenu>
+                    <DropdownMenuTrigger
+                        aria-label={t('issuesPage.kanban.moveToAria', { title: issue.title })}
+                        className="inline-flex h-6 cursor-pointer items-center gap-1 rounded-md px-1.5 font-mono text-[11px] text-muted-foreground outline-none hover:bg-accent hover:text-foreground"
+                    >
+                        <MoveRight className="size-3" />
+                        {t('issuesPage.kanban.moveTo')}
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuGroup>
+                            <DropdownMenuLabel>{t('issuesPage.kanban.moveTo')}</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            {otherColumns.map((candidate) => (
+                                <DropdownMenuItem
+                                    key={candidate.id}
+                                    onClick={() => onRequestMove(issue, candidate.id)}
+                                >
+                                    {candidate.name}
+                                </DropdownMenuItem>
+                            ))}
+                        </DropdownMenuGroup>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </div>
+        </article>
+    );
+});
 
 /**
  * Kanban board for a single project, embedded in the /issues kanban view.
@@ -36,7 +140,7 @@ export function ProjectKanbanBoard({ board }: ProjectKanbanBoardProps) {
         null,
     );
 
-    const move = (issueId: string, statusId: string, cascade = false) => {
+    const move = useCallback((issueId: string, statusId: string, cascade = false) => {
         setMoveError(null);
         router.post(
             route('issues.move', issueId),
@@ -52,18 +156,33 @@ export function ProjectKanbanBoard({ board }: ProjectKanbanBoardProps) {
                 },
             },
         );
-    };
+    }, [t]);
+
+    // Stable handlers keep the memoized cards from re-rendering on every
+    // drag-state change of the board.
+    const handleCardDragStart = useCallback((issueId: string) => {
+        setDraggingId(issueId);
+    }, []);
+    const handleCardDragEnd = useCallback(() => {
+        setDraggingId(null);
+    }, []);
+    const handleRequestMove = useCallback(
+        (issue: KanbanIssue, statusId: string) => {
+            const count = pendingDescendantsCount(issue.descendants, statusId);
+            if (count > 0) {
+                setPendingMove({ issueId: issue.id, statusId, count });
+            } else {
+                move(issue.id, statusId);
+            }
+        },
+        [move],
+    );
 
     // A parent with sub-tickets in another status asks first: the dialog
     // offers to bring the whole active sub-tree along. The server enforces
     // the rule either way — a refusal surfaces in the banner.
     const requestMove = (issue: KanbanIssue, statusId: string) => {
-        const count = pendingDescendantsCount(issue.descendants, statusId);
-        if (count > 0) {
-            setPendingMove({ issueId: issue.id, statusId, count });
-        } else {
-            move(issue.id, statusId);
-        }
+        handleRequestMove(issue, statusId);
     };
 
     const confirmMove = (cascade: boolean) => {
@@ -126,79 +245,16 @@ export function ProjectKanbanBoard({ board }: ProjectKanbanBoardProps) {
                             }`}
                         >
                             {column.issues.map((issue) => (
-                                <article
+                                <KanbanCard
                                     key={issue.id}
-                                    draggable
-                                    data-test={`kanban-card-${issue.id}`}
-                                    onDragStart={(e) => {
-                                        e.dataTransfer.setData('text/plain', issue.id);
-                                        setDraggingId(issue.id);
-                                    }}
-                                    onDragEnd={() => setDraggingId(null)}
-                                    className={`flex cursor-grab flex-col gap-2 rounded-lg border bg-card px-3 py-2.75 shadow-xs hover:border-primary/40 ${
-                                        draggingId === issue.id ? 'opacity-35' : ''
-                                    }`}
-                                >
-                                    <Link
-                                        href={route('issues.show', issue.id)}
-                                        className={`text-[13.5px] leading-snug font-medium hover:text-primary ${
-                                            column.category === 'cancelled'
-                                                ? 'font-normal text-muted-foreground line-through'
-                                                : ''
-                                        }`}
-                                    >
-                                        {issue.title}
-                                    </Link>
-                                    <div
-                                        className="flex min-h-5.5 flex-wrap items-center gap-2"
-                                        onDragStart={(e) => e.stopPropagation()}
-                                    >
-                                        <BlockedBadge blocked={issue.blocked} unblockable={issue.unblockable} />
-                                        <OpenChildBadge hasOpenChild={issue.hasOpenChild} statusCategory={column.category} />
-                                        <KnowledgeBadge count={issue.knowledgePagesCount} titles={issue.knowledgePageTitles} />
-                                        <PriorityBadge priority={issue.priority} />
-                                        <div className="ml-auto" />
-                                        {issue.dueDate ? (
-                                            <span
-                                                className={`font-mono text-[11px] tabular-nums ${
-                                                    issue.overdue
-                                                        ? 'font-medium text-destructive'
-                                                        : 'text-muted-foreground'
-                                                }`}
-                                            >
-                                                {formatShortDate(issue.dueDate)}
-                                            </span>
-                                        ) : null}
-                                        <span className="flex">
-                                            <AvatarStack people={issue.assignees} />
-                                        </span>
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger
-                                                aria-label={t('issuesPage.kanban.moveToAria', { title: issue.title })}
-                                                className="inline-flex h-6 cursor-pointer items-center gap-1 rounded-md px-1.5 font-mono text-[11px] text-muted-foreground outline-none hover:bg-accent hover:text-foreground"
-                                            >
-                                                <MoveRight className="size-3" />
-                                                {t('issuesPage.kanban.moveTo')}
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end">
-                                                <DropdownMenuGroup>
-                                                    <DropdownMenuLabel>{t('issuesPage.kanban.moveTo')}</DropdownMenuLabel>
-                                                    <DropdownMenuSeparator />
-                                                    {board.columns
-                                                        .filter((candidate) => candidate.id !== column.id)
-                                                        .map((candidate) => (
-                                                            <DropdownMenuItem
-                                                                key={candidate.id}
-                                                                onClick={() => requestMove(issue, candidate.id)}
-                                                            >
-                                                                {candidate.name}
-                                                            </DropdownMenuItem>
-                                                        ))}
-                                                </DropdownMenuGroup>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    </div>
-                                </article>
+                                    issue={issue}
+                                    column={column}
+                                    isDragging={draggingId === issue.id}
+                                    otherColumns={board.columns.filter((candidate) => candidate.id !== column.id)}
+                                    onDragStart={handleCardDragStart}
+                                    onDragEnd={handleCardDragEnd}
+                                    onRequestMove={handleRequestMove}
+                                />
                             ))}
                             {column.issues.length === 0 ? (
                                 <p className="rounded-lg border border-dashed px-2.5 py-5 text-center text-xs text-muted-foreground">

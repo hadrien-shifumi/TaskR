@@ -18,6 +18,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Support\WorkspaceContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Inertia\Testing\AssertableInertia;
 use Tests\TestCase;
 
@@ -282,5 +283,40 @@ class ProjectHealthWorkloadTest extends TestCase
                 ->where('health', null)
                 ->where('myWorkload.openIssues', 1)
                 ->where('canSeeGlobalKpis', false));
+    }
+
+    // ── Team workload aggregates in grouped queries ───────────────────
+
+    public function test_team_workload_keeps_a_constant_query_count_regardless_of_roster_size(): void
+    {
+        [$owner, $workspace, $project, $statuses] = $this->setupWorkspaceWithProject();
+
+        $this->createIssue($project, $statuses, 'in_progress', 'A', $owner);
+
+        // Prime: statuses cache and context memo no longer vary per run.
+        $this->actingAs($owner)->get(route('projects.health', $project->id))->assertOk();
+
+        DB::enableQueryLog();
+        $this->actingAs($owner)->get(route('projects.health', $project->id))->assertOk();
+        $smallRun = count(DB::getQueryLog());
+
+        // Grow the roster: the team workload must aggregate in grouped
+        // queries, not one batch of queries per member.
+        foreach (['b', 'c', 'd', 'e', 'f'] as $name) {
+            $member = User::factory()->create(['name' => $name]);
+            Membership::create([
+                'user_id' => $member->id,
+                'workspace_id' => $workspace->id,
+                'role' => 'member',
+            ]);
+            $this->addProjectMember($project, $member, ProjectRole::Member);
+            $this->createIssue($project, $statuses, 'backlog', "Task of {$name}", $member);
+        }
+
+        DB::flushQueryLog();
+        $this->actingAs($owner)->get(route('projects.health', $project->id))->assertOk();
+        $biggerRun = count(DB::getQueryLog());
+
+        $this->assertSame($smallRun, $biggerRun);
     }
 }

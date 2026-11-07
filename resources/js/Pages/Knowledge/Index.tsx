@@ -15,7 +15,12 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { MarkdownEditor, MarkdownView } from '@/components/ui/markdown-editor';
+import { MarkdownView } from '@/components/ui/markdown-view';
+// TipTap (the markdown editor's engine) is a heavy dependency: it rides a
+// lazy chunk loaded on first editor open, not with the page bundle.
+const MarkdownEditor = lazy(() =>
+    import('@/components/ui/markdown-editor').then((m) => ({ default: m.MarkdownEditor })),
+);
 import {
     Select,
     SelectContent,
@@ -39,7 +44,7 @@ import {
     User,
     X,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { PageSharedProps } from '@/types';
 import { formatDate, formatRelativeDate } from '@/lib/format-date';
@@ -116,13 +121,19 @@ export default function KnowledgeIndex() {
         setCreating(true);
     };
 
-    /** Sets the sidebar project filter; an empty value removes the param. */
+    /** Sets the sidebar project filter; an empty value removes the param.
+     *  Partial reload: the tree, the selection and the filter refetch, the
+     *  rest of the shell stays behind. */
     const setProjectFilter = (value: string) => {
         const params: Record<string, string> = {};
         if (value) {
             params.project = value;
         }
-        router.get(route('knowledge.index'), params, { preserveState: true, preserveScroll: true });
+        router.get(route('knowledge.index'), params, {
+            preserveState: true,
+            preserveScroll: true,
+            only: ['pages', 'selected', 'projectFilter'],
+        });
     };
 
     // Debounced semantic search: fires 400 ms after the last keystroke, with
@@ -628,10 +639,16 @@ export default function KnowledgeIndex() {
                 </div>
                 <div className="grid gap-2">
                     <Label>{t('knowledge.body')}</Label>
-                    <MarkdownEditor
-                        value={createForm.data.body}
-                        onChange={(markdown) => createForm.setData('body', markdown)}
-                    />
+                    <Suspense
+                        fallback={
+                            <div className="min-h-48 animate-pulse rounded-lg border bg-muted/40" aria-hidden="true" />
+                        }
+                    >
+                        <MarkdownEditor
+                            value={createForm.data.body}
+                            onChange={(markdown) => createForm.setData('body', markdown)}
+                        />
+                    </Suspense>
                     {createForm.errors.body ? (
                         <p className="text-sm text-destructive">{createForm.errors.body}</p>
                     ) : null}
@@ -677,10 +694,16 @@ export default function KnowledgeIndex() {
                 </div>
                 <div className="grid gap-2">
                     <Label>{t('knowledge.body')}</Label>
-                    <MarkdownEditor
-                        value={editForm.data.body}
-                        onChange={(markdown) => editForm.setData('body', markdown)}
-                    />
+                    <Suspense
+                        fallback={
+                            <div className="min-h-48 animate-pulse rounded-lg border bg-muted/40" aria-hidden="true" />
+                        }
+                    >
+                        <MarkdownEditor
+                            value={editForm.data.body}
+                            onChange={(markdown) => editForm.setData('body', markdown)}
+                        />
+                    </Suspense>
                     {editForm.errors.body ? (
                         <p className="text-sm text-destructive">{editForm.errors.body}</p>
                     ) : null}

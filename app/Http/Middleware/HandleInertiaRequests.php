@@ -82,9 +82,11 @@ class HandleInertiaRequests
                 : 0,
             // Autocomplete source of the comment editor: members and
             // projects of the workspace, within the account's perimeter.
-            'mentionables' => fn (): array => $user !== null && $workspace !== null
+            // Deferred: the payload rides a partial reload after the first
+            // paint, so no page load pays for it on the critical path.
+            'mentionables' => Inertia::defer(fn (): array => $user !== null && $workspace !== null
                 ? MentionPresenter::mentionables($workspace, $user)
-                : [],
+                : []),
         ];
     }
 }

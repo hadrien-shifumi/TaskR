@@ -34,6 +34,21 @@ class CommentMentionTest extends TestCase
         return [$owner, $workspace];
     }
 
+    /**
+     * The mentionables prop is deferred: payload assertions ask for a
+     * partial reload requesting it, exactly like the client does after
+     * the first paint.
+     *
+     * @return array<string, string>
+     */
+    private function partialMentionables(): array
+    {
+        return [
+            'X-Inertia-Partial-Component' => 'Home',
+            'X-Inertia-Partial-Data' => 'mentionables',
+        ];
+    }
+
     private function addUser(Workspace $workspace, string $role, string $handle, string $name): User
     {
         $user = User::factory()->create(['name' => $name, 'handle' => $handle]);
@@ -419,7 +434,7 @@ class CommentMentionTest extends TestCase
         // Full member: every workspace member and project.
         $this->actingAs($owner)
             ->withSession(['workspace_id' => $workspace->id])
-            ->get(route('home'))
+            ->get(route('home'), $this->partialMentionables())
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->has('mentionables', 5)
@@ -434,7 +449,7 @@ class CommentMentionTest extends TestCase
         // Guest: only the roster project and its members (herself included).
         $this->actingAs($gina)
             ->withSession(['workspace_id' => $workspace->id])
-            ->get(route('home'))
+            ->get(route('home'), $this->partialMentionables())
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->has('mentionables', 3)

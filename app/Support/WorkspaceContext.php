@@ -27,9 +27,21 @@ class WorkspaceContext
 {
     protected ?Workspace $workspace = null;
 
+    /**
+     * Per-user memo of the resolved project scopes. A request resolves the
+     * acting user's scope many times (list scoping, mention parsing, health
+     * guards); the first resolution is cached per user until the context
+     * switches workspaces. Null means "unrestricted" (owner or member), so
+     * the memo must distinguish a cached null from an unresolved key.
+     *
+     * @var array<int|string, list<string>|null>
+     */
+    protected array $accessibleProjectScopes = [];
+
     public function set(?Workspace $workspace): void
     {
         $this->workspace = $workspace;
+        $this->accessibleProjectScopes = [];
     }
 
     public function get(): ?Workspace
@@ -77,7 +89,8 @@ class WorkspaceContext
     /**
      * Project ids the user may access, or null for an unrestricted
      * scope (owner and member). A guest's scope is its project_members
-     * roster; a non-member sees nothing.
+     * roster; a non-member sees nothing. Resolved once per user for the
+     * lifetime of the current workspace binding.
      *
      * @return list<string>|null
      */
@@ -87,7 +100,21 @@ class WorkspaceContext
             return [];
         }
 
-        $role = $this->workspace->roleOf($user);
+        $key = $user->getKey();
+
+        if (! array_key_exists($key, $this->accessibleProjectScopes)) {
+            $this->accessibleProjectScopes[$key] = $this->resolveAccessibleProjectIds($user, $this->workspace);
+        }
+
+        return $this->accessibleProjectScopes[$key];
+    }
+
+    /**
+     * @return list<string>|null
+     */
+    private function resolveAccessibleProjectIds(User $user, Workspace $workspace): ?array
+    {
+        $role = $workspace->roleOf($user);
 
         if ($role === null) {
             return [];
