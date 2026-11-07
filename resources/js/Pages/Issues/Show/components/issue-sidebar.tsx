@@ -253,7 +253,7 @@ export function IssueSidebar({
     const daysLate = issue.dueDate ? overdueDays(issue.dueDate) : 0;
 
     return (
-        <aside data-test="issue-sidebar" className={cn(sticky && 'lg:sticky lg:top-[76px]')}>
+        <aside data-test="issue-sidebar" className={cn(sticky && 'lg:sticky lg:top-[calc(76px+env(safe-area-inset-top))]')}>
             <Card className="py-5">
                 <CardContent className="flex flex-col px-5">
                     <PropRow label={t('issues.fields.status')} hint={t('issueShow.statusHint')}>

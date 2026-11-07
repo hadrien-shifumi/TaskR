@@ -383,7 +383,7 @@ export default function AppLayout({
 
     return (
         <div className="grid min-h-dvh grid-cols-1 bg-background lg:grid-cols-[232px_1fr]">
-            <aside className="hidden lg:sticky lg:top-0 lg:flex lg:h-dvh lg:flex-col lg:gap-1 lg:overflow-y-auto lg:border-r lg:bg-sidebar lg:px-3 lg:text-sidebar-foreground">
+            <aside className="hidden lg:sticky lg:top-0 lg:flex lg:h-dvh lg:flex-col lg:gap-1 lg:overflow-y-auto lg:border-r lg:bg-sidebar lg:pl-[max(0.75rem,env(safe-area-inset-left))] lg:pr-[max(0.75rem,env(safe-area-inset-right))] lg:pt-[env(safe-area-inset-top)] lg:pb-[env(safe-area-inset-bottom)] lg:text-sidebar-foreground">
                 <div className="flex items-center gap-2.5 px-2 pt-4 pb-3.5">
                     <img
                         src="/assets/taskr-app-icon.svg"
@@ -448,7 +448,7 @@ export default function AppLayout({
             <div className="flex min-w-0 flex-col">
                 {title || actions || leading ? (
                     <header className="sticky top-0 z-20 border-b bg-background/88 backdrop-blur">
-                        <div className="flex flex-wrap items-center gap-3 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:gap-4 lg:px-7 lg:py-3.5">
+                        <div className="flex flex-wrap items-center gap-3 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:gap-4 lg:pl-[max(1.75rem,env(safe-area-inset-left))] lg:pr-[max(1.75rem,env(safe-area-inset-right))] lg:pt-[max(0.875rem,env(safe-area-inset-top))] lg:pb-[max(0.875rem,env(safe-area-inset-bottom))]">
                             <div className="flex min-w-0 flex-wrap items-center gap-2.5">
                                 {auth.user ? (
                                     <Button
@@ -485,7 +485,7 @@ export default function AppLayout({
                 ) : null}
 
                 <main
-                    className={`mx-auto w-full pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-[max(1.75rem,env(safe-area-inset-top))] pb-[max(1.75rem,env(safe-area-inset-bottom))] lg:px-7 ${narrow ? "max-w-[820px]" : "max-w-[1280px]"}`}
+                    className={`mx-auto w-full pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-[max(1.75rem,env(safe-area-inset-top))] pb-[max(1.75rem,env(safe-area-inset-bottom))] lg:pl-[max(1.75rem,env(safe-area-inset-left))] lg:pr-[max(1.75rem,env(safe-area-inset-right))] ${narrow ? "max-w-[820px]" : "max-w-[1280px]"}`}
                 >
                     {children}
                 </main>

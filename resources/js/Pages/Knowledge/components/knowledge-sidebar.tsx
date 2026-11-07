@@ -169,7 +169,7 @@ export function KnowledgeSidebar({
     ) : null;
 
     return (
-        <aside className="overflow-hidden rounded-xl border bg-card lg:sticky lg:top-20 lg:self-start">
+        <aside className="overflow-hidden rounded-xl border bg-card lg:sticky lg:top-[calc(80px+env(safe-area-inset-top))] lg:self-start">
             <div className="flex items-center gap-2.5 border-b px-4 py-3">
                 <h2 className="text-sm font-semibold">{t('knowledge.pages')}</h2>
                 <span className="rounded-full bg-secondary px-2 py-0.5 font-mono text-[11px] text-muted-foreground tabular-nums">
