@@ -12,9 +12,9 @@ use LogicException;
  * Append-only audit journal entry.
  *
  * A row records what happened (type), who did it (actor, null for system
- * actions), when (created_at) and on which subject (issue, project or
- * knowledge page), with the before/after values of the changed fields in
- * `changes` ({ field: { before, after } }).
+ * actions), when (created_at) and on which subject (issue, project,
+ * knowledge page or milestone), with the before/after values of the
+ * changed fields in `changes` ({ field: { before, after } }).
  *
  * `comment_id` links a comment event to the comment it is about, without
  * going through `changes` (an id is metadata, not a diff). No FK on purpose:
@@ -32,6 +32,7 @@ class AuditEvent extends BaseModel
         'issue_id',
         'project_id',
         'knowledge_page_id',
+        'milestone_id',
         'comment_id',
         'actor_id',
         'type',
@@ -87,6 +88,14 @@ class AuditEvent extends BaseModel
     public function knowledgePage(): BelongsTo
     {
         return $this->belongsTo(KnowledgePage::class, 'knowledge_page_id');
+    }
+
+    /**
+     * @return BelongsTo<Milestone, $this>
+     */
+    public function milestone(): BelongsTo
+    {
+        return $this->belongsTo(Milestone::class);
     }
 
     /**

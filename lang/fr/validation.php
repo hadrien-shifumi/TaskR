@@ -58,9 +58,12 @@ return [
         'estimate' => 'estimation',
         'due_date' => "date d'échéance",
         'target_date' => 'date cible',
+        'start_date' => 'date de début',
         'category' => 'catégorie',
         'status_id' => 'statut',
         'project_id' => 'projet',
+        'parent_id' => 'échéance parente',
+        'milestone_id' => 'échéance',
         'workspace_name' => "nom de l'espace de travail",
         'body' => 'contenu',
         'color' => 'couleur',
@@ -74,6 +77,13 @@ return [
         'blocker_out_of_scope' => "Un ticket bloqueur est en dehors de votre périmètre d'accès.",
         'knowledge_page_out_of_scope' => "Une page de la base de connaissance est en dehors de votre périmètre d'accès.",
         'export_too_many' => "L'export est limité à :max tickets. Affinez les filtres pour réduire le volume à exporter.",
+    ],
+
+    'milestone' => [
+        'target_date_before_start_date' => 'La date cible doit être postérieure ou égale à la date de début.',
+        'completed_before_start_date' => 'La date de clôture doit être postérieure ou égale à la date de début.',
+        'parent_same_project' => "L'échéance parente doit appartenir au même projet que l'échéance.",
+        'issue_same_project' => "L'échéance doit appartenir au même projet que le ticket.",
     ],
 
     'time_entry' => [

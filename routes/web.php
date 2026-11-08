@@ -51,6 +51,15 @@ use App\Actions\Labels\CreateLabel;
 use App\Actions\Mentions\MarkAllMentionsRead;
 use App\Actions\Mentions\MarkMentionRead;
 use App\Actions\Mentions\ShowMentionsPage;
+use App\Actions\Milestones\CloseMilestone;
+use App\Actions\Milestones\CreateMilestone;
+use App\Actions\Milestones\DeleteMilestone;
+use App\Actions\Milestones\ListMilestones;
+use App\Actions\Milestones\SetIssueMilestone;
+use App\Actions\Milestones\SetMilestoneParent;
+use App\Actions\Milestones\ShowMilestonePage;
+use App\Actions\Milestones\ShowMilestonesPage;
+use App\Actions\Milestones\UpdateMilestone;
 use App\Actions\Projects\AddProjectMember;
 use App\Actions\Projects\ArchiveProject;
 use App\Actions\Projects\CreateProject;
@@ -168,6 +177,18 @@ Route::middleware(['auth', 'workspace'])->group(function (): void {
     Route::post('/projects/{project}/issues/archive-completed', ArchiveCompletedIssues::class)->name('projects.issues.archive-completed');
     Route::delete('/projects/{project}', DeleteProject::class)->name('projects.destroy');
 
+    // Échéances (milestones) — the tab is a project page like Health or
+    // Board; the JSON feed stays the option source of the frontend
+    // dialogs, one path below the page.
+    Route::get('/projects/{project}/milestones', ShowMilestonesPage::class)->name('projects.milestones');
+    Route::get('/projects/{project}/milestones/list', ListMilestones::class)->name('milestones.index');
+    Route::post('/projects/{project}/milestones', CreateMilestone::class)->name('milestones.store');
+    Route::get('/milestones/{milestone}', ShowMilestonePage::class)->name('milestones.show');
+    Route::match(['put', 'patch'], '/milestones/{milestone}', UpdateMilestone::class)->name('milestones.update');
+    Route::delete('/milestones/{milestone}', DeleteMilestone::class)->name('milestones.destroy');
+    Route::post('/milestones/{milestone}/close', CloseMilestone::class)->name('milestones.close');
+    Route::post('/milestones/{milestone}/parent', SetMilestoneParent::class)->name('milestones.parent');
+
     Route::get('/issues', ShowIssuesPage::class)->name('issues.index');
     Route::post('/issues', CreateIssue::class)->name('issues.store');
     // Declared before /issues/{issue} so "export" is not captured as an id.
@@ -183,6 +204,7 @@ Route::middleware(['auth', 'workspace'])->group(function (): void {
     Route::post('/issues/{issue}/auto-complete', SetIssueAutoCompletion::class)->name('issues.auto-complete');
     Route::post('/issues/{issue}/knowledge', SetIssueKnowledge::class)->name('issues.knowledge');
     Route::get('/issues/{issue}/knowledge/search', SearchIssueKnowledge::class)->name('issues.knowledge-search');
+    Route::post('/issues/{issue}/milestone', SetIssueMilestone::class)->name('issues.milestone');
     Route::post('/issues/{issue}/archive', ArchiveIssue::class)->name('issues.archive');
 
     // Saved views of the issues page: a named, workspace-shared snapshot

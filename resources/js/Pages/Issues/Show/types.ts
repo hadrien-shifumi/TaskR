@@ -1,4 +1,4 @@
-import type { DescendantsSummary, LabelRef, UserRef } from '@/types';
+import type { DescendantsSummary, LabelRef, MilestoneSummary, UserRef } from '@/types';
 
 /** Dependency teaser listed on the fiche (blocker or blocked issue). */
 export type DependencyRef = {
@@ -43,6 +43,8 @@ export type IssueDetail = {
     archivedAt: string | null;
     assignees: UserRef[];
     labels: LabelRef[];
+    /** Milestone attached to the issue (at most one). */
+    milestone: MilestoneSummary | null;
     parent: { id: string; title: string; statusName: string | null } | null;
     /** Auto-completion option: the parent follows its children into a terminal category. */
     autoCompleteChildren: boolean;

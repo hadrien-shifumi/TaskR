@@ -6,6 +6,7 @@ use App\Enums\AuditEventType;
 use App\Models\AuditEvent;
 use App\Models\Issue;
 use App\Models\KnowledgePage;
+use App\Models\Milestone;
 use App\Models\Project;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
@@ -43,23 +44,26 @@ class RecordActivity
 
         // An unknown subject would produce an orphan event (no FK set):
         // refuse it instead of silently journaling nothing.
-        if (! $subject instanceof Issue && ! $subject instanceof Project && ! $subject instanceof KnowledgePage) {
+        if (! $subject instanceof Issue && ! $subject instanceof Project
+            && ! $subject instanceof KnowledgePage && ! $subject instanceof Milestone) {
             throw new LogicException(sprintf(
-                'Unsupported audit subject [%s]: expected an Issue, a Project or a KnowledgePage.',
+                'Unsupported audit subject [%s]: expected an Issue, a Project, a KnowledgePage or a Milestone.',
                 $subject::class,
             ));
         }
 
         return AuditEvent::create([
             'issue_id' => $subject instanceof Issue ? $subjectKey : null,
-            // An issue event also carries its project: the project activity
-            // view filters on this column alone.
+            // An issue or milestone event also carries its project: the
+            // project activity view filters on this column alone.
             'project_id' => match (true) {
                 $subject instanceof Issue => $subject->project_id,
+                $subject instanceof Milestone => $subject->project_id,
                 $subject instanceof Project => $subjectKey,
                 default => null,
             },
             'knowledge_page_id' => $subject instanceof KnowledgePage ? $subjectKey : null,
+            'milestone_id' => $subject instanceof Milestone ? $subjectKey : null,
             'comment_id' => $commentId,
             'actor_id' => $actor?->getKey(),
             'type' => $type,

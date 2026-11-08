@@ -27,7 +27,7 @@ import { Archive, ArrowLeft, MoveRight, Plus, User } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CascadeMoveDialog, pendingDescendantsCount } from '@/components/cascade-move-dialog';
-import type { DescendantsSummary, HealthData, LabelRef, UserRef } from '@/types';
+import type { DescendantsSummary, HealthData, LabelRef, MilestoneOption, UserRef } from '@/types';
 import type { TemplateOption } from '@/Pages/Issues/Index/types';
 import { formatShortDate, formatDate } from '@/lib/format-date';
 import { BoardCreateIssueDialog } from './Board/create-issue-dialog';
@@ -82,6 +82,8 @@ type PageProps = {
     labels?: LabelRef[];
     templates?: TemplateOption[];
     members?: UserRef[];
+    /** Milestones of the project, offered by the creation dialog. */
+    milestones?: MilestoneOption[];
     /** Present when the URL carries an `?issue=` param: the modal is open. */
     issueDetail?: IssueDetailPayload | null;
     /** Shared by HandleInertiaRequests — drives the owner-only archive button. */
@@ -100,6 +102,7 @@ export default function Board() {
         labels,
         templates,
         members,
+        milestones,
         issueDetail,
         workspace,
     } = usePage<PageProps>().props;
@@ -460,6 +463,7 @@ export default function Board() {
                 labels={labels ?? []}
                 templates={templates ?? []}
                 members={members ?? []}
+                milestones={milestones ?? []}
                 defaultStatusId={createDefaultStatusId}
             />
             <ArchiveCompletedDialog

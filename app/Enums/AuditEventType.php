@@ -49,4 +49,14 @@ enum AuditEventType: string
     case KnowledgePageUpdated = 'knowledge_page.updated';
     case KnowledgePageDeleted = 'knowledge_page.deleted';
     case KnowledgePageRestored = 'knowledge_page.restored';
+
+    case MilestoneCreated = 'milestone.created';
+    case MilestoneUpdated = 'milestone.updated';
+    case MilestoneDeleted = 'milestone.deleted';
+    case MilestoneClosed = 'milestone.closed';
+    case MilestoneParentSet = 'milestone.parent_set';
+    case MilestoneParentRemoved = 'milestone.parent_removed';
+
+    case IssueMilestoneSet = 'issue.milestone_set';
+    case IssueMilestoneRemoved = 'issue.milestone_removed';
 }

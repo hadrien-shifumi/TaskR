@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/select";
 import { router, useForm } from "@inertiajs/react";
 import { useTranslation } from "react-i18next";
-import type { LabelRef, UserRef } from "@/types";
+import type { LabelRef, MilestoneOption, UserRef } from "@/types";
 import type { TemplateOption } from "@/Pages/Issues/Index/types";
 
 type ProjectOption = { id: string; name: string };
@@ -29,6 +29,8 @@ type BoardCreateIssueDialogProps = {
     labels: LabelRef[];
     templates: TemplateOption[];
     members: UserRef[];
+    /** Milestones of the project — the issue can be born attached to one. */
+    milestones: MilestoneOption[];
     /** Status preselected when the dialog opens from a column "+" button. */
     defaultStatusId: string | null;
 };
@@ -55,6 +57,7 @@ export function BoardCreateIssueDialog({
     labels,
     templates,
     members,
+    milestones,
     defaultStatusId,
 }: BoardCreateIssueDialogProps) {
     const { t } = useTranslation();
@@ -65,6 +68,7 @@ export function BoardCreateIssueDialog({
         status_id: defaultStatusId ?? "",
         priority: "none",
         due_date: "",
+        milestone_id: "",
         template: "",
         label_ids: [] as string[],
         assignees: [] as string[],
@@ -80,6 +84,12 @@ export function BoardCreateIssueDialog({
         e.preventDefault();
         const estimatedHours = createForm.data.estimated_hours.trim();
 
+        createForm.transform((data) => ({
+            ...data,
+            // The empty select means "no milestone": the backend expects
+            // null, not an empty string, for the nullable ulid rule.
+            milestone_id: data.milestone_id || null,
+        }));
         createForm.post(route("issues.store"), {
             onSuccess: (page) => {
                 onClose();
@@ -334,6 +344,50 @@ export function BoardCreateIssueDialog({
                         />
                     </div>
                 </div>
+                {milestones.length > 0 ? (
+                    <div className="grid gap-2">
+                        <Label>{t("issues.fields.milestone")}</Label>
+                        <Select
+                            value={createForm.data.milestone_id || "none"}
+                            onValueChange={(v) =>
+                                createForm.setData(
+                                    "milestone_id",
+                                    v && v !== "none" ? v : "",
+                                )
+                            }
+                        >
+                            <SelectTrigger data-test="board-issue-milestone">
+                                <SelectValue>
+                                    {createForm.data.milestone_id
+                                        ? (milestones.find(
+                                              (m) =>
+                                                  m.id ===
+                                                  createForm.data.milestone_id,
+                                          )?.title ?? t("issues.fields.noMilestone"))
+                                        : t("issues.fields.noMilestone")}
+                                </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="none">
+                                    {t("issues.fields.noMilestone")}
+                                </SelectItem>
+                                {milestones.map((milestone) => (
+                                    <SelectItem
+                                        key={milestone.id}
+                                        value={milestone.id}
+                                    >
+                                        {milestone.title}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        {createForm.errors.milestone_id ? (
+                            <p className="text-sm text-destructive">
+                                {createForm.errors.milestone_id}
+                            </p>
+                        ) : null}
+                    </div>
+                ) : null}
                 {labels.length > 0 ? (
                     <div className="grid gap-2">
                         <Label>{t("issues.fields.labels")}</Label>

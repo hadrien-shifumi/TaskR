@@ -4,7 +4,7 @@ import { Link } from '@inertiajs/react';
 import { CornerDownRight } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { LabelRef, UserRef } from '@/types';
+import type { LabelRef, MilestoneOption, UserRef } from '@/types';
 import { ActivitySection } from './components/activity-section';
 import { scrollToComment } from './components/comment-anchor';
 import { CommentsSection } from './components/comments-section';
@@ -25,6 +25,10 @@ type IssueDetailProps = {
     labels: LabelRef[];
     candidates: { id: string; title: string }[];
     dependencyCandidates: { id: string; title: string }[];
+    /** Milestones of the issue's project, offered by the sidebar's dialog. */
+    milestoneOptions: MilestoneOption[];
+    /** May the user write the project's content (milestones included)? */
+    canContribute: boolean;
     /** Nameable projects of the workspace, for the knowledge pages' badges. */
     projects: { id: string; name: string }[];
     /**
@@ -58,6 +62,8 @@ export function IssueDetail({
     labels,
     candidates,
     dependencyCandidates,
+    milestoneOptions,
+    canContribute,
     projects,
     buildIssueHref,
     sidebarSticky = true,
@@ -206,6 +212,8 @@ export function IssueDetail({
                 labels={labels}
                 candidates={candidates}
                 dependencyCandidates={dependencyCandidates}
+                milestoneOptions={milestoneOptions}
+                canContribute={canContribute}
                 projects={projects}
                 buildIssueHref={buildIssueHref}
                 sticky={sidebarSticky}

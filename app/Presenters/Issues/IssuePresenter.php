@@ -4,6 +4,7 @@ namespace App\Presenters\Issues;
 
 use App\Enums\StatusCategory;
 use App\Models\Issue;
+use App\Presenters\Milestones\MilestonePresenter;
 use BackedEnum;
 use Illuminate\Support\Collection;
 
@@ -138,6 +139,7 @@ class IssuePresenter
             'archivedAt' => $issue->archived_at?->toISOString(),
             'assignees' => self::assignees($issue),
             'labels' => $issue->labels->map(fn ($label) => ['id' => $label->id, 'name' => $label->name, 'color' => $label->color])->values()->all(),
+            'milestone' => $issue->milestone !== null ? MilestonePresenter::summary($issue->milestone) : null,
             'parent' => $parent !== null ? self::parentSummary($parent) : null,
             'children' => collect($children)->map(fn (Issue $child) => self::childSummary($child))->values()->all(),
             'descendants' => self::descendantSummary($issue, $activeDescendants),

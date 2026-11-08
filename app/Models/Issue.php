@@ -20,6 +20,7 @@ class Issue extends BaseModel
         'workspace_id',
         'project_id',
         'parent_id',
+        'milestone_id',
         'title',
         'description',
         'status_id',
@@ -93,6 +94,16 @@ class Issue extends BaseModel
     public function assignees(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'issue_assignees');
+    }
+
+    /**
+     * Milestone this issue is attached to (at most one, same project).
+     *
+     * @return BelongsTo<Milestone, $this>
+     */
+    public function milestone(): BelongsTo
+    {
+        return $this->belongsTo(Milestone::class);
     }
 
     /**

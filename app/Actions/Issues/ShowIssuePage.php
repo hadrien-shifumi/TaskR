@@ -10,6 +10,7 @@ use App\Presenters\Audit\AuditEventPresenter;
 use App\Presenters\Comments\CommentPresenter;
 use App\Presenters\Issues\IssuePresenter;
 use App\Presenters\Labels\LabelPresenter;
+use App\Presenters\Milestones\MilestonePresenter;
 use App\Presenters\Projects\ProjectMemberPresenter;
 use App\Presenters\Projects\ProjectPresenter;
 use App\Presenters\Statuses\StatusPresenter;
@@ -38,7 +39,7 @@ class ShowIssuePage
             app(WorkspaceContext::class)->abortUnlessIssueAccessible($user, $issue);
         }
 
-        $issue->load(['project', 'status', 'labels', 'assignees', 'timeEntries.author', 'creator', 'blockedBy.status', 'blocks.status']);
+        $issue->load(['project', 'status', 'labels', 'assignees', 'milestone', 'timeEntries.author', 'creator', 'blockedBy.status', 'blocks.status']);
         $issue->loadCount('comments');
 
         $parent = $issue->parent()
@@ -94,6 +95,16 @@ class ShowIssuePage
             'candidates' => $this->candidateParents($issue, $user),
             'dependencyCandidates' => $this->dependencyCandidates($issue, $user),
             'projects' => $this->projectOptions($workspace, $user),
+            // The milestone dialog of the sidebar: every milestone of the
+            // issue's project (the attach action enforces the same-project
+            // rule), offered to contributors only.
+            'milestoneOptions' => $issue->project->milestones()
+                ->orderBy('title')
+                ->get()
+                ->map(fn ($milestone) => MilestonePresenter::option($milestone))
+                ->values()
+                ->all(),
+            'canContribute' => $user instanceof User && $issue->project->isContributor($user),
         ];
     }
 

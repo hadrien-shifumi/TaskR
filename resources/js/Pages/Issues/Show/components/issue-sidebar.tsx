@@ -24,12 +24,13 @@ import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { CascadeMoveDialog, pendingDescendantsCount } from '@/components/cascade-move-dialog';
-import type { LabelRef, UserRef } from '@/types';
+import type { LabelRef, MilestoneOption, UserRef } from '@/types';
 import type { BlocksRef, IssueDetail } from '../types';
 import { EditDatesDialog } from './edit-dates-dialog';
 import { formatDate, formatHours, overdueDays } from './format';
 import { KnowledgeProjectBadge, LinkKnowledgeDialog } from './link-knowledge-dialog';
 import { SetDependenciesDialog } from './set-dependencies-dialog';
+import { SetMilestoneDialog } from './set-milestone-dialog';
 import { SetParentDialog } from './set-parent-dialog';
 
 type IssueSidebarProps = {
@@ -39,6 +40,10 @@ type IssueSidebarProps = {
     labels: LabelRef[];
     candidates: { id: string; title: string }[];
     dependencyCandidates: { id: string; title: string }[];
+    /** Milestones of the issue's project, offered by the milestone dialog. */
+    milestoneOptions: MilestoneOption[];
+    /** May the user write the project's content (milestones included)? */
+    canContribute: boolean;
     /** Nameable projects of the workspace, for the knowledge pages' badges. */
     projects: { id: string; name: string }[];
     /** Builds the parent link href — lets the board modal route in place. */
@@ -88,8 +93,8 @@ function PropAction({ children, ...props }: React.ComponentProps<'button'>) {
 
 /**
  * Maquette issue-properties: sticky card with the prop list — status,
- * priority, assignees, labels, due date, estimation, parent, dependencies,
- * knowledge pages.
+ * priority, assignees, labels, due date, estimation, milestone, parent,
+ * dependencies, knowledge pages.
  */
 export function IssueSidebar({
     issue,
@@ -98,6 +103,8 @@ export function IssueSidebar({
     labels,
     candidates,
     dependencyCandidates,
+    milestoneOptions,
+    canContribute,
     projects,
     buildIssueHref,
     sticky = true,
@@ -105,6 +112,7 @@ export function IssueSidebar({
     const { t } = useTranslation();
     const [datesOpen, setDatesOpen] = useState(false);
     const [parentOpen, setParentOpen] = useState(false);
+    const [milestoneOpen, setMilestoneOpen] = useState(false);
     const [dependenciesOpen, setDependenciesOpen] = useState(false);
     const [knowledgeOpen, setKnowledgeOpen] = useState(false);
     const [addingLabel, setAddingLabel] = useState(false);
@@ -413,7 +421,7 @@ export function IssueSidebar({
                     </PropRow>
 
                     <PropRow
-                        label={t('columns.dueDate')}
+                        label={t('issueShow.dueDateLabel')}
                         action={
                             <PropAction data-test="dates-dialog-open" onClick={() => setDatesOpen(true)}>
                                 {t('issueShow.edit')}
@@ -438,6 +446,30 @@ export function IssueSidebar({
 
                     <PropRow label={t('issueShow.estimation')}>
                         <p className="font-mono text-[13px] tabular-nums">{formatHours(issue.estimatedHours)}</p>
+                    </PropRow>
+
+                    <PropRow
+                        label={t('issueShow.milestone')}
+                        action={
+                            canContribute ? (
+                                <PropAction data-test="milestone-dialog-open" onClick={() => setMilestoneOpen(true)}>
+                                    {t('issueShow.setAction')}
+                                </PropAction>
+                            ) : undefined
+                        }
+                        hint={t('issueShow.milestoneHint')}
+                    >
+                        {issue.milestone ? (
+                            <Link
+                                href={route('milestones.show', issue.milestone.id)}
+                                className="text-[13px] text-primary hover:underline"
+                                data-test="issue-milestone"
+                            >
+                                {issue.milestone.title}
+                            </Link>
+                        ) : (
+                            <span className="text-sm text-muted-foreground">—</span>
+                        )}
                     </PropRow>
 
                     <PropRow
@@ -649,6 +681,12 @@ export function IssueSidebar({
             </Card>
 
             <EditDatesDialog issue={issue} open={datesOpen} onClose={() => setDatesOpen(false)} />
+            <SetMilestoneDialog
+                issue={issue}
+                options={milestoneOptions}
+                open={milestoneOpen}
+                onClose={() => setMilestoneOpen(false)}
+            />
             <SetParentDialog
                 issue={issue}
                 candidates={candidates}

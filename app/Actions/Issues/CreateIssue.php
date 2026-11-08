@@ -8,6 +8,7 @@ use App\Enums\AuditEventType;
 use App\Enums\Priority;
 use App\Models\Issue;
 use App\Models\IssueTemplate;
+use App\Models\Milestone;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Responders\Issues\IssueRedirectResponder;
@@ -45,6 +46,7 @@ class CreateIssue
             'assignees.*' => [Rule::exists('memberships', 'user_id')->where('workspace_id', $workspace?->id)],
             'label_ids' => ['nullable', 'array'],
             'label_ids.*' => ['ulid', Rule::exists('labels', 'id')->where('workspace_id', $workspace?->id)],
+            'milestone_id' => ['nullable', 'ulid', Rule::exists('milestones', 'id')->where('workspace_id', $workspace?->id)],
             'template' => ['nullable', 'ulid'],
             'created_by' => ['nullable', 'integer', 'exists:users,id'],
         ];
@@ -67,6 +69,7 @@ class CreateIssue
         }
 
         $data = $this->applyTemplateDefaults($workspace, $data);
+        $this->assertMilestoneInProject($data);
 
         $issue = Issue::create([
             'project_id' => $data['project_id'],
@@ -75,6 +78,7 @@ class CreateIssue
             'status_id' => $data['status_id'] ?? $workspace->statuses()->firstOrFail()->id,
             'priority' => $data['priority'] ?? Priority::None->value,
             'due_date' => $data['due_date'] ?? null,
+            'milestone_id' => $data['milestone_id'] ?? null,
             'created_by' => $data['created_by'] ?? null,
         ]);
 
@@ -115,6 +119,10 @@ class CreateIssue
             $changes['due_date'] = ['before' => null, 'after' => $issue->due_date->toDateString()];
         }
 
+        if ($issue->milestone_id !== null) {
+            $changes['milestone_id'] = ['before' => null, 'after' => $issue->milestone_id];
+        }
+
         $labelIds = $issue->labels()->pluck('labels.id')->sort()->values()->all();
         if ($labelIds !== []) {
             $changes['labels'] = ['before' => null, 'after' => $labelIds];
@@ -136,6 +144,31 @@ class CreateIssue
         $issue = $this->handle($this->currentWorkspace(), $data, $request->user());
 
         return $responder->created($issue);
+    }
+
+    /**
+     * An issue is born attached to at most one milestone, and that
+     * milestone must belong to the issue's own project — the same rule
+     * the later attach action enforces. The workspace scoping already
+     * happened in rules(): this is the project check.
+     *
+     * @param  array<string, mixed>  $data
+     *
+     * @throws ValidationException
+     */
+    private function assertMilestoneInProject(array $data): void
+    {
+        if (empty($data['milestone_id'])) {
+            return;
+        }
+
+        $milestone = (new Milestone)->withoutWorkspaceScope()->findOrFail($data['milestone_id']);
+
+        if ($milestone->project_id !== $data['project_id']) {
+            throw ValidationException::withMessages([
+                'milestone_id' => [__('validation.milestone.issue_same_project')],
+            ]);
+        }
     }
 
     /**

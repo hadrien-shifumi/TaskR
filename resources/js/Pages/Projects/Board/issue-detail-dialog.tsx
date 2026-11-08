@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogClose, DialogContent } from '@/components/ui/dialog';
 import { XIcon } from 'lucide-react';
 import { router } from '@inertiajs/react';
-import type { LabelRef, UserRef } from '@/types';
+import type { LabelRef, MilestoneOption, UserRef } from '@/types';
 
 export type IssueDetailPayload = {
     issue: IssueDetailType;
@@ -22,6 +22,8 @@ export type IssueDetailPayload = {
     labels: LabelRef[];
     candidates: { id: string; title: string }[];
     dependencyCandidates: { id: string; title: string }[];
+    milestoneOptions: MilestoneOption[];
+    canContribute: boolean;
     /** Nameable projects of the workspace, for the knowledge pages' badges. */
     projects: { id: string; name: string }[];
 };
@@ -110,6 +112,8 @@ export function IssueDetailDialog({ projectId, filters, parentsOnly, detail }: I
                         labels={detail.labels}
                         candidates={detail.candidates}
                         dependencyCandidates={detail.dependencyCandidates}
+                        milestoneOptions={detail.milestoneOptions}
+                        canContribute={detail.canContribute}
                         projects={detail.projects}
                         sidebarSticky={false}
                         buildIssueHref={(issueId) => boardIssueUrl(projectId, filters, parentsOnly, issueId)}

@@ -157,6 +157,9 @@ class AuditEventTest extends TestCase
             'project.created', 'project.updated', 'project.archived', 'project.unarchived',
             'project.deleted', 'knowledge_page.created', 'knowledge_page.updated',
             'knowledge_page.deleted', 'knowledge_page.restored',
+            'milestone.created', 'milestone.updated', 'milestone.deleted',
+            'milestone.closed', 'milestone.parent_set', 'milestone.parent_removed',
+            'issue.milestone_set', 'issue.milestone_removed',
         ];
 
         $values = array_map(fn (AuditEventType $case) => $case->value, AuditEventType::cases());
@@ -214,6 +217,7 @@ class AuditEventTest extends TestCase
         $this->assertTrue($indexes->contains('audit_events_workspace_id_issue_id_index'));
         $this->assertTrue($indexes->contains('audit_events_workspace_id_project_id_index'));
         $this->assertTrue($indexes->contains('audit_events_workspace_id_knowledge_page_id_index'));
+        $this->assertTrue($indexes->contains('audit_events_workspace_id_milestone_id_index'));
         $this->assertTrue($indexes->contains('audit_events_workspace_id_type_created_at_index'));
     }
 }
