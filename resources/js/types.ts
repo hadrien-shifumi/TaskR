@@ -48,6 +48,39 @@ export interface LabelRef {
     color: string;
 }
 
+/** Option row of a milestone select (issue dialogs). */
+export interface MilestoneOption {
+    id: string;
+    title: string;
+}
+
+/**
+ * Teaser of the milestone attached to an issue, shown on the issue
+ * fiche: the dates and the late flag render without a round trip.
+ */
+export interface MilestoneSummary {
+    id: string;
+    title: string;
+    startDate: string | null;
+    targetDate: string | null;
+    completedAt: string | null;
+    overdue: boolean;
+}
+
+/**
+ * Milestone row of a project's Échéances tab and detail page: the
+ * summary fields plus the parent id (the client rebuilds the tree)
+ * and the issue progression computed by the server.
+ */
+export interface MilestoneCard extends MilestoneSummary {
+    description: string | null;
+    projectId: string;
+    parentId: string | null;
+    creatorName: string | null;
+    totalIssues: number;
+    doneIssues: number;
+}
+
 /**
  * Active-descendant summary of an issue: the total and the count per
  * status id. A screen compares it with the target status to decide whether

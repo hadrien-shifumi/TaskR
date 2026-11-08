@@ -11,6 +11,13 @@ return [
         'unarchived' => 'Ticket restauré.',
     ],
 
+    'milestone' => [
+        'created' => 'Échéance créée.',
+        'updated' => 'Échéance mise à jour.',
+        'closed' => 'Échéance clôturée.',
+        'deleted' => 'Échéance supprimée.',
+    ],
+
     'label' => [
         'created' => 'Étiquette « :name » créée.',
     ],

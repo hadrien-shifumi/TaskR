@@ -12,6 +12,7 @@ use App\Models\Project;
 use App\Models\User;
 use App\Presenters\Issues\IssuePresenter;
 use App\Presenters\Labels\LabelPresenter;
+use App\Presenters\Milestones\MilestonePresenter;
 use App\Presenters\Projects\ProjectMemberPresenter;
 use App\Presenters\Projects\ProjectPresenter;
 use App\Presenters\Templates\TemplatePresenter;
@@ -41,7 +42,7 @@ class ShowProjectBoard
      * With $assigneeId, only issues assigned to that user are shown.
      *
      * @param  array{assignee?: string|null}  $filters
-     * @return array{project: array<string, mixed>, health: array<string, mixed>, columns: array<int, array<string, mixed>>, parentsOnly: bool, filters: array<string, string>, projectPeople: array<int, array<string, mixed>>, currentUserId: int|null, labels: array<int, mixed>, members: array<int, mixed>, templates: array<int, mixed>}
+     * @return array{project: array<string, mixed>, health: array<string, mixed>, columns: array<int, array<string, mixed>>, parentsOnly: bool, filters: array<string, string>, projectPeople: array<int, array<string, mixed>>, currentUserId: int|null, labels: array<int, mixed>, members: array<int, mixed>, milestones: array<int, array{id: string, title: string}>, templates: array<int, mixed>}
      */
     public function handle(Project $project, bool $parentsOnly = false, array $filters = [], ?User $user = null): array
     {
@@ -97,6 +98,12 @@ class ShowProjectBoard
             // Creation options for the board's full issue dialog (mirrors ShowIssuesPage).
             'labels' => $workspace->labels()->orderBy('name')->get()->map(fn ($label) => LabelPresenter::present($label))->all(),
             'members' => $workspace->members()->orderBy('name')->get()->map(fn ($member) => ProjectMemberPresenter::person($member))->all(),
+            'milestones' => $project->milestones()
+                ->orderBy('title')
+                ->get()
+                ->map(fn ($milestone) => MilestonePresenter::option($milestone))
+                ->values()
+                ->all(),
             'templates' => $workspace->issueTemplates()
                 ->with('labels')
                 ->get()

@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Enums\WorkspaceRole;
 use App\Models\Issue;
 use App\Models\KnowledgePage;
+use App\Models\Milestone;
 use App\Models\Project;
 use App\Models\ProjectMember;
 use App\Models\User;
@@ -194,6 +195,27 @@ class WorkspaceContext
     {
         if ($user === null || ! $this->canAccessKnowledgePage($user, $page)) {
             throw (new ModelNotFoundException)->setModel(KnowledgePage::class, [$page->getKey()]);
+        }
+    }
+
+    public function canAccessMilestone(User $user, Milestone $milestone): bool
+    {
+        // Milestones always belong to a project: check the scope by id,
+        // without lazy-loading the relation on every check.
+        $scope = $this->accessibleProjectIds($user);
+
+        return $scope === null || in_array($milestone->project_id, $scope, true);
+    }
+
+    /**
+     * Anti-probing guard for a single milestone (CRUD, close, parent):
+     * an out-of-scope milestone must fail exactly like a non-existent
+     * one — 404 on the web, not_found through MCP.
+     */
+    public function abortUnlessMilestoneAccessible(?User $user, Milestone $milestone): void
+    {
+        if ($user === null || ! $this->canAccessMilestone($user, $milestone)) {
+            throw (new ModelNotFoundException)->setModel(Milestone::class, [$milestone->getKey()]);
         }
     }
 }

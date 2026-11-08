@@ -10,6 +10,13 @@ return [
         'export_too_many' => 'The export is limited to :max tickets. Narrow the filters to reduce the volume.',
     ],
 
+    'milestone' => [
+        'target_date_before_start_date' => 'The target date must be after or equal to the start date.',
+        'completed_before_start_date' => 'The completion date must be after or equal to the start date.',
+        'parent_same_project' => 'The parent milestone must belong to the same project as the milestone.',
+        'issue_same_project' => 'The milestone must belong to the same project as the issue.',
+    ],
+
     'time_entry' => [
         'export_too_many' => 'The export is limited to :max time entries. Narrow the filters to reduce the volume.',
     ],
@@ -39,6 +46,8 @@ return [
     'attributes' => [
         'user_id' => 'member',
         'role' => 'role',
+        'parent_id' => 'parent milestone',
+        'milestone_id' => 'milestone',
     ],
 
 ];

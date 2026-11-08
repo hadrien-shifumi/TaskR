@@ -41,6 +41,14 @@ class Project extends BaseModel
         return $this->hasMany(Issue::class);
     }
 
+    /**
+     * @return HasMany<Milestone, $this>
+     */
+    public function milestones(): HasMany
+    {
+        return $this->hasMany(Milestone::class);
+    }
+
     public function issuesCount(): int
     {
         return (int) $this->issues()
@@ -103,6 +111,19 @@ class Project extends BaseModel
         }
 
         return $this->isManager($user);
+    }
+
+    /**
+     * May the user create and edit this project's content (milestones):
+     * any roster member plus the workspace owner; guests never.
+     */
+    public function isContributor(User $user): bool
+    {
+        if ($this->workspace->hasOwner($user)) {
+            return true;
+        }
+
+        return ! $this->workspace->isGuest($user) && $this->roleOf($user) !== null;
     }
 
     public function scopeActive(Builder $query): Builder

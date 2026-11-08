@@ -11,6 +11,13 @@ return [
         'unarchived' => 'Issue restored.',
     ],
 
+    'milestone' => [
+        'created' => 'Milestone created.',
+        'updated' => 'Milestone updated.',
+        'closed' => 'Milestone closed.',
+        'deleted' => 'Milestone deleted.',
+    ],
+
     'label' => [
         'created' => 'Label ":name" created.',
     ],

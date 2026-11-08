@@ -13,7 +13,7 @@ import { Head, router, usePage } from '@inertiajs/react';
 import { ArchiveRestore, Archive, ArrowLeft, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { LabelRef, UserRef } from '@/types';
+import type { LabelRef, MilestoneOption, UserRef } from '@/types';
 import { CopyIssueIdButton } from './Show/components/copy-issue-id-button';
 import { DeleteIssueDialog } from './Show/components/delete-issue-dialog';
 import { EditIssueDialog } from './Show/components/edit-issue-dialog';
@@ -35,12 +35,14 @@ type PageProps = {
     labels: LabelRef[];
     candidates?: { id: string; title: string }[];
     dependencyCandidates?: { id: string; title: string }[];
+    milestoneOptions: MilestoneOption[];
+    canContribute: boolean;
     projects: { id: string; name: string }[];
     workspace?: { role?: string } | null;
 };
 
 export default function Show() {
-    const { issue, comments, timeEntries, activity, statuses, members, labels, candidates, dependencyCandidates, projects, workspace } = usePage<PageProps>().props;
+    const { issue, comments, timeEntries, activity, statuses, members, labels, candidates, dependencyCandidates, milestoneOptions, canContribute, projects, workspace } = usePage<PageProps>().props;
     const { t } = useTranslation();
     const [editingTitle, setEditingTitle] = useState(false);
     const [deleting, setDeleting] = useState(false);
@@ -138,6 +140,8 @@ export default function Show() {
                 labels={labels}
                 candidates={resolvedCandidates}
                 dependencyCandidates={resolvedDependencyCandidates}
+                milestoneOptions={milestoneOptions}
+                canContribute={canContribute}
                 projects={projects}
             />
 
