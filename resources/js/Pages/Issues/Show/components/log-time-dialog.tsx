@@ -7,6 +7,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { Banner } from '@/components/banner';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -17,14 +18,25 @@ type LogTimeDialogProps = {
     issueId: string;
     open: boolean;
     onClose: () => void;
+    /** Pre-filled hours (timer proposal): the elapsed, rounded value. */
+    initialHours?: string;
+    /**
+     * Title of the issue the entry is recorded on. Shown in the dialog so
+     * a timer proposal is never confused with the ticket on screen — the
+     * stopped timer may belong to another issue.
+     */
+    issueTitle?: string;
+    /** 24 h guard from the server: warn, never block. */
+    exceeds24h?: boolean;
 };
 
 /**
  * Maquette dlg-log-time (specified here): duration, date and an optional
  * note. The submit keeps the historical @entry-submit hook of the former
- * inline time-entry form.
+ * inline time-entry form. When opened from a stopped timer, the hours
+ * arrive pre-filled and the dialog names the issue they belong to.
  */
-export function LogTimeDialog({ issueId, open, onClose }: LogTimeDialogProps) {
+export function LogTimeDialog({ issueId, open, onClose, initialHours, issueTitle, exceeds24h }: LogTimeDialogProps) {
     return (
         <Dialog
             open={open}
@@ -32,15 +44,35 @@ export function LogTimeDialog({ issueId, open, onClose }: LogTimeDialogProps) {
                 if (!o) onClose();
             }}
         >
-            {open ? <LogTimeForm issueId={issueId} onClose={onClose} /> : null}
+            {open ? (
+                <LogTimeForm
+                    issueId={issueId}
+                    onClose={onClose}
+                    initialHours={initialHours}
+                    issueTitle={issueTitle}
+                    exceeds24h={exceeds24h}
+                />
+            ) : null}
         </Dialog>
     );
 }
 
-function LogTimeForm({ issueId, onClose }: { issueId: string; onClose: () => void }) {
+function LogTimeForm({
+    issueId,
+    onClose,
+    initialHours,
+    issueTitle,
+    exceeds24h,
+}: {
+    issueId: string;
+    onClose: () => void;
+    initialHours?: string;
+    issueTitle?: string;
+    exceeds24h?: boolean;
+}) {
     const { t } = useTranslation();
     const timeEntryForm = useForm({
-        hours: '',
+        hours: initialHours ?? '',
         worked_at: new Date().toISOString().slice(0, 10),
         note: '',
     });
@@ -59,11 +91,12 @@ function LogTimeForm({ issueId, onClose }: { issueId: string; onClose: () => voi
     return (
         <DialogContent>
             <DialogHeader>
-                <DialogTitle>{t('issueShow.logTime')}</DialogTitle>
+                <DialogTitle>{issueTitle ? t('timer.confirmTitle') : t('issueShow.logTime')}</DialogTitle>
                 <DialogDescription>
-                    {t('issueShow.logTimeHint')}
+                    {issueTitle ? t('timer.confirmHint', { title: issueTitle }) : t('issueShow.logTimeHint')}
                 </DialogDescription>
             </DialogHeader>
+            {exceeds24h ? <Banner variant="warning">{t('timer.guard24h')}</Banner> : null}
             <form onSubmit={submitTimeEntry} className="grid gap-4">
                 <div className="grid grid-cols-2 gap-4">
                     <div className="grid gap-2">

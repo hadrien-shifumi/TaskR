@@ -71,16 +71,25 @@ it('truncates a long comment with a show more control', function () {
     $page = visit('/issues/'.$issue->id);
     $page->click('[data-test="comments-accordion-trigger"]');
 
-    // The body is clamped: the box is much smaller than its content.
-    $probe = $page->script(<<<'JS'
-        (() => {
-            const el = document.querySelector('[data-test="comment-clamp"]');
+    // The deferred comments land after hydration: poll for the clamp.
+    $probe = ['found' => false];
+    foreach (range(1, 30) as $_) {
+        $probe = $page->script(<<<'JS'
+            (() => {
+                const el = document.querySelector('[data-test="comment-clamp"]');
 
-            return el === null
-                ? { found: false }
-                : { found: true, clamped: el.scrollHeight > el.clientHeight + 1, clientHeight: el.clientHeight };
-        })()
-        JS);
+                return el === null
+                    ? { found: false }
+                    : { found: true, clamped: el.scrollHeight > el.clientHeight + 1, clientHeight: el.clientHeight };
+            })()
+            JS);
+
+        if (($probe['found'] ?? false) && ($probe['clamped'] ?? false)) {
+            break;
+        }
+
+        usleep(100_000);
+    }
 
     expect($probe['found'])->toBeTrue()
         ->and($probe['clamped'])->toBeTrue()

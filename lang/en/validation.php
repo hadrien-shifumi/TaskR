@@ -19,6 +19,14 @@ return [
 
     'time_entry' => [
         'export_too_many' => 'The export is limited to :max time entries. Narrow the filters to reduce the volume.',
+        'week_invalid' => 'The week must be a date in YYYY-MM-DD format.',
+        'week_out_of_window' => 'The week must be the current one at the most recent, and at most eight weeks back.',
+        'day_out_of_week' => 'This day does not belong to the submitted week.',
+        'duplicate_cell' => 'A time entry already exists for this ticket on this day.',
+    ],
+
+    'timer' => [
+        'issue_closed' => 'This issue is done or cancelled: the timer cannot start on it.',
     ],
 
     'knowledge' => [

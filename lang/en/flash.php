@@ -36,6 +36,14 @@ return [
         'added' => 'Time entry added.',
         'updated' => 'Time entry updated.',
         'deleted' => 'Time entry deleted.',
+        'week_stored' => 'Weekly timesheet saved.',
+        'week_clamped' => 'The requested week sits outside the 8-week window — the current week is shown instead.',
+    ],
+
+    'timer' => [
+        'started' => 'Timer started.',
+        'stop_proposal' => 'Timer stopped: review the proposed entry before confirming.',
+        'guard_24h' => 'This timer has been running for more than 24 hours — please double-check before validating.',
     ],
 
     'locale' => [

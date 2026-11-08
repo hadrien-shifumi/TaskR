@@ -37,4 +37,13 @@ class TimeTrackingResponder
     {
         return $this->back(__('flash.time_entry.deleted'));
     }
+
+    /**
+     * The weekly grid saved in one pass from the "My time" page: the caller
+     * comes back to itself with a confirmation.
+     */
+    public function weekStored(): RedirectResponse
+    {
+        return $this->back(__('flash.time_entry.week_stored'));
+    }
 }

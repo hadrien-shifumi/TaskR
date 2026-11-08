@@ -27,6 +27,7 @@ use App\Actions\Issues\DeleteIssue;
 use App\Actions\Issues\ExportIssues;
 use App\Actions\Issues\MoveIssue;
 use App\Actions\Issues\SearchIssueKnowledge;
+use App\Actions\Issues\SearchIssues;
 use App\Actions\Issues\SetAssignees;
 use App\Actions\Issues\SetIssueAutoCompletion;
 use App\Actions\Issues\SetIssueDependencies;
@@ -69,6 +70,7 @@ use App\Actions\Projects\RemoveProjectMember;
 use App\Actions\Projects\ShowProjectActivity;
 use App\Actions\Projects\ShowProjectArchives;
 use App\Actions\Projects\ShowProjectBoard;
+use App\Actions\Projects\ShowProjectMemberActivity;
 use App\Actions\Projects\ShowProjectMembers;
 use App\Actions\Projects\ShowProjectsPage;
 use App\Actions\Projects\UpdateProject;
@@ -90,6 +92,12 @@ use App\Actions\TimeTracking\CreateTimeEntry;
 use App\Actions\TimeTracking\DeleteTimeEntry;
 use App\Actions\TimeTracking\ExportTimeEntries;
 use App\Actions\TimeTracking\SetIssueEstimate;
+use App\Actions\TimeTracking\ShowActiveTimer;
+use App\Actions\TimeTracking\ShowMyTimePage;
+use App\Actions\TimeTracking\ShowWeekTimesheet;
+use App\Actions\TimeTracking\StartTimer;
+use App\Actions\TimeTracking\StopTimer;
+use App\Actions\TimeTracking\StoreWeekTimesheet;
 use App\Actions\TimeTracking\UpdateTimeEntry;
 use App\Actions\Workspaces\AcceptInvitation;
 use App\Actions\Workspaces\CancelInvitation;
@@ -166,6 +174,7 @@ Route::middleware(['auth', 'workspace'])->group(function (): void {
     Route::post('/projects', CreateProject::class)->name('projects.store');
     Route::get('/projects/{project}/health', GetProjectHealth::class)->name('projects.health');
     Route::get('/projects/{project}/activity', ShowProjectActivity::class)->name('projects.activity');
+    Route::get('/projects/{project}/members/{member}/activity', ShowProjectMemberActivity::class)->name('projects.memberActivity');
     Route::get('/projects/{project}/board', ShowProjectBoard::class)->name('projects.board');
     Route::get('/projects/{project}/archives', ShowProjectArchives::class)->name('projects.archives');
     Route::get('/projects/{project}/members', ShowProjectMembers::class)->name('projects.members.index');
@@ -193,6 +202,8 @@ Route::middleware(['auth', 'workspace'])->group(function (): void {
     Route::post('/issues', CreateIssue::class)->name('issues.store');
     // Declared before /issues/{issue} so "export" is not captured as an id.
     Route::get('/issues/export', ExportIssues::class)->name('issues.export');
+    // Same guard for the live search: "search" is not a ticket id.
+    Route::get('/issues/search', SearchIssues::class)->name('issues.search');
     Route::get('/issues/{issue}', ShowIssuePage::class)->name('issues.show');
     Route::match(['put', 'patch'], '/issues/{issue}', UpdateIssue::class)->name('issues.update');
     Route::delete('/issues/{issue}', DeleteIssue::class)->name('issues.destroy');
@@ -230,6 +241,19 @@ Route::middleware(['auth', 'workspace'])->group(function (): void {
     // Workspace-wide export of the time entries (billing): transverse to
     // any single issue, so it lives at the workspace level.
     Route::get('/time-entries/export', ExportTimeEntries::class)->name('time-entries.export');
+
+    // Weekly timesheet: the author's week grid (read) and its one-pass
+    // validation — one standard entry per filled cell, all-or-nothing.
+    Route::get('/time-entries/week', ShowWeekTimesheet::class)->name('time-entries.week.show');
+    Route::post('/time-entries/week', StoreWeekTimesheet::class)->name('time-entries.week.store');
+
+    // Personal weekly timesheet page: the same grid, rendered as a page and
+    // shareable through the ?week= parameter.
+    Route::get('/my-time', ShowMyTimePage::class)->name('my-time.show');
+
+    Route::post('/issues/{issue}/timer/start', StartTimer::class)->name('issues.timer.start');
+    Route::post('/timer/stop', StopTimer::class)->name('timer.stop');
+    Route::get('/timer', ShowActiveTimer::class)->name('timer.show');
 
     // Complete workspace backup (owner only): every project, ticket, time
     // entry, comment and knowledge page in one archive — the escape hatch.

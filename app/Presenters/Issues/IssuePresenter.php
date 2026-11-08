@@ -228,6 +228,27 @@ class IssuePresenter
     }
 
     /**
+     * Row of a member's current work: the open issue assigned to them in a
+     * project, with the status it carries right now and the late flag. The
+     * ordering (priority, then recency) is chosen by the querying action.
+     *
+     * @return array{id: string, title: string, statusId: string, statusName: string, statusCategory: string, priority: string, dueDate: string|null, overdue: bool}
+     */
+    public static function assignedIssue(Issue $issue): array
+    {
+        return [
+            'id' => $issue->id,
+            'title' => $issue->title,
+            'statusId' => $issue->status->id,
+            'statusName' => $issue->status->name,
+            'statusCategory' => $issue->status->category->value,
+            'priority' => $issue->priority->value,
+            'dueDate' => $issue->due_date?->toDateString(),
+            'overdue' => $issue->isOverdue(),
+        ];
+    }
+
+    /**
      * Late issue row of the project health page. The rows come from a
      * join, so priority and statusCategory arrive as enums or raw
      * strings depending on hydration.

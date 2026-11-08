@@ -10,13 +10,15 @@ import {
 } from '@/components/ui/dropdown-menu';
 import AppLayout from '@/layouts/app-layout';
 import { Head, router, usePage } from '@inertiajs/react';
-import { ArchiveRestore, Archive, ArrowLeft, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { ArchiveRestore, Archive, ArrowLeft, MoreHorizontal, Pencil, Play, Square, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { LabelRef, MilestoneOption, UserRef } from '@/types';
+import { useTimerControl } from '@/components/timer-widget';
+import type { LabelRef, MilestoneOption, StoppedTimerProposal, TimerState, UserRef } from '@/types';
 import { CopyIssueIdButton } from './Show/components/copy-issue-id-button';
 import { DeleteIssueDialog } from './Show/components/delete-issue-dialog';
 import { EditIssueDialog } from './Show/components/edit-issue-dialog';
+import { LogTimeDialog } from './Show/components/log-time-dialog';
 import { IssueDetail } from './Show/issue-detail';
 import type { ActivityEvent, CommentItem, IssueDetail as IssueDetailType, TimeEntry } from './Show/types';
 
@@ -38,14 +40,22 @@ type PageProps = {
     milestoneOptions: MilestoneOption[];
     canContribute: boolean;
     projects: { id: string; name: string }[];
+    /** Shared prop — the user's running timer, or null. */
+    timer?: TimerState | null;
+    /** Shared by HandleInertiaRequests — drives the owner-only archive button. */
     workspace?: { role?: string } | null;
 };
 
 export default function Show() {
-    const { issue, comments, timeEntries, activity, statuses, members, labels, candidates, dependencyCandidates, milestoneOptions, canContribute, projects, workspace } = usePage<PageProps>().props;
+    const { issue, comments, timeEntries, activity, statuses, members, labels, candidates, dependencyCandidates, milestoneOptions, canContribute, projects, workspace, timer } = usePage<PageProps>().props;
     const { t } = useTranslation();
     const [editingTitle, setEditingTitle] = useState(false);
     const [deleting, setDeleting] = useState(false);
+    /** Proposal of a timer stopped or replaced from this fiche. */
+    const [timerProposal, setTimerProposal] = useState<StoppedTimerProposal | null>(null);
+    const [timerError, setTimerError] = useState<string | null>(null);
+    const timerControl = useTimerControl({ onProposal: setTimerProposal, onError: setTimerError });
+    const isTiming = timer?.issueId === issue.id;
 
     // Deferred props render their sections empty until the parallel
     // partial reload lands; the dialogs read the same lists.
@@ -86,6 +96,16 @@ export default function Show() {
             }
             actions={
                 <>
+                    <Button
+                        variant={isTiming ? 'secondary' : 'outline'}
+                        size="sm"
+                        data-test="issue-timer-toggle"
+                        disabled={timerControl.processing}
+                        onClick={() => (isTiming ? timerControl.stop() : timerControl.start(issue.id))}
+                    >
+                        {isTiming ? <Square className="size-3.5" aria-hidden /> : <Play className="size-3.5" aria-hidden />}
+                        {isTiming ? t('timer.stop') : t('timer.start')}
+                    </Button>
                     <CopyIssueIdButton issueId={issue.id} />
                     <DropdownMenu>
                         <DropdownMenuTrigger
@@ -130,6 +150,12 @@ export default function Show() {
 
             <FlashBanner />
 
+            {timerError ? (
+                <Banner variant="danger" role="alert" className="mb-4 px-4 py-2.5">
+                    {timerError}
+                </Banner>
+            ) : null}
+
             <IssueDetail
                 issue={issue}
                 comments={resolvedComments}
@@ -151,6 +177,17 @@ export default function Show() {
                 commentsCount={resolvedComments.length}
                 onClose={() => setDeleting(false)}
             />
+
+            {timerProposal ? (
+                <LogTimeDialog
+                    issueId={timerProposal.issueId}
+                    open
+                    initialHours={String(timerProposal.roundedHours)}
+                    issueTitle={timerProposal.issueTitle}
+                    exceeds24h={timerProposal.exceeds24h}
+                    onClose={() => setTimerProposal(null)}
+                />
+            ) : null}
         </AppLayout>
     );
 }

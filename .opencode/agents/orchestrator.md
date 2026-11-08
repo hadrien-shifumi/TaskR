@@ -35,7 +35,13 @@ permissions:
     resource: scout
     effect: allow
   - action: subagent
+    resource: scout-local
+    effect: allow
+  - action: subagent
     resource: dev
+    effect: allow
+  - action: subagent
+    resource: dev-local
     effect: allow
   - action: subagent
     resource: expert
@@ -73,11 +79,15 @@ Always pick the cheapest tier that can realistically succeed:
 
 | Tier | Agent | Model | Delegate |
 |------|-------|-------|----------|
-| Research | `scout` | flint (Ollama local) | Reads the issue, its comments and the knowledge base on TaskR, locates the concerned code (`path:line`), posts one short functional comment on the issue and returns the technical analysis in its session report. Runs on the local model — free, always dispatched first. |
-| Standard | `dev` | GLM-5.3-Flash (API) | Features and bug fixes in one or two domains, Pest tests, full TDD loop. |
-| Complex | `expert` | GLM-5.3 (API) | Architecture decisions, cross-cutting refactors, state-management redesign, deep debugging (tenant-isolation leaks, race conditions, Octane worker state, Inertia hydration), performance work. |
+| Research | `scout` | GLM-5.3-Flash (API) — `/local`: `scout-local` = bonsai-2:9b (Ollama) | Reads the issue, its comments and the knowledge base on TaskR, locates the concerned code (`path:line`), posts one short functional comment on the issue and returns the technical analysis in its session report. Always dispatched first. |
+| Standard | `dev` | GLM-5.3-Flash (API) — `/local`: `dev-local` = flint (Ollama) | Features and bug fixes in one or two domains, Pest tests, full TDD loop. |
+| Complex | `expert` | GLM-5.3 (API) — unchanged in `/local` | Architecture decisions, cross-cutting refactors, state-management redesign, deep debugging (tenant-isolation leaks, race conditions, Octane worker state, Inertia hydration), performance work. |
 
 `scout` cannot edit anything — never send it a fix. Do not send `dev` pure research, and do not send `dev` a task that is architectural: escalate to `expert`.
+
+## Mode `/local`
+
+When the session was started with the `/local` command, dispatch the local variants instead of the defaults: `scout-local` (Ollama bonsai-2:9b) for research, `dev-local` (Ollama flint) for standard implementation. `expert` is unchanged (GLM-5.3 API). Everything else is identical: lifecycle, briefs, verification — and TaskR comments keep the usual `[scout]` / `[dev]` signatures (the plugin only reads the comment body, not the agent id).
 
 ## Issue management
 

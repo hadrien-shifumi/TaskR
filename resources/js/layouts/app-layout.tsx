@@ -1,4 +1,4 @@
-import { Fragment, useState, type FormEvent, type ReactNode } from "react";
+import { Fragment, useState, type FormEvent } from "react";
 import { FormDialog } from "@/components/form-dialog";
 import { initials } from "@/components/issue-badges";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,7 @@ import {
     AtSign,
     BookOpen,
     ChevronDown,
+    Clock,
     Folder,
     Home,
     ListChecks,
@@ -32,6 +33,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import type { PageSharedProps } from "@/types";
 import { LanguageSwitcher } from "@/components/language-switcher";
+import { TimerWidget } from "@/components/timer-widget";
 
 interface AppLayoutProps {
     /** Pagebar title — a string, or a node when badges sit next to it. */
@@ -67,6 +69,12 @@ const NAV_SECTIONS: NavSection[] = [
     {
         items: [
             { label: "nav.home", route: "home", prefix: "/", icon: Home },
+            {
+                label: "nav.myTime",
+                route: "my-time.show",
+                prefix: "/my-time",
+                icon: Clock,
+            },
             {
                 label: "nav.mentions",
                 route: "mentions.index",
@@ -490,6 +498,8 @@ export default function AppLayout({
                     {children}
                 </main>
             </div>
+
+            <TimerWidget />
         </div>
     );
 }

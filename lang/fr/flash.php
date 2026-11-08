@@ -36,6 +36,14 @@ return [
         'added' => 'Saisie de temps ajoutée.',
         'updated' => 'Saisie de temps mise à jour.',
         'deleted' => 'Saisie de temps supprimée.',
+        'week_stored' => 'Feuille de la semaine enregistrée.',
+        'week_clamped' => 'La semaine demandée est hors de la fenêtre de 8 semaines — la semaine courante est affichée.',
+    ],
+
+    'timer' => [
+        'started' => 'Chronomètre démarré.',
+        'stop_proposal' => 'Chronomètre arrêté : vérifiez la saisie proposée avant de confirmer.',
+        'guard_24h' => 'Ce chronomètre tourne depuis plus de 24 heures — vérifiez avant de valider.',
     ],
 
     'locale' => [

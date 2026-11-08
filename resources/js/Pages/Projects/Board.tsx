@@ -3,6 +3,7 @@ import { ProjectViewSwitcher } from '@/components/project-view-switcher';
 import { Avatar, AvatarStack, BlockedBadge, HealthBadge, KnowledgeBadge, OpenChildBadge, PriorityBadge, StatusBadge } from '@/components/issue-badges';
 import { Banner } from '@/components/banner';
 import { FlashBanner } from '@/components/flash-banner';
+import { useTimerControl } from '@/components/timer-widget';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -23,13 +24,14 @@ import {
 } from '@/components/ui/select';
 import AppLayout from '@/layouts/app-layout';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { Archive, ArrowLeft, MoveRight, Plus, User } from 'lucide-react';
+import { Archive, ArrowLeft, MoveRight, Play, Plus, Square, User } from 'lucide-react';
 import { memo, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CascadeMoveDialog, pendingDescendantsCount } from '@/components/cascade-move-dialog';
-import type { DescendantsSummary, HealthData, LabelRef, MilestoneOption, UserRef } from '@/types';
+import type { DescendantsSummary, HealthData, LabelRef, MilestoneOption, StoppedTimerProposal, TimerState, UserRef } from '@/types';
 import type { TemplateOption } from '@/Pages/Issues/Index/types';
 import { formatShortDate, formatDate } from '@/lib/format-date';
+import { LogTimeDialog } from '@/Pages/Issues/Show/components/log-time-dialog';
 import { BoardCreateIssueDialog } from './Board/create-issue-dialog';
 import { ArchiveCompletedDialog } from './Board/archive-completed-dialog';
 import { boardIssueUrl, IssueDetailDialog, type IssueDetailPayload } from './Board/issue-detail-dialog';
@@ -62,10 +64,13 @@ type BoardCardProps = {
     column: Pick<BoardColumn, 'id' | 'name' | 'category'>;
     isDragging: boolean;
     otherColumns: Array<Pick<BoardColumn, 'id' | 'name'>>;
+    /** Id of the user's running timer's issue, null when idle. */
+    activeTimerIssueId: string | null;
     buildIssueHref: (issueId: string) => string;
     onDragStart: (issueId: string) => void;
     onDragEnd: () => void;
     onRequestMove: (issue: BoardIssue, statusId: string) => void;
+    onToggleTimer: (issue: BoardIssue) => void;
 };
 
 /**
@@ -79,12 +84,15 @@ const BoardCard = memo(function BoardCard({
     column,
     isDragging,
     otherColumns,
+    activeTimerIssueId,
     buildIssueHref,
     onDragStart,
     onDragEnd,
     onRequestMove,
+    onToggleTimer,
 }: BoardCardProps) {
     const { t } = useTranslation();
+    const isTiming = activeTimerIssueId === issue.id;
 
     return (
         <article
@@ -118,6 +126,21 @@ const BoardCard = memo(function BoardCard({
                 <OpenChildBadge hasOpenChild={issue.hasOpenChild} statusCategory={column.category} />
                 <KnowledgeBadge count={issue.knowledgePagesCount} titles={issue.knowledgePageTitles} />
                 <PriorityBadge priority={issue.priority} />
+                <button
+                    type="button"
+                    data-test={`board-card-timer-${issue.id}`}
+                    aria-label={isTiming ? t('timer.stop') : t('timer.start')}
+                    title={isTiming ? t('timer.stop') : t('timer.start')}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onToggleTimer(issue);
+                    }}
+                    className={`inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md outline-none hover:bg-accent ${
+                        isTiming ? 'bg-primary/15 text-primary' : 'text-muted-foreground'
+                    }`}
+                >
+                    {isTiming ? <Square className="size-3" /> : <Play className="size-3" />}
+                </button>
                 <div className="ml-auto" />
                 {issue.dueDate ? (
                     <span
@@ -190,6 +213,8 @@ type PageProps = {
     milestones?: MilestoneOption[];
     /** Present when the URL carries an `?issue=` param: the modal is open. */
     issueDetail?: IssueDetailPayload | null;
+    /** Shared prop — the user's running timer, or null. */
+    timer?: TimerState | null;
     /** Shared by HandleInertiaRequests — drives the owner-only archive button. */
     workspace?: { role?: string } | null;
 };
@@ -209,6 +234,7 @@ export default function Board() {
         milestones,
         issueDetail,
         workspace,
+        timer,
     } = usePage<PageProps>().props;
     const { t } = useTranslation();
     const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -222,6 +248,9 @@ export default function Board() {
     const [pendingMove, setPendingMove] = useState<{ issueId: string; statusId: string; count: number } | null>(
         null,
     );
+    /** Proposal of a timer stopped or replaced by a card or the fiche. */
+    const [timerProposal, setTimerProposal] = useState<StoppedTimerProposal | null>(null);
+    const timerControl = useTimerControl({ onProposal: setTimerProposal, onError: setMoveError });
 
     const completedCounts = columns.reduce(
         (counts, column) => {
@@ -282,6 +311,17 @@ export default function Board() {
             },
         );
     }, [t]);
+
+    const handleToggleTimer = useCallback(
+        (issue: BoardIssue) => {
+            if (timer?.issueId === issue.id) {
+                timerControl.stop();
+            } else {
+                timerControl.start(issue.id);
+            }
+        },
+        [timer?.issueId, timerControl.start, timerControl.stop],
+    );
 
     // Stable handlers keep the memoized cards from re-rendering on every
     // drag-state change of the page.
@@ -495,10 +535,12 @@ export default function Board() {
                                     column={column}
                                     isDragging={draggingId === issue.id}
                                     otherColumns={columns.filter((candidate) => candidate.id !== column.id)}
+                                    activeTimerIssueId={timer?.issueId ?? null}
                                     buildIssueHref={buildIssueHref}
                                     onDragStart={handleCardDragStart}
                                     onDragEnd={handleCardDragEnd}
                                     onRequestMove={handleRequestMove}
+                                    onToggleTimer={handleToggleTimer}
                                 />
                             ))}
                             {column.issues.length === 0 ? (
@@ -554,6 +596,17 @@ export default function Board() {
                     filters={filters}
                     parentsOnly={parentsOnly}
                     detail={issueDetail}
+                />
+            ) : null}
+
+            {timerProposal ? (
+                <LogTimeDialog
+                    issueId={timerProposal.issueId}
+                    open
+                    initialHours={String(timerProposal.roundedHours)}
+                    issueTitle={timerProposal.issueTitle}
+                    exceeds24h={timerProposal.exceeds24h}
+                    onClose={() => setTimerProposal(null)}
                 />
             ) : null}
         </AppLayout>

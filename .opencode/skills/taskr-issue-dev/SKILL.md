@@ -10,7 +10,7 @@ Every TaskR ticket follows this lifecycle, in this order. The `issue-dev` plugin
 ## Roles
 
 - **Orchestrator** runs `issue_dev`, creates and moves tickets, dispatches the agents, verifies the diff, attests the knowledge review when nothing deserves an update.
-- **Scout** (local model, free) does the research: one short functional comment on the issue, the full technical analysis in its report to the orchestrator.
+- **Scout** (GLM-5.3-Flash API by default; Ollama bonsai-2:9b via the `scout-local` variant when the session runs with `/local`) does the research: one short functional comment on the issue, the full technical analysis in its report to the orchestrator.
 - **Dev / expert** implement and post their own plan, done, time and knowledge updates.
 
 Every comment on the workflow issue carries its author signature — `[scout]`, `[dev]`, `[expert]` or `[orchestrator]` — anywhere in the body, case-insensitive (`**[Scout]**` and `scout:` also count). The plugin refuses unsigned comments; a signed comment without a plan/done marker is ordinary tracker work (research summary, notes, questions) and never changes the workflow state.

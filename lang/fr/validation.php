@@ -88,6 +88,14 @@ return [
 
     'time_entry' => [
         'export_too_many' => "L'export est limité à :max saisies de temps. Affinez les filtres pour réduire le volume à exporter.",
+        'week_invalid' => 'La semaine doit être une date au format AAAA-MM-JJ.',
+        'week_out_of_window' => 'La semaine doit être la semaine courante au plus récent, et au plus huit semaines en arrière.',
+        'day_out_of_week' => "Ce jour n'appartient pas à la semaine soumise.",
+        'duplicate_cell' => 'Une saisie de temps existe déjà pour ce ticket ce jour-là.',
+    ],
+
+    'timer' => [
+        'issue_closed' => 'Ce ticket est terminé ou annulé : le chronomètre ne peut pas démarrer dessus.',
     ],
 
     'knowledge' => [

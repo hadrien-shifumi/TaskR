@@ -21,11 +21,43 @@ export interface PageSharedProps {
     /** Unread @mentions of the account in the current workspace. */
     unreadMentions: number;
     /**
+     * The current user's running timer in this workspace, or null.
+     * Lazy shared prop: rehydrated on every navigation, so closing the
+     * browser never stops the timer — the server timestamp is the truth.
+     */
+    timer?: TimerState | null;
+    /**
      * Members and projects mentionable in comments, within the account's
      * perimeter. Deferred prop: absent until the client's parallel partial
      * reload lands.
      */
     mentionables?: Mentionable[];
+}
+
+/** Live state of the user's running timer (shared prop + timer endpoints). */
+export interface TimerState {
+    id: string;
+    issueId: string;
+    issueTitle: string;
+    /** ISO-8601 start timestamp — the server's clock is the truth. */
+    startedAt: string;
+    elapsedHours: number;
+    exceeds24h: boolean;
+}
+
+/**
+ * The pre-filled standard-entry proposal produced when a running timer is
+ * stopped or replaced: confirming it goes through the ordinary time-entry
+ * flow (hours pre-filled, today's date, empty editable note).
+ */
+export interface StoppedTimerProposal {
+    issueId: string;
+    issueTitle: string;
+    startedAt: string;
+    stoppedAt: string;
+    elapsedHours: number;
+    roundedHours: number;
+    exceeds24h: boolean;
 }
 
 /** Autocomplete entry for the comment @mention picker. */
@@ -119,3 +151,45 @@ export interface ProjectRow {
 
 /** Minimal editable project reference used by shared dialogs and menus. */
 export type ProjectRef = Pick<ProjectRow, 'id' | 'name' | 'description' | 'targetDate'>;
+
+/**
+ * One row of the weekly timesheet grid: the hours summed per day of the
+ * week and over the whole week, for a single ticket.
+ */
+export interface TimesheetGrid {
+    issueId: string;
+    issueTitle: string;
+    /** Hours per day, keyed by `YYYY-MM-DD`. Only filled days appear. */
+    days: Record<string, number>;
+    weekTotal: number;
+}
+
+/** Raw entry of the week, for the list view (edit / delete author-only). */
+export interface TimeEntryRow {
+    id: string;
+    authorId: number;
+    authorName: string | null;
+    issueId: string;
+    issueTitle: string;
+    workedAt: string;
+    hours: number;
+    note: string | null;
+}
+
+/** Payload of the "My time" page: the week's grid, total and raw entries. */
+export interface WeekTimesheet {
+    /** Monday of the displayed week, `YYYY-MM-DD`. */
+    weekStart: string;
+    /** Sunday of the displayed week, `YYYY-MM-DD`. */
+    weekEnd: string;
+    weekTotal: number;
+    grid: TimesheetGrid[];
+    entries: TimeEntryRow[];
+}
+
+/** Row of the live issue search feeding the "add a line" dialog. */
+export interface IssueSearchResult {
+    id: string;
+    title: string;
+    projectId: string;
+}

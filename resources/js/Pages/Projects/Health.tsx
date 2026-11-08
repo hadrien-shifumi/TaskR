@@ -366,10 +366,14 @@ export default function Health() {
                                                 {teamWorkload.map((person) => (
                                                     <TableRow key={person.userId}>
                                                         <TableCell>
-                                                            <div className="flex items-center gap-2.5">
+                                                            <Link
+                                                                href={route('projects.memberActivity', { project: project.id, member: String(person.userId) })}
+                                                                className="flex items-center gap-2.5 rounded-md hover:bg-muted/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                                                                data-test="team-member-activity-link"
+                                                            >
                                                                 <Avatar name={person.userName} />
                                                                 <span className="font-medium">{person.userName}</span>
-                                                            </div>
+                                                            </Link>
                                                         </TableCell>
                                                         <TableCell className="text-right font-mono tabular-nums">
                                                             {person.openIssues}
