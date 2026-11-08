@@ -449,6 +449,13 @@ const en = {
         teamWorkload: "Team workload",
         member: "Member",
         hours: "Hours",
+        backToHealth: "Back to health",
+        memberActivity: {
+            title: "Member activity — {{name}}",
+            intro: "What {{member}} is working on and did on this project.",
+            currentWork: "Current work",
+            noWork: "No open or in-progress ticket assigned to them.",
+        },
         trends: "Issue trends",
         trendsPeriod: "Period",
         trendsPeriod30: "Last 30 days",

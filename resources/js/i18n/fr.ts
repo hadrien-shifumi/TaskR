@@ -451,6 +451,13 @@ const fr: typeof en = {
         teamWorkload: "Charge de l'équipe",
         member: "Membre",
         hours: "Heures",
+        backToHealth: "Retour à la santé",
+        memberActivity: {
+            title: "Activité du membre — {{name}}",
+            intro: "Ce que {{member}} travaille et a fait sur ce projet.",
+            currentWork: "Travail en cours",
+            noWork: "Aucun ticket ouvert ou en cours n'est assigné.",
+        },
         trends: "Évolution des tickets",
         trendsPeriod: "Période",
         trendsPeriod30: "30 derniers jours",
