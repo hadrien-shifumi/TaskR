@@ -6,6 +6,7 @@ use App\Models\Invitation;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Responders\Workspaces\ResendInvitationResponder;
+use App\Support\InvitationMailer;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Str;
 use Lorisleiva\Actions\Concerns\AsController;
@@ -50,6 +51,9 @@ class ResendInvitation
             'token' => Str::random(64),
             'expires_at' => now()->addDays(7),
         ]);
+
+        // The regenerated link is e-mailed again: the previous one is dead.
+        InvitationMailer::send($invitation);
 
         return $invitation;
     }

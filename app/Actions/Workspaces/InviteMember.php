@@ -9,6 +9,7 @@ use App\Models\Membership;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Responders\Workspaces\InviteMemberResponder;
+use App\Support\InvitationMailer;
 use App\Support\WorkspaceContext;
 use Closure;
 use Illuminate\Http\RedirectResponse;
@@ -108,7 +109,7 @@ class InviteMember
             ]);
         }
 
-        return DB::transaction(function () use ($workspace, $data, $projectIds, $role): Invitation {
+        $invitation = DB::transaction(function () use ($workspace, $data, $projectIds, $role): Invitation {
             // One invitation row per (workspace, email) — the unique
             // constraint enforces it at the database level. Re-inviting an
             // existing address (pending, expired, or accepted by a member
@@ -156,6 +157,13 @@ class InviteMember
 
             return $invitation;
         });
+
+        // Sent after the transaction commits: a rolled-back invitation must
+        // never reach the invitee's inbox. Covers creation and reactivation
+        // alike — the mail always carries the fresh acceptance link.
+        InvitationMailer::send($invitation);
+
+        return $invitation;
     }
 
     public function asController(ActionRequest $request, Workspace $workspace, InviteMemberResponder $responder): RedirectResponse

@@ -48,4 +48,21 @@ return [
         'footer' => 'Cet e-mail a été envoyé par TaskR à la suite d\'une demande de réinitialisation pour :email.',
     ],
 
+    'invitation' => [
+        'subject' => 'Invitation à rejoindre « :workspace » sur TaskR',
+        'greeting' => 'Bonjour,',
+        'intro' => ':inviter vous invite à rejoindre l\'espace de travail « :workspace » sur TaskR.',
+        'role_line' => 'Votre rôle : :role.',
+        'projects_line' => 'Projets : :projects',
+        'action' => 'Accepter l\'invitation',
+        'expiry' => 'Ce lien expire le :date.',
+        'ignore' => 'Si vous n\'attendiez pas cette invitation, vous pouvez ignorer cet e-mail.',
+        'footer' => 'Cet e-mail a été envoyé par TaskR car :inviter a invité :email à rejoindre « :workspace ».',
+        'roles' => [
+            'owner' => 'Propriétaire',
+            'member' => 'Membre',
+            'guest' => 'Invité',
+        ],
+    ],
+
 ];

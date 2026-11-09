@@ -48,4 +48,21 @@ return [
         'footer' => 'This e-mail was sent by TaskR following a password reset request for :email.',
     ],
 
+    'invitation' => [
+        'subject' => 'You have been invited to ":workspace" on TaskR',
+        'greeting' => 'Hello,',
+        'intro' => ':inviter invited you to join the workspace ":workspace" on TaskR.',
+        'role_line' => 'Your role: :role.',
+        'projects_line' => 'Projects: :projects',
+        'action' => 'Accept the invitation',
+        'expiry' => 'This link expires on :date.',
+        'ignore' => 'If you were not expecting this invitation, you can ignore this e-mail.',
+        'footer' => 'This e-mail was sent by TaskR because :inviter invited :email to join ":workspace".',
+        'roles' => [
+            'owner' => 'Owner',
+            'member' => 'Member',
+            'guest' => 'Guest',
+        ],
+    ],
+
 ];

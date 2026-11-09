@@ -8,6 +8,7 @@ use App\Actions\Workspaces\CreateWorkspace;
 use App\Actions\Workspaces\InviteMember;
 use App\Actions\Workspaces\RemoveMember;
 use App\Enums\WorkspaceRole;
+use App\Mail\InvitationMail;
 use App\Models\Invitation;
 use App\Models\InvitationProject;
 use App\Models\Membership;
@@ -15,6 +16,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Support\WorkspaceContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Inertia\Testing\AssertableInertia;
@@ -433,5 +435,78 @@ class InvitationActionsTest extends TestCase
         $this->expectException(ValidationException::class);
 
         InviteMember::run($workspace, ['email' => $member->email]);
+    }
+
+    // ── E-mail d'invitation ──────────────────────────────────────────────
+
+    public function test_inviting_sends_an_invitation_email_with_the_acceptance_link(): void
+    {
+        [$owner, $workspace] = $this->setupWorkspace();
+        $alpha = CreateProject::run($workspace, $owner, ['name' => 'Alpha']);
+
+        Mail::fake();
+        $this->actingAs($owner)
+            ->post(route('workspaces.invite', $workspace), [
+                'email' => 'bob@example.com',
+                'role' => 'guest',
+                'project_ids' => [$alpha->id],
+            ])
+            ->assertRedirect();
+
+        $invitation = Invitation::withoutWorkspaceScope()
+            ->where('workspace_id', $workspace->id)
+            ->where('email', 'bob@example.com')
+            ->firstOrFail();
+
+        Mail::assertSent(InvitationMail::class, fn (InvitationMail $mail) => $mail->hasTo('bob@example.com')
+            && str_contains($mail->acceptUrl, $invitation->token)
+            && $mail->workspaceName === 'WS'
+            && $mail->role === 'guest'
+            && $mail->projectNames === ['Alpha']);
+    }
+
+    public function test_reinviting_sends_the_email_again_with_the_fresh_link(): void
+    {
+        [$owner, $workspace] = $this->setupWorkspace();
+        $bob = User::factory()->create(['email' => 'bob@example.com']);
+        $invitation = InviteMember::run($workspace, ['email' => 'bob@example.com']);
+        AcceptInvitation::run($invitation, $bob);
+        RemoveMember::run($workspace, $bob, $owner);
+
+        Mail::fake();
+        $this->actingAs($owner)
+            ->post(route('workspaces.invite', $workspace), ['email' => 'bob@example.com'])
+            ->assertRedirect();
+
+        $freshToken = $invitation->fresh()->token;
+        Mail::assertSent(InvitationMail::class, fn (InvitationMail $mail) => $mail->hasTo('bob@example.com')
+            && str_contains($mail->acceptUrl, $freshToken));
+    }
+
+    public function test_resending_a_pending_invitation_sends_the_email_again(): void
+    {
+        [$owner, $workspace] = $this->setupWorkspace();
+        $invitation = InviteMember::run($workspace, ['email' => 'bob@example.com']);
+
+        Mail::fake();
+        $this->actingAs($owner)
+            ->post(route('workspaces.invitations.resend', [$workspace->id, $invitation->id]))
+            ->assertRedirect();
+
+        Mail::assertSent(InvitationMail::class, fn (InvitationMail $mail) => $mail->hasTo('bob@example.com')
+            && str_contains($mail->acceptUrl, $invitation->fresh()->token));
+    }
+
+    public function test_inviting_an_already_member_sends_no_email(): void
+    {
+        [$owner, $workspace] = $this->setupWorkspace();
+        $member = $this->addMember($workspace);
+
+        Mail::fake();
+        $this->actingAs($owner)
+            ->post(route('workspaces.invite', $workspace), ['email' => $member->email])
+            ->assertInvalid('email');
+
+        Mail::assertNotSent(InvitationMail::class);
     }
 }
