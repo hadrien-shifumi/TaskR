@@ -8,6 +8,7 @@
 This application is a Laravel application running on PHP 8.5. Always use the APIs that match the installed major version of each package — do not assume a version.
 
 Before relying on a package's API, confirm its installed version:
+
 - PHP packages: run `composer show --direct` to list direct dependencies with versions, or `composer show <vendor/package>` for a single package.
 - JS packages: check `package.json` for the installed versions.
 
@@ -18,6 +19,8 @@ This project has domain-specific skills available in `**/skills/**`. You MUST ac
 ## TDD Discipline
 
 Every behavior change follows the red/green loop defined in `.opencode/skills/tdd/SKILL.md`: test plan first, failing test before implementation, Unit+Feature green before claiming done, and the Browser (E2E) suite only at the final gate via `composer test:e2e`. The `tdd` plugin (`.opencode/plugins/tdd/`) runs the suites after edits, blocks E2E while the dev loop is red, and refuses to end a turn while red — do not fight it, and never claim success without an observed green run.
+
+To avoid OOM, run your tests with 2gb instead of standard 128mo of memory
 
 ## TaskR Issue Workflow
 
@@ -86,7 +89,7 @@ Every TaskR issue follows the lifecycle defined in `.opencode/skills/taskr-issue
 
 - Execute PHP in app context for debugging and testing code. Do not create models without user approval, prefer tests with factories instead. Prefer existing Artisan commands over custom tinker code.
 - Always use single quotes to prevent shell expansion: `php artisan tinker --execute 'Your::code();'`
-  - Double quotes for PHP strings inside: `php artisan tinker --execute 'User::where("active", true)->count();'`
+    - Double quotes for PHP strings inside: `php artisan tinker --execute 'User::where("active", true)->count();'`
 
 === php rules ===
 
@@ -151,6 +154,7 @@ Every TaskR issue follows the lifecycle defined in `.opencode/skills/taskr-issue
 
 - Run the narrowest set of tests that covers the change. Pass a file path or `--filter=testName` to `php artisan test --compact`.
 - Rerun a test after each change to it.
+- To avoid OOM, run your tests with 2gb instead of standard 128mo of memory
 - Run `vendor/bin/phpunit` to call the test runner directly. It accepts the same file path and `--filter=testName` arguments.
 
 </laravel-boost-guidelines>

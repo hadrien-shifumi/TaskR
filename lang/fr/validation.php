@@ -117,6 +117,7 @@ return [
 
     'invitation' => [
         'guest_requires_projects' => 'Un invité Guest doit être rattaché à au moins un projet.',
+        'already_member' => 'Cette adresse appartient déjà à un membre de l\'espace de travail.',
     ],
 
     'member_scope' => [

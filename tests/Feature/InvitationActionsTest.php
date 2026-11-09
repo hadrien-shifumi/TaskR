@@ -2,14 +2,21 @@
 
 namespace Tests\Feature;
 
+use App\Actions\Projects\CreateProject;
+use App\Actions\Workspaces\AcceptInvitation;
 use App\Actions\Workspaces\CreateWorkspace;
 use App\Actions\Workspaces\InviteMember;
+use App\Actions\Workspaces\RemoveMember;
+use App\Enums\WorkspaceRole;
+use App\Models\Invitation;
+use App\Models\InvitationProject;
 use App\Models\Membership;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Support\WorkspaceContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Inertia\Testing\AssertableInertia;
 use Tests\TestCase;
 
@@ -250,5 +257,181 @@ class InvitationActionsTest extends TestCase
             ->assertConflict();
 
         $this->assertDatabaseHas('invitations', ['id' => $invitation->id]);
+    }
+
+    // ── Réinvitation (invitation déjà existante pour cet email) ────────
+
+    public function test_reinviting_a_removed_member_reactivates_their_accepted_invitation(): void
+    {
+        [$owner, $workspace] = $this->setupWorkspace();
+        $bob = User::factory()->create(['email' => 'bob@example.com']);
+        $invitation = InviteMember::run($workspace, ['email' => 'bob@example.com']);
+        AcceptInvitation::run($invitation, $bob);
+        RemoveMember::run($workspace, $bob, $owner);
+        $oldToken = $invitation->fresh()->token;
+
+        // The prod bug: this used to 500 on the (workspace_id, email)
+        // unique constraint because the accepted invitation row survives
+        // the member removal.
+        $response = $this->actingAs($owner)
+            ->post(route('workspaces.invite', $workspace), ['email' => 'bob@example.com'])
+            ->assertRedirect();
+
+        // Same row reactivated, not a duplicate.
+        $this->assertSame(1, Invitation::withoutWorkspaceScope()
+            ->where('workspace_id', $workspace->id)
+            ->where('email', 'bob@example.com')
+            ->count());
+
+        $fresh = $invitation->fresh();
+        $this->assertNull($fresh->accepted_at);
+        $this->assertNotSame($oldToken, $fresh->token);
+        $this->assertTrue($fresh->expires_at->isFuture());
+        $this->assertStringContainsString(
+            "/invitations/{$fresh->token}/accept",
+            (string) $response->getSession()->get('status'),
+        );
+
+        // The previous acceptance link no longer resolves.
+        $this->get("/invitations/{$oldToken}/accept")->assertNotFound();
+    }
+
+    public function test_reinviting_a_pending_invitation_reactivates_it_instead_of_duplicating(): void
+    {
+        [$owner, $workspace] = $this->setupWorkspace();
+        $invitation = InviteMember::run($workspace, ['email' => 'bob@example.com']);
+        $oldToken = $invitation->token;
+
+        $this->actingAs($owner)
+            ->post(route('workspaces.invite', $workspace), ['email' => 'bob@example.com'])
+            ->assertRedirect();
+
+        $this->assertSame(1, Invitation::withoutWorkspaceScope()
+            ->where('workspace_id', $workspace->id)
+            ->where('email', 'bob@example.com')
+            ->count());
+        $this->assertNotSame($oldToken, $invitation->fresh()->token);
+    }
+
+    public function test_reinviting_updates_role_and_project_scope(): void
+    {
+        [$owner, $workspace] = $this->setupWorkspace();
+        $alpha = CreateProject::run($workspace, $owner, ['name' => 'Alpha']);
+        $beta = CreateProject::run($workspace, $owner, ['name' => 'Beta']);
+
+        $this->actingAs($owner)
+            ->post(route('workspaces.invite', $workspace), [
+                'email' => 'bob@example.com',
+                'role' => 'guest',
+                'project_ids' => [$alpha->id],
+            ])
+            ->assertRedirect();
+
+        $this->actingAs($owner)
+            ->post(route('workspaces.invite', $workspace), [
+                'email' => 'bob@example.com',
+                'role' => 'member',
+                'project_ids' => [$beta->id],
+            ])
+            ->assertRedirect();
+
+        app(WorkspaceContext::class)->set($workspace);
+        $invitation = Invitation::withoutWorkspaceScope()
+            ->where('workspace_id', $workspace->id)
+            ->where('email', 'bob@example.com')
+            ->firstOrFail();
+
+        $this->assertSame(WorkspaceRole::Member, $invitation->role);
+        $this->assertSame([$beta->id], $invitation->projects()->pluck('projects.id')->all());
+        $this->assertSame(1, InvitationProject::query()->where('invitation_id', $invitation->id)->count());
+    }
+
+    public function test_reinviting_is_scoped_to_the_current_workspace(): void
+    {
+        [$owner, $workspace] = $this->setupWorkspace();
+        $otherOwner = User::factory()->create();
+        $otherWorkspace = CreateWorkspace::run($otherOwner, ['name' => 'Other']);
+        $foreign = InviteMember::run($otherWorkspace, ['email' => 'bob@example.com']);
+        $foreign->update(['accepted_at' => now()]);
+        $foreignToken = $foreign->token;
+
+        $this->actingAs($owner)
+            ->post(route('workspaces.invite', $workspace), ['email' => 'bob@example.com'])
+            ->assertRedirect();
+
+        // A fresh invitation here; the foreign one is untouched.
+        $local = Invitation::withoutWorkspaceScope()
+            ->where('workspace_id', $workspace->id)
+            ->where('email', 'bob@example.com')
+            ->firstOrFail();
+        $this->assertNotSame($foreign->id, $local->id);
+        $this->assertNull($local->accepted_at);
+
+        $this->assertSame($foreignToken, $foreign->fresh()->token);
+        $this->assertNotNull($foreign->fresh()->accepted_at);
+    }
+
+    public function test_inviting_a_current_member_is_refused(): void
+    {
+        [$owner, $workspace] = $this->setupWorkspace();
+        $member = $this->addMember($workspace);
+
+        $this->actingAs($owner)
+            ->post(route('workspaces.invite', $workspace), ['email' => $member->email])
+            ->assertInvalid('email');
+
+        $this->assertDatabaseMissing('invitations', [
+            'workspace_id' => $workspace->id,
+            'email' => $member->email,
+        ]);
+    }
+
+    public function test_inviting_a_current_member_keeps_their_accepted_invitation_untouched(): void
+    {
+        [$owner, $workspace] = $this->setupWorkspace();
+        $invitation = InviteMember::run($workspace, ['email' => 'bob@example.com']);
+        $invitation->update(['accepted_at' => now()]);
+        $bob = User::factory()->create(['email' => 'bob@example.com']);
+        Membership::create([
+            'user_id' => $bob->id,
+            'workspace_id' => $workspace->id,
+            'role' => 'member',
+        ]);
+        $oldToken = $invitation->token;
+
+        $this->actingAs($owner)
+            ->post(route('workspaces.invite', $workspace), ['email' => 'bob@example.com'])
+            ->assertInvalid('email');
+
+        $fresh = $invitation->fresh();
+        $this->assertSame($oldToken, $fresh->token);
+        $this->assertNotNull($fresh->accepted_at);
+    }
+
+    public function test_run_reactivates_an_existing_invitation_instead_of_throwing(): void
+    {
+        [$owner, $workspace] = $this->setupWorkspace();
+        $first = InviteMember::run($workspace, ['email' => 'bob@example.com']);
+        $first->update(['accepted_at' => now()]);
+
+        // Object call site (MCP tools): same row back, no unique-constraint crash.
+        $second = InviteMember::run($workspace, ['email' => 'bob@example.com']);
+
+        $this->assertSame($first->id, $second->id);
+        $this->assertNull($second->accepted_at);
+        $this->assertSame(1, Invitation::withoutWorkspaceScope()
+            ->where('workspace_id', $workspace->id)
+            ->where('email', 'bob@example.com')
+            ->count());
+    }
+
+    public function test_run_refuses_an_email_that_is_already_a_member(): void
+    {
+        [$owner, $workspace] = $this->setupWorkspace();
+        $member = $this->addMember($workspace);
+
+        $this->expectException(ValidationException::class);
+
+        InviteMember::run($workspace, ['email' => $member->email]);
     }
 }

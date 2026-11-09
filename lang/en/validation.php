@@ -48,6 +48,7 @@ return [
 
     'invitation' => [
         'guest_requires_projects' => 'A guest must be attached to at least one project.',
+        'already_member' => 'This address already belongs to a member of the workspace.',
     ],
 
     'member_scope' => [
