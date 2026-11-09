@@ -2,6 +2,7 @@ import { FlashBanner } from '@/components/flash-banner';
 import { Banner } from '@/components/banner';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
+import { formatDuration } from '@/lib/format-duration';
 import { addDays, currentMonday } from '@/Pages/MyTime/components/week-dates';
 import { Head, router, useForm, usePage } from '@inertiajs/react';
 import { Plus, Save } from 'lucide-react';
@@ -176,7 +177,7 @@ export default function Index() {
                 />
 
                 <p className="text-right text-sm text-muted-foreground" data-test="week-total">
-                    {t('myTime.weekTotal')} : <span className="font-mono font-semibold text-foreground tabular-nums">{weekTotal}h</span>
+                    {t('myTime.weekTotal')} : <span className="font-mono font-semibold text-foreground tabular-nums">{formatDuration(weekTotal)}</span>
                 </p>
             </section>
 

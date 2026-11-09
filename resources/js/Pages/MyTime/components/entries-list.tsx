@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TimeEntryRow } from '@/types';
 import { formatDate } from '@/lib/format-date';
+import { formatDuration } from '@/lib/format-duration';
 
 type EntriesListProps = {
     entries: TimeEntryRow[];
@@ -59,7 +60,7 @@ export function EntriesList({ entries }: EntriesListProps) {
                             <div className="flex flex-wrap items-baseline gap-x-2">
                                 <span className="text-[13px] font-medium">{entry.issueTitle}</span>
                                 <span className="font-mono text-xs text-muted-foreground tabular-nums">
-                                    {entry.hours}h · {formatDate(entry.workedAt)}
+                                    {formatDuration(entry.hours)} · {formatDate(entry.workedAt)}
                                 </span>
                             </div>
                             {editingId === entry.id ? (

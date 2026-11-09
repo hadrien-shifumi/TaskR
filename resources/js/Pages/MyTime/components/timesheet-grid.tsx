@@ -5,6 +5,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { formatShortDate } from '@/lib/format-date';
+import { formatDuration } from '@/lib/format-duration';
 import type { TimesheetGrid } from '@/types';
 import { weekDays } from './week-dates';
 
@@ -32,10 +33,10 @@ type TimesheetGridTableProps = {
     onRemoveLine: (lineIndex: number) => void;
 };
 
-/** Renders an hours cell value compactly: `2.5h`, or the em dash. */
+/** Renders an hours cell value as a duration: `2h30`, or the em dash. */
 function cellHours(value: number | undefined): string {
     if (value === undefined || value === 0) return '—';
-    return `${value}h`;
+    return formatDuration(value);
 }
 
 /**
@@ -96,7 +97,7 @@ export function TimesheetGridTable({
                                 </TableCell>
                             ))}
                             <TableCell className="text-right font-mono text-[13px] font-semibold tabular-nums">
-                                {row.weekTotal}h
+                                {formatDuration(row.weekTotal)}
                             </TableCell>
                         </TableRow>
                     ))}
@@ -142,7 +143,7 @@ export function TimesheetGridTable({
                                     );
                                 })}
                                 <TableCell className="text-right font-mono text-[13px] font-semibold tabular-nums">
-                                    {total > 0 ? `${total}h` : '—'}
+                                    {total > 0 ? formatDuration(total) : '—'}
                                 </TableCell>
                                 <TableCell>
                                     <Button

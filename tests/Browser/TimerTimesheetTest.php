@@ -87,7 +87,7 @@ it('fills, saves and edits a weekly timesheet line through the grid', function (
         ->fill('@line-note', 'grille de la semaine')
         ->click('@save-week');
 
-    $page->assertSeeIn('@week-total', '5.5h')
+    $page->assertSeeIn('@week-total', '5h30')
         ->assertVisible('@entry-row')
         ->assertSee('grille de la semaine');
 
@@ -96,7 +96,7 @@ it('fills, saves and edits a weekly timesheet line through the grid', function (
         ->fill('@entry-edit-hours', '2')
         ->click('@entry-edit-save');
 
-    $page->assertSeeIn('@week-total', '4.5h');
+    $page->assertSeeIn('@week-total', '4h30');
 
     // Deleting both raw entries empties the sheet again.
     $page->script('window.confirm = () => true');
