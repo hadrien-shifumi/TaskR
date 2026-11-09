@@ -96,6 +96,72 @@ it('lets an owner resend and cancel a pending invitation from the members settin
     $page->assertNoSmoke();
 });
 
+it('lets an owner invite a member with a project perimeter from the members settings', function () {
+    [$owner, $workspace] = setupBrowserWorkspace();
+    app(WorkspaceContext::class)->set($workspace);
+    $client = CreateProject::run($workspace, $owner, ['name' => 'Projet client']);
+    $internal = CreateProject::run($workspace, $owner, ['name' => 'Interne secret']);
+    $this->actingAs($owner);
+
+    $page = visit('/settings/members');
+
+    // Scenario "Inviter un membre restreint a un perimetre": member role
+    // keeps the project chips — the default (no chip) stays full access.
+    $page->click('button:has-text("Invite")')
+        ->fill('invite-email', 'peer@example.com')
+        ->click('button:has-text("Projet client")')
+        ->click('button[type="submit"]');
+
+    app(WorkspaceContext::class)->set($workspace);
+    $invitation = Invitation::withoutWorkspaceScope()
+        ->where('workspace_id', $workspace->id)
+        ->where('email', 'peer@example.com')
+        ->firstOrFail();
+
+    expect($invitation->role)->toBe(WorkspaceRole::Member)
+        ->and($invitation->projects()->pluck('projects.id')->all())->toBe([$client->id]);
+
+    $page->assertNoSmoke();
+});
+
+it('lets an owner edit a member perimeter from the members settings', function () {
+    [$owner, $workspace] = setupBrowserWorkspace();
+    app(WorkspaceContext::class)->set($workspace);
+    $client = CreateProject::run($workspace, $owner, ['name' => 'Projet client']);
+    $internal = CreateProject::run($workspace, $owner, ['name' => 'Interne secret']);
+
+    $member = User::factory()->create(['name' => 'Robin']);
+    $membership = Membership::create([
+        'user_id' => $member->id,
+        'workspace_id' => $workspace->id,
+        'role' => 'member',
+    ]);
+    $membership->update(['is_scoped' => true]);
+    $membership->syncProjectScope([$client->id]);
+
+    $this->actingAs($owner);
+
+    $page = visit('/settings/members');
+
+    // The scoped member's row announces the current perimeter.
+    $page->assertSee('Projet client');
+
+    // Scenario "Modifier le perimetre": the row menu opens the editor,
+    // preselected on the current perimeter; adding the internal project
+    // extends it, saving persists the new list.
+    $page->click('button[aria-label="Actions for Robin"]')
+        ->click('Edit perimeter…')
+        ->click('button:has-text("Interne secret")')
+        ->click('button[type="submit"]');
+
+    app(WorkspaceContext::class)->set($workspace);
+    $membership->refresh();
+    expect($membership->is_scoped)->toBeTrue()
+        ->and($membership->projectScopeIds())->toBe([$client->id, $internal->id]);
+
+    $page->assertNoSmoke();
+});
+
 it('shows the members settings read-only to a member', function () {
     [$owner, $workspace] = setupBrowserWorkspace();
     InviteMember::run($workspace, ['email' => 'bob@example.com']);

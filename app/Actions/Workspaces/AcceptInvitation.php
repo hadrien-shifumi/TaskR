@@ -43,7 +43,7 @@ class AcceptInvitation
 
             // The membership carries the invited role; an already-member
             // keeps their current one (no duplicate, no downgrade).
-            Membership::firstOrCreate(
+            $membership = Membership::firstOrCreate(
                 [
                     'user_id' => $user->getKey(),
                     'workspace_id' => $invitation->workspace_id,
@@ -72,6 +72,23 @@ class AcceptInvitation
                 }
             }
 
+            // A member joins with the perimeter announced at invitation
+            // time: it replaces any previous one — the latest invitation
+            // defines the member's perimeter. A guest keeps their
+            // roster-driven perimeter, and an invitation without projects
+            // leaves the default full workspace access.
+            if ($invitation->role === WorkspaceRole::Member && $membership->role === WorkspaceRole::Member) {
+                $announcedScope = InvitationProject::query()
+                    ->where('invitation_id', $invitation->getKey())
+                    ->pluck('project_id')
+                    ->all();
+
+                if ($announcedScope !== []) {
+                    $membership->update(['is_scoped' => true]);
+                    $membership->syncProjectScope($announcedScope);
+                }
+            }
+
             $invitation->update(['accepted_at' => now()]);
 
             return $invitation->workspace;
@@ -97,7 +114,7 @@ class AcceptInvitation
 
             // No workspace context on this route: read the announced scope
             // through the unscoped pivot, then the project names without the
-            // global scope.
+            // global scope. Guests and members alike announce a perimeter.
             $scopeProjectIds = InvitationProject::query()
                 ->where('invitation_id', $invitation->getKey())
                 ->pluck('project_id');
@@ -108,7 +125,7 @@ class AcceptInvitation
                     'inviterName' => $owner?->name ?? $workspace->name,
                     'email' => $invitation->email,
                     'role' => $invitation->role->value,
-                    'projects' => $invitation->role === WorkspaceRole::Guest
+                    'projects' => $scopeProjectIds !== []
                         ? Project::withoutWorkspaceScope()
                             ->whereIn('id', $scopeProjectIds)
                             ->orderBy('name')

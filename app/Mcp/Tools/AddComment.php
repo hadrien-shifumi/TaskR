@@ -12,9 +12,9 @@ use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Attributes\Name;
 
-#[Name("add_comment")]
+#[Name('add_comment')]
 #[Description(
-    "Add a comment to an issue. The authenticated user is the author.",
+    'Add a comment to an issue. The authenticated user is the author.',
 )]
 class AddComment extends AgentTool
 {
@@ -24,17 +24,17 @@ class AddComment extends AgentTool
     public function schema(JsonSchema $schema): array
     {
         return [
-            "workspace_id" => $schema
+            'workspace_id' => $schema
                 ->string()
-                ->description("ULID of the workspace")
+                ->description('ULID of the workspace')
                 ->required(),
-            "issue_id" => $schema
+            'issue_id' => $schema
                 ->string()
-                ->description("ULID of the issue to comment on")
+                ->description('ULID of the issue to comment on')
                 ->required(),
-            "body" => $schema
+            'body' => $schema
                 ->string()
-                ->description("Comment body (max 20000 chars)")
+                ->description('Comment body (max 20000 chars)')
                 ->required(),
         ];
     }
@@ -43,20 +43,20 @@ class AddComment extends AgentTool
     {
         $this->resolveWorkspace($request);
 
-        $issue = Issue::query()->findOrFail($request->get("issue_id"));
+        $issue = Issue::query()->findOrFail($request->get('issue_id'));
 
         $action = app(AddCommentAction::class);
-        $body = $request->validate($action->rules())["body"];
+        $body = $request->validate($action->rules())['body'];
 
         $comment = $action->handle($issue, $this->currentUser($request), $body);
 
         return Response::structured([
-            "comment" => [
-                "id" => $comment->id,
-                "issueId" => $comment->issue_id,
-                "authorId" => $comment->author_id,
-                "body" => $comment->body,
-                "createdAt" => $comment->created_at->toISOString(),
+            'comment' => [
+                'id' => $comment->id,
+                'issueId' => $comment->issue_id,
+                'authorId' => $comment->author_id,
+                'body' => $comment->body,
+                'createdAt' => $comment->created_at->toISOString(),
             ],
         ]);
     }

@@ -14,7 +14,7 @@ use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Attributes\Name;
 
 #[Name('set_issue_knowledge')]
-#[Description('Replace the knowledge pages linked to an issue; pass an empty array to unlink all. Pages must belong to the same workspace and outside the trash; a guest may only link pages within their project perimeter, transverse pages (no project) stay reserved to full members.')]
+#[Description('Replace the knowledge pages linked to an issue; pass an empty array to unlink all. Pages must belong to the same workspace and outside the trash; a guest or a scoped member may only link pages within their project perimeter, transverse pages (no project) stay reserved to full members.')]
 class SetIssueKnowledge extends AgentTool
 {
     /**

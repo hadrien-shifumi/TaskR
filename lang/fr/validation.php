@@ -117,7 +117,10 @@ return [
 
     'invitation' => [
         'guest_requires_projects' => 'Un invité Guest doit être rattaché à au moins un projet.',
-        'member_cannot_carry_projects' => 'Une invitation Member ne porte pas de périmètre de projets.',
+    ],
+
+    'member_scope' => [
+        'members_only' => 'Seul un membre peut porter un périmètre de projets : le périmètre d\'un invité se pilote via son équipe projet et le propriétaire a accès à tout.',
     ],
 
 ];

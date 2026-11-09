@@ -846,15 +846,26 @@ const fr: typeof en = {
         notePrefix:
             "Les invitations sont réservées aux propriétaires. Un",
         memberWord: "membre",
-        noteSuffix: "accède à tout l'espace ; un guest est restreint à son périmètre.",
+        noteSuffix:
+            "accède à tout l'espace, sauf périmètre restreint ; un guest est restreint à son périmètre.",
         inviteTitle: "Inviter",
         inviteDescriptionPrefix: "Un",
         inviteDescriptionSuffix:
-            "accède à tout l'espace ; un guest est restreint aux projets choisis.",
+            "accède à tout l'espace par défaut et peut être restreint à des projets choisis ; un guest est restreint aux projets choisis.",
         roleLabel: "Rôle",
-        scopeLabel: "Périmètre du guest",
+        scopeLabel: "Périmètre de projets",
         scopeHint: "Choisissez au moins un projet.",
-        noProjects: "Aucun projet actif — créez-en un avant d'inviter un guest.",
+        memberScopeHint:
+            "Laissez vide pour un accès complet à l'espace, ou choisissez des projets pour restreindre le membre.",
+        noProjects: "Aucun projet actif — créez-en un avant d'inviter.",
+        editScope: "Modifier le périmètre…",
+        editScopeTitle: "Modifier le périmètre",
+        editScopeDescription:
+            "Choisissez les projets visibles par {{name}}. Tout le reste se comporte comme inexistant pour cette personne.",
+        editScopeHint:
+            "Ne sélectionnez aucun projet pour un accès complet à l'espace.",
+        ownedScopeNote:
+            "Les projets dont la personne est propriétaire restent dans son périmètre.",
     },
 
     templatesPage: {

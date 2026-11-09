@@ -110,6 +110,7 @@ use App\Actions\Workspaces\ShowGeneralSettingsPage;
 use App\Actions\Workspaces\ShowMembersPage;
 use App\Actions\Workspaces\SwitchWorkspace;
 use App\Actions\Workspaces\UpdateGeneralSettings;
+use App\Actions\Workspaces\UpdateMemberScope;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function (): void {
@@ -143,6 +144,7 @@ Route::middleware(['auth', 'workspace'])->group(function (): void {
     Route::post('/workspaces/{workspace}/invitations/{invitation}/resend', ResendInvitation::class)->name('workspaces.invitations.resend');
     Route::delete('/workspaces/{workspace}/invitations/{invitation}', CancelInvitation::class)->name('workspaces.invitations.destroy');
     Route::delete('/workspaces/{workspace}/members/{user}', RemoveMember::class)->name('workspaces.members.destroy');
+    Route::match(['put', 'patch'], '/workspaces/{workspace}/members/{user}/scope', UpdateMemberScope::class)->name('workspaces.members.scope');
 
     Route::get('/settings/account', ShowAccountSettingsPage::class)->name('settings.account');
 

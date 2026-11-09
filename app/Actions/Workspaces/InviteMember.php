@@ -43,7 +43,8 @@ class InviteMember
             'email' => ['required', 'string', 'email', 'max:255'],
             'role' => ['nullable', 'string', 'in:'.implode(',', array_column(WorkspaceRole::cases(), 'value'))],
             // A guest is onboarded with a perimeter: never empty, always
-            // projects of this workspace. Members carry no scope.
+            // projects of this workspace. A member may carry one too: an
+            // empty perimeter keeps the default full workspace access.
             'project_ids' => ['nullable', 'array'],
             'project_ids.*' => [
                 'ulid',
@@ -53,9 +54,9 @@ class InviteMember
     }
 
     /**
-     * Cross-field rules the base validator cannot express: a guest always
-     * carries a non-empty scope, a member never does. Runs as an "after"
-     * hook — errors added before the run are wiped by the validator.
+     * Cross-field rule the base validator cannot express: a guest always
+     * carries a non-empty scope. Runs as an "after" hook — errors added
+     * before the run are wiped by the validator.
      */
     public function afterValidator(Validator $validator): void
     {
@@ -65,10 +66,6 @@ class InviteMember
 
         if ($role === WorkspaceRole::Guest->value && $projectIds === []) {
             $validator->errors()->add('project_ids', __('validation.invitation.guest_requires_projects'));
-        }
-
-        if ($role !== WorkspaceRole::Guest->value && $projectIds !== []) {
-            $validator->errors()->add('project_ids', __('validation.invitation.member_cannot_carry_projects'));
         }
     }
 
@@ -80,18 +77,11 @@ class InviteMember
         $role = $data['role'] ?? WorkspaceRole::Member->value;
         $projectIds = array_values($data['project_ids'] ?? []);
 
-        // Object-level mirror of the HTTP cross-field rules: protects every
-        // call site (web, MCP, tests) from a scope-less guest or a scoped
-        // member invitation.
+        // Object-level mirror of the HTTP cross-field rule: protects every
+        // call site (web, MCP, tests) from a scope-less guest invitation.
         if ($role === WorkspaceRole::Guest->value && $projectIds === []) {
             throw ValidationException::withMessages([
                 'project_ids' => __('validation.invitation.guest_requires_projects'),
-            ]);
-        }
-
-        if ($role !== WorkspaceRole::Guest->value && $projectIds !== []) {
-            throw ValidationException::withMessages([
-                'project_ids' => __('validation.invitation.member_cannot_carry_projects'),
             ]);
         }
 
@@ -104,7 +94,10 @@ class InviteMember
                 'expires_at' => now()->addDays(7),
             ]);
 
-            if ($role === WorkspaceRole::Guest->value) {
+            // Guest and member invitations alike announce their perimeter:
+            // never empty for a guest, optional for a member (empty = the
+            // default full workspace access).
+            if ($projectIds !== []) {
                 $invitation->attachScope($projectIds);
             }
 

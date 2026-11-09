@@ -16,7 +16,9 @@ class ListTrashedKnowledgePages
     /**
      * List all trashed pages of the workspace, with metadata.
      *
-     * For guests: only pages within their project scope.
+     * For a scoped visitor: only the pages of their perimeter's projects,
+     * plus the transverse pages for a scoped member — a full member —
+     * never for a guest.
      *
      * @return array<int, array{id: string, title: string, deletedAt: string|null, deletedBy: string|null, deletedReason: string|null, projectId: string|null, projectName: string|null}>
      */
@@ -26,11 +28,17 @@ class ListTrashedKnowledgePages
             ->with(['deletedBy', 'project'])
             ->orderBy('deleted_at', 'desc');
 
-        // Guest scoping: only pages of projects in their roster.
         if ($user !== null) {
-            $scope = app(WorkspaceContext::class)->accessibleProjectIds($user);
+            $context = app(WorkspaceContext::class);
+            $scope = $context->accessibleProjectIds($user);
             if ($scope !== null) {
-                $query->whereIn('project_id', $scope);
+                $query->where(function ($query) use ($context, $scope, $user) {
+                    $query->whereIn('project_id', $scope);
+
+                    if ($context->seesTransverseKnowledgePages($user)) {
+                        $query->orWhereNull('project_id');
+                    }
+                });
             }
         }
 

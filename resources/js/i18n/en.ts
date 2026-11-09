@@ -838,15 +838,24 @@ const en = {
         noMembers: "No members yet.",
         notePrefix: "Invitations are reserved for owners. A",
         memberWord: "member",
-        noteSuffix: "sees the whole workspace; a guest is restricted to their scope.",
+        noteSuffix:
+            "sees the whole workspace unless restricted to a perimeter; a guest is restricted to their scope.",
         inviteTitle: "Invite",
         inviteDescriptionPrefix: "A",
         inviteDescriptionSuffix:
-            "sees the whole workspace; a guest is restricted to the chosen projects.",
+            "sees the whole workspace by default and can be restricted to chosen projects; a guest is restricted to the chosen projects.",
         roleLabel: "Role",
-        scopeLabel: "Guest scope",
+        scopeLabel: "Project perimeter",
         scopeHint: "Pick at least one project.",
-        noProjects: "No active project — create one before inviting a guest.",
+        memberScopeHint:
+            "Leave empty for full workspace access, or pick projects to restrict the member.",
+        noProjects: "No active project — create one before inviting.",
+        editScope: "Edit perimeter…",
+        editScopeTitle: "Edit perimeter",
+        editScopeDescription:
+            "Choose the projects {{name}} can see. Everything else behaves as non-existent for them.",
+        editScopeHint: "Leave every project unselected for full workspace access.",
+        ownedScopeNote: "Projects owned by the member stay in their perimeter.",
     },
 
     templatesPage: {

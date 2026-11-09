@@ -38,7 +38,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Head, router, useForm, usePage } from '@inertiajs/react';
-import { MoreHorizontal, Send, Trash2, X } from 'lucide-react';
+import { MoreHorizontal, Send, ShieldCheck, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { PageSharedProps } from '@/types';
@@ -49,6 +49,8 @@ interface MemberRow {
     name: string;
     email: string;
     role: 'owner' | 'member' | 'guest';
+    isScoped: boolean;
+    scopeProjects: Array<{ id: string; name: string; owned: boolean }>;
     joinedAt: string | null;
 }
 
@@ -85,12 +87,15 @@ export default function Members() {
     const { t } = useTranslation();
     const isOwner = workspace?.role === 'owner';
     const [inviting, setInviting] = useState(false);
+    const [scopeEditing, setScopeEditing] = useState<MemberRow | null>(null);
 
     const inviteForm = useForm<{ email: string; role: 'member' | 'guest'; project_ids: string[] }>({
         email: '',
         role: 'member',
         project_ids: [],
     });
+
+    const scopeForm = useForm<{ project_ids: string[] }>({ project_ids: [] });
 
     const toggleProject = (id: string) => {
         inviteForm.setData(
@@ -99,6 +104,29 @@ export default function Members() {
                 ? inviteForm.data.project_ids.filter((p) => p !== id)
                 : [...inviteForm.data.project_ids, id],
         );
+    };
+
+    const openScopeEditor = (member: MemberRow) => {
+        setScopeEditing(member);
+        scopeForm.setData('project_ids', member.scopeProjects.map((p) => p.id));
+        scopeForm.clearErrors();
+    };
+
+    const toggleScopeProject = (id: string) => {
+        scopeForm.setData(
+            'project_ids',
+            scopeForm.data.project_ids.includes(id)
+                ? scopeForm.data.project_ids.filter((p) => p !== id)
+                : [...scopeForm.data.project_ids, id],
+        );
+    };
+
+    const submitScope = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!scopeEditing) return;
+        scopeForm.patch(route('workspaces.members.scope', [workspace?.id, scopeEditing.id]), {
+            onSuccess: () => setScopeEditing(null),
+        });
     };
 
     const submitInvite = (e: React.FormEvent) => {
@@ -163,6 +191,11 @@ export default function Members() {
                                             <p className="truncate text-xs text-muted-foreground">
                                                 {member.email}
                                             </p>
+                                            {member.isScoped && member.scopeProjects.length > 0 ? (
+                                                <p className="truncate text-xs text-muted-foreground">
+                                                    {member.scopeProjects.map((p) => p.name).join(' · ')}
+                                                </p>
+                                            ) : null}
                                         </div>
                                     </div>
                                 </TableCell>
@@ -185,6 +218,12 @@ export default function Members() {
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
                                                 <DropdownMenuGroup>
+                                                    {member.role === 'member' ? (
+                                                        <DropdownMenuItem onClick={() => openScopeEditor(member)}>
+                                                            <ShieldCheck aria-hidden />
+                                                            {t('membersPage.editScope')}
+                                                        </DropdownMenuItem>
+                                                    ) : null}
                                                     <DropdownMenuItem variant="destructive" onClick={() => remove(member)}>
                                                         <Trash2 aria-hidden />
                                                         {t('membersPage.removeFromWorkspace')}
@@ -313,9 +352,6 @@ export default function Members() {
                                 onValueChange={(v) => {
                                     if (v !== 'member' && v !== 'guest') return;
                                     inviteForm.setData('role', v);
-                                    if (v === 'member') {
-                                        inviteForm.setData('project_ids', []);
-                                    }
                                 }}
                             >
                                 <SelectTrigger
@@ -333,44 +369,96 @@ export default function Members() {
                                 </SelectContent>
                             </Select>
                         </div>
-                        {inviteForm.data.role === 'guest' ? (
-                            <div className="grid gap-2">
-                                <Label>{t('membersPage.scopeLabel')}</Label>
-                                <p className="text-sm text-muted-foreground">
-                                    {t('membersPage.scopeHint')}
-                                </p>
-                                <div className="flex flex-wrap gap-2">
-                                    {projects.map((project) => {
-                                        const selected = inviteForm.data.project_ids.includes(project.id);
-                                        return (
-                                            <Button
-                                                key={project.id}
-                                                type="button"
-                                                size="sm"
-                                                variant={selected ? 'default' : 'outline'}
-                                                aria-pressed={selected}
-                                                onClick={() => toggleProject(project.id)}
-                                            >
-                                                {project.name}
-                                            </Button>
-                                        );
-                                    })}
-                                </div>
-                                {projects.length === 0 ? (
-                                    <p className="text-sm text-muted-foreground">
-                                        {t('membersPage.noProjects')}
-                                    </p>
-                                ) : null}
-                                {inviteForm.errors.project_ids ? (
-                                    <p className="text-sm text-destructive">
-                                        {inviteForm.errors.project_ids}
-                                    </p>
-                                ) : null}
+                        <div className="grid gap-2">
+                            <Label>{t('membersPage.scopeLabel')}</Label>
+                            <p className="text-sm text-muted-foreground">
+                                {inviteForm.data.role === 'guest'
+                                    ? t('membersPage.scopeHint')
+                                    : t('membersPage.memberScopeHint')}
+                            </p>
+                            <div className="flex flex-wrap gap-2">
+                                {projects.map((project) => {
+                                    const selected = inviteForm.data.project_ids.includes(project.id);
+                                    return (
+                                        <Button
+                                            key={project.id}
+                                            type="button"
+                                            size="sm"
+                                            variant={selected ? 'default' : 'outline'}
+                                            aria-pressed={selected}
+                                            onClick={() => toggleProject(project.id)}
+                                        >
+                                            {project.name}
+                                        </Button>
+                                    );
+                                })}
                             </div>
-                        ) : null}
+                            {projects.length === 0 ? (
+                                <p className="text-sm text-muted-foreground">
+                                    {t('membersPage.noProjects')}
+                                </p>
+                            ) : null}
+                            {inviteForm.errors.project_ids ? (
+                                <p className="text-sm text-destructive">
+                                    {inviteForm.errors.project_ids}
+                                </p>
+                            ) : null}
+                        </div>
                         <DialogFooter>
                             <Button type="submit" disabled={inviteForm.processing}>
                                 {t('membersPage.invite')}
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={scopeEditing !== null} onOpenChange={(open) => (open ? null : setScopeEditing(null))}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>{t('membersPage.editScopeTitle')}</DialogTitle>
+                        <DialogDescription>
+                            {t('membersPage.editScopeDescription', { name: scopeEditing?.name ?? '' })}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={submitScope} className="grid gap-4">
+                        <div className="grid gap-2">
+                            <p className="text-sm text-muted-foreground">
+                                {t('membersPage.editScopeHint')}
+                            </p>
+                            <div className="flex flex-wrap gap-2">
+                                {projects.map((project) => {
+                                    const selected = scopeForm.data.project_ids.includes(project.id);
+                                    const owned = scopeEditing?.scopeProjects.some(
+                                        (p) => p.id === project.id && p.owned,
+                                    );
+                                    return (
+                                        <Button
+                                            key={project.id}
+                                            type="button"
+                                            size="sm"
+                                            variant={selected ? 'default' : 'outline'}
+                                            aria-pressed={selected}
+                                            disabled={owned}
+                                            onClick={() => toggleScopeProject(project.id)}
+                                        >
+                                            {project.name}
+                                        </Button>
+                                    );
+                                })}
+                            </div>
+                            {scopeEditing?.scopeProjects.some((p) => p.owned) ? (
+                                <p className="text-sm text-muted-foreground">
+                                    {t('membersPage.ownedScopeNote')}
+                                </p>
+                            ) : null}
+                            {scopeForm.errors.project_ids ? (
+                                <p className="text-sm text-destructive">{scopeForm.errors.project_ids}</p>
+                            ) : null}
+                        </div>
+                        <DialogFooter>
+                            <Button type="submit" disabled={scopeForm.processing}>
+                                {t('membersPage.editScopeTitle')}
                             </Button>
                         </DialogFooter>
                     </form>

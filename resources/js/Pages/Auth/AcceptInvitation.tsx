@@ -60,7 +60,7 @@ export default function AcceptInvitation() {
                         )}
                     </Banner>
 
-                    {isGuest && invitation.projects.length > 0 ? (
+                    {invitation.projects.length > 0 ? (
                         <div className="grid gap-1.5 mb-4">
                             <Label htmlFor="invitation-projects">
                                 {t('auth.invitation.scopeLabel')}

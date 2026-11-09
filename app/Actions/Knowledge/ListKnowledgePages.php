@@ -22,15 +22,16 @@ class ListKnowledgePages
 
     /**
      * Flat list of the workspace's pages — tree structure stays
-     * reconstructable through `parentId`. A guest only gets the pages
-     * attached to their perimeter's projects; transverse pages and other
-     * projects' pages are absent.
+     * reconstructable through `parentId`. A scoped visitor (a guest's
+     * roster, a scoped member's perimeter) only gets the pages attached
+     * to their perimeter's projects; a scoped member — a full member —
+     * keeps the transverse pages on top.
      *
      * The optional project filter narrows the list further:
      * `'transverse'` keeps only workspace-level pages (project_id null),
      * a project ULID keeps only that project's pages, and `NO_SCOPE`
      * (nothing chosen yet) ships an empty list. The filter is ANDed
-     * with the guest scope — an out-of-scope project yields nothing.
+     * with the scope — an out-of-scope project yields nothing.
      *
      * @return array<int, array<string, mixed>>
      */
@@ -40,12 +41,20 @@ class ListKnowledgePages
             return [];
         }
 
+        $context = app(WorkspaceContext::class);
         $scope = $user instanceof User
-            ? app(WorkspaceContext::class)->accessibleProjectIds($user)
+            ? $context->accessibleProjectIds($user)
             : null;
+        $seesTransverse = ! $user instanceof User || $context->seesTransverseKnowledgePages($user);
 
         return KnowledgePage::query()
-            ->when($scope !== null, fn ($query) => $query->whereIn('project_id', $scope))
+            ->when($scope !== null, fn ($query) => $query->where(function ($query) use ($scope, $seesTransverse) {
+                $query->whereIn('project_id', $scope);
+
+                if ($seesTransverse) {
+                    $query->orWhereNull('project_id');
+                }
+            }))
             ->when($projectFilter === 'transverse', fn ($query) => $query->whereNull('project_id'))
             ->when(
                 $projectFilter !== null && $projectFilter !== '' && $projectFilter !== 'transverse',

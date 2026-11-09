@@ -92,12 +92,16 @@ class UpdateKnowledgePage
             }
         }
 
-        // A guest works strictly within their perimeter: the page keeps a
-        // project of the perimeter and an accessible parent.
-        $scope = app(WorkspaceContext::class)->accessibleProjectIds($editor);
+        // A scoped visitor works strictly within their perimeter's project
+        // pages; a scoped member — a full member — may also write
+        // transverse pages, a guest may not.
+        $context = app(WorkspaceContext::class);
+        $scope = $context->accessibleProjectIds($editor);
         if ($scope !== null) {
             $projectId = $data['project_id'] ?? null;
-            if ($projectId === null || ! in_array($projectId, $scope, true)) {
+            $seesTransverse = $context->seesTransverseKnowledgePages($editor);
+
+            if (($projectId === null && ! $seesTransverse) || ($projectId !== null && ! in_array($projectId, $scope, true))) {
                 throw ValidationException::withMessages([
                     'project_id' => [__('validation.knowledge.project_out_of_scope')],
                 ]);
@@ -106,7 +110,7 @@ class UpdateKnowledgePage
             $parentId = $data['parent_id'] ?? null;
             if ($parentId !== null) {
                 $parent = (new KnowledgePage)->withoutWorkspaceScope()->find($parentId);
-                if ($parent === null || ! app(WorkspaceContext::class)->canAccessKnowledgePage($editor, $parent)) {
+                if ($parent === null || ! $context->canAccessKnowledgePage($editor, $parent)) {
                     throw ValidationException::withMessages([
                         'parent_id' => [__('validation.knowledge.parent_out_of_scope')],
                     ]);

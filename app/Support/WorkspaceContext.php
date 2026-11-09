@@ -2,9 +2,11 @@
 
 namespace App\Support;
 
+use App\Enums\ProjectRole;
 use App\Enums\WorkspaceRole;
 use App\Models\Issue;
 use App\Models\KnowledgePage;
+use App\Models\Membership;
 use App\Models\Milestone;
 use App\Models\Project;
 use App\Models\ProjectMember;
@@ -21,8 +23,9 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
  *
  * Also the authorization hub: canUseWorkspace is the belonging check
  * (any membership, guests included), isFullMember excludes guests from
- * workspace-wide surfaces, and accessibleProjectIds resolves a guest's
- * scope from its project_members roster rows (null = unrestricted).
+ * workspace-wide surfaces, and accessibleProjectIds resolves a user's
+ * scope — a guest's roster, a scoped member's granted perimeter — from
+ * the membership data (null = unrestricted).
  */
 class WorkspaceContext
 {
@@ -89,9 +92,13 @@ class WorkspaceContext
 
     /**
      * Project ids the user may access, or null for an unrestricted
-     * scope (owner and member). A guest's scope is its project_members
-     * roster; a non-member sees nothing. Resolved once per user for the
-     * lifetime of the current workspace binding.
+     * scope (owner and unscoped member). A guest's scope is its
+     * project_members roster; a scoped member's is the perimeter granted
+     * on its membership, extended by the projects it owns (a member can
+     * never be blind to a project they own — they create some, and
+     * ownership can be transferred to them). A non-member sees nothing.
+     * Resolved once per user for the lifetime of the current workspace
+     * binding.
      *
      * @return list<string>|null
      */
@@ -111,6 +118,22 @@ class WorkspaceContext
     }
 
     /**
+     * Forget the memoized project scopes (all users, or one). Perimeter
+     * writes that need a fresh read on the same instance within a single
+     * request call this after mutating the scope data.
+     */
+    public function flushAccessibleProjectScope(?User $user = null): void
+    {
+        if ($user === null) {
+            $this->accessibleProjectScopes = [];
+
+            return;
+        }
+
+        unset($this->accessibleProjectScopes[$user->getKey()]);
+    }
+
+    /**
      * @return list<string>|null
      */
     private function resolveAccessibleProjectIds(User $user, Workspace $workspace): ?array
@@ -121,7 +144,11 @@ class WorkspaceContext
             return [];
         }
 
-        if ($role !== WorkspaceRole::Guest) {
+        if ($role === WorkspaceRole::Member) {
+            return $this->resolveMemberProjectIds($user, $workspace);
+        }
+
+        if ($role === WorkspaceRole::Owner) {
             return null;
         }
 
@@ -129,6 +156,35 @@ class WorkspaceContext
             ->where('user_id', $user->getKey())
             ->pluck('project_id')
             ->all();
+    }
+
+    /**
+     * A member carrying the scoped marker sees its granted perimeter
+     * extended by its owned projects; without the marker the scope is
+     * unrestricted. Plain roster rows (team membership) never widen the
+     * perimeter: the roster stays the real project team, not a scope.
+     *
+     * @return list<string>|null
+     */
+    private function resolveMemberProjectIds(User $user, Workspace $workspace): ?array
+    {
+        $membership = Membership::query()
+            ->where('workspace_id', $workspace->getKey())
+            ->where('user_id', $user->getKey())
+            ->first();
+
+        if (! ($membership?->is_scoped ?? false)) {
+            return null;
+        }
+
+        $granted = $membership->projectScopeIds();
+        $owned = ProjectMember::query()
+            ->where('user_id', $user->getKey())
+            ->where('role', ProjectRole::Owner->value)
+            ->pluck('project_id')
+            ->all();
+
+        return array_values(array_unique([...$granted, ...$owned]));
     }
 
     public function canViewProject(User $user, Project $project): bool
@@ -183,6 +239,16 @@ class WorkspaceContext
         }
 
         return $this->canViewProject($user, $page->project);
+    }
+
+    /**
+     * Transverse knowledge pages (no project) are a full-member surface:
+     * a scoped member keeps them — only a guest loses them. The list and
+     * search actions need the rule as a boolean, without a page in hand.
+     */
+    public function seesTransverseKnowledgePages(User $user): bool
+    {
+        return $this->isFullMember($user);
     }
 
     /**

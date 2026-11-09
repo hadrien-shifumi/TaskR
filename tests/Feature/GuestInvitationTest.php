@@ -107,22 +107,30 @@ class GuestInvitationTest extends TestCase
         ]);
     }
 
-    public function test_member_invitation_cannot_carry_projects(): void
+    public function test_member_invitation_can_carry_projects(): void
     {
-        [$owner, $workspace, $alpha] = $this->setupWorkspace();
+        [$owner, $workspace, $alpha, $beta] = $this->setupWorkspace();
 
+        // Since members can be scoped to a project perimeter, a member
+        // invitation carries its announced scope like a guest one.
         $this->actingAs($owner)
             ->post(route('workspaces.invite', $workspace), [
                 'email' => 'peer@example.com',
                 'role' => 'member',
-                'project_ids' => [$alpha->id],
+                'project_ids' => [$alpha->id, $beta->id],
             ])
-            ->assertInvalid('project_ids');
+            ->assertRedirect();
 
-        $this->assertDatabaseMissing('invitations', [
-            'workspace_id' => $workspace->id,
-            'email' => 'peer@example.com',
-        ]);
+        $invitation = Invitation::withoutWorkspaceScope()
+            ->where('workspace_id', $workspace->id)
+            ->where('email', 'peer@example.com')
+            ->firstOrFail();
+
+        $this->assertSame(WorkspaceRole::Member, $invitation->role);
+        $this->assertSame(
+            [$alpha->id, $beta->id],
+            $invitation->projects()->orderBy('name')->pluck('projects.id')->all(),
+        );
     }
 
     public function test_member_cannot_invite_a_guest(): void

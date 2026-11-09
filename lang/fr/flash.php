@@ -63,6 +63,7 @@ return [
 
     'member' => [
         'removed' => 'Membre :name retiré.',
+        'scope_updated' => 'Périmètre de projets de :name mis à jour.',
     ],
 
     'template' => [

@@ -48,7 +48,10 @@ return [
 
     'invitation' => [
         'guest_requires_projects' => 'A guest must be attached to at least one project.',
-        'member_cannot_carry_projects' => 'A member invitation carries no project scope.',
+    ],
+
+    'member_scope' => [
+        'members_only' => 'Only a member can carry a project perimeter: a guest is piloted through their project team, the owner has full access.',
     ],
 
     'attributes' => [
