@@ -49,7 +49,7 @@ class ShowKnowledgeVersions
         return [
             'page' => GetKnowledgePage::run($page, $user),
             'versions' => ListKnowledgePageVersions::run($page, $user),
-            'pages' => ListKnowledgePages::run($workspace, $user),
+            'pages' => ListKnowledgePages::run($workspace, $user, $page->project_id ?? 'transverse'),
             'projects' => $workspace->projects()
                 ->when($scope !== null, fn ($query) => $query->whereIn('id', $scope))
                 ->orderBy('name')

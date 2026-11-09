@@ -92,7 +92,12 @@ class GuestCompatibilityTest extends TestCase
                 ->has('issues', 2)
                 ->where('totalUnfiltered', 2));
 
+        // Knowledge waits for a scope: the bare index ships an empty tree,
+        // and the full transverse content is reachable through the scope.
         $this->actingAs($member)->get(route('knowledge.index'))->assertOk()
+            ->assertInertia(fn ($page) => $page->has('pages', 0));
+        $this->actingAs($member)->get(route('knowledge.index', ['project' => 'transverse']))
+            ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->has('pages', 1)
                 ->where('pages.0.title', 'Transverse'));

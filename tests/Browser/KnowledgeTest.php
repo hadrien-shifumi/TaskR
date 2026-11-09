@@ -26,6 +26,14 @@ it('walks a newcomer through the knowledge tree', function () {
     $this->actingAs($owner);
 
     $page = visit('/knowledge');
+
+    // No scope chosen yet: the tree waits for a pick.
+    $page->assertSee('Select a project')
+        ->assertDontSee('Glossaire métier');
+
+    // Picking the transverse scope reveals the tree.
+    $page->click('@filter-select-project');
+    $page->click('[role="option"]:has-text("Cross-workspace only")');
     $page->assertSee('Glossaire métier')
         ->assertSee('Convention de branches');
 
@@ -43,7 +51,8 @@ it('creates then edits a knowledge page from the UI', function () {
     $this->actingAs($owner);
 
     $page = visit('/knowledge');
-    $page->assertSee('No knowledge pages yet.');
+    // No scope chosen yet: the tree shows the pick-a-scope invite.
+    $page->assertSee('Select a project');
 
     $page->click('header button:has-text("New page")');
     $page->fill('new-knowledge-title', 'Onboarding');
@@ -128,6 +137,17 @@ it('hides out-of-scope and transverse pages from a guest on the knowledge tree',
 
     $page = visit('/knowledge');
 
+    // No scope chosen: the tree ships empty — nothing leaks by default.
+    $page->assertSee('Select a project')
+        ->assertDontSee('Page client')
+        ->assertDontSee('Page interne')
+        ->assertDontSee('Page transverse');
+
+    // The select only offers the guest's perimeter projects.
+    $page->click('@filter-select-project');
+    $page->assertDontSee('Interne secret');
+
+    $page->click('[role="option"]:has-text("Projet client")');
     $page->assertSee('Page client')
         ->assertDontSee('Page interne')
         ->assertDontSee('Page transverse')

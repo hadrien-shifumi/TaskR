@@ -76,6 +76,17 @@ use Laravel\Mcp\Server\Attributes\Version;
 class TaskrServer extends Server
 {
     /**
+     * One tools/list page must carry the whole catalog. The package defaults
+     * (15 per page, 50 max) truncate the listing after update_issue, so any
+     * agent reading a single page — the common case — never discovers
+     * log_time, update_time_entry or delete_time_entry and cannot modify a
+     * time entry through MCP. 100 covers the current 57 tools in one response.
+     */
+    public int $defaultPaginationLength = 100;
+
+    public int $maxPaginationLength = 100;
+
+    /**
      * @var array<int, class-string>
      */
     protected array $tools = [

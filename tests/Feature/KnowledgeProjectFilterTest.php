@@ -76,7 +76,7 @@ class KnowledgeProjectFilterTest extends TestCase
                 ->where('projectFilter', 'transverse'));
     }
 
-    public function test_shows_all_pages_when_no_filter(): void
+    public function test_bare_index_ships_an_empty_tree_until_a_scope_is_chosen(): void
     {
         [$owner] = $this->setupWorkspaceWithPages();
 
@@ -85,11 +85,12 @@ class KnowledgeProjectFilterTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Knowledge/Index')
-                ->has('pages', 3)
+                ->has('pages', 0)
+                ->has('projects', 2)
                 ->where('projectFilter', null));
     }
 
-    public function test_shows_all_pages_when_filter_is_empty(): void
+    public function test_empty_project_param_behaves_like_no_scope_chosen(): void
     {
         [$owner] = $this->setupWorkspaceWithPages();
 
@@ -98,7 +99,66 @@ class KnowledgeProjectFilterTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Knowledge/Index')
-                ->has('pages', 3));
+                ->has('pages', 0)
+                ->where('projectFilter', null));
+    }
+
+    public function test_deep_link_scopes_sidebar_to_the_opened_page_project(): void
+    {
+        [$owner, , $projectA, , $pageA] = $this->setupWorkspaceWithPages();
+
+        $this->actingAs($owner)
+            ->get(route('knowledge.show', $pageA->id))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->component('Knowledge/Index')
+                ->where('projectFilter', $projectA->id)
+                ->has('pages', 1)
+                ->where('pages.0.title', 'Page Alpha')
+                ->where('selected.id', $pageA->id));
+    }
+
+    public function test_deep_link_to_transverse_page_scopes_to_transverse(): void
+    {
+        [$owner, , , , , , $transverse] = $this->setupWorkspaceWithPages();
+
+        $this->actingAs($owner)
+            ->get(route('knowledge.show', $transverse->id))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->component('Knowledge/Index')
+                ->where('projectFilter', 'transverse')
+                ->has('pages', 1)
+                ->where('pages.0.title', 'Page transverse')
+                ->where('selected.id', $transverse->id));
+    }
+
+    public function test_versions_page_scopes_sidebar_to_the_page_project(): void
+    {
+        [$owner, , , , $pageA] = $this->setupWorkspaceWithPages();
+
+        $this->actingAs($owner)
+            ->get(route('knowledge.versions', $pageA->id))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->component('Knowledge/Versions', false)
+                ->where('page.id', $pageA->id)
+                ->where('pages.0.title', 'Page Alpha')
+                ->has('pages', 1));
+    }
+
+    public function test_versions_page_for_transverse_page_scopes_to_transverse(): void
+    {
+        [$owner, , , , , , $transverse] = $this->setupWorkspaceWithPages();
+
+        $this->actingAs($owner)
+            ->get(route('knowledge.versions', $transverse->id))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->component('Knowledge/Versions', false)
+                ->where('page.id', $transverse->id)
+                ->where('pages.0.title', 'Page transverse')
+                ->has('pages', 1));
     }
 
     public function test_passes_project_filter_to_inertia_payload(): void

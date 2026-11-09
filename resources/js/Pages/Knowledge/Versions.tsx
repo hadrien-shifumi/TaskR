@@ -117,7 +117,12 @@ export default function KnowledgeVersions() {
             <FlashBanner />
 
             <div className="grid items-start gap-6 lg:grid-cols-[16rem_1fr]">
-                <KnowledgeSidebar pages={pages} projects={projects} selectedId={page.id} />
+                <KnowledgeSidebar
+                    pages={pages}
+                    projects={projects}
+                    selectedId={page.id}
+                    projectFilter={page.projectId ?? 'transverse'}
+                />
 
                 <div className="min-w-0">
                     <article className="overflow-hidden rounded-xl border bg-card">

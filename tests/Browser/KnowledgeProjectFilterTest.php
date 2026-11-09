@@ -5,7 +5,7 @@ use App\Actions\Projects\CreateProject;
 use App\Models\KnowledgePage;
 use App\Support\WorkspaceContext;
 
-it('filters the knowledge tree by project from the sidebar select', function () {
+it('ships an empty tree by default and shows one scope at a time', function () {
     Queue::fake();
     [$owner, $workspace] = setupBrowserWorkspace();
     app(WorkspaceContext::class)->set($workspace);
@@ -27,20 +27,25 @@ it('filters the knowledge tree by project from the sidebar select', function () 
 
     $page = visit('/knowledge');
 
-    // All three pages visible by default.
-    $page->assertSee('Page Alpha')
-        ->assertSee('Page Beta')
-        ->assertSee('Page transverse');
+    // No scope chosen yet: placeholder in the select, empty tree, invite.
+    $page->assertSee('No project selected')
+        ->assertSee('Select a project')
+        ->assertDontSee('Page Alpha')
+        ->assertDontSee('Page Beta')
+        ->assertDontSee('Page transverse');
 
-    // Filter by project Alpha — only its page remains in the tree.
+    // The "All projects" entry is gone from the options.
     $page->click('@filter-select-project');
+    $page->assertDontSee('All projects');
+
+    // Pick Alpha — only its page shows, one scope at a time.
     $page->click('[role="option"]:has-text("Alpha")');
     $page->assertQueryStringHas('project', $alpha->id)
         ->assertSee('Page Alpha')
         ->assertDontSee('Page Beta')
         ->assertDontSee('Page transverse');
 
-    // Filter by transverse only — only the cross-workspace page remains.
+    // Switch to transverse — only the cross-workspace page remains.
     $page->click('@filter-select-project');
     $page->click('[role="option"]:has-text("Cross-workspace only")');
     $page->assertQueryStringHas('project', 'transverse')
@@ -48,15 +53,68 @@ it('filters the knowledge tree by project from the sidebar select', function () 
         ->assertDontSee('Page Alpha')
         ->assertDontSee('Page Beta');
 
-    // Back to all projects — every page is visible again.
-    $page->click('@filter-select-project');
-    $page->click('[role="option"]:has-text("All projects")');
-    $page->assertQueryStringMissing('project')
+    $page->assertNoSmoke();
+});
+
+it('scopes the sidebar to the page project on a deep link', function () {
+    Queue::fake();
+    [$owner, $workspace] = setupBrowserWorkspace();
+    app(WorkspaceContext::class)->set($workspace);
+
+    $alpha = CreateProject::run($workspace, $owner, ['name' => 'Alpha']);
+    $beta = CreateProject::run($workspace, $owner, ['name' => 'Beta']);
+
+    $pageAlpha = CreateKnowledgePage::run($workspace, $owner, [
+        'title' => 'Page Alpha', 'body' => 'Corps', 'project_id' => $alpha->id,
+    ]);
+    CreateKnowledgePage::run($workspace, $owner, [
+        'title' => 'Page Beta', 'body' => 'Corps', 'project_id' => $beta->id,
+    ]);
+    CreateKnowledgePage::run($workspace, $owner, [
+        'title' => 'Page transverse', 'body' => 'Corps',
+    ]);
+
+    $this->actingAs($owner);
+
+    // Deep link without ?project=: the sidebar scopes itself to Alpha.
+    $page = visit('/knowledge/'.$pageAlpha->id);
+
+    $page->assertPathIs('/knowledge/'.$pageAlpha->id)
         ->assertSee('Page Alpha')
-        ->assertSee('Page Beta')
-        ->assertSee('Page transverse');
+        ->assertDontSee('Page Beta')
+        ->assertDontSee('Page transverse');
+
+    expect($page->text('@filter-select-project'))->toContain('Alpha');
 
     $page->assertNoSmoke();
+});
+
+it('scopes the versions page sidebar to the consulted page project', function () {
+    Queue::fake();
+    [$owner, $workspace] = setupBrowserWorkspace();
+    app(WorkspaceContext::class)->set($workspace);
+
+    $alpha = CreateProject::run($workspace, $owner, ['name' => 'Alpha']);
+    $beta = CreateProject::run($workspace, $owner, ['name' => 'Beta']);
+
+    $pageAlpha = CreateKnowledgePage::run($workspace, $owner, [
+        'title' => 'Page Alpha', 'body' => 'Corps', 'project_id' => $alpha->id,
+    ]);
+    CreateKnowledgePage::run($workspace, $owner, [
+        'title' => 'Page Beta', 'body' => 'Corps', 'project_id' => $beta->id,
+    ]);
+    CreateKnowledgePage::run($workspace, $owner, [
+        'title' => 'Page transverse', 'body' => 'Corps',
+    ]);
+
+    $this->actingAs($owner);
+
+    $page = visit('/knowledge/'.$pageAlpha->id.'/versions');
+
+    $page->assertSee('Page Alpha')
+        ->assertDontSee('Page Beta')
+        ->assertDontSee('Page transverse')
+        ->assertNoSmoke();
 });
 
 it('keeps the project filter when opening a page from the filtered tree', function () {

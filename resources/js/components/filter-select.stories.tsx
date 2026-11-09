@@ -95,3 +95,17 @@ export const UnknownValue: Story = {
         />
     ),
 };
+
+export const PlaceholderMode = {
+    name: 'Placeholder mode (no all entry)',
+    render: () => (
+        <FilterSelect
+            value=""
+            options={STATUS_OPTIONS}
+            placeholder="Nothing picked yet"
+            onChange={() => {}}
+            ariaLabel="Filter by status"
+            className="w-44"
+        />
+    ),
+};

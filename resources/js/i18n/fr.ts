@@ -954,6 +954,9 @@ const fr: typeof en = {
         clearSearch: "Effacer la recherche",
         noPagesInProject: "Aucune page dans {{project}} pour le moment.",
         noPagesInProjectHint: "Soyez le premier à documenter ce projet.",
+        noScope: "Sélectionnez un projet",
+        noScopeHint:
+            "Choisissez un projet ou « Transverse » dans le filtre ci-dessus pour afficher ses pages.",
         deleteTitle: "Supprimer « {{title}} » ?",
         deleteDescription:
             "La page est retirée de la base de connaissances. Cette action est irréversible.",
@@ -1014,7 +1017,7 @@ const fr: typeof en = {
             dismiss: "Ignorer",
         },
         filters: {
-            allProjects: "Tous les projets",
+            placeholder: "Aucun projet sélectionné",
             transverseOnly: "Transverse uniquement",
             projectAria: "Filtrer par projet",
         },

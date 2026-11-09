@@ -1,7 +1,7 @@
 import { FilterSelect } from '@/components/filter-select';
 import { Button } from '@/components/ui/button';
 import { Link } from '@inertiajs/react';
-import { BookOpen, Folder, Globe, Plus, type LucideIcon } from 'lucide-react';
+import { BookOpen, Folder, FolderSearch, Globe, Plus, type LucideIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 export interface PageRef {
@@ -24,9 +24,13 @@ type KnowledgeSidebarProps = {
     projects: ProjectOption[];
     /** Page currently open — highlighted as aria-current in the tree. */
     selectedId: string | null;
-    /** Active sidebar project filter ('' = all projects). */
+    /**
+     * Active scope: a project id, 'transverse', or ''/undefined when no
+     * scope is chosen yet — the tree then gives way to a pick-a-scope
+     * invite.
+     */
     projectFilter?: string;
-    /** Filter handler; omit on pages that don't offer the project filter. */
+    /** Scope change handler; omit on pages that offer no scope select. */
     onProjectFilterChange?: (value: string) => void;
     /** Create-dialog opener; omit to hide the empty-state CTA buttons. */
     onCreatePage?: () => void;
@@ -53,7 +57,7 @@ function countNodes(nodes: TreeNode[]): number {
     return nodes.reduce((total, node) => total + 1 + countNodes(node.children), 0);
 }
 
-/** Maquette sidebar nav-item pattern applied to a tree row. */
+/** Maquette nav-item pattern applied to a tree row. */
 function TreeRow({
     node,
     depth,
@@ -100,13 +104,15 @@ type SidebarSectionProps = {
     projectFilter?: string;
 };
 
-/** Sidebar group: mono heading (icon, truncated label, page count) over its tree. */
+/** Sidebar group: mono heading (icon, label, page count) over its tree. */
 function SidebarSection({ label, icon: Icon, trees, selectedId, projectFilter }: SidebarSectionProps) {
-    if (trees.length === 0) return null;
+    if (trees.length === 0) {
+        return null;
+    }
 
     return (
         <section>
-            <h3 className="flex items-center gap-1.5 px-2 pb-1 font-mono text-[12px] tracking-[0.08em] uppercase text-muted-foreground">
+            <h3 className="flex items-center gap-1.5 px-2 pb-1 font-mono text-[12px] tracking-[0.08em] text-muted-foreground uppercase">
                 <Icon className="size-3.5 shrink-0" aria-hidden />
                 <span className="min-w-0 truncate">{label}</span>
                 <span className="ml-auto shrink-0 rounded-full bg-secondary px-1.5 py-0.5 font-sans text-[10px] tabular-nums text-muted-foreground">
@@ -127,11 +133,12 @@ function SidebarSection({ label, icon: Icon, trees, selectedId, projectFilter }:
 }
 
 /**
- * Knowledge page tree: sticky card with a global page count, an optional
- * project filter select, and one section per project (plus the transverse
- * one) — each headed by an icon and its recursive page count. The tree
- * scrolls inside the card on desktop. Centered empty states cover the
- * no-pages-at-all case and the active-project-filter-matches-nothing case.
+ * Knowledge sidebar: a sticky card with a page count, an optional scope
+ * select (a project or the transverse scope — one at a time, no "all"
+ * entry) and the matching section. With no scope chosen the tree gives
+ * way to a pick-a-scope invite. The tree scrolls inside the card on
+ * desktop; centered empty states cover the no-pages and
+ * scope-matches-nothing cases.
  */
 export function KnowledgeSidebar({
     pages,
@@ -146,20 +153,18 @@ export function KnowledgeSidebar({
     const trees = buildTree(pages);
     const crossWorkspaceTrees = trees.filter((node) => !node.projectId);
 
-    // A project filter hides every non-matching section; when none survives,
-    // offer a scoped empty state naming the filtered project (or transverse).
-    const filterActive = projectFilter !== undefined && projectFilter !== '';
+    // No scope chosen yet: the tree waits for a pick. With an active
+    // scope the server already narrowed `pages`; when the scope matches
+    // nothing, offer a scoped empty state naming it.
+    const scopeActive = projectFilter !== undefined && projectFilter !== '';
     const sectionVisible =
-        !filterActive ||
-        (projectFilter === 'transverse'
+        projectFilter === 'transverse'
             ? crossWorkspaceTrees.length > 0
-            : trees.some((node) => node.projectId === projectFilter));
+            : trees.some((node) => node.projectId === projectFilter);
     const filteredProjectName =
         projectFilter === 'transverse'
             ? t('knowledge.crossWorkspace')
-            : (projects.find((project) => project.id === projectFilter)?.name ??
-                projectFilter ??
-                '');
+            : (projects.find((project) => project.id === projectFilter)?.name ?? projectFilter ?? '');
 
     const createCta = onCreatePage ? (
         <Button size="sm" className="mt-2" onClick={onCreatePage}>
@@ -185,7 +190,7 @@ export function KnowledgeSidebar({
                             { value: 'transverse', label: t('knowledge.filters.transverseOnly') },
                             ...projects.map((project) => ({ value: project.id, label: project.name })),
                         ]}
-                        allLabel={t('knowledge.filters.allProjects')}
+                        placeholder={t('knowledge.filters.placeholder')}
                         ariaLabel={t('knowledge.filters.projectAria')}
                         onChange={onProjectFilterChange}
                         className="w-full"
@@ -196,44 +201,57 @@ export function KnowledgeSidebar({
                 aria-label={t('knowledge.treeAria')}
                 className="flex flex-col gap-3 overflow-y-auto px-3 py-3 lg:max-h-[calc(100dvh-13rem)]"
             >
-                <SidebarSection
-                    label={t('knowledge.crossWorkspace')}
-                    icon={Globe}
-                    trees={crossWorkspaceTrees}
-                    selectedId={selectedId}
-                    projectFilter={projectFilter}
-                />
-                {projects.map((project) => (
-                    <SidebarSection
-                        key={project.id}
-                        label={project.name}
-                        icon={Folder}
-                        trees={trees.filter((node) => node.projectId === project.id)}
-                        selectedId={selectedId}
-                        projectFilter={projectFilter}
-                    />
-                ))}
-                {pages.length === 0 ? (
+                {!scopeActive ? (
                     <div className="flex flex-col items-center gap-1.5 px-2 py-6 text-center">
-                        <BookOpen className="size-8 text-muted-foreground/50" aria-hidden />
-                        <p className="text-sm font-medium">{t('knowledge.noPages')}</p>
-                        <p className="text-sm text-muted-foreground">
-                            {t('knowledge.noPagesHint')}
-                        </p>
+                        <FolderSearch className="size-8 text-muted-foreground/50" aria-hidden />
+                        <p className="text-sm font-medium">{t('knowledge.noScope')}</p>
+                        <p className="text-sm text-muted-foreground">{t('knowledge.noScopeHint')}</p>
                         {createCta}
                     </div>
-                ) : filterActive && !sectionVisible ? (
-                    <div className="flex flex-col items-center gap-1.5 px-2 py-6 text-center">
-                        <Folder className="size-8 text-muted-foreground/50" aria-hidden />
-                        <p className="text-sm font-medium">
-                            {t('knowledge.noPagesInProject', { project: filteredProjectName })}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                            {t('knowledge.noPagesInProjectHint')}
-                        </p>
-                        {createCta}
-                    </div>
-                ) : null}
+                ) : (
+                    <>
+                        <SidebarSection
+                            label={t('knowledge.crossWorkspace')}
+                            icon={Globe}
+                            trees={crossWorkspaceTrees}
+                            selectedId={selectedId}
+                            projectFilter={projectFilter}
+                        />
+                        {projects.map((project) => (
+                            <SidebarSection
+                                key={project.id}
+                                label={project.name}
+                                icon={Folder}
+                                trees={trees.filter((node) => node.projectId === project.id)}
+                                selectedId={selectedId}
+                                projectFilter={projectFilter}
+                            />
+                        ))}
+                        {pages.length === 0 ? (
+                            <div className="flex flex-col items-center gap-1.5 px-2 py-6 text-center">
+                                <BookOpen className="size-8 text-muted-foreground/50" aria-hidden />
+                                <p className="text-sm font-medium">{t('knowledge.noPages')}</p>
+                                <p className="text-sm text-muted-foreground">
+                                    {t('knowledge.noPagesHint')}
+                                </p>
+                                {createCta}
+                            </div>
+                        ) : (
+                            !sectionVisible && (
+                                <div className="flex flex-col items-center gap-1.5 px-2 py-6 text-center">
+                                    <Folder className="size-8 text-muted-foreground/50" aria-hidden />
+                                    <p className="text-sm font-medium">
+                                        {t('knowledge.noPagesInProject', { project: filteredProjectName })}
+                                    </p>
+                                    <p className="text-sm text-muted-foreground">
+                                        {t('knowledge.noPagesInProjectHint')}
+                                    </p>
+                                    {createCta}
+                                </div>
+                            )
+                        )}
+                    </>
+                )}
             </nav>
         </aside>
     );

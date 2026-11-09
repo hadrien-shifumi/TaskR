@@ -939,6 +939,8 @@ const en = {
         clearSearch: "Clear search",
         noPagesInProject: "No pages in {{project}} yet.",
         noPagesInProjectHint: "Be the first to document this project.",
+        noScope: "Select a project",
+        noScopeHint: 'Pick a project or "Cross-workspace" in the filter above to display its pages.',
         deleteTitle: 'Delete "{{title}}"?',
         deleteDescription: "The page is removed from the knowledge base. This cannot be undone.",
         newPageTitle: "New knowledge page",
@@ -996,7 +998,7 @@ const en = {
             dismiss: "Dismiss",
         },
         filters: {
-            allProjects: "All projects",
+            placeholder: "No project selected",
             transverseOnly: "Cross-workspace only",
             projectAria: "Filter by project",
         },

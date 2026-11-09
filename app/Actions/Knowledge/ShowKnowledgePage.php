@@ -76,7 +76,7 @@ class ShowKnowledgePage
                 ->map(fn ($project) => ProjectPresenter::option($project))
                 ->all(),
             'selected' => $selected !== null ? GetKnowledgePage::run($selected, $user) : null,
-            'projectFilter' => $projectFilter,
+            'projectFilter' => $projectFilter === ListKnowledgePages::NO_SCOPE ? null : $projectFilter,
         ];
     }
 
@@ -85,11 +85,20 @@ class ShowKnowledgePage
         $projectFilter = $request->validated('project');
         $projectFilter = is_string($projectFilter) && $projectFilter !== '' ? $projectFilter : null;
 
+        // Deep link: opening a page without an explicit filter scopes the
+        // sidebar to that page's project (or transverse when it has none).
+        // The bare index picks no scope at all — the sidebar ships an
+        // empty tree until the visitor chooses a project or transverse.
+        $scope = $projectFilter
+            ?? ($page !== null
+                ? ($page->project_id ?? 'transverse')
+                : ListKnowledgePages::NO_SCOPE);
+
         $data = $this->handle(
             app(WorkspaceContext::class)->getOrFail(),
             $page,
             $request->user(),
-            $projectFilter,
+            $scope,
         );
 
         return $responder->toResponse($request, $data);

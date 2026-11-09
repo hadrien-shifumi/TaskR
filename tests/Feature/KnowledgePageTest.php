@@ -277,19 +277,23 @@ class KnowledgePageTest extends TestCase
             'parent_id' => $root->id,
         ]);
 
+        // No scope chosen yet: the bare index ships an empty tree.
         $this->actingAs($owner)
             ->get('/knowledge')
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('Knowledge/Index')
-                ->has('pages', 2)
-                ->where('pages.0.title', 'Glossaire'));
+                ->has('pages', 0)
+                ->where('projectFilter', null));
 
+        // Opening a page directly scopes the sidebar to its project.
         $this->actingAs($owner)
-            ->get("/knowledge/{$root->id}")
+            ->get('/knowledge/'.$root->id)
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('Knowledge/Index')
-                ->where('selected.body', 'Vocabulaire du domaine.'));
+                ->where('selected.body', 'Vocabulaire du domaine.')
+                ->where('projectFilter', 'transverse')
+                ->has('pages', 1));
     }
 }

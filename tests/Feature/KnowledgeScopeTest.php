@@ -79,20 +79,29 @@ class KnowledgeScopeTest extends TestCase
 
     // ── Arborescence ─────────────────────────────────────────────────
 
-    public function test_guest_knowledge_index_lists_only_scope_pages(): void
+    public function test_guest_index_ships_empty_tree_with_scoped_project_list()
     {
         [$owner, $workspace, $inScopePage, $outOfScopePage, $transversePage, $guest] = $this->setupScopedGuest();
 
+        // No scope chosen yet: empty tree, but the select only offers the
+        // guest's perimeter projects.
         $this->actingAs($guest)
             ->get(route('knowledge.index'))
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
-                ->has('pages', 1)
-                ->where('pages.0.id', $inScopePage->id)
+                ->has('pages', 0)
                 ->has('projects', 1));
+
+        // An explicit in-scope filter still lists only the perimeter's pages.
+        $this->actingAs($guest)
+            ->get(route('knowledge.index', ['project' => $inScopePage->project_id]))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->has('pages', 1)
+                ->where('pages.0.id', $inScopePage->id));
     }
 
-    public function test_member_sees_all_knowledge_pages(): void
+    public function test_member_bare_index_ships_an_empty_tree(): void
     {
         [$owner, $workspace, $inScopePage, $outOfScopePage, $transversePage, $guest] = $this->setupScopedGuest();
         $member = User::factory()->create();
@@ -106,7 +115,7 @@ class KnowledgeScopeTest extends TestCase
             ->get(route('knowledge.index'))
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
-                ->has('pages', 3));
+                ->has('pages', 0));
     }
 
     public function test_guest_sees_pages_of_archived_scope_projects(): void
@@ -117,7 +126,7 @@ class KnowledgeScopeTest extends TestCase
         ArchiveProject::run($inScopePage->project);
 
         $this->actingAs($guest)
-            ->get(route('knowledge.index'))
+            ->get(route('knowledge.index', ['project' => $inScopePage->project_id]))
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->has('pages', 1)
