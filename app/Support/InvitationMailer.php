@@ -8,7 +8,9 @@ use App\Models\Invitation;
 use App\Models\InvitationProject;
 use App\Models\Project;
 use Illuminate\Support\Facades\App;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Throwable;
 
 /**
  * Sends the invitation e-mail to the invited address. Shared by the invite
@@ -44,16 +46,29 @@ class InvitationMailer
                 ->pluck('name')
                 ->all();
 
-        Mail::to($invitation->email)
-            ->locale(App::getLocale())
-            ->send(new InvitationMail(
-                email: $invitation->email,
-                role: $invitation->role->value,
-                workspaceName: $workspace?->name ?? '',
-                inviterName: $inviter?->name ?? $workspace?->name ?? '',
-                projectNames: $projectNames,
-                acceptUrl: route('invitations.accept', ['invitation' => $invitation->token]),
-                expiresAt: $invitation->expires_at,
-            ));
+        try {
+            Mail::to($invitation->email)
+                ->locale(App::getLocale())
+                ->send(new InvitationMail(
+                    email: $invitation->email,
+                    role: $invitation->role->value,
+                    workspaceName: $workspace?->name ?? '',
+                    inviterName: $inviter?->name ?? $workspace?->name ?? '',
+                    projectNames: $projectNames,
+                    acceptUrl: route('invitations.accept', ['invitation' => $invitation->token]),
+                    expiresAt: $invitation->expires_at,
+                ));
+        } catch (Throwable $e) {
+            // The invitation row is already committed: a mail failure (bad
+            // sender address, SMTP down) must not turn the HTTP call into a
+            // 500. The owner still gets the acceptance link in the flash;
+            // the failure is logged so the mailer config gets fixed.
+            Log::error('Invitation mail could not be sent.', [
+                'invitation_id' => $invitation->getKey(),
+                'workspace_id' => $invitation->workspace_id,
+                'email' => $invitation->email,
+                'exception' => $e,
+            ]);
+        }
     }
 }

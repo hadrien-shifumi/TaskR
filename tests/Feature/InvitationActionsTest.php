@@ -20,6 +20,8 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Inertia\Testing\AssertableInertia;
+use Mockery;
+use Symfony\Component\Mailer\Exception\TransportException;
 use Tests\TestCase;
 
 class InvitationActionsTest extends TestCase
@@ -508,5 +510,29 @@ class InvitationActionsTest extends TestCase
             ->assertInvalid('email');
 
         Mail::assertNotSent(InvitationMail::class);
+    }
+
+    public function test_a_failing_mail_transport_does_not_break_the_invitation(): void
+    {
+        [$owner, $workspace] = $this->setupWorkspace();
+
+        // Prod incident: the SMTP transport rejects the mail (550 on the
+        // sender address) — the invitation is already committed at that
+        // point and the HTTP call must not turn into a 500.
+        $pending = Mockery::mock();
+        $pending->shouldReceive('locale')->andReturnSelf();
+        $pending->shouldReceive('send')->andThrow(new TransportException('550 Sender address rejected'));
+        Mail::shouldReceive('to')->with('bob@example.com')->andReturn($pending);
+
+        $response = $this->actingAs($owner)
+            ->post(route('workspaces.invite', $workspace), ['email' => 'bob@example.com'])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('invitations', [
+            'workspace_id' => $workspace->id,
+            'email' => 'bob@example.com',
+        ]);
+        // The owner still gets the acceptance link in the flash.
+        $this->assertNotNull($response->getSession()->get('status'));
     }
 }
