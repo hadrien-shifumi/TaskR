@@ -10,8 +10,9 @@ use Carbon\CarbonImmutable;
 
 /**
  * End-to-end scenarios of the Timer & weekly timesheet chantier: the
- * start/stop cycle from the issue page, the single-active-timer rule,
- * the weekly grid and the author-only permissions on entries.
+ * start/stop cycle from the issue page, the parallel-timers rule with its
+ * stop-or-parallel question, the weekly grid and the author-only
+ * permissions on entries.
  */
 it('starts a timer from the issue page and validates the pre-filled proposal', function () {
     [$owner, $workspace, $project] = setupBrowserWorkspace(withProject: true);
@@ -26,7 +27,7 @@ it('starts a timer from the issue page and validates the pre-filled proposal', f
         ->assertSeeIn('@timer-widget', 'Chrono target');
 
     // The stop opens the confirmation dialog with the measured time.
-    $page->click('@timer-widget-stop')
+    $page->click("@timer-widget-stop-{$issue->id}")
         ->assertVisible('@log-time-hours');
     expect((float) $page->value('@log-time-hours'))->toBeGreaterThan(0.0);
 
@@ -42,7 +43,7 @@ it('starts a timer from the issue page and validates the pre-filled proposal', f
         ->and($entry->author_id)->toBe($owner->id);
 });
 
-it('replaces the running timer when a second one starts on another issue', function () {
+it('asks stop-or-parallel and runs the second timer alongside the first', function () {
     [$owner, $workspace, $project] = setupBrowserWorkspace(withProject: true);
     $first = CreateIssue::run($workspace, ['project_id' => $project->id, 'title' => 'First timed issue']);
     $second = CreateIssue::run($workspace, ['project_id' => $project->id, 'title' => 'Second timed issue']);
@@ -50,24 +51,60 @@ it('replaces the running timer when a second one starts on another issue', funct
     $this->actingAs($owner);
     $page = visit('/issues/'.$first->id);
     $page->click('@issue-timer-toggle')
-        ->assertVisible('@timer-widget')
-        ->assertSeeIn('@timer-widget', 'First timed issue');
+        ->assertVisible("@timer-widget-row-{$first->id}");
 
-    // Starting on the second issue stops the first and proposes its time.
+    // Starting on the second issue asks what to do with the running one.
     $page = visit('/issues/'.$second->id);
     $page->click('@issue-timer-toggle')
+        ->assertVisible('@timer-conflict-dialog');
+
+    // Parallel: both timers keep running, each with its own stop button.
+    $page->click('@timer-conflict-parallel')
+        ->assertVisible("@timer-widget-row-{$first->id}")
+        ->assertVisible("@timer-widget-row-{$second->id}");
+
+    // Stopping the first one only opens its own proposal.
+    $page->click("@timer-widget-stop-{$first->id}")
         ->assertVisible('@log-time-hours')
         ->assertSee('First timed issue');
 
-    $page->fill('@log-time-note', 'replaced run');
+    $page->fill('@log-time-note', 'parallel run');
     $page->click('@entry-submit');
 
-    // The proposal was recorded on the first issue, the running timer is the second one.
     app(WorkspaceContext::class)->set($workspace);
     expect($first->timeEntries()->count())->toBe(1)
-        ->and($first->timeEntries()->first()->note)->toBe('replaced run')
+        ->and($first->timeEntries()->first()->note)->toBe('parallel run')
         ->and($second->timeEntries()->count())->toBe(0)
-        ->and(ActiveTimer::query()->where('user_id', $owner->id)->first()->issue_id)->toBe($second->id);
+        ->and(ActiveTimer::query()->where('user_id', $owner->id)->pluck('issue_id')->all())->toBe([$second->id]);
+});
+
+it('offers to stop the running timer instead, proposing its elapsed time', function () {
+    [$owner, $workspace, $project] = setupBrowserWorkspace(withProject: true);
+    $first = CreateIssue::run($workspace, ['project_id' => $project->id, 'title' => 'First timed issue']);
+    $second = CreateIssue::run($workspace, ['project_id' => $project->id, 'title' => 'Second timed issue']);
+
+    $this->actingAs($owner);
+    $page = visit('/issues/'.$first->id);
+    $page->click('@issue-timer-toggle')
+        ->assertVisible("@timer-widget-row-{$first->id}");
+
+    // The explicit stop answer replaces the old silent substitution: the
+    // first timer is stopped and its time proposed, the second one runs.
+    $page = visit('/issues/'.$second->id);
+    $page->click('@issue-timer-toggle')
+        ->assertVisible('@timer-conflict-dialog')
+        ->click('@timer-conflict-stop')
+        ->assertVisible('@log-time-hours')
+        ->assertSee('First timed issue');
+
+    $page->fill('@log-time-note', 'stopped run');
+    $page->click('@entry-submit');
+
+    app(WorkspaceContext::class)->set($workspace);
+    expect($first->timeEntries()->count())->toBe(1)
+        ->and($first->timeEntries()->first()->note)->toBe('stopped run')
+        ->and($second->timeEntries()->count())->toBe(0)
+        ->and(ActiveTimer::query()->where('user_id', $owner->id)->pluck('issue_id')->all())->toBe([$second->id]);
 });
 
 it('fills, saves and edits a weekly timesheet line through the grid', function () {
@@ -121,9 +158,9 @@ it('warns and still validates a timer left running for more than 24 hours', func
     $this->actingAs($owner);
     $page = visit('/issues/'.$issue->id);
     $page->assertVisible('@timer-widget')
-        ->assertSeeIn('@timer-widget-elapsed', '26:');
+        ->assertSeeIn("@timer-widget-elapsed-{$issue->id}", '26:');
 
-    $page->click('@timer-widget-stop')
+    $page->click("@timer-widget-stop-{$issue->id}")
         ->assertVisible('@log-time-hours')
         ->assertSee('more than 24 hours');
 

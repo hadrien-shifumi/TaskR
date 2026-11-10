@@ -2,7 +2,8 @@
 
 namespace App\Http\Middleware;
 
-use App\Actions\TimeTracking\ShowActiveTimer;
+use App\Actions\TimeTracking\ShowActiveTimers;
+use App\Models\ActiveTimer;
 use App\Models\CommentMention;
 use App\Models\User;
 use App\Models\Workspace;
@@ -81,12 +82,18 @@ class HandleInertiaRequests
                     ->whereNull('read_at')
                     ->count()
                 : 0,
-            // Lazy: the current user's running timer in this workspace, or
-            // null. Rehydrated on every navigation — the server timestamp is
-            // the source of truth, closing the browser never stops the timer.
-            'timer' => fn (): ?array => $user !== null && $workspace !== null
-                ? app(ShowActiveTimer::class)->handle($user)?->timerState()
-                : null,
+            // Lazy: the current user's running timers in this workspace,
+            // oldest first. Rehydrated on every navigation — the server
+            // timestamp is the source of truth, closing the browser never
+            // stops a timer. Several timers may run in parallel, one per
+            // issue.
+            'timers' => fn (): array => $user !== null && $workspace !== null
+                ? app(ShowActiveTimers::class)
+                    ->handle($user)
+                    ->map(fn (ActiveTimer $timer) => $timer->timerState())
+                    ->values()
+                    ->all()
+                : [],
             // Autocomplete source of the comment editor: members and
             // projects of the workspace, within the account's perimeter.
             // Deferred: the payload rides a partial reload after the first

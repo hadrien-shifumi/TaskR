@@ -388,6 +388,12 @@ const fr: typeof en = {
         confirmHint: "Temps pour « {{title}} » — ajustez avant de valider.",
         guard24h: "Ce chronomètre tourne depuis plus de 24 heures — vérifiez avant de valider.",
         startRefused: "Le chronomètre n'a pas pu être démarré.",
+        conflictTitle: "Un chronomètre tourne déjà",
+        conflictHintSingle: "« {{title}} » est déjà chronométré. Arrêter son chronomètre — son temps écoulé sera proposé à la saisie — ou démarrer celui-ci en parallèle ?",
+        conflictHintMultiple: "{{count}} chronomètres tournent déjà. Les arrêter — leur temps écoulé sera proposé à la saisie — ou démarrer celui-ci en parallèle ?",
+        stopRunningOne: "Arrêter le chronomètre en cours",
+        stopRunningMany: "Arrêter les {{count}} chronomètres",
+        startParallel: "Démarrer en parallèle",
     },
 
     projectsPage: {

@@ -50,8 +50,9 @@ class TimerTest extends TestCase
         $this->actingAs($owner)
             ->postJson(route('issues.timer.start', $issue->id))
             ->assertOk()
-            ->assertJsonStructure(['timer' => ['id', 'issueId', 'issueTitle', 'startedAt', 'elapsedHours', 'exceeds24h']])
-            ->assertJsonPath('timer.issueTitle', 'Page de profil');
+            ->assertJsonStructure(['timer' => ['id', 'issueId', 'issueTitle', 'startedAt', 'elapsedHours', 'exceeds24h'], 'stopped'])
+            ->assertJsonPath('timer.issueTitle', 'Page de profil')
+            ->assertJsonPath('stopped', []);
 
         $this->assertDatabaseHas('active_timers', [
             'user_id' => $owner->id,
@@ -60,7 +61,7 @@ class TimerTest extends TestCase
         ]);
     }
 
-    public function test_starting_a_second_timer_stops_the_first_and_proposes_elapsed_time(): void
+    public function test_a_second_timer_runs_in_parallel_by_default(): void
     {
         [$owner, $workspace, $issue] = $this->setupIssue();
 
@@ -73,11 +74,116 @@ class TimerTest extends TestCase
         $this->actingAs($owner)
             ->postJson(route('issues.timer.start', $otherIssue->id))
             ->assertOk()
-            ->assertJsonPath('stopped.roundedHours', 1.5)
-            ->assertJsonPath('stopped.issueId', $issue->id);
+            ->assertJsonPath('stopped', [])
+            ->assertJsonPath('timer.issueId', $otherIssue->id);
+
+        $this->assertSame(2, ActiveTimer::withoutWorkspaceScope()->where('user_id', $owner->id)->count());
+        $this->assertDatabaseHas('active_timers', ['user_id' => $owner->id, 'issue_id' => $issue->id]);
+        $this->assertDatabaseHas('active_timers', ['user_id' => $owner->id, 'issue_id' => $otherIssue->id]);
+    }
+
+    public function test_starting_with_stop_previous_stops_all_running_timers_and_proposes_their_elapsed_time(): void
+    {
+        [$owner, $workspace, $issue] = $this->setupIssue();
+
+        StartTimer::run($issue, $owner);
+        $this->travel(90)->minutes();
+
+        $otherProject = CreateProject::run($workspace, $owner, ['name' => 'Autre projet']);
+        $otherIssue = CreateIssue::run($workspace, ['project_id' => $otherProject->id, 'title' => 'Autre ticket']);
+        StartTimer::run($otherIssue, $owner);
+        $this->travel(30)->minutes();
+
+        $thirdIssue = CreateIssue::run($workspace, ['project_id' => $otherProject->id, 'title' => 'Troisième ticket']);
+
+        $this->actingAs($owner)
+            ->postJson(route('issues.timer.start', $thirdIssue->id), ['stop_previous' => true])
+            ->assertOk()
+            ->assertJsonCount(2, 'stopped')
+            ->assertJsonPath('stopped.0.issueId', $issue->id)
+            ->assertJsonPath('stopped.0.roundedHours', fn (float $hours) => abs($hours - 2.0) < 0.01)
+            ->assertJsonPath('stopped.1.issueId', $otherIssue->id)
+            ->assertJsonPath('stopped.1.roundedHours', fn (float $hours) => abs($hours - 0.5) < 0.01);
 
         $this->assertSame(1, ActiveTimer::withoutWorkspaceScope()->where('user_id', $owner->id)->count());
+        $this->assertDatabaseHas('active_timers', ['user_id' => $owner->id, 'issue_id' => $thirdIssue->id]);
+    }
+
+    public function test_starting_a_timer_on_an_already_timed_issue_is_refused(): void
+    {
+        [$owner, , $issue] = $this->setupIssue();
+
+        StartTimer::run($issue, $owner);
+
+        // Refused without and with the explicit stop request: the duplicate
+        // guard fires before anything is stopped.
+        $this->actingAs($owner)
+            ->postJson(route('issues.timer.start', $issue->id))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('issue');
+
+        $this->actingAs($owner)
+            ->postJson(route('issues.timer.start', $issue->id), ['stop_previous' => true])
+            ->assertStatus(422);
+
+        $this->assertSame(1, ActiveTimer::withoutWorkspaceScope()->where('user_id', $owner->id)->count());
+    }
+
+    // ── Targeted stop ───────────────────────────────────────────────
+
+    public function test_stop_targets_one_timer_among_several(): void
+    {
+        [$owner, $workspace, $issue] = $this->setupIssue();
+
+        $first = StartTimer::run($issue, $owner)['timer'];
+        $this->travel(47)->minutes();
+
+        $otherProject = CreateProject::run($workspace, $owner, ['name' => 'Autre projet']);
+        $otherIssue = CreateIssue::run($workspace, ['project_id' => $otherProject->id, 'title' => 'Autre ticket']);
+        StartTimer::run($otherIssue, $owner);
+
+        $this->actingAs($owner)
+            ->postJson(route('timer.stop'), ['timer_id' => $first->id])
+            ->assertOk()
+            ->assertJsonCount(1, 'stopped')
+            ->assertJsonPath('stopped.0.issueId', $issue->id)
+            ->assertJsonPath('stopped.0.roundedHours', 0.78);
+
+        $this->assertDatabaseMissing('active_timers', ['id' => $first->id]);
         $this->assertDatabaseHas('active_timers', ['user_id' => $owner->id, 'issue_id' => $otherIssue->id]);
+    }
+
+    public function test_stop_without_target_is_refused_when_several_timers_run(): void
+    {
+        [$owner, $workspace, $issue] = $this->setupIssue();
+
+        StartTimer::run($issue, $owner);
+
+        $otherProject = CreateProject::run($workspace, $owner, ['name' => 'Autre projet']);
+        $otherIssue = CreateIssue::run($workspace, ['project_id' => $otherProject->id, 'title' => 'Autre ticket']);
+        StartTimer::run($otherIssue, $owner);
+
+        $this->actingAs($owner)
+            ->postJson(route('timer.stop'))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('timer');
+
+        $this->assertSame(2, ActiveTimer::withoutWorkspaceScope()->where('user_id', $owner->id)->count());
+    }
+
+    public function test_stop_cannot_target_another_users_timer(): void
+    {
+        [$owner, $workspace, $issue] = $this->setupIssue();
+
+        $colleague = User::factory()->create();
+        Membership::create(['user_id' => $colleague->id, 'workspace_id' => $workspace->id, 'role' => 'member']);
+        $colleaguesTimer = StartTimer::run($issue, $colleague)['timer'];
+
+        $this->actingAs($owner)
+            ->postJson(route('timer.stop'), ['timer_id' => $colleaguesTimer->id])
+            ->assertNotFound();
+
+        $this->assertDatabaseHas('active_timers', ['id' => $colleaguesTimer->id]);
     }
 
     // ── 0.01 h floor ────────────────────────────────────────────────
@@ -92,7 +198,7 @@ class TimerTest extends TestCase
         $this->actingAs($owner)
             ->postJson(route('timer.stop'))
             ->assertOk()
-            ->assertJsonPath('stopped.roundedHours', 0.01);
+            ->assertJsonPath('stopped.0.roundedHours', 0.01);
     }
 
     // ── 47 min → rounded to the hundredth ───────────────────────────
@@ -107,7 +213,7 @@ class TimerTest extends TestCase
         $this->actingAs($owner)
             ->postJson(route('timer.stop'))
             ->assertOk()
-            ->assertJsonPath('stopped.roundedHours', 0.78);
+            ->assertJsonPath('stopped.0.roundedHours', 0.78);
     }
 
     // ── 24 h guard ──────────────────────────────────────────────────
@@ -122,7 +228,7 @@ class TimerTest extends TestCase
         $this->actingAs($owner)
             ->postJson(route('timer.stop'))
             ->assertOk()
-            ->assertJsonPath('stopped.exceeds24h', true);
+            ->assertJsonPath('stopped.0.exceeds24h', true);
 
         // Counter-case: a fresh two-hour timer is never flagged.
         StartTimer::run($issue, $owner);
@@ -131,7 +237,7 @@ class TimerTest extends TestCase
         $this->actingAs($owner)
             ->postJson(route('timer.stop'))
             ->assertOk()
-            ->assertJsonPath('stopped.exceeds24h', false);
+            ->assertJsonPath('stopped.0.exceeds24h', false);
     }
 
     // ── Done / cancelled issues refuse to be timed ──────────────────
@@ -171,7 +277,7 @@ class TimerTest extends TestCase
             ->withSession(['workspace_id' => $otherWorkspace->id])
             ->getJson(route('timer.show'))
             ->assertOk()
-            ->assertJsonPath('timer', null);
+            ->assertJsonPath('timers', []);
     }
 
     public function test_timer_start_on_issue_of_another_workspace_is_not_found(): void
@@ -218,20 +324,47 @@ class TimerTest extends TestCase
         ]);
     }
 
+    public function test_stop_previous_only_stops_the_acting_users_timers(): void
+    {
+        [$owner, $workspace, $issue] = $this->setupIssue();
+
+        $colleague = User::factory()->create();
+        Membership::create(['user_id' => $colleague->id, 'workspace_id' => $workspace->id, 'role' => 'member']);
+        $colleaguesTimer = StartTimer::run($issue, $colleague)['timer'];
+
+        $otherProject = CreateProject::run($workspace, $owner, ['name' => 'Autre projet']);
+        $otherIssue = CreateIssue::run($workspace, ['project_id' => $otherProject->id, 'title' => 'Autre ticket']);
+
+        $this->actingAs($owner)
+            ->postJson(route('issues.timer.start', $otherIssue->id), ['stop_previous' => true])
+            ->assertOk()
+            ->assertJsonPath('stopped', []);
+
+        $this->assertDatabaseHas('active_timers', ['id' => $colleaguesTimer->id]);
+    }
+
     // ── Server-side rehydration ─────────────────────────────────────
 
     public function test_active_timer_state_is_served_by_the_server(): void
     {
-        [$owner, , $issue] = $this->setupIssue();
+        [$owner, $workspace, $issue] = $this->setupIssue();
 
         StartTimer::run($issue, $owner);
+
+        $otherProject = CreateProject::run($workspace, $owner, ['name' => 'Autre projet']);
+        $otherIssue = CreateIssue::run($workspace, ['project_id' => $otherProject->id, 'title' => 'Autre ticket']);
+        StartTimer::run($otherIssue, $owner);
+        $this->travel(30)->minutes();
 
         $this->actingAs($owner)
             ->getJson(route('timer.show'))
             ->assertOk()
-            ->assertJsonPath('timer.issueId', $issue->id)
-            ->assertJsonPath('timer.issueTitle', 'Page de profil')
-            ->assertJsonPath('timer.startedAt', fn (string $startedAt) => $startedAt !== '');
+            ->assertJsonCount(2, 'timers')
+            ->assertJsonPath('timers.0.issueId', $issue->id)
+            ->assertJsonPath('timers.0.issueTitle', 'Page de profil')
+            ->assertJsonPath('timers.0.startedAt', fn (string $startedAt) => $startedAt !== '')
+            ->assertJsonPath('timers.0.elapsedHours', fn (float $elapsedHours) => abs($elapsedHours - 0.5) < 0.01)
+            ->assertJsonPath('timers.1.issueId', $otherIssue->id);
     }
 
     // ── Cascade ─────────────────────────────────────────────────────
@@ -260,7 +393,7 @@ class TimerTest extends TestCase
         $this->actingAs($owner)
             ->postJson(route('timer.stop'))
             ->assertOk()
-            ->assertJsonPath('stopped.roundedHours', 2.5);
+            ->assertJsonPath('stopped.0.roundedHours', 2.5);
 
         $this->actingAs($owner)
             ->post(route('issues.time-entries.store', $issue->id), [

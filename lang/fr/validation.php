@@ -96,6 +96,8 @@ return [
 
     'timer' => [
         'issue_closed' => 'Ce ticket est terminé ou annulé : le chronomètre ne peut pas démarrer dessus.',
+        'already_running' => 'Un chronomètre tourne déjà sur ce ticket.',
+        'stop_target_required' => 'Plusieurs chronomètres sont en cours : celui à arrêter doit être désigné.',
     ],
 
     'knowledge' => [

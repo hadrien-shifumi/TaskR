@@ -54,7 +54,7 @@ class ActiveTimer extends BaseModel
     {
         return [
             'issueId' => $this->issue_id,
-            'issueTitle' => Issue::findOrFail($this->issue_id)->title,
+            'issueTitle' => $this->issue->title,
             'startedAt' => $this->started_at->toISOString(),
             'stoppedAt' => now()->toISOString(),
             'elapsedHours' => $this->elapsedHours(),
@@ -73,7 +73,7 @@ class ActiveTimer extends BaseModel
         return [
             'id' => $this->getKey(),
             'issueId' => $this->issue_id,
-            'issueTitle' => Issue::findOrFail($this->issue_id)->title,
+            'issueTitle' => $this->issue->title,
             'startedAt' => $this->started_at->toISOString(),
             'elapsedHours' => $this->elapsedHours(),
             'exceeds24h' => $this->exceeds24h(),

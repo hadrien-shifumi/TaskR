@@ -27,6 +27,8 @@ return [
 
     'timer' => [
         'issue_closed' => 'This issue is done or cancelled: the timer cannot start on it.',
+        'already_running' => 'A timer is already running on this issue.',
+        'stop_target_required' => 'Several timers are running: the one to stop must be designated.',
     ],
 
     'knowledge' => [

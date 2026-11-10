@@ -21,11 +21,12 @@ export interface PageSharedProps {
     /** Unread @mentions of the account in the current workspace. */
     unreadMentions: number;
     /**
-     * The current user's running timer in this workspace, or null.
-     * Lazy shared prop: rehydrated on every navigation, so closing the
-     * browser never stops the timer — the server timestamp is the truth.
+     * The current user's running timers in this workspace, oldest first —
+     * several may run in parallel, one per issue. Lazy shared prop:
+     * rehydrated on every navigation, so closing the browser never stops
+     * them — the server timestamp is the truth.
      */
-    timer?: TimerState | null;
+    timers?: TimerState[];
     /**
      * Members and projects mentionable in comments, within the account's
      * perimeter. Deferred prop: absent until the client's parallel partial
@@ -34,7 +35,7 @@ export interface PageSharedProps {
     mentionables?: Mentionable[];
 }
 
-/** Live state of the user's running timer (shared prop + timer endpoints). */
+/** Live state of one of the user's running timers (shared prop + timer endpoints). */
 export interface TimerState {
     id: string;
     issueId: string;
@@ -48,7 +49,8 @@ export interface TimerState {
 /**
  * The pre-filled standard-entry proposal produced when a running timer is
  * stopped or replaced: confirming it goes through the ordinary time-entry
- * flow (hours pre-filled, today's date, empty editable note).
+ * flow (hours pre-filled, today's date, empty editable note). Stopping
+ * several timers at once queues one proposal per timer.
  */
 export interface StoppedTimerProposal {
     issueId: string;

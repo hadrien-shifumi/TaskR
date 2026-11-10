@@ -92,7 +92,7 @@ use App\Actions\TimeTracking\CreateTimeEntry;
 use App\Actions\TimeTracking\DeleteTimeEntry;
 use App\Actions\TimeTracking\ExportTimeEntries;
 use App\Actions\TimeTracking\SetIssueEstimate;
-use App\Actions\TimeTracking\ShowActiveTimer;
+use App\Actions\TimeTracking\ShowActiveTimers;
 use App\Actions\TimeTracking\ShowMyTimePage;
 use App\Actions\TimeTracking\ShowWeekTimesheet;
 use App\Actions\TimeTracking\StartTimer;
@@ -255,7 +255,7 @@ Route::middleware(['auth', 'workspace'])->group(function (): void {
 
     Route::post('/issues/{issue}/timer/start', StartTimer::class)->name('issues.timer.start');
     Route::post('/timer/stop', StopTimer::class)->name('timer.stop');
-    Route::get('/timer', ShowActiveTimer::class)->name('timer.show');
+    Route::get('/timer', ShowActiveTimers::class)->name('timer.show');
 
     // Complete workspace backup (owner only): every project, ticket, time
     // entry, comment and knowledge page in one archive — the escape hatch.

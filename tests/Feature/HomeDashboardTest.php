@@ -194,7 +194,7 @@ class HomeDashboardTest extends TestCase
         $this->actingAs($owner)
             ->postJson(route('timer.stop'))
             ->assertOk()
-            ->assertJsonPath('stopped.roundedHours', 2.5);
+            ->assertJsonPath('stopped.0.roundedHours', 2.5);
 
         // The proposal is confirmed as a standard entry on the issue.
         $this->actingAs($owner)

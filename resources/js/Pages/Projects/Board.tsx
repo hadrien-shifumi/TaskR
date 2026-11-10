@@ -3,7 +3,8 @@ import { ProjectViewSwitcher } from '@/components/project-view-switcher';
 import { Avatar, AvatarStack, BlockedBadge, HealthBadge, KnowledgeBadge, OpenChildBadge, PriorityBadge, StatusBadge } from '@/components/issue-badges';
 import { Banner } from '@/components/banner';
 import { FlashBanner } from '@/components/flash-banner';
-import { useTimerControl } from '@/components/timer-widget';
+import { TimerProposalDialogs, useTimerControl, useTimerProposals } from '@/components/timer-widget';
+import { StartTimerConflictDialog } from '@/components/start-timer-conflict-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -25,13 +26,12 @@ import {
 import AppLayout from '@/layouts/app-layout';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { Archive, ArrowLeft, MoveRight, Play, Plus, Square, User } from 'lucide-react';
-import { memo, useCallback, useState } from 'react';
+import { memo, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CascadeMoveDialog, pendingDescendantsCount } from '@/components/cascade-move-dialog';
-import type { DescendantsSummary, HealthData, LabelRef, MilestoneOption, StoppedTimerProposal, TimerState, UserRef } from '@/types';
+import type { DescendantsSummary, HealthData, LabelRef, MilestoneOption, TimerState, UserRef } from '@/types';
 import type { TemplateOption } from '@/Pages/Issues/Index/types';
 import { formatShortDate, formatDate } from '@/lib/format-date';
-import { LogTimeDialog } from '@/Pages/Issues/Show/components/log-time-dialog';
 import { BoardCreateIssueDialog } from './Board/create-issue-dialog';
 import { ArchiveCompletedDialog } from './Board/archive-completed-dialog';
 import { boardIssueUrl, IssueDetailDialog, type IssueDetailPayload } from './Board/issue-detail-dialog';
@@ -64,8 +64,8 @@ type BoardCardProps = {
     column: Pick<BoardColumn, 'id' | 'name' | 'category'>;
     isDragging: boolean;
     otherColumns: Array<Pick<BoardColumn, 'id' | 'name'>>;
-    /** Id of the user's running timer's issue, null when idle. */
-    activeTimerIssueId: string | null;
+    /** Issues currently timed by the user — one timer may run per issue. */
+    timedIssueIds: string[];
     buildIssueHref: (issueId: string) => string;
     onDragStart: (issueId: string) => void;
     onDragEnd: () => void;
@@ -84,7 +84,7 @@ const BoardCard = memo(function BoardCard({
     column,
     isDragging,
     otherColumns,
-    activeTimerIssueId,
+    timedIssueIds,
     buildIssueHref,
     onDragStart,
     onDragEnd,
@@ -92,7 +92,7 @@ const BoardCard = memo(function BoardCard({
     onToggleTimer,
 }: BoardCardProps) {
     const { t } = useTranslation();
-    const isTiming = activeTimerIssueId === issue.id;
+    const isTiming = timedIssueIds.includes(issue.id);
 
     return (
         <article
@@ -213,8 +213,8 @@ type PageProps = {
     milestones?: MilestoneOption[];
     /** Present when the URL carries an `?issue=` param: the modal is open. */
     issueDetail?: IssueDetailPayload | null;
-    /** Shared prop — the user's running timer, or null. */
-    timer?: TimerState | null;
+    /** Shared prop — the user's running timers in this workspace. */
+    timers?: TimerState[];
     /** Shared by HandleInertiaRequests — drives the owner-only archive button. */
     workspace?: { role?: string } | null;
 };
@@ -234,7 +234,7 @@ export default function Board() {
         milestones,
         issueDetail,
         workspace,
-        timer,
+        timers,
     } = usePage<PageProps>().props;
     const { t } = useTranslation();
     const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -248,9 +248,12 @@ export default function Board() {
     const [pendingMove, setPendingMove] = useState<{ issueId: string; statusId: string; count: number } | null>(
         null,
     );
-    /** Proposal of a timer stopped or replaced by a card or the fiche. */
-    const [timerProposal, setTimerProposal] = useState<StoppedTimerProposal | null>(null);
-    const timerControl = useTimerControl({ onProposal: setTimerProposal, onError: setMoveError });
+    /** Proposals of timers stopped from the board, confirmed one by one. */
+    const timerProposals = useTimerProposals();
+    /** Card waiting for the stop-or-parallel answer before its timer starts. */
+    const [startConflictIssue, setStartConflictIssue] = useState<BoardIssue | null>(null);
+    const timerControl = useTimerControl({ onProposal: timerProposals.push, onError: setMoveError });
+    const timedIssueIds = useMemo(() => (timers ?? []).map((timer) => timer.issueId), [timers]);
 
     const completedCounts = columns.reduce(
         (counts, column) => {
@@ -314,13 +317,24 @@ export default function Board() {
 
     const handleToggleTimer = useCallback(
         (issue: BoardIssue) => {
-            if (timer?.issueId === issue.id) {
-                timerControl.stop();
-            } else {
-                timerControl.start(issue.id);
+            const ownTimer = timers?.find((timer) => timer.issueId === issue.id);
+
+            // Stopping targets this issue's timer; starting while others run
+            // asks the stop-or-parallel question first — nothing is replaced
+            // silently.
+            if (ownTimer) {
+                timerControl.stop(ownTimer.id);
+                return;
             }
+
+            if ((timers?.length ?? 0) > 0) {
+                setStartConflictIssue(issue);
+                return;
+            }
+
+            timerControl.start(issue.id);
         },
-        [timer?.issueId, timerControl.start, timerControl.stop],
+        [timers, timerControl.start, timerControl.stop],
     );
 
     // Stable handlers keep the memoized cards from re-rendering on every
@@ -535,7 +549,7 @@ export default function Board() {
                                     column={column}
                                     isDragging={draggingId === issue.id}
                                     otherColumns={columns.filter((candidate) => candidate.id !== column.id)}
-                                    activeTimerIssueId={timer?.issueId ?? null}
+                                    timedIssueIds={timedIssueIds}
                                     buildIssueHref={buildIssueHref}
                                     onDragStart={handleCardDragStart}
                                     onDragEnd={handleCardDragEnd}
@@ -599,16 +613,24 @@ export default function Board() {
                 />
             ) : null}
 
-            {timerProposal ? (
-                <LogTimeDialog
-                    issueId={timerProposal.issueId}
-                    open
-                    initialHours={String(timerProposal.roundedHours)}
-                    issueTitle={timerProposal.issueTitle}
-                    exceeds24h={timerProposal.exceeds24h}
-                    onClose={() => setTimerProposal(null)}
+            {startConflictIssue ? (
+                <StartTimerConflictDialog
+                    runningTimers={timers ?? []}
+                    onStopOthers={() => {
+                        const target = startConflictIssue;
+                        setStartConflictIssue(null);
+                        timerControl.start(target.id, { stopPrevious: true });
+                    }}
+                    onParallel={() => {
+                        const target = startConflictIssue;
+                        setStartConflictIssue(null);
+                        timerControl.start(target.id);
+                    }}
+                    onClose={() => setStartConflictIssue(null)}
                 />
             ) : null}
+
+            <TimerProposalDialogs proposals={timerProposals.proposals} onConsumed={timerProposals.consumeOne} />
         </AppLayout>
     );
 }

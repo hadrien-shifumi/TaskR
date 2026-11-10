@@ -26,18 +26,19 @@ class StartTimer
     }
 
     /**
-     * Stop any running timer for this user in this workspace, then start
-     * a fresh one on the given issue. The replaced timer's proposal is
-     * returned so its elapsed time is never lost — recording it stays
-     * the user's call.
+     * Start a timer on the given issue. Timers now run in parallel: nothing
+     * is stopped unless the caller explicitly asks for it, and the stopped
+     * timers' proposals are returned so their elapsed time is never lost —
+     * recording it stays the user's call. One timer per issue per user.
      *
      * @param  Issue  $issue  the issue to time (route binding, workspace-scoped)
      * @param  User  $user  the acting user
-     * @return array{timer: ActiveTimer, stopped: array<string, mixed>|null}
+     * @param  bool  $stopPrevious  stop every other running timer of this user first
+     * @return array{timer: ActiveTimer, stopped: array<int, array<string, mixed>>}
      *
-     * @throws ValidationException when the issue is done or cancelled
+     * @throws ValidationException when the issue is done or cancelled, or already timed by this user
      */
-    public function handle(Issue $issue, User $user): array
+    public function handle(Issue $issue, User $user, bool $stopPrevious = false): array
     {
         app(WorkspaceContext::class)->abortUnlessIssueAccessible($user, $issue);
 
@@ -47,15 +48,36 @@ class StartTimer
             ]);
         }
 
-        return DB::transaction(function () use ($issue, $user): array {
-            $previous = ActiveTimer::query()
+        return DB::transaction(function () use ($issue, $user, $stopPrevious): array {
+            $alreadyTimed = ActiveTimer::query()
                 ->where('user_id', $user->getKey())
                 ->where('workspace_id', app(WorkspaceContext::class)->id())
-                ->first();
+                ->where('issue_id', $issue->getKey())
+                ->exists();
 
-            $stopped = $previous?->stoppedProposal();
+            if ($alreadyTimed) {
+                throw ValidationException::withMessages([
+                    'issue' => [__('validation.timer.already_running')],
+                ]);
+            }
 
-            $previous?->delete();
+            $stopped = [];
+
+            if ($stopPrevious) {
+                // Oldest first, so the confirmation dialogs queue in the
+                // order the timers were started.
+                $previous = ActiveTimer::query()
+                    ->where('user_id', $user->getKey())
+                    ->where('workspace_id', app(WorkspaceContext::class)->id())
+                    ->with('issue')
+                    ->orderBy('started_at')
+                    ->get();
+
+                foreach ($previous as $timer) {
+                    $stopped[] = $timer->stoppedProposal();
+                    $timer->delete();
+                }
+            }
 
             $timer = ActiveTimer::create([
                 'workspace_id' => app(WorkspaceContext::class)->id(),
@@ -73,7 +95,11 @@ class StartTimer
         $user = $request->user();
         abort_unless($user instanceof User, 401);
 
-        ['timer' => $timer, 'stopped' => $stopped] = $this->handle($issue, $user);
+        ['timer' => $timer, 'stopped' => $stopped] = $this->handle(
+            $issue,
+            $user,
+            $request->boolean('stop_previous'),
+        );
 
         return response()->json([
             'timer' => $timer->timerState(),

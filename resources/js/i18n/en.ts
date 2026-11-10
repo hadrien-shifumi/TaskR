@@ -388,6 +388,12 @@ const en = {
         confirmHint: "Time for “{{title}}” — adjust before confirming.",
         guard24h: "This timer has been running for more than 24 hours — double-check before confirming.",
         startRefused: "The timer could not be started.",
+        conflictTitle: "A timer is already running",
+        conflictHintSingle: "“{{title}}” is already being timed. Stop its timer — the elapsed time will be proposed for entry — or start this one in parallel?",
+        conflictHintMultiple: "{{count}} timers are already running. Stop them — their elapsed time will be proposed for entry — or start this one in parallel?",
+        stopRunningOne: "Stop the running timer",
+        stopRunningMany: "Stop the {{count}} timers",
+        startParallel: "Start in parallel",
     },
 
     projectsPage: {
