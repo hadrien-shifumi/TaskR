@@ -54,7 +54,7 @@ it('logs time through the log time dialog', function () {
     // The entry lands in the list and the 3-cell summary reflects it.
     $page->waitForEvent('networkidle');
     $page->assertSee('setup CI')
-        ->assertSee('2.5h left')
+        ->assertSee('2h30 left')
         ->assertSee('Logged')
         ->assertSee('Estimated')
         ->assertSee('Remaining');
@@ -151,7 +151,7 @@ it('lists the cascade inventory before deleting an issue', function () {
     $page->click('Delete issue…');
 
     // Maquette: banner-danger with the cascade inventory.
-    $page->assertSee('the logged time (1.5h)')
+    $page->assertSee('the logged time (1h30)')
         ->assertSee('1 comment')
         ->assertSee('child issue');
 

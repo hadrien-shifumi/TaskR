@@ -6,6 +6,7 @@ import { router, useForm, usePage } from '@inertiajs/react';
 import { Pencil, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { formatDuration } from '@/lib/format-duration';
 import type { IssueDetail, TimeEntry } from '../types';
 import { formatDate, formatHours } from './format';
 import { LogTimeDialog } from './log-time-dialog';
@@ -136,7 +137,7 @@ export function TimeEntriesSection({ issue, timeEntries }: TimeEntriesSectionPro
                             <div className="flex flex-wrap items-baseline gap-x-2">
                                 <span className="text-[13px] font-medium">{entry.authorName}</span>
                                 <span className="font-mono text-xs text-muted-foreground tabular-nums">
-                                    {entry.hours}h · {entry.workedAt ? formatDate(entry.workedAt) : ''}
+                                    {formatDuration(entry.hours)} · {entry.workedAt ? formatDate(entry.workedAt) : ''}
                                 </span>
                             </div>
                             {editingTimeEntry === entry.id ? (

@@ -1,10 +1,11 @@
 import i18n from '@/i18n';
 import { formatDate } from '@/lib/format-date';
+import { formatDuration } from '@/lib/format-duration';
 
-/** Hours render compactly: 8 → "8h", 1.5 → "1.5h", null → "—". */
+/** Hours render as a clock-style duration: 8 → "8h", 1.57 → "1h34", null → "—". */
 export function formatHours(hours: number | null): string {
     if (hours === null) return '—';
-    return `${hours}h`;
+    return formatDuration(hours);
 }
 
 export { formatDate };

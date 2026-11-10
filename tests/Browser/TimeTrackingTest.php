@@ -24,7 +24,7 @@ it('logs, edits and deletes time entries from the UI with updated totals', funct
         ->click('@entry-submit');
 
     $page->assertSee('setup CI')
-        ->assertSee('2.5h left');
+        ->assertSee('2h30 left');
 
     // Scenario "Édition par l'auteur": correct 1.5 to 2.
     $page->click('@entry-edit')
