@@ -19,7 +19,7 @@ it('logs, edits and deletes time entries from the UI with updated totals', funct
     // Scenario "Logging d'une demi-journée" (time-tracking): hours + note,
     // through the "Log time" dialog of the maquette (no inline form).
     $page->click('@log-time')
-        ->fill('input[placeholder="Hours"]', '1.5')
+        ->fill('@log-time-hours', '1.5')
         ->fill('textarea[placeholder="Note (optional)"]', 'setup CI')
         ->click('@entry-submit');
 
@@ -41,6 +41,49 @@ it('logs, edits and deletes time entries from the UI with updated totals', funct
 
     app(WorkspaceContext::class)->set($workspace);
     expect($issue->timeEntries()->count())->toBe(0);
+});
+
+it('accepts duration strings like 90m or 1:30 in the hours inputs', function () {
+    [$owner, $workspace, $project] = setupBrowserWorkspace(withProject: true);
+    app(WorkspaceContext::class)->set($workspace);
+    $issue = CreateIssue::run($workspace, ['project_id' => $project->id, 'title' => 'Page de profil']);
+    SetIssueEstimate::run($issue, 4.0);
+    $this->actingAs($owner);
+
+    $page = visit('/issues/'.$issue->id);
+
+    // "90m" is read as 1h30, shown clock-style in the summary.
+    $page->click('@log-time')
+        ->fill('@log-time-hours', '90m')
+        ->click('@entry-submit');
+
+    $page->assertSeeIn('@summary-logged-value', '1h30')
+        ->assertSeeIn('@summary-remaining', '2h30 left');
+
+    app(WorkspaceContext::class)->set($workspace);
+    expect((float) $issue->timeEntries()->sole()->hours)->toBe(1.5);
+
+    // The edit input understands the clock format too: 1:15 → 1h15.
+    $page->click('@entry-edit')
+        ->fill('@entry-edit-hours', '1:15')
+        ->click('@entry-edit-save');
+
+    $page->assertSeeIn('@summary-logged-value', '1h15');
+
+    app(WorkspaceContext::class)->set($workspace);
+    expect((float) $issue->timeEntries()->sole()->hours)->toBe(1.25);
+
+    // Garbage is refused client-side with the hint, nothing is stored.
+    $page->click('@log-time')
+        ->fill('@log-time-hours', 'abc')
+        ->click('@entry-submit');
+
+    $page->assertSee('Cannot parse that duration');
+
+    app(WorkspaceContext::class)->set($workspace);
+    expect($issue->timeEntries()->count())->toBe(1);
+
+    $page->assertNoSmoke();
 });
 
 it('shows no edit actions on another member time entry', function () {

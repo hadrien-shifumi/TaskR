@@ -11,6 +11,7 @@ import { Banner } from '@/components/banner';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { parseDuration } from '@/lib/parse-duration';
 import { useForm } from '@inertiajs/react';
 import { useTranslation } from 'react-i18next';
 
@@ -79,6 +80,14 @@ function LogTimeForm({
 
     const submitTimeEntry = (e: React.FormEvent) => {
         e.preventDefault();
+        // The input accepts duration strings ("90m", "1:30"…) — normalize to
+        // decimal hours before posting; the server only takes numbers.
+        const parsed = parseDuration(timeEntryForm.data.hours);
+        if (parsed === null || parsed < 0.01) {
+            timeEntryForm.setError('hours', t('issueShow.hoursInvalid'));
+            return;
+        }
+        timeEntryForm.setData('hours', String(parsed));
         timeEntryForm.post(route('issues.time-entries.store', issueId), {
             onSuccess: () => {
                 onClose();
@@ -100,22 +109,25 @@ function LogTimeForm({
             <form onSubmit={submitTimeEntry} className="grid gap-4">
                 <div className="grid grid-cols-2 gap-4">
                     <div className="grid gap-2">
-                        <Label htmlFor="log-time-hours">{t('issueShow.hours')}</Label>
+                        <Label htmlFor="log-time-hours">{t('issueShow.duration')}</Label>
                         <Input
                             id="log-time-hours"
                             data-test="log-time-hours"
-                            type="number"
-                            step="any"
-                            min="0.01"
-                            placeholder={t('issueShow.hours')}
+                            type="text"
+                            inputMode="decimal"
+                            placeholder={t('issueShow.hoursPlaceholder')}
                             required
                             value={timeEntryForm.data.hours}
                             onChange={(e) => timeEntryForm.setData('hours', e.target.value)}
                             aria-invalid={timeEntryForm.errors.hours ? true : undefined}
+                            aria-describedby="log-time-hours-hint"
                         />
                         {timeEntryForm.errors.hours ? (
                             <p className="text-sm text-destructive">{timeEntryForm.errors.hours}</p>
                         ) : null}
+                        <p id="log-time-hours-hint" className="text-xs text-muted-foreground">
+                            {t('issueShow.hoursHint')}
+                        </p>
                     </div>
                     <div className="grid gap-2">
                         <Label htmlFor="log-time-date">{t('issueShow.date')}</Label>

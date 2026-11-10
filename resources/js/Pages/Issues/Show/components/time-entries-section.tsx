@@ -7,6 +7,7 @@ import { Pencil, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatDuration } from '@/lib/format-duration';
+import { parseDuration } from '@/lib/parse-duration';
 import type { IssueDetail, TimeEntry } from '../types';
 import { formatDate, formatHours } from './format';
 import { LogTimeDialog } from './log-time-dialog';
@@ -36,6 +37,13 @@ export function TimeEntriesSection({ issue, timeEntries }: TimeEntriesSectionPro
 
     const submitTimeEntryEdit = (e: React.FormEvent, entryId: string) => {
         e.preventDefault();
+        // Same duration-string input as the log dialog: normalize to hours.
+        const parsed = parseDuration(timeEntryEditForm.data.hours);
+        if (parsed === null || parsed < 0.01) {
+            timeEntryEditForm.setError('hours', t('issueShow.hoursInvalid'));
+            return;
+        }
+        timeEntryEditForm.setData('hours', String(parsed));
         timeEntryEditForm.patch(route('issues.time-entries.update', [issue.id, entryId]), {
             onSuccess: () => setEditingTimeEntry(null),
         });
@@ -144,15 +152,24 @@ export function TimeEntriesSection({ issue, timeEntries }: TimeEntriesSectionPro
                                 <form onSubmit={(e) => submitTimeEntryEdit(e, entry.id)} className="mt-2 grid gap-2">
                                     <div className="grid grid-cols-2 gap-2">
                                         <Input
-                                            type="number"
-                                            step="any"
-                                            min="0.01"
-                                            placeholder={t('issueShow.hours')}
+                                            type="text"
+                                            inputMode="decimal"
+                                            placeholder={t('issueShow.hoursPlaceholder')}
                                             data-test="entry-edit-hours"
                                             value={timeEntryEditForm.data.hours}
                                             onChange={(e) => timeEntryEditForm.setData('hours', e.target.value)}
+                                            aria-invalid={timeEntryEditForm.errors.hours ? true : undefined}
                                             required
                                         />
+                                        {timeEntryEditForm.errors.hours ? (
+                                            <p className="col-span-2 text-xs text-destructive">
+                                                {timeEntryEditForm.errors.hours}
+                                            </p>
+                                        ) : (
+                                            <p className="col-span-2 text-xs text-muted-foreground">
+                                                {t('issueShow.hoursHint')}
+                                            </p>
+                                        )}
                                         <Input
                                             type="date"
                                             data-test="entry-edit-worked-at"

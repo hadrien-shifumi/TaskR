@@ -41,7 +41,7 @@ it('logs time through the log time dialog', function () {
     $page = visit('/issues/'.$issue->id);
 
     // Maquette: no inline form — logging goes through the "Log time" dialog.
-    $page->assertNotPresent('input[placeholder="Hours"]');
+    $page->assertNotPresent('@log-time-hours');
 
     $page->click('@log-time');
     $page->assertSee('Only the hours are required');
