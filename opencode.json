@@ -2,10 +2,6 @@
     "$schema": "https://opencode.ai/config.json",
     "mcp": {
         "servers": {
-            "laravel-boost": {
-                "type": "local",
-                "command": ["php", "artisan", "boost:mcp"]
-            },
             "taskr": {
                 "type": "remote",
                 "url": "https://taskr.shifumi-dev.fr/mcp",
@@ -17,4 +13,3 @@
         }
     }
 }
-

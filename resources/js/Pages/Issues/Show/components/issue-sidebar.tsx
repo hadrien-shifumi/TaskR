@@ -30,6 +30,7 @@ import { EditDatesDialog } from './edit-dates-dialog';
 import { formatDate, formatHours, overdueDays } from './format';
 import { KnowledgeProjectBadge, LinkKnowledgeDialog } from './link-knowledge-dialog';
 import { SetDependenciesDialog } from './set-dependencies-dialog';
+import { SetEstimateDialog } from './set-estimate-dialog';
 import { SetMilestoneDialog } from './set-milestone-dialog';
 import { SetParentDialog } from './set-parent-dialog';
 
@@ -111,6 +112,7 @@ export function IssueSidebar({
 }: IssueSidebarProps) {
     const { t } = useTranslation();
     const [datesOpen, setDatesOpen] = useState(false);
+    const [estimateOpen, setEstimateOpen] = useState(false);
     const [parentOpen, setParentOpen] = useState(false);
     const [milestoneOpen, setMilestoneOpen] = useState(false);
     const [dependenciesOpen, setDependenciesOpen] = useState(false);
@@ -444,7 +446,14 @@ export function IssueSidebar({
                         </p>
                     </PropRow>
 
-                    <PropRow label={t('issueShow.estimation')}>
+                    <PropRow
+                        label={t('issueShow.estimation')}
+                        action={
+                            <PropAction data-test="estimate-dialog-open" onClick={() => setEstimateOpen(true)}>
+                                {t('issueShow.edit')}
+                            </PropAction>
+                        }
+                    >
                         <p className="font-mono text-[13px] tabular-nums">{formatHours(issue.estimatedHours)}</p>
                     </PropRow>
 
@@ -681,6 +690,7 @@ export function IssueSidebar({
             </Card>
 
             <EditDatesDialog issue={issue} open={datesOpen} onClose={() => setDatesOpen(false)} />
+            <SetEstimateDialog issue={issue} open={estimateOpen} onClose={() => setEstimateOpen(false)} />
             <SetMilestoneDialog
                 issue={issue}
                 options={milestoneOptions}

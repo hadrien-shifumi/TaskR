@@ -192,6 +192,63 @@ it('creates and attaches a label on the fly', function () {
     $page->assertNoSmoke();
 });
 
+it('edits the estimation from its dedicated sidebar dialog', function () {
+    [$owner, $workspace, $project] = setupBrowserWorkspace(withProject: true);
+    app(WorkspaceContext::class)->set($workspace);
+    $issue = CreateIssue::run($workspace, ['project_id' => $project->id, 'title' => 'Page de profil']);
+    $this->actingAs($owner);
+
+    $page = visit('/issues/'.$issue->id);
+
+    // Maquette: the Estimation prop is the only row without an action —
+    // its dedicated dialog opens prefilled with the current value.
+    $page->click('@estimate-dialog-open');
+    $page->assertPresent('@estimate-dialog');
+    $page->assertValue('@estimate-input', '');
+
+    $page->fill('@estimate-input', '8')
+        ->click('@estimate-submit');
+
+    $page->waitForEvent('networkidle');
+    $page->assertSee('8h');
+
+    app(WorkspaceContext::class)->set($workspace);
+    expect((float) $issue->fresh()->estimated_hours)->toBe(8.0);
+
+    // The change is journalled: the Activity accordion keeps the trace.
+    $page->click('[data-test="activity-accordion-trigger"]');
+    $page->assertSeeIn('[data-test="activity-section"]', 'Estimate changed');
+
+    $page->assertNoSmoke();
+});
+
+it('clears the estimation from the same dialog', function () {
+    [$owner, $workspace, $project] = setupBrowserWorkspace(withProject: true);
+    app(WorkspaceContext::class)->set($workspace);
+    $issue = CreateIssue::run($workspace, ['project_id' => $project->id, 'title' => 'Page de profil']);
+    SetIssueEstimate::run($issue, 4.0);
+    $this->actingAs($owner);
+
+    $page = visit('/issues/'.$issue->id);
+
+    // The row shows the current estimate before the edit.
+    $page->assertSee('4h');
+
+    $page->click('@estimate-dialog-open');
+    $page->assertValue('@estimate-input', '4');
+
+    $page->fill('@estimate-input', '')
+        ->click('@estimate-submit');
+
+    $page->waitForEvent('networkidle');
+    $page->assertSee('—');
+
+    app(WorkspaceContext::class)->set($workspace);
+    expect($issue->fresh()->estimated_hours)->toBeNull();
+
+    $page->assertNoSmoke();
+});
+
 it('edits the due date and the estimation from the dates dialog', function () {
     [$owner, $workspace, $project] = setupBrowserWorkspace(withProject: true);
     app(WorkspaceContext::class)->set($workspace);
