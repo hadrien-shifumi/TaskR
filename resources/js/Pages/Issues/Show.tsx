@@ -13,12 +13,12 @@ import { Head, router, usePage } from '@inertiajs/react';
 import { ArchiveRestore, Archive, ArrowLeft, MoreHorizontal, Pencil, Play, Square, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useTimerControl } from '@/components/timer-widget';
-import type { LabelRef, MilestoneOption, StoppedTimerProposal, TimerState, UserRef } from '@/types';
+import { TimerProposalDialogs, useTimerControl, useTimerProposals } from '@/components/timer-widget';
+import { StartTimerConflictDialog } from '@/components/start-timer-conflict-dialog';
+import type { LabelRef, MilestoneOption, TimerState, UserRef } from '@/types';
 import { CopyIssueIdButton } from './Show/components/copy-issue-id-button';
 import { DeleteIssueDialog } from './Show/components/delete-issue-dialog';
 import { EditIssueDialog } from './Show/components/edit-issue-dialog';
-import { LogTimeDialog } from './Show/components/log-time-dialog';
 import { IssueDetail } from './Show/issue-detail';
 import type { ActivityEvent, CommentItem, IssueDetail as IssueDetailType, TimeEntry } from './Show/types';
 
@@ -40,22 +40,41 @@ type PageProps = {
     milestoneOptions: MilestoneOption[];
     canContribute: boolean;
     projects: { id: string; name: string }[];
-    /** Shared prop — the user's running timer, or null. */
-    timer?: TimerState | null;
+    /** Shared prop — the user's running timers in this workspace. */
+    timers?: TimerState[];
     /** Shared by HandleInertiaRequests — drives the owner-only archive button. */
     workspace?: { role?: string } | null;
 };
 
 export default function Show() {
-    const { issue, comments, timeEntries, activity, statuses, members, labels, candidates, dependencyCandidates, milestoneOptions, canContribute, projects, workspace, timer } = usePage<PageProps>().props;
+    const { issue, comments, timeEntries, activity, statuses, members, labels, candidates, dependencyCandidates, milestoneOptions, canContribute, projects, workspace, timers } = usePage<PageProps>().props;
     const { t } = useTranslation();
     const [editingTitle, setEditingTitle] = useState(false);
     const [deleting, setDeleting] = useState(false);
-    /** Proposal of a timer stopped or replaced from this fiche. */
-    const [timerProposal, setTimerProposal] = useState<StoppedTimerProposal | null>(null);
+    /** Proposals of timers stopped from this fiche, confirmed one by one. */
+    const timerProposals = useTimerProposals();
     const [timerError, setTimerError] = useState<string | null>(null);
-    const timerControl = useTimerControl({ onProposal: setTimerProposal, onError: setTimerError });
-    const isTiming = timer?.issueId === issue.id;
+    /** Open while the user must choose: stop the running timers or start in parallel. */
+    const [startConflict, setStartConflict] = useState(false);
+    const timerControl = useTimerControl({ onProposal: timerProposals.push, onError: setTimerError });
+    const ownTimer = timers?.find((timer) => timer.issueId === issue.id) ?? null;
+    const otherTimers = timers?.filter((timer) => timer.issueId !== issue.id) ?? [];
+
+    // Stopping targets this issue's timer; starting while other timers run
+    // asks the stop-or-parallel question first — nothing is replaced silently.
+    const handleTimerToggle = () => {
+        if (ownTimer) {
+            timerControl.stop(ownTimer.id);
+            return;
+        }
+
+        if (otherTimers.length > 0) {
+            setStartConflict(true);
+            return;
+        }
+
+        timerControl.start(issue.id);
+    };
 
     // Deferred props render their sections empty until the parallel
     // partial reload lands; the dialogs read the same lists.
@@ -97,14 +116,14 @@ export default function Show() {
             actions={
                 <>
                     <Button
-                        variant={isTiming ? 'secondary' : 'outline'}
+                        variant={ownTimer ? 'secondary' : 'outline'}
                         size="sm"
                         data-test="issue-timer-toggle"
                         disabled={timerControl.processing}
-                        onClick={() => (isTiming ? timerControl.stop() : timerControl.start(issue.id))}
+                        onClick={handleTimerToggle}
                     >
-                        {isTiming ? <Square className="size-3.5" aria-hidden /> : <Play className="size-3.5" aria-hidden />}
-                        {isTiming ? t('timer.stop') : t('timer.start')}
+                        {ownTimer ? <Square className="size-3.5" aria-hidden /> : <Play className="size-3.5" aria-hidden />}
+                        {ownTimer ? t('timer.stop') : t('timer.start')}
                     </Button>
                     <CopyIssueIdButton issueId={issue.id} />
                     <DropdownMenu>
@@ -178,16 +197,22 @@ export default function Show() {
                 onClose={() => setDeleting(false)}
             />
 
-            {timerProposal ? (
-                <LogTimeDialog
-                    issueId={timerProposal.issueId}
-                    open
-                    initialHours={String(timerProposal.roundedHours)}
-                    issueTitle={timerProposal.issueTitle}
-                    exceeds24h={timerProposal.exceeds24h}
-                    onClose={() => setTimerProposal(null)}
+            {startConflict ? (
+                <StartTimerConflictDialog
+                    runningTimers={otherTimers}
+                    onStopOthers={() => {
+                        setStartConflict(false);
+                        timerControl.start(issue.id, { stopPrevious: true });
+                    }}
+                    onParallel={() => {
+                        setStartConflict(false);
+                        timerControl.start(issue.id);
+                    }}
+                    onClose={() => setStartConflict(false)}
                 />
             ) : null}
+
+            <TimerProposalDialogs proposals={timerProposals.proposals} onConsumed={timerProposals.consumeOne} />
         </AppLayout>
     );
 }

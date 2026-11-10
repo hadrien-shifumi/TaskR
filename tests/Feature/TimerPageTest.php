@@ -34,7 +34,7 @@ class TimerPageTest extends TestCase
         return [$owner, $workspace, $project, $issue];
     }
 
-    public function test_shared_timer_prop_is_null_without_an_active_timer(): void
+    public function test_shared_timers_prop_is_empty_without_an_active_timer(): void
     {
         [$owner, , $project] = $this->setupIssue();
 
@@ -43,28 +43,36 @@ class TimerPageTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Projects/Board')
-                ->where('timer', null));
+                ->where('timers', []));
     }
 
-    public function test_shared_timer_prop_follows_the_running_timer_on_the_board(): void
+    public function test_shared_timers_prop_lists_every_running_timer_on_the_board(): void
     {
-        [$owner, , $project, $issue] = $this->setupIssue();
+        [$owner, $workspace, $project, $issue] = $this->setupIssue();
 
         StartTimer::run($issue, $owner);
         $this->travel(90)->minutes();
+
+        $otherProject = CreateProject::run($workspace, $owner, ['name' => 'Autre projet']);
+        $otherIssue = CreateIssue::run($workspace, ['project_id' => $otherProject->id, 'title' => 'Autre ticket']);
+        StartTimer::run($otherIssue, $owner);
+        $this->travel(30)->minutes();
 
         $this->actingAs($owner)
             ->get(route('projects.board', $project->id))
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Projects/Board')
-                ->where('timer.issueId', $issue->id)
-                ->where('timer.issueTitle', 'Page de profil')
-                ->where('timer.startedAt', fn (string $startedAt) => $startedAt !== '')
-                ->where('timer.elapsedHours', fn (float $elapsedHours) => abs($elapsedHours - 1.5) < 0.01));
+                ->has('timers', 2)
+                ->where('timers.0.issueId', $issue->id)
+                ->where('timers.0.issueTitle', 'Page de profil')
+                ->where('timers.0.startedAt', fn (string $startedAt) => $startedAt !== '')
+                ->where('timers.0.elapsedHours', fn (float $elapsedHours) => abs($elapsedHours - 2.0) < 0.01)
+                ->where('timers.1.issueId', $otherIssue->id)
+                ->where('timers.1.elapsedHours', fn (float $elapsedHours) => abs($elapsedHours - 0.5) < 0.01));
     }
 
-    public function test_shared_timer_prop_follows_the_running_timer_on_the_issue_page(): void
+    public function test_shared_timers_prop_follows_the_running_timer_on_the_issue_page(): void
     {
         [$owner, , , $issue] = $this->setupIssue();
 
@@ -76,12 +84,13 @@ class TimerPageTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Issues/Show')
-                ->where('timer.issueId', $issue->id)
-                ->where('timer.issueTitle', 'Page de profil')
-                ->where('timer.startedAt', fn (string $startedAt) => $startedAt !== ''));
+                ->has('timers', 1)
+                ->where('timers.0.issueId', $issue->id)
+                ->where('timers.0.issueTitle', 'Page de profil')
+                ->where('timers.0.startedAt', fn (string $startedAt) => $startedAt !== ''));
     }
 
-    public function test_the_shared_timer_prop_is_personal_to_the_user(): void
+    public function test_the_shared_timers_prop_is_personal_to_the_user(): void
     {
         [$owner, $workspace, $project, $issue] = $this->setupIssue();
 
@@ -95,6 +104,6 @@ class TimerPageTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Projects/Board')
-                ->where('timer', null));
+                ->where('timers', []));
     }
 }

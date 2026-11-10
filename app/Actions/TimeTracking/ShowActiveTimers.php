@@ -6,11 +6,12 @@ use App\Actions\Concerns\AuthorizesWorkspaceAccess;
 use App\Models\ActiveTimer;
 use App\Models\User;
 use App\Support\WorkspaceContext;
+use Illuminate\Support\Collection;
 use Lorisleiva\Actions\ActionRequest;
 use Lorisleiva\Actions\Concerns\AsController;
 use Lorisleiva\Actions\Concerns\AsObject;
 
-class ShowActiveTimer
+class ShowActiveTimers
 {
     use AsController;
     use AsObject;
@@ -22,22 +23,30 @@ class ShowActiveTimer
     }
 
     /**
-     * The current user's running timer in this workspace, or null.
+     * Every running timer of the current user in this workspace, oldest
+     * first — the parallel-timers state served to the widget and pages.
+     *
+     * @return Collection<int, ActiveTimer>
      */
-    public function handle(User $user): ?ActiveTimer
+    public function handle(User $user): Collection
     {
         return ActiveTimer::query()
             ->where('user_id', $user->getKey())
             ->where('workspace_id', app(WorkspaceContext::class)->id())
-            ->first();
+            ->with('issue')
+            ->orderBy('started_at')
+            ->get();
     }
 
     public function asController(ActionRequest $request)
     {
-        $timer = $this->handle($request->user());
+        $timers = $this->handle($request->user());
 
         return response()->json([
-            'timer' => $timer === null ? null : $timer->timerState(),
+            'timers' => $timers
+                ->map(fn (ActiveTimer $timer) => $timer->timerState())
+                ->values()
+                ->all(),
         ]);
     }
 }
