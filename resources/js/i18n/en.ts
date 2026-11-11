@@ -375,6 +375,8 @@ const en = {
         lineTotal: "Line total",
         entriesTitle: "Entries of the week",
         entriesEmpty: "No time logged this week.",
+        entriesFilteredBy: "Showing entries for “{{title}}”",
+        clearFilter: "Clear filter",
         searchLabel: "Search an issue",
         searchPlaceholder: "Type a title or an identifier…",
         searchEmpty: "No issue matches.",

@@ -43,6 +43,8 @@ export default function Index() {
     const [addOpen, setAddOpen] = useState(false);
     // Payload index → index in `newLines`, to map cell errors back.
     const [sentLineMap, setSentLineMap] = useState<number[]>([]);
+    // Issue row of the weekly grid currently filtered in the entries list.
+    const [activeIssueId, setActiveIssueId] = useState<string | null>(null);
 
     const form = useForm<StorePayload>({
         week: weekStart,
@@ -55,7 +57,16 @@ export default function Index() {
     const go = (week: string) => {
         setNewLines([]);
         setSentLineMap([]);
+        setActiveIssueId(null);
         router.get(route('my-time.show'), { week }, { preserveState: true, preserveScroll: true });
+    };
+
+    const toggleIssue = (issueId: string) => {
+        setActiveIssueId((current) => (current === issueId ? null : issueId));
+    };
+
+    const clearFilteredEntries = () => {
+        setActiveIssueId(null);
     };
 
     const addLine = (issue: IssueSearchResult) => {
@@ -171,6 +182,8 @@ export default function Index() {
                     lines={newLines}
                     errors={form.errors}
                     sentLineMap={sentLineMap}
+                    activeIssueId={activeIssueId}
+                    onToggleIssue={toggleIssue}
                     onCellChange={setCell}
                     onNoteChange={setNote}
                     onRemoveLine={removeLine}
@@ -182,7 +195,11 @@ export default function Index() {
             </section>
 
             <div className="mt-8">
-                <EntriesList entries={entries} />
+                <EntriesList
+                    entries={entries}
+                    activeIssueId={activeIssueId}
+                    onClearFilter={clearFilteredEntries}
+                />
             </div>
 
             <AddLineDialog

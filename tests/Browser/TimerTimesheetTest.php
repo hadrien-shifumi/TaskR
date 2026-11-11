@@ -175,6 +175,81 @@ it('fills, saves and edits a weekly timesheet line through the grid', function (
     $page->assertSeeIn('@week-total', '0h');
 });
 
+it('filters the weekly entries list by clicking a grid row of the timesheet', function () {
+    [$owner, $workspace, $project] = setupBrowserWorkspace(withProject: true);
+    $alpha = CreateIssue::run($workspace, ['project_id' => $project->id, 'title' => 'Ticket alpha']);
+    $beta = CreateIssue::run($workspace, ['project_id' => $project->id, 'title' => 'Ticket beta']);
+    CreateTimeEntry::run($alpha, $owner, ['hours' => 2, 'note' => 'alpha note']);
+    CreateTimeEntry::run($beta, $owner, ['hours' => 3, 'note' => 'beta note']);
+
+    $this->actingAs($owner);
+    $page = visit('/my-time');
+
+    // Both logged issues are listed in the entries of the week.
+    $page->assertSeeIn('@entries-list', 'alpha note')
+        ->assertSeeIn('@entries-list', 'beta note');
+
+    // Clicking the alpha row of the grid filters the entries list to alpha.
+    $page->click("[data-test=\"grid-row-toggle-{$alpha->id}\"]")
+        ->assertSeeIn('@entries-list', 'alpha note')
+        ->assertDontSeeIn('@entries-list', 'beta note');
+
+    // Clicking the same row again clears the filter.
+    $page->click("[data-test=\"grid-row-toggle-{$alpha->id}\"]")
+        ->assertSeeIn('@entries-list', 'alpha note')
+        ->assertSeeIn('@entries-list', 'beta note');
+});
+
+it('switches the weekly entries filter when clicking another grid row and clears it', function () {
+    [$owner, $workspace, $project] = setupBrowserWorkspace(withProject: true);
+    $alpha = CreateIssue::run($workspace, ['project_id' => $project->id, 'title' => 'Ticket alpha']);
+    $beta = CreateIssue::run($workspace, ['project_id' => $project->id, 'title' => 'Ticket beta']);
+    CreateTimeEntry::run($alpha, $owner, ['hours' => 2, 'note' => 'alpha note']);
+    CreateTimeEntry::run($beta, $owner, ['hours' => 3, 'note' => 'beta note']);
+
+    $this->actingAs($owner);
+    $page = visit('/my-time');
+
+    // Filtering on the alpha row…
+    $page->click("[data-test=\"grid-row-toggle-{$alpha->id}\"]")
+        ->assertSeeIn('@entries-list', 'alpha note')
+        ->assertDontSeeIn('@entries-list', 'beta note');
+
+    // …then switching the filter to the beta row re-targets the entries list.
+    $page->click("[data-test=\"grid-row-toggle-{$beta->id}\"]")
+        ->assertSeeIn('@entries-list', 'beta note')
+        ->assertDontSeeIn('@entries-list', 'alpha note');
+
+    // A visible clear-filter control comes back to the full list.
+    $page->click('@entries-filter-clear')
+        ->assertSeeIn('@entries-list', 'alpha note')
+        ->assertSeeIn('@entries-list', 'beta note');
+});
+
+it('resets the weekly entries filter when navigating to another week', function () {
+    [$owner, $workspace, $project] = setupBrowserWorkspace(withProject: true);
+    $alpha = CreateIssue::run($workspace, ['project_id' => $project->id, 'title' => 'Ticket alpha']);
+    $beta = CreateIssue::run($workspace, ['project_id' => $project->id, 'title' => 'Ticket beta']);
+    CreateTimeEntry::run($alpha, $owner, ['hours' => 2, 'note' => 'alpha note']);
+    CreateTimeEntry::run($beta, $owner, ['hours' => 3, 'note' => 'beta note']);
+
+    $this->actingAs($owner);
+    $page = visit('/my-time');
+
+    $page->click("[data-test=\"grid-row-toggle-{$beta->id}\"]")
+        ->assertSeeIn('@entries-list', 'beta note')
+        ->assertDontSeeIn('@entries-list', 'alpha note');
+
+    // Moving to another week clears the filter…
+    $page->click('@week-previous')
+        ->assertVisible('@entries-empty');
+
+    // …and the full list is back on the way home.
+    $page->click('@week-next')
+        ->assertSeeIn('@entries-list', 'alpha note')
+        ->assertSeeIn('@entries-list', 'beta note');
+});
+
 it('warns and still validates a timer left running for more than 24 hours', function () {
     [$owner, $workspace, $project] = setupBrowserWorkspace(withProject: true);
     $issue = CreateIssue::run($workspace, ['project_id' => $project->id, 'title' => 'Forgotten timer']);

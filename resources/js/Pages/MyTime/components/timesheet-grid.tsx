@@ -28,6 +28,10 @@ type TimesheetGridTableProps = {
     errors: Record<string, string>;
     /** Payload index → index in `lines`, for error mapping. */
     sentLineMap: number[];
+    /** Issue row currently filtered in the entries list; null = no filter. */
+    activeIssueId?: string | null;
+    /** Toggle the filter of a grid row (click again to clear it). */
+    onToggleIssue?: (issueId: string) => void;
     onCellChange: (lineIndex: number, day: string, value: string) => void;
     onNoteChange: (lineIndex: number, note: string) => void;
     onRemoveLine: (lineIndex: number) => void;
@@ -43,7 +47,9 @@ function cellHours(value: number | undefined): string {
  * The weekly grid: one row per ticket, Monday to Sunday plus the row and
  * week totals. Logged rows are read-only — a duplicate cell would be
  * refused anyway — so new hours are typed on the lines being added, and
- * the submission carries only the filled new cells.
+ * the submission carries only the filled new cells. A logged row can also
+ * carry the filter of the entries list: clicking its issue toggles the
+ * active filter (re-click clears it).
  */
 export function TimesheetGridTable({
     weekStart,
@@ -51,6 +57,8 @@ export function TimesheetGridTable({
     lines,
     errors,
     sentLineMap,
+    activeIssueId,
+    onToggleIssue,
     onCellChange,
     onNoteChange,
     onRemoveLine,
@@ -84,9 +92,24 @@ export function TimesheetGridTable({
                 </TableHeader>
                 <TableBody>
                     {existing.map((row) => (
-                        <TableRow key={row.issueId} data-test="grid-row-existing">
+                        <TableRow
+                            key={row.issueId}
+                            data-test="grid-row-existing"
+                            className={activeIssueId === row.issueId ? 'bg-muted/60' : undefined}
+                        >
                             <TableCell className="max-w-[220px] truncate font-medium">
-                                <span title={row.issueTitle}>{row.issueTitle}</span>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 max-w-full justify-start gap-1 px-1 text-[13px] font-medium text-foreground hover:bg-transparent"
+                                    onClick={() => onToggleIssue?.(row.issueId)}
+                                    aria-pressed={activeIssueId === row.issueId}
+                                    data-test={`grid-row-toggle-${row.issueId}`}
+                                >
+                                    <span className="block truncate" title={row.issueTitle}>
+                                        {row.issueTitle}
+                                    </span>
+                                </Button>
                             </TableCell>
                             {days.map((day) => (
                                 <TableCell

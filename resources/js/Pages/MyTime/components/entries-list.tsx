@@ -2,7 +2,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { router, useForm, usePage } from '@inertiajs/react';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TimeEntryRow } from '@/types';
@@ -12,17 +12,24 @@ import { parseDuration } from '@/lib/parse-duration';
 
 type EntriesListProps = {
     entries: TimeEntryRow[];
+    /** Issue row of the weekly grid currently filtered; null = no filter. */
+    activeIssueId?: string | null;
+    /** Clears the active filter, back to the full entries list. */
+    onClearFilter?: () => void;
 };
 
 /**
  * The week's raw entries with author-only edit / delete — the existing
  * issue endpoints, so a mutation from "My time" lands back here with the
- * standard confirmation flash.
+ * standard confirmation flash. When an issue is filtered through the
+ * weekly grid, only its entries are shown, with a clear control.
  */
-export function EntriesList({ entries }: EntriesListProps) {
+export function EntriesList({ entries, activeIssueId, onClearFilter }: EntriesListProps) {
     const { auth } = usePage<{ auth: { user: { id: number } | null } }>().props;
     const { t } = useTranslation();
     const [editingId, setEditingId] = useState<string | null>(null);
+
+    const visibleEntries = activeIssueId ? entries.filter((entry) => entry.issueId === activeIssueId) : entries;
 
     const editForm = useForm({
         hours: '',
@@ -61,8 +68,24 @@ export function EntriesList({ entries }: EntriesListProps) {
     return (
         <section>
             <h2 className="mb-2 text-[15px] font-semibold tracking-tight">{t('myTime.entriesTitle')}</h2>
+            {activeIssueId ? (
+                <div className="mb-2 flex items-center justify-between gap-2 rounded-xl border bg-muted/50 px-4 py-2" data-test="entries-filtered">
+                    <p className="min-w-0 truncate text-sm font-medium" data-test="entries-filtered-title">
+                        {t('myTime.entriesFilteredBy', { title: visibleEntries[0]?.issueTitle ?? '' })}
+                    </p>
+                    <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={onClearFilter}
+                        aria-label={t('myTime.clearFilter')}
+                        data-test="entries-filter-clear"
+                    >
+                        <X aria-hidden />
+                    </Button>
+                </div>
+            ) : null}
             <ul className="divide-y rounded-xl border bg-card" data-test="entries-list">
-                {entries.map((entry) => (
+                {visibleEntries.map((entry) => (
                     <li key={entry.id} className="group flex gap-3 px-4 py-3" data-test="entry-row">
                         <div className="min-w-0 flex-1">
                             <div className="flex flex-wrap items-baseline gap-x-2">
@@ -145,7 +168,7 @@ export function EntriesList({ entries }: EntriesListProps) {
                         ) : null}
                     </li>
                 ))}
-                {entries.length === 0 ? (
+                {visibleEntries.length === 0 ? (
                     <li className="px-4 py-6 text-center text-sm text-muted-foreground" data-test="entries-empty">
                         {t('myTime.entriesEmpty')}
                     </li>

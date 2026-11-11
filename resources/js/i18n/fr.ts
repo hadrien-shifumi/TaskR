@@ -376,6 +376,8 @@ const fr: typeof en = {
         lineTotal: "Total de la ligne",
         entriesTitle: "Saisies de la semaine",
         entriesEmpty: "Aucun temps saisi cette semaine.",
+        entriesFilteredBy: "Affichage des saisies de « {{title}} »",
+        clearFilter: "Retirer le filtre",
         searchLabel: "Rechercher un ticket",
         searchPlaceholder: "Tapez un titre ou un identifiant…",
         searchEmpty: "Aucun ticket trouvé.",
