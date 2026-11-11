@@ -139,7 +139,7 @@ export function TimeEntriesSection({ issue, timeEntries }: TimeEntriesSectionPro
 
             <ul className="divide-y">
                 {timeEntries.map((entry) => (
-                    <li key={entry.id} className="group flex gap-3 py-3.5">
+                    <li key={entry.id} className="flex gap-3 py-3.5">
                         <Avatar name={entry.authorName} />
                         <div className="min-w-0 flex-1">
                             <div className="flex flex-wrap items-baseline gap-x-2">
@@ -204,7 +204,7 @@ export function TimeEntriesSection({ issue, timeEntries }: TimeEntriesSectionPro
                             ) : null}
                         </div>
                         {auth.user && auth.user.id === entry.authorId ? (
-                            <span className="flex shrink-0 gap-0.5 self-start opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100 max-lg:opacity-100">
+                            <span className="flex shrink-0 gap-0.5 self-start">
                                 <Button
                                     variant="ghost"
                                     size="icon-sm"

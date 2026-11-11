@@ -86,6 +86,39 @@ it('accepts duration strings like 90m or 1:30 in the hours inputs', function () 
     $page->assertNoSmoke();
 });
 
+it('edits a time entry from My time with a duration string like 1:30', function () {
+    [$owner, $workspace, $project] = setupBrowserWorkspace(withProject: true);
+    app(WorkspaceContext::class)->set($workspace);
+    $issue = CreateIssue::run($workspace, ['project_id' => $project->id, 'title' => 'Page de profil']);
+    CreateTimeEntry::run($issue, $owner, ['hours' => 1.0, 'note' => 'initiale']);
+    $this->actingAs($owner);
+
+    $page = visit('/my-time');
+
+    // The edit form understands duration strings, same as the issue fiche:
+    // 1:30 → 1h30.
+    $page->click('@entry-edit')
+        ->fill('@entry-edit-hours', '1:30')
+        ->click('@entry-edit-save');
+
+    $page->assertSeeIn('@entries-list', '1h30');
+
+    app(WorkspaceContext::class)->set($workspace);
+    expect((float) $issue->timeEntries()->sole()->hours)->toBe(1.5);
+
+    // Garbage is refused client-side with the hint, nothing is stored.
+    $page->click('@entry-edit')
+        ->fill('@entry-edit-hours', 'abc')
+        ->click('@entry-edit-save');
+
+    $page->assertSee('Cannot parse that duration');
+
+    app(WorkspaceContext::class)->set($workspace);
+    expect((float) $issue->timeEntries()->sole()->hours)->toBe(1.5);
+
+    $page->assertNoSmoke();
+});
+
 it('shows no edit actions on another member time entry', function () {
     [$owner, $workspace, $project] = setupBrowserWorkspace(withProject: true);
     $member = User::factory()->create();

@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next';
 import type { TimeEntryRow } from '@/types';
 import { formatDate } from '@/lib/format-date';
 import { formatDuration } from '@/lib/format-duration';
+import { parseDuration } from '@/lib/parse-duration';
 
 type EntriesListProps = {
     entries: TimeEntryRow[];
@@ -40,6 +41,13 @@ export function EntriesList({ entries }: EntriesListProps) {
 
     const submitEdit = (e: React.FormEvent, entry: TimeEntryRow) => {
         e.preventDefault();
+        // Same duration-string input as the issue fiche: normalize to hours.
+        const parsed = parseDuration(editForm.data.hours);
+        if (parsed === null || parsed < 0.01) {
+            editForm.setError('hours', t('issueShow.hoursInvalid'));
+            return;
+        }
+        editForm.setData('hours', String(parsed));
         editForm.patch(route('issues.time-entries.update', [entry.issueId, entry.id]), {
             onSuccess: () => setEditingId(null),
         });
@@ -65,15 +73,16 @@ export function EntriesList({ entries }: EntriesListProps) {
                             </div>
                             {editingId === entry.id ? (
                                 <form onSubmit={(e) => submitEdit(e, entry)} className="mt-2 grid gap-2">
+                                    <p className="text-xs text-muted-foreground">{t('issueShow.hoursHint')}</p>
                                     <div className="grid grid-cols-2 gap-2">
                                         <Input
-                                            type="number"
-                                            step="any"
-                                            min="0.01"
-                                            placeholder={t('myTime.hours')}
+                                            type="text"
+                                            inputMode="decimal"
+                                            placeholder={t('issueShow.hoursPlaceholder')}
                                             data-test="entry-edit-hours"
                                             value={editForm.data.hours}
                                             onChange={(e) => editForm.setData('hours', e.target.value)}
+                                            aria-invalid={editForm.errors.hours ? true : undefined}
                                             required
                                         />
                                         <Input
@@ -83,15 +92,15 @@ export function EntriesList({ entries }: EntriesListProps) {
                                             onChange={(e) => editForm.setData('worked_at', e.target.value)}
                                         />
                                     </div>
+                                    {editForm.errors.hours ? (
+                                        <p className="text-sm text-destructive">{editForm.errors.hours}</p>
+                                    ) : null}
                                     <Textarea
                                         placeholder={t('myTime.note')}
                                         data-test="entry-edit-note"
                                         value={editForm.data.note}
                                         onChange={(e) => editForm.setData('note', e.target.value)}
                                     />
-                                    {editForm.errors.hours ? (
-                                        <p className="text-sm text-destructive">{editForm.errors.hours}</p>
-                                    ) : null}
                                     <div className="flex gap-2">
                                         <Button type="submit" size="sm" data-test="entry-edit-save" disabled={editForm.processing}>
                                             {t('common.save')}
