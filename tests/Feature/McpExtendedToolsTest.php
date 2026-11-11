@@ -423,6 +423,62 @@ class McpExtendedToolsTest extends TestCase
         $this->assertSame('Updated', $result['timeEntry']['note']);
     }
 
+    public function test_update_time_entry_patches_hours_only(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspace();
+        app(WorkspaceContext::class)->set($workspace);
+        $issue = CreateIssueAction::run($workspace, ['project_id' => $project->id, 'title' => 'Timed']);
+        $entry = CreateTimeEntry::run($issue, $owner, ['hours' => 1.0, 'note' => 'Initial']);
+
+        // PATCH semantics: hours only — note and date keep their value.
+        $result = TaskrServer::actingAs($owner)->tool(UpdateTimeEntry::class, [
+            'workspace_id' => $workspace->id,
+            'issue_id' => $issue->id,
+            'time_entry_id' => $entry->id,
+            'hours' => 2.5,
+        ])->assertOk()->payload();
+
+        $this->assertSame(2.5, $result['timeEntry']['hours']);
+        $this->assertSame('Initial', $result['timeEntry']['note']);
+        $this->assertSame($entry->worked_at->toDateString(), $result['timeEntry']['workedAt']);
+    }
+
+    public function test_update_time_entry_patches_note_only(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspace();
+        app(WorkspaceContext::class)->set($workspace);
+        $issue = CreateIssueAction::run($workspace, ['project_id' => $project->id, 'title' => 'Timed']);
+        $entry = CreateTimeEntry::run($issue, $owner, ['hours' => 1.0, 'note' => 'Initial']);
+
+        $result = TaskrServer::actingAs($owner)->tool(UpdateTimeEntry::class, [
+            'workspace_id' => $workspace->id,
+            'issue_id' => $issue->id,
+            'time_entry_id' => $entry->id,
+            'note' => 'Corrected',
+        ])->assertOk()->payload();
+
+        $this->assertSame(1.0, $result['timeEntry']['hours']);
+        $this->assertSame('Corrected', $result['timeEntry']['note']);
+    }
+
+    public function test_update_time_entry_explicit_null_note_clears_it(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspace();
+        app(WorkspaceContext::class)->set($workspace);
+        $issue = CreateIssueAction::run($workspace, ['project_id' => $project->id, 'title' => 'Timed']);
+        $entry = CreateTimeEntry::run($issue, $owner, ['hours' => 1.0, 'note' => 'Initial']);
+
+        $result = TaskrServer::actingAs($owner)->tool(UpdateTimeEntry::class, [
+            'workspace_id' => $workspace->id,
+            'issue_id' => $issue->id,
+            'time_entry_id' => $entry->id,
+            'note' => null,
+        ])->assertOk()->payload();
+
+        $this->assertNull($result['timeEntry']['note']);
+        $this->assertSame(1.0, $result['timeEntry']['hours']);
+    }
+
     public function test_update_time_entry_refused_for_non_author(): void
     {
         [$owner, $workspace, $project] = $this->setupWorkspace();

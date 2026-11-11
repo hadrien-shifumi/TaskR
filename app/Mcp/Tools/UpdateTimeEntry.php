@@ -14,7 +14,7 @@ use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Attributes\Name;
 
 #[Name('update_time_entry')]
-#[Description('Update a time entry. Only the author of the entry may update it.')]
+#[Description('Partially update a time entry (PATCH): each provided field replaces the current value, each omitted field keeps it; pass note as null to clear the note. Only the author of the entry may update it.')]
 class UpdateTimeEntry extends AgentTool
 {
     /**
@@ -26,9 +26,9 @@ class UpdateTimeEntry extends AgentTool
             'workspace_id' => $schema->string()->description('ULID of the workspace')->required(),
             'issue_id' => $schema->string()->description('ULID of the issue')->required(),
             'time_entry_id' => $schema->string()->description('ULID of the time entry to update')->required(),
-            'hours' => $schema->number()->description('Worked hours (min 0.01)')->required(),
-            'worked_at' => $schema->string()->description('Worked date (YYYY-MM-DD)'),
-            'note' => $schema->string()->description('Optional note (max 5000 chars)'),
+            'hours' => $schema->number()->description('New worked hours (min 0.01). Omitted: keep the current value'),
+            'worked_at' => $schema->string()->description('New worked date (YYYY-MM-DD). Omitted: keep the current value'),
+            'note' => $schema->string()->description('New note (max 5000 chars). Null clears the note. Omitted: keep the current value'),
         ];
     }
 

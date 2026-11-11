@@ -34,10 +34,12 @@ class UpdateTimeEntry
 
     public function rules(): array
     {
+        // PATCH semantics: every field is optional — a provided field
+        // replaces the current value, an omitted field keeps it.
         return [
-            'hours' => ['required', 'numeric', 'min:0.01'],
-            'worked_at' => ['nullable', 'date'],
-            'note' => ['nullable', 'string', 'max:5000'],
+            'hours' => ['sometimes', 'numeric', 'min:0.01'],
+            'worked_at' => ['sometimes', 'date'],
+            'note' => ['sometimes', 'nullable', 'string', 'max:5000'],
         ];
     }
 
@@ -60,10 +62,12 @@ class UpdateTimeEntry
             'note' => $timeEntry->note,
         ];
 
+        // Patch merge: a provided field replaces, an omitted field keeps the
+        // stored value. An empty note normalizes to null (cleared).
         $timeEntry->update([
-            'hours' => (float) $data['hours'],
-            'worked_at' => $data['worked_at'] ?? $timeEntry->worked_at,
-            'note' => $data['note'] ?? null,
+            'hours' => array_key_exists('hours', $data) ? (float) $data['hours'] : (float) $timeEntry->hours,
+            'worked_at' => array_key_exists('worked_at', $data) ? $data['worked_at'] : $timeEntry->worked_at,
+            'note' => array_key_exists('note', $data) ? ($data['note'] === '' ? null : $data['note']) : $timeEntry->note,
         ]);
 
         $after = [

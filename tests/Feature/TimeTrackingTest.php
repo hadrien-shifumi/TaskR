@@ -192,6 +192,70 @@ class TimeTrackingTest extends TestCase
         ]);
     }
 
+    // ── 5.3.1 PATCH partiel ─────────────────────────────────────────
+
+    public function test_patch_hours_only_preserves_note_and_date(): void
+    {
+        [, $member, $issue] = $this->setupIssue();
+
+        $entry = CreateTimeEntry::run($issue, $member, [
+            'hours' => 2,
+            'worked_at' => '2026-01-10',
+            'note' => 'initial',
+        ]);
+
+        // A PATCH carries only the corrected field: omitted fields keep
+        // the currently stored value.
+        $this->actingAs($member)
+            ->patch(route('issues.time-entries.update', [$issue->id, $entry->id]), ['hours' => 3])
+            ->assertRedirect();
+
+        $entry->refresh();
+        $this->assertSame(3.0, (float) $entry->hours);
+        $this->assertSame('2026-01-10', $entry->worked_at->toDateString());
+        $this->assertSame('initial', $entry->note);
+    }
+
+    public function test_patch_note_only_keeps_hours_and_date(): void
+    {
+        [, $member, $issue] = $this->setupIssue();
+
+        $entry = CreateTimeEntry::run($issue, $member, [
+            'hours' => 2,
+            'worked_at' => '2026-01-10',
+            'note' => 'initial',
+        ]);
+
+        $this->actingAs($member)
+            ->patch(route('issues.time-entries.update', [$issue->id, $entry->id]), ['note' => 'corrected'])
+            ->assertRedirect();
+
+        $entry->refresh();
+        $this->assertSame(2.0, (float) $entry->hours);
+        $this->assertSame('2026-01-10', $entry->worked_at->toDateString());
+        $this->assertSame('corrected', $entry->note);
+    }
+
+    public function test_patch_worked_at_only_keeps_hours_and_note(): void
+    {
+        [, $member, $issue] = $this->setupIssue();
+
+        $entry = CreateTimeEntry::run($issue, $member, [
+            'hours' => 2,
+            'worked_at' => '2026-01-10',
+            'note' => 'initial',
+        ]);
+
+        $this->actingAs($member)
+            ->patch(route('issues.time-entries.update', [$issue->id, $entry->id]), ['worked_at' => '2026-02-20'])
+            ->assertRedirect();
+
+        $entry->refresh();
+        $this->assertSame(2.0, (float) $entry->hours);
+        $this->assertSame('2026-02-20', $entry->worked_at->toDateString());
+        $this->assertSame('initial', $entry->note);
+    }
+
     public function test_third_party_cannot_edit_a_time_entry(): void
     {
         [$owner, $member, $issue] = $this->setupIssue();
