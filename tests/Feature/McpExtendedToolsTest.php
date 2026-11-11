@@ -66,6 +66,11 @@ class McpExtendedToolsTest extends TestCase
             return $this->response->toArray()['result']['structuredContent'] ?? [];
         });
 
+        TestResponse::macro('jsonRpcError', function (): ?array {
+            /** @var TestResponse $this */
+            return $this->response->toArray()['error'] ?? null;
+        });
+
         TestListResponse::macro('schemaFor', function (string $name): array {
             /** @var TestListResponse $this */
             $tool = collect($this->items)->firstWhere('name', $name) ?? [];
@@ -588,10 +593,37 @@ class McpExtendedToolsTest extends TestCase
             'role' => 'member',
         ]);
 
-        TaskrServer::actingAs($member)->tool(InviteMember::class, [
+        // A member-only agent does not discover invite_member at all.
+        $hidden = TaskrServer::actingAs($member)->tool(InviteMember::class, [
             'workspace_id' => $workspace->id,
             'email' => 'new@example.com',
+        ]);
+
+        $this->assertSame(-32602, $hidden->jsonRpcError()['code']);
+        $this->assertDatabaseMissing('invitations', [
+            'workspace_id' => $workspace->id,
+            'email' => 'new@example.com',
+        ]);
+
+        // An owner elsewhere keeps the tool in the catalog: the call-time
+        // owner guard still refuses the attempt in this workspace.
+        $outsider = User::factory()->create();
+        CreateWorkspace::run($outsider, ['name' => 'Theirs']);
+        Membership::create([
+            'user_id' => $outsider->id,
+            'workspace_id' => $workspace->id,
+            'role' => 'member',
+        ]);
+
+        TaskrServer::actingAs($outsider)->tool(InviteMember::class, [
+            'workspace_id' => $workspace->id,
+            'email' => 'still-refused@example.com',
         ])->assertHasErrors(['owner']);
+
+        $this->assertDatabaseMissing('invitations', [
+            'workspace_id' => $workspace->id,
+            'email' => 'still-refused@example.com',
+        ]);
     }
 
     public function test_remove_member_by_owner(): void

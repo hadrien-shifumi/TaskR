@@ -3,7 +3,9 @@
 namespace App\Mcp\Tools;
 
 use App\Actions\Workspaces\InviteMember as InviteMemberAction;
+use App\Enums\WorkspaceRole;
 use App\Mcp\Support\AgentTool;
+use App\Mcp\Support\VisibleTo;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
@@ -12,6 +14,7 @@ use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Attributes\Name;
 
+#[VisibleTo(WorkspaceRole::Owner)]
 #[Name('invite_member')]
 #[Description('Invite a member to a workspace by email. Only the workspace owner may invite. The invitation expires after 7 days. Both roles may carry a project perimeter: required for guests, optional for members (an empty perimeter keeps the full workspace access).')]
 class InviteMember extends AgentTool

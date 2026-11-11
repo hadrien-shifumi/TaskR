@@ -12,7 +12,9 @@ use Laravel\Mcp\Response;
 use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Attributes\Name;
+use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
+#[IsReadOnly]
 #[Name('compare_knowledge_versions')]
 #[Description('Compare two versions of a knowledge page. Returns both versions with their full content (title, body, editor, timestamp) so you can see the differences.')]
 class CompareKnowledgeVersions extends AgentTool

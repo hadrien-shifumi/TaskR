@@ -3,7 +3,9 @@
 namespace App\Mcp\Tools;
 
 use App\Actions\Templates\CreateIssueTemplate as CreateIssueTemplateAction;
+use App\Enums\WorkspaceRole;
 use App\Mcp\Support\AgentTool;
+use App\Mcp\Support\VisibleTo;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
@@ -12,6 +14,7 @@ use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Attributes\Name;
 
+#[VisibleTo(WorkspaceRole::Owner, WorkspaceRole::Member)]
 #[Name('create_template')]
 #[Description('Create an issue template in a workspace. Only the workspace owner may create templates. Name must be unique per workspace.')]
 class CreateTemplate extends AgentTool

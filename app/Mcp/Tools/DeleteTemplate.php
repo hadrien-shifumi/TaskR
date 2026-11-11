@@ -3,7 +3,9 @@
 namespace App\Mcp\Tools;
 
 use App\Actions\Templates\DeleteIssueTemplate as DeleteIssueTemplateAction;
+use App\Enums\WorkspaceRole;
 use App\Mcp\Support\AgentTool;
+use App\Mcp\Support\VisibleTo;
 use App\Models\IssueTemplate;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
@@ -13,6 +15,7 @@ use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Attributes\Name;
 
+#[VisibleTo(WorkspaceRole::Owner, WorkspaceRole::Member)]
 #[Name('delete_template')]
 #[Description('Delete an issue template from a workspace. Only the workspace owner may delete templates.')]
 class DeleteTemplate extends AgentTool

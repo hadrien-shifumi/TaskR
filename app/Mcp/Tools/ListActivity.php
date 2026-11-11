@@ -17,7 +17,9 @@ use Laravel\Mcp\Response;
 use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Attributes\Name;
+use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
+#[IsReadOnly]
 #[Name('list_activity')]
 #[Description('Read the audit journal (append-only activity log) of an issue or a project, newest first. Exactly one of issue_id / project_id is required. Each event carries type, actor, createdAt, commentId (for comment events) and changes (field diffs; flat added/removed lists for syncs). Comment bodies are not duplicated in the journal on creation or update — they live with the comment; only comment.deleted keeps a truncated snapshot. Guests and scoped members only see activity of objects in their perimeter; out-of-perimeter = not_found. Read-only: no event mutation tool exists.')]
 class ListActivity extends AgentTool

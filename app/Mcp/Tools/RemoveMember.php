@@ -3,7 +3,9 @@
 namespace App\Mcp\Tools;
 
 use App\Actions\Workspaces\RemoveMember as RemoveMemberAction;
+use App\Enums\WorkspaceRole;
 use App\Mcp\Support\AgentTool;
+use App\Mcp\Support\VisibleTo;
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
@@ -13,6 +15,7 @@ use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Attributes\Name;
 
+#[VisibleTo(WorkspaceRole::Owner)]
 #[Name('remove_member')]
 #[Description('Remove a member from a workspace. Only the workspace owner may remove members. The owner cannot remove themselves.')]
 class RemoveMember extends AgentTool

@@ -53,6 +53,11 @@ class McpGuestScopeTest extends TestCase
             /** @var TestResponse $this */
             return $this->response->toArray()['result']['structuredContent'] ?? [];
         });
+
+        TestResponse::macro('jsonRpcError', function (): ?array {
+            /** @var TestResponse $this */
+            return $this->response->toArray()['error'] ?? null;
+        });
     }
 
     /**
@@ -192,28 +197,26 @@ class McpGuestScopeTest extends TestCase
 
     // ── Surfaces full-members uniquement ─────────────────────────────
 
-    public function test_guest_mcp_create_label_is_forbidden(): void
+    public function test_guest_hidden_tools_are_refused_as_unknown_without_side_effects(): void
     {
         [$owner, $workspace, , , $guest] = $this->setupScopedGuest();
 
-        $response = TaskrServer::actingAs($guest)->tool(CreateLabel::class, [
+        // Restricted tools no longer appear in a guest's catalog: calling
+        // one directly is refused as an unknown tool, not as a forbidden
+        // call — the refusal reveals nothing about the tool's existence.
+        $label = TaskrServer::actingAs($guest)->tool(CreateLabel::class, [
             'workspace_id' => $workspace->id,
             'name' => 'Espion',
         ]);
 
-        $this->assertSame('forbidden', $response->payload()['error']);
+        $this->assertSame(-32602, $label->jsonRpcError()['code']);
         $this->assertDatabaseMissing('labels', ['name' => 'Espion']);
-    }
 
-    public function test_guest_mcp_list_members_is_forbidden(): void
-    {
-        [$owner, $workspace, , , $guest] = $this->setupScopedGuest();
-
-        $response = TaskrServer::actingAs($guest)->tool(ListMembers::class, [
+        $members = TaskrServer::actingAs($guest)->tool(ListMembers::class, [
             'workspace_id' => $workspace->id,
         ]);
 
-        $this->assertSame('forbidden', $response->payload()['error']);
+        $this->assertSame(-32602, $members->jsonRpcError()['code']);
     }
 
     public function test_guest_cannot_create_a_project(): void
@@ -224,12 +227,14 @@ class McpGuestScopeTest extends TestCase
             ->post(route('projects.store'), ['name' => 'Guest project'])
             ->assertForbidden();
 
+        // Same rule over MCP: the project tool is absent from the guest
+        // catalog, so the call is refused as an unknown tool.
         $response = TaskrServer::actingAs($guest)->tool(CreateProjectTool::class, [
             'workspace_id' => $workspace->id,
             'name' => 'Guest project',
         ]);
 
-        $this->assertSame('forbidden', $response->payload()['error']);
+        $this->assertSame(-32602, $response->jsonRpcError()['code']);
         $this->assertDatabaseMissing('projects', ['name' => 'Guest project']);
     }
 

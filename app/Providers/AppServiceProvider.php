@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Mcp\Support\MemberRoles;
 use App\Models\Status;
 use App\Observers\StatusObserver;
 use App\Support\WorkspaceContext;
@@ -15,6 +16,7 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(WorkspaceContext::class);
+        $this->app->scoped(MemberRoles::class);
     }
 
     /**

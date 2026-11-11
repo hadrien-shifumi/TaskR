@@ -3,7 +3,9 @@
 namespace App\Mcp\Tools;
 
 use App\Actions\Workspaces\ShowMembersPage as ShowMembersPageAction;
+use App\Enums\WorkspaceRole;
 use App\Mcp\Support\AgentTool;
+use App\Mcp\Support\VisibleTo;
 use App\Support\WorkspaceContext;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
@@ -12,7 +14,10 @@ use Laravel\Mcp\Response;
 use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Attributes\Name;
+use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
+#[VisibleTo(WorkspaceRole::Owner, WorkspaceRole::Member)]
+#[IsReadOnly]
 #[Name('list_members')]
 #[Description('List the members of a workspace and their pending invitations. Full members only: a guest gets forbidden.')]
 class ListMembers extends AgentTool

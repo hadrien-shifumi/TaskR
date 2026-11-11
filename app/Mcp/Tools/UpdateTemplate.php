@@ -3,7 +3,9 @@
 namespace App\Mcp\Tools;
 
 use App\Actions\Templates\UpdateIssueTemplate as UpdateIssueTemplateAction;
+use App\Enums\WorkspaceRole;
 use App\Mcp\Support\AgentTool;
+use App\Mcp\Support\VisibleTo;
 use App\Models\IssueTemplate;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
@@ -13,6 +15,7 @@ use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Attributes\Name;
 
+#[VisibleTo(WorkspaceRole::Owner, WorkspaceRole::Member)]
 #[Name('update_template')]
 #[Description('Update an issue template. Only the workspace owner may update templates.')]
 class UpdateTemplate extends AgentTool

@@ -11,7 +11,9 @@ use Laravel\Mcp\Response;
 use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Attributes\Name;
+use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
+#[IsReadOnly]
 #[Name('search_knowledge')]
 #[Description('Semantic search over the knowledge pages of a workspace. Ask a natural-language question; results come ranked by similarity with title, excerpt and score. Use it to locate relevant pages before get_knowledge.')]
 class SearchKnowledge extends AgentTool

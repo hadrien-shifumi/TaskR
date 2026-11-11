@@ -10,7 +10,9 @@ use Laravel\Mcp\Response;
 use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Attributes\Name;
+use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
+#[IsReadOnly]
 #[Name('list_workspaces')]
 #[Description('List the workspaces the authenticated user is a member of, with their role (owner or member) in each. Use this first to discover workspace ids for every other tool.')]
 class ListWorkspaces extends AgentTool

@@ -72,6 +72,8 @@ use Laravel\Mcp\Server\Attributes\Version;
     identifiers, then pass the target `workspace_id` to every other tool. Every
     tool enforces the same validation and permissions as the web UI: validation
     failures come back with the offending fields, refusals with a clear message.
+    Tools your roles can never use are simply absent from this catalog: if a
+    tool you need is missing, it is reserved to higher workspace roles.
     MARKDOWN)]
 class TaskrServer extends Server
 {

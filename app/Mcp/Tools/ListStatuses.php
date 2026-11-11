@@ -10,7 +10,9 @@ use Laravel\Mcp\Response;
 use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Attributes\Name;
+use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
+#[IsReadOnly]
 #[Name('list_statuses')]
 #[Description('List the statuses of a workspace with their semantic category (backlog, in_progress, done or cancelled) and position.')]
 class ListStatuses extends AgentTool

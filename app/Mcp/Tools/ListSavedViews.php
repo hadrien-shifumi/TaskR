@@ -10,7 +10,9 @@ use Laravel\Mcp\Response;
 use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Attributes\Name;
+use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
+#[IsReadOnly]
 #[Name('list_saved_views')]
 #[Description('List the saved views of a workspace (id, name, summary, filters, sort, dir, createdBy), alphabetical. Every view is shared workspace-wide; use list_saved_view_issues to read the issues of one.')]
 class ListSavedViews extends AgentTool

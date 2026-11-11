@@ -10,7 +10,9 @@ use Laravel\Mcp\Response;
 use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Attributes\Name;
+use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
+#[IsReadOnly]
 #[Name('list_projects')]
 #[Description('List the projects of a workspace (id, name, description, target date, archived date). For a guest or a scoped member, only the projects of their perimeter.')]
 class ListProjects extends AgentTool

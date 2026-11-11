@@ -12,7 +12,9 @@ use Laravel\Mcp\Response;
 use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Attributes\Name;
+use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
+#[IsReadOnly]
 #[Name('get_project_health')]
 #[Description('Get health indicators for a project: completion percentage, weighted completion (estimate-based), leaf completion (issues without sub-issues), overdue issues, time consumption, projection status. When the workspace setting "parents as containers" is enabled, container parents leave the weighted completion. For a guest or a scoped member, an out-of-perimeter project is not found. Guests receive only their own workload (myWorkload), never the global KPIs; a scoped member keeps them.')]
 class GetProjectHealth extends AgentTool

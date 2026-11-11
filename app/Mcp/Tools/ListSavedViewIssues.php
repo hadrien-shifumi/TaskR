@@ -10,7 +10,9 @@ use Laravel\Mcp\Response;
 use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Attributes\Name;
+use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
+#[IsReadOnly]
 #[Name('list_saved_view_issues')]
 #[Description('List the issues matching a saved view of the workspace: the stored filters (including the title search) and sort are applied as-is. Use list_saved_views to discover view ids.')]
 class ListSavedViewIssues extends AgentTool

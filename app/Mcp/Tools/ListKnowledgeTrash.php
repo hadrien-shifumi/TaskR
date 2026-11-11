@@ -10,7 +10,9 @@ use Laravel\Mcp\Response;
 use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Attributes\Name;
+use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
+#[IsReadOnly]
 #[Name('list_knowledge_trash')]
 #[Description('List the knowledge pages currently in the trash of a workspace, with who trashed them, when, and why. Use this to see what can be restored or permanently deleted.')]
 class ListKnowledgeTrash extends AgentTool

@@ -11,7 +11,9 @@ use Laravel\Mcp\Response;
 use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Attributes\Name;
+use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
+#[IsReadOnly]
 #[Name('list_knowledge_versions')]
 #[Description('List the version history of a knowledge page, most recent first. Each version includes the title, editor name, and timestamp. Use this to see what changed over time or to find a version to restore.')]
 class ListKnowledgeVersions extends AgentTool

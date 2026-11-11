@@ -11,7 +11,9 @@ use Laravel\Mcp\Response;
 use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Attributes\Name;
+use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
+#[IsReadOnly]
 #[Name('get_issue')]
 #[Description('Read the full body of an issue: description, project, status, priority, due date, estimate, hours, labels, assignees, parent and children. Pair with list_issues (which stays light) to explore candidates, then read the specification here. Guests and scoped members only read the issues of their perimeter; an out-of-perimeter issue is not found.')]
 class GetIssue extends AgentTool

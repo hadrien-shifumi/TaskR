@@ -3,7 +3,9 @@
 namespace App\Mcp\Tools;
 
 use App\Actions\Labels\CreateLabel as CreateLabelAction;
+use App\Enums\WorkspaceRole;
 use App\Mcp\Support\AgentTool;
+use App\Mcp\Support\VisibleTo;
 use App\Support\WorkspaceContext;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
@@ -13,6 +15,7 @@ use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Attributes\Name;
 
+#[VisibleTo(WorkspaceRole::Owner, WorkspaceRole::Member)]
 #[Name('create_label')]
 #[Description('Create a label in a workspace. Name must be unique per workspace. Full members only: a guest gets forbidden.')]
 class CreateLabel extends AgentTool

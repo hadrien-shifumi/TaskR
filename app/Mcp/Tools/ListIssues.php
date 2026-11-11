@@ -10,7 +10,9 @@ use Laravel\Mcp\Response;
 use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Attributes\Name;
+use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
+#[IsReadOnly]
 #[Name('list_issues')]
 #[Description('List the issues of a workspace with optional filters. Use list_projects, list_statuses and list_labels to discover filter values. Archived issues are excluded by default; pass archived=include or archived=only to see them.')]
 class ListIssues extends AgentTool

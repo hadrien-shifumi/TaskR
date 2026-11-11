@@ -36,6 +36,11 @@ class McpAgentQualificationTest extends TestCase
             /** @var TestResponse $this */
             return $this->response->toArray()['result']['structuredContent'] ?? [];
         });
+
+        TestResponse::macro('jsonRpcError', function (): ?array {
+            /** @var TestResponse $this */
+            return $this->response->toArray()['error'] ?? null;
+        });
     }
 
     /**
@@ -182,7 +187,38 @@ class McpAgentQualificationTest extends TestCase
             'role' => 'guest',
         ]);
 
-        TaskrServer::actingAs($guest)->tool(CreateLabel::class, [
+        // A guest-only agent does not discover create_label at all: the
+        // call is refused as an unknown tool.
+        $hidden = TaskrServer::actingAs($guest)->tool(CreateLabel::class, [
+            'workspace_id' => $workspace->id,
+            'name' => 'agent-ready',
+            'color' => 'green',
+        ]);
+
+        $this->assertSame(-32602, $hidden->jsonRpcError()['code']);
+
+        $this->assertDatabaseMissing('labels', [
+            'workspace_id' => $workspace->id,
+            'name' => 'agent-ready',
+        ]);
+    }
+
+    public function test_label_guard_still_applies_when_the_agent_is_full_member_elsewhere(): void
+    {
+        // A user who owns workspace A and is a guest of workspace B keeps
+        // create_label in the catalog (useful in A): the call-time guard
+        // still refuses the attempt in B.
+        [$owner, $workspace] = $this->setupWorkspace();
+
+        $outsider = User::factory()->create();
+        CreateWorkspace::run($outsider, ['name' => 'Theirs']);
+        Membership::create([
+            'user_id' => $outsider->id,
+            'workspace_id' => $workspace->id,
+            'role' => 'guest',
+        ]);
+
+        TaskrServer::actingAs($outsider)->tool(CreateLabel::class, [
             'workspace_id' => $workspace->id,
             'name' => 'agent-ready',
             'color' => 'green',
