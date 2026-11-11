@@ -261,10 +261,10 @@ const fr: typeof en = {
             "Enregistrez le temps travaillé sur ce ticket. Seules les heures sont obligatoires.",
         hours: "Heures",
         duration: "Durée",
-        hoursPlaceholder: "ex. 1.5h, 90m, 1:30",
+        hoursPlaceholder: "ex. 1h45, 90m, 1:30",
         hoursHint:
-            "Durée au choix : 1.5h, 90m, 1h30m ou 1:30 (h:m) — tout est converti en heures.",
-        hoursInvalid: "Durée illisible — ex. : 1.5h, 90m, 1h30m ou 1:30.",
+            "Durée au choix : 1h45, 1.5h, 90m ou 1:30 (h:m) — tout est converti en heures.",
+        hoursInvalid: "Durée illisible — ex. : 1h45, 1.5h, 90m ou 1:30.",
         date: "Date",
         note: "Note",
         notePlaceholder: "Note (optionnelle)",

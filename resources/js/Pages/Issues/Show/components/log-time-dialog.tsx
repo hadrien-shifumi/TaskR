@@ -110,6 +110,9 @@ function LogTimeForm({
                 <div className="grid grid-cols-2 gap-4">
                     <div className="grid gap-2">
                         <Label htmlFor="log-time-hours">{t('issueShow.duration')}</Label>
+                        <p id="log-time-hours-hint" className="text-xs text-muted-foreground">
+                            {t('issueShow.hoursHint')}
+                        </p>
                         <Input
                             id="log-time-hours"
                             data-test="log-time-hours"
@@ -125,9 +128,6 @@ function LogTimeForm({
                         {timeEntryForm.errors.hours ? (
                             <p className="text-sm text-destructive">{timeEntryForm.errors.hours}</p>
                         ) : null}
-                        <p id="log-time-hours-hint" className="text-xs text-muted-foreground">
-                            {t('issueShow.hoursHint')}
-                        </p>
                     </div>
                     <div className="grid gap-2">
                         <Label htmlFor="log-time-date">{t('issueShow.date')}</Label>

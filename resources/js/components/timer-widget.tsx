@@ -1,6 +1,7 @@
 import { LogTimeDialog } from '@/Pages/Issues/Show/components/log-time-dialog';
 import { Button } from '@/components/ui/button';
 import i18n from '@/i18n';
+import { formatDurationInput } from '@/lib/format-duration';
 import { router, useHttp, usePage } from '@inertiajs/react';
 import { Square } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -134,7 +135,7 @@ export function TimerProposalDialogs({
         <LogTimeDialog
             issueId={proposal.issueId}
             open
-            initialHours={String(proposal.roundedHours)}
+            initialHours={formatDurationInput(proposal.elapsedHours)}
             issueTitle={proposal.issueTitle}
             exceeds24h={proposal.exceeds24h}
             onClose={onConsumed}

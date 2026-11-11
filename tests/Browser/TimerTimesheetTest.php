@@ -26,10 +26,11 @@ it('starts a timer from the issue page and validates the pre-filled proposal', f
         ->assertVisible('@timer-widget')
         ->assertSeeIn('@timer-widget', 'Chrono target');
 
-    // The stop opens the confirmation dialog with the measured time.
+    // The stop opens the confirmation dialog with the measured time,
+    // pre-filled as a duration string floored to the minute ("1h45", "30m"…).
     $page->click("@timer-widget-stop-{$issue->id}")
         ->assertVisible('@log-time-hours');
-    expect((float) $page->value('@log-time-hours'))->toBeGreaterThan(0.0);
+    expect($page->value('@log-time-hours'))->toMatch('/^\d+h(\d{2})?$|^\d+m$/');
 
     $page->fill('@log-time-note', 'chrono run');
     $page->click('@entry-submit');
@@ -41,6 +42,37 @@ it('starts a timer from the issue page and validates the pre-filled proposal', f
     expect($entry)->not->toBeNull()
         ->and((float) $entry->hours)->toBeGreaterThan(0.0)
         ->and($entry->author_id)->toBe($owner->id);
+});
+
+it('pre-fills the stop proposal as a coherent duration string, seconds dropped', function () {
+    [$owner, $workspace, $project] = setupBrowserWorkspace(withProject: true);
+    $issue = CreateIssue::run($workspace, ['project_id' => $project->id, 'title' => 'Chrono target']);
+
+    app(WorkspaceContext::class)->set($workspace);
+    ActiveTimer::create([
+        'workspace_id' => $workspace->id,
+        'user_id' => $owner->id,
+        'issue_id' => $issue->id,
+        // 1h45m30s ago: the proposal must read "1h45" — not "1.76" nor seconds.
+        'started_at' => now()->subHours(1)->subMinutes(45)->subSeconds(30),
+    ]);
+
+    $this->actingAs($owner);
+    $page = visit('/issues/'.$issue->id);
+
+    $page->click("@timer-widget-stop-{$issue->id}")
+        ->assertVisible('@log-time-hours');
+
+    expect($page->value('@log-time-hours'))->toBe('1h45');
+
+    $page->click('@entry-submit');
+
+    app(WorkspaceContext::class)->set($workspace);
+    $entry = $issue->timeEntries()->first();
+    expect($entry)->not->toBeNull()
+        ->and((float) $entry->hours)->toBe(1.75);
+
+    $page->assertNoSmoke();
 });
 
 it('asks stop-or-parallel and runs the second timer alongside the first', function () {

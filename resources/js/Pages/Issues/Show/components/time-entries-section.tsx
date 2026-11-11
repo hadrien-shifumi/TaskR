@@ -150,6 +150,7 @@ export function TimeEntriesSection({ issue, timeEntries }: TimeEntriesSectionPro
                             </div>
                             {editingTimeEntry === entry.id ? (
                                 <form onSubmit={(e) => submitTimeEntryEdit(e, entry.id)} className="mt-2 grid gap-2">
+                                    <p className="text-xs text-muted-foreground">{t('issueShow.hoursHint')}</p>
                                     <div className="grid grid-cols-2 gap-2">
                                         <Input
                                             type="text"
@@ -161,15 +162,6 @@ export function TimeEntriesSection({ issue, timeEntries }: TimeEntriesSectionPro
                                             aria-invalid={timeEntryEditForm.errors.hours ? true : undefined}
                                             required
                                         />
-                                        {timeEntryEditForm.errors.hours ? (
-                                            <p className="col-span-2 text-xs text-destructive">
-                                                {timeEntryEditForm.errors.hours}
-                                            </p>
-                                        ) : (
-                                            <p className="col-span-2 text-xs text-muted-foreground">
-                                                {t('issueShow.hoursHint')}
-                                            </p>
-                                        )}
                                         <Input
                                             type="date"
                                             data-test="entry-edit-worked-at"
@@ -177,6 +169,9 @@ export function TimeEntriesSection({ issue, timeEntries }: TimeEntriesSectionPro
                                             onChange={(e) => timeEntryEditForm.setData('worked_at', e.target.value)}
                                         />
                                     </div>
+                                    {timeEntryEditForm.errors.hours ? (
+                                        <p className="text-xs text-destructive">{timeEntryEditForm.errors.hours}</p>
+                                    ) : null}
                                     <Textarea
                                         placeholder={t('issueShow.notePlaceholder')}
                                         data-test="entry-edit-note"
