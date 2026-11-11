@@ -13,7 +13,7 @@ use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Attributes\Name;
 
 #[Name('update_knowledge')]
-#[Description('Update a knowledge page: title, markdown body, optional parent and project. Enforces the same rules as the UI (no hierarchy cycle, project of the same workspace) and re-vectorizes the page.')]
+#[Description('Update a knowledge page: title, markdown body, optional parent and project. Partial update: omitted parent_id/project_id keep their current value; pass null to detach (root page / transverse page). Enforces the same rules as the UI (no hierarchy cycle, project of the same workspace) and re-vectorizes the page.')]
 class UpdateKnowledge extends AgentTool
 {
     /**
@@ -26,8 +26,8 @@ class UpdateKnowledge extends AgentTool
             'page_id' => $schema->string()->description('ULID of the knowledge page to update')->required(),
             'title' => $schema->string()->description('New title (max 500 chars)')->required(),
             'body' => $schema->string()->description('New markdown body')->required(),
-            'parent_id' => $schema->string()->description('ULID of the new parent page (null to detach)'),
-            'project_id' => $schema->string()->description('ULID of a project of the same workspace (null to detach)'),
+            'parent_id' => $schema->string()->description('ULID of the new parent page. Omitted: keeps the current parent. null: detaches (page becomes a root)'),
+            'project_id' => $schema->string()->description('ULID of a project of the same workspace. Omitted: keeps the current project. null: detaches (page becomes transverse)'),
         ];
     }
 
@@ -36,6 +36,20 @@ class UpdateKnowledge extends AgentTool
         $this->resolveWorkspace($request);
 
         $page = KnowledgePage::query()->findOrFail($request->get('page_id'));
+
+        // MCP calls update part of the page: an omitted parent or project
+        // keeps its current value instead of silently detaching the page
+        // (the UI form, the only other client of the action, always
+        // re-posts every field). An explicit null still detaches.
+        $arguments = $request->all();
+
+        if (! array_key_exists('parent_id', $arguments)) {
+            $request->merge(['parent_id' => $page->parent_id]);
+        }
+
+        if (! array_key_exists('project_id', $arguments)) {
+            $request->merge(['project_id' => $page->project_id]);
+        }
 
         $action = app(UpdateKnowledgePage::class);
         $data = $request->validate($action->rules());

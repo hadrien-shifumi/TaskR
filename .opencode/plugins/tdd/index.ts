@@ -6,7 +6,8 @@
 //    `--testsuite=Browser`, tests/Browser) while the dev suites are red or
 //    stale — E2E is the final gate, never part of the dev loop.
 //
-// 2. tool.execute.after (edit/write on tests/ or source): runs PHPUnit — the
+// 2. tool.execute.after (edit/write on tests/ or source): runs the test
+//    runner (Pest when the project ships it, PHPUnit otherwise) — the
 //    edited file only when it is a test, the Unit+Feature suites when it is
 //    source or test support code — and appends the verdict to the tool
 //    result. Informational only: it never blocks an edit.
@@ -106,16 +107,16 @@ function recordVerdict(state: TddState, phase: Phase, clearDirty: boolean): void
 }
 
 // ---------------------------------------------------------------------------
-// PHPUnit runner
+// Test runner (Pest when present, PHPUnit otherwise)
 // ---------------------------------------------------------------------------
 
 let projectRoot: string | null = null
 let chain: Promise<unknown> = Promise.resolve()
 
-function findRoot(start: string): string | null {
+export function findRoot(start: string): string | null {
   let dir = path.dirname(start)
   for (let level = 0; level < 10; level += 1) {
-    if (existsSync(path.join(dir, "vendor", "bin", "phpunit"))) return dir
+    if (hasRunner(dir)) return dir
     const parent = path.dirname(dir)
     if (parent === dir) return null
     dir = parent
@@ -123,15 +124,35 @@ function findRoot(start: string): string | null {
   return null
 }
 
+function hasRunner(dir: string): boolean {
+  return existsSync(path.join(dir, "vendor", "bin", "phpunit")) || existsSync(path.join(dir, "vendor", "bin", "pest"))
+}
+
+// Pest projects ship vendor/bin/phpunit, but running it directly dies with
+// "Pest must be run through its own binary" — so pest wins whenever present.
+export function runnerPath(root: string): string {
+  const pest = path.join(root, "vendor", "bin", "pest")
+  if (existsSync(pest)) return pest
+  return path.join(root, "vendor", "bin", "phpunit")
+}
+
+// The suites exhaust PHP's default 128M on full Unit+Feature runs; the
+// project rules prescribe 2G. Override with TDD_PHP_MEMORY_LIMIT.
+const PHP_MEMORY_LIMIT = process.env.TDD_PHP_MEMORY_LIMIT ?? "2G"
+
+export function runnerArgs(args: string[]): string[] {
+  return ["-d", `memory_limit=${PHP_MEMORY_LIMIT}`, ...args]
+}
+
 // Serialized: burst edits share the runner, each verdict reflects the state
 // after the previous edit landed.
-function phpunit(root: string, args: string[]): Promise<{ code: number; out: string }> {
+function runSuite(root: string, args: string[]): Promise<{ code: number; out: string }> {
   const task = chain.then(
     () =>
       new Promise<{ code: number; out: string }>((resolve) => {
         execFile(
-          path.join(root, "vendor", "bin", "phpunit"),
-          args,
+          runnerPath(root),
+          runnerArgs(args),
           { cwd: root, timeout: PHPUNIT_TIMEOUT_MS, maxBuffer: MAX_OUTPUT_BYTES, env: sanitizedEnv() },
           (error, stdout, stderr) => {
             const code = error ? (typeof error.code === "number" ? error.code : 1) : 0
@@ -155,10 +176,11 @@ function firstLine(text: string, re: RegExp): string | null {
   return m ? m[0].trim() : null
 }
 
-// Tolerates a machine-readable one-liner some output layers emit for phpunit:
-// {"tool":"phpunit","result":"passed"|"failed","tests":N,"failed":M,...}
+// Tolerates a machine-readable one-liner some output layers emit for phpunit,
+// pest and `artisan test --compact`:
+// {"tool":"phpunit|pest|artisan test","result":"passed"|"failed","tests":N,"failed":M,...}
 function fromRunnerJson(out: string): Verdict | null {
-  const m = out.match(/^\s*\{"tool":"(?:phpunit|artisan test)".*\}\s*$/s)
+  const m = out.match(/^\s*\{"tool":"(?:phpunit|pest|artisan test)".*\}\s*$/s)
   if (!m) return null
   try {
     const j = JSON.parse(m[0]) as Record<string, any>
@@ -193,7 +215,8 @@ export function summarize(code: number, out: string): Verdict {
   return {
     state: "red",
     summary: firstLine(clean, /^Tests:.*$/m) ?? `exit code ${code}`,
-    failures: [...clean.matchAll(/^\d+\)\s+\S+/gm)].map((m) => m[0].replace(/^\d+\)\s+/, "")).slice(0, 3),
+    // PHPUnit lists failures as "1) Tests\…", Pest as "FAILED  Tests\…".
+    failures: [...clean.matchAll(/^(?:\d+\)\s+|FAILED\s+)(\S+)/gm)].map((m) => m[1]).slice(0, 3),
   }
 }
 
@@ -325,7 +348,7 @@ function suiteLines(verdict: Verdict): string[] {
   return lines
 }
 
-async function guardEditWrite(
+export async function guardEditWrite(
   tool: string,
   args: Record<string, unknown> | undefined,
   result: unknown,
@@ -357,7 +380,7 @@ async function guardEditWrite(
       return
     }
 
-    const { code, out } = await phpunit(root, [raw])
+    const { code, out } = await runSuite(root, [raw])
     const verdict = summarize(code, out)
     // A green single file only clears the red-test phase, never a suite regression.
     if (verdict.state === "red") {
@@ -372,7 +395,7 @@ async function guardEditWrite(
     saveState(sessionId, state)
     inject(result, block(lines))
   } else {
-    const { code, out } = await phpunit(root, ["--testsuite", DEV_SUITES])
+    const { code, out } = await runSuite(root, ["--testsuite", DEV_SUITES])
     const verdict = summarize(code, out)
     recordVerdict(
       state,

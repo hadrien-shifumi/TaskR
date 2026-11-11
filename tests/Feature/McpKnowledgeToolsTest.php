@@ -12,6 +12,7 @@ use App\Mcp\Tools\ListKnowledge;
 use App\Mcp\Tools\SearchKnowledge;
 use App\Mcp\Tools\UpdateKnowledge;
 use App\Models\KnowledgePage;
+use App\Models\Project;
 use App\Models\User;
 use App\Support\WorkspaceContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -280,5 +281,130 @@ class McpKnowledgeToolsTest extends TestCase
         $childModel = KnowledgePage::withoutWorkspaceScope()->findOrFail($child->id);
         $this->assertNotNull($childModel->embedded_at);
         $this->assertEquals([1.0, 0.0], array_map(floatval(...), $childModel->embedding));
+    }
+
+    public function test_update_knowledge_preserves_parent_and_project_when_omitted(): void
+    {
+        Queue::fake();
+        [$owner, $workspace] = $this->setupWorkspace();
+        app(WorkspaceContext::class)->set($workspace);
+
+        $project = Project::factory()->create(['workspace_id' => $workspace->id]);
+        $parent = KnowledgePage::factory()->create([
+            'workspace_id' => $workspace->id,
+            'title' => 'Technique',
+            'body' => 'Root page.',
+        ]);
+        $page = KnowledgePage::factory()->create([
+            'workspace_id' => $workspace->id,
+            'title' => 'Runbooks',
+            'body' => 'Original body.',
+            'parent_id' => $parent->id,
+            'project_id' => $project->id,
+        ]);
+
+        // Content-only update: the page must keep its tree position and
+        // its project attachment — no silent detach.
+        $result = TaskrServer::actingAs($owner)
+            ->tool(UpdateKnowledge::class, [
+                'workspace_id' => $workspace->id,
+                'page_id' => $page->id,
+                'title' => 'Runbooks',
+                'body' => 'Updated body.',
+            ])
+            ->assertOk()->payload();
+
+        $this->assertSame('Updated body.', $result['page']['body']);
+        $this->assertSame($parent->id, $result['page']['parentId']);
+        $this->assertSame($project->id, $result['page']['projectId']);
+
+        $this->assertDatabaseHas('knowledge_pages', [
+            'id' => $page->id,
+            'parent_id' => $parent->id,
+            'project_id' => $project->id,
+        ]);
+    }
+
+    public function test_update_knowledge_explicit_null_detaches_parent_and_project(): void
+    {
+        Queue::fake();
+        [$owner, $workspace] = $this->setupWorkspace();
+        app(WorkspaceContext::class)->set($workspace);
+
+        $project = Project::factory()->create(['workspace_id' => $workspace->id]);
+        $parent = KnowledgePage::factory()->create([
+            'workspace_id' => $workspace->id,
+            'title' => 'Fonctionnel',
+            'body' => 'Root page.',
+        ]);
+        $page = KnowledgePage::factory()->create([
+            'workspace_id' => $workspace->id,
+            'title' => 'Runbooks',
+            'body' => 'Original body.',
+            'parent_id' => $parent->id,
+            'project_id' => $project->id,
+        ]);
+
+        // An explicit null is a deliberate detach: root page, transverse.
+        TaskrServer::actingAs($owner)
+            ->tool(UpdateKnowledge::class, [
+                'workspace_id' => $workspace->id,
+                'page_id' => $page->id,
+                'title' => 'Runbooks',
+                'body' => 'Updated body.',
+                'parent_id' => null,
+                'project_id' => null,
+            ])
+            ->assertOk()->payload();
+
+        $this->assertDatabaseHas('knowledge_pages', [
+            'id' => $page->id,
+            'parent_id' => null,
+            'project_id' => null,
+        ]);
+    }
+
+    public function test_update_knowledge_moves_parent_and_project_when_passed(): void
+    {
+        Queue::fake();
+        [$owner, $workspace] = $this->setupWorkspace();
+        app(WorkspaceContext::class)->set($workspace);
+
+        $oldProject = Project::factory()->create(['workspace_id' => $workspace->id]);
+        $newProject = Project::factory()->create(['workspace_id' => $workspace->id]);
+        $oldParent = KnowledgePage::factory()->create([
+            'workspace_id' => $workspace->id,
+            'title' => 'Old parent',
+            'body' => 'Root page.',
+        ]);
+        $newParent = KnowledgePage::factory()->create([
+            'workspace_id' => $workspace->id,
+            'title' => 'New parent',
+            'body' => 'Other root page.',
+        ]);
+        $page = KnowledgePage::factory()->create([
+            'workspace_id' => $workspace->id,
+            'title' => 'Runbooks',
+            'body' => 'Original body.',
+            'parent_id' => $oldParent->id,
+            'project_id' => $oldProject->id,
+        ]);
+
+        TaskrServer::actingAs($owner)
+            ->tool(UpdateKnowledge::class, [
+                'workspace_id' => $workspace->id,
+                'page_id' => $page->id,
+                'title' => 'Runbooks',
+                'body' => 'Updated body.',
+                'parent_id' => $newParent->id,
+                'project_id' => $newProject->id,
+            ])
+            ->assertOk()->payload();
+
+        $this->assertDatabaseHas('knowledge_pages', [
+            'id' => $page->id,
+            'parent_id' => $newParent->id,
+            'project_id' => $newProject->id,
+        ]);
     }
 }

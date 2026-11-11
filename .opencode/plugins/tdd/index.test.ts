@@ -1,10 +1,12 @@
 import { afterEach, describe, expect, test } from "bun:test"
-import { existsSync, rmSync } from "node:fs"
-import { homedir } from "node:os"
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { homedir, tmpdir } from "node:os"
 import path from "node:path"
 import {
+  findRoot,
   guardBashAfter,
   guardBashBefore,
+  guardEditWrite,
   isDevTestCommand,
   isE2eCommand,
   isNarrowRun,
@@ -12,6 +14,8 @@ import {
   promptSession,
   recordBashRun,
   resultText,
+  runnerArgs,
+  runnerPath,
   saveState,
   summarize,
   turnGate,
@@ -46,6 +50,89 @@ describe("verdict summarization", () => {
     const verdict = summarize(1, "Tests: 2 failed, 10 passed")
     expect(verdict.state).toBe("red")
     expect(verdict.summary).toContain("Tests:")
+  })
+
+  test("parses the pest compact JSON as green", () => {
+    const out = '{"tool":"pest","result":"passed","tests":1435,"passed":1435,"assertions":8301,"duration_ms":20732}'
+    const verdict = summarize(0, out)
+    expect(verdict.state).toBe("green")
+    expect(verdict.summary).toContain("1435 tests")
+    expect(verdict.summary).toContain("8301 assertions")
+  })
+
+  test("parses the pest compact JSON as red with failure names", () => {
+    const out =
+      '{"tool":"pest","result":"failed","tests":10,"passed":9,"failed":1,' +
+      '"failures":[{"test":"P\\\\Tests\\\\Browser\\\\IssueDetailTest::__pest_evaluable_x"}]}'
+    const verdict = summarize(1, out)
+    expect(verdict.state).toBe("red")
+    expect(verdict.summary).toContain("10 tests")
+    expect(verdict.failures[0]).toContain("IssueDetailTest")
+  })
+
+  test("extracts FAILED lines from pest formatted output", () => {
+    const out = "FAILED  Tests\\Feature\\FooTest::test_bar\nTests: 1 failed, 9 passed, 10 total"
+    const verdict = summarize(1, out)
+    expect(verdict.state).toBe("red")
+    expect(verdict.failures.some((f) => f.includes("FooTest"))).toBe(true)
+  })
+
+  test("runs the real runner on a test file edit and reports green", async () => {
+    const sessionId = useSession()
+    // guardEditWrite receives the whole hook event and injects into
+    // event.result.content (V2 shape: existing text parts).
+    const event = { result: { content: [{ type: "text", text: "" }] } }
+    await guardEditWrite(
+      "edit",
+      { path: path.resolve("tests/Feature/McpKnowledgeToolsTest.php") },
+      event,
+      sessionId,
+    )
+    expect(resultText(event.result)).toContain("🟢 GREEN")
+    expect(loadState(sessionId).phase).toBe("green")
+  }, 60_000)
+})
+
+describe("runner selection", () => {
+  test("findRoot accepts a Pest-only project", () => {
+    const root = mkdtempSync(path.join(tmpdir(), "tdd-pest-"))
+    mkdirSync(path.join(root, "vendor", "bin"), { recursive: true })
+    writeFileSync(path.join(root, "vendor", "bin", "pest"), "")
+    try {
+      expect(findRoot(path.join(root, "app", "Foo.php"))).toBe(root)
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  test("prefers pest when both binaries exist", () => {
+    const root = mkdtempSync(path.join(tmpdir(), "tdd-both-"))
+    mkdirSync(path.join(root, "vendor", "bin"), { recursive: true })
+    writeFileSync(path.join(root, "vendor", "bin", "pest"), "")
+    writeFileSync(path.join(root, "vendor", "bin", "phpunit"), "")
+    try {
+      expect(runnerPath(root)).toBe(path.join(root, "vendor", "bin", "pest"))
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  test("falls back to phpunit when pest is absent", () => {
+    const root = mkdtempSync(path.join(tmpdir(), "tdd-phpunit-"))
+    mkdirSync(path.join(root, "vendor", "bin"), { recursive: true })
+    writeFileSync(path.join(root, "vendor", "bin", "phpunit"), "")
+    try {
+      expect(runnerPath(root)).toBe(path.join(root, "vendor", "bin", "phpunit"))
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  test("adds the memory limit to the runner args", () => {
+    const args = runnerArgs(["--testsuite", "Unit,Feature"])
+    expect(args[0]).toBe("-d")
+    expect(args[1]).toMatch(/^memory_limit=/)
+    expect(args.slice(2)).toEqual(["--testsuite", "Unit,Feature"])
   })
 })
 
