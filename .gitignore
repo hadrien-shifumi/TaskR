@@ -13,6 +13,9 @@
 /.opencode/scratch
 /.vscode
 /.zed
+
+# Personal OpenCode config — points at the operator's own instance, not the product
+/opencode.json
 /auth.json
 /node_modules
 /public/build

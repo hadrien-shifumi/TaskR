@@ -1,6 +1,6 @@
 # Taskr — Design system
 
-Le design system de Taskr tient en trois couches : les **tokens sémantiques Tailwind v4** (couleurs, typographie, rayons — définis une seule fois dans `resources/css/app.css`), les **primitives shadcn/ui** montées sur Base UI (style `base-nova`, voir `components.json`) et les **composants applicatifs** (`resources/js/components/`). Ce dossier documente les tokens et leur emploi ; il ne remplace ni le [brief de conception](../design-brief.md) ni le [handoff des maquettes](../maquettes/HANDOFF.md), qui restent les références amont (intentions produit, tokens verbatim de la maquette).
+Le design system de Taskr tient en trois couches : les **tokens sémantiques Tailwind v4** (couleurs, typographie, rayons — définis une seule fois dans `resources/css/app.css`), les **primitives shadcn/ui** montées sur Base UI (style `base-nova`, voir `components.json`) et les **composants applicatifs** (`resources/js/components/`). Ce dossier documente les tokens et leur emploi ; il ne remplace ni le [brief de conception](../design-brief.md) ni les [maquettes](../maquettes/) (assets `app.css` / `app.js`), qui restent les références amont (intentions produit, tokens verbatim de la maquette).
 
 ## Principes
 
@@ -43,5 +43,5 @@ La barre d'outils Storybook expose deux sélecteurs globaux :
 ## Contexte amont
 
 - [`docs/design-brief.md`](../design-brief.md) — produit, règles métier qui contraignent l'UI, inventaire des écrans.
-- [`docs/maquettes/HANDOFF.md`](../maquettes/HANDOFF.md) — section 3 : tokens verbatim de la maquette et règles de design (hairlines, rayons 8/12 px, ombres réservées aux dialogs et menus).
+- [`docs/maquettes/assets/app.css`](../maquettes/assets/app.css) — tokens verbatim de la maquette et règles de design (hairlines, rayons 8/12 px, ombres réservées aux dialogs et menus).
 - [`docs/maquettes/assets/app.css`](../maquettes/assets/app.css) — la source historique des valeurs oklch et des composants de maquette.

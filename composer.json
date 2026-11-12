@@ -1,9 +1,9 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "laravel/laravel",
+    "name": "hadrien-shifumi/taskr",
     "type": "project",
-    "description": "The skeleton application for the Laravel framework.",
-    "keywords": ["laravel", "framework"],
+    "description": "Minimalist, multi-tenant issue tracker built for humans and AI agents alike — self-hostable, MCP-native, powered by Laravel, Inertia and React.",
+    "keywords": ["laravel", "issue-tracker", "project-management", "mcp", "self-hosted", "inertia", "react"],
     "license": "MIT",
     "require": {
         "php": "^8.3",
