@@ -41,6 +41,27 @@ TaskR est conçu pour être piloté **autant par des humains (UI web) que par de
 
 Prérequis : PHP ≥ 8.3 (8.5 recommandé), Node 22+, Composer, Docker (pour PostgreSQL).
 
+**Option a — `composer create-project` (dernière release publiée)** :
+
+```bash
+composer create-project hadrien-shifumi/taskr
+cd taskr
+php artisan taskr:install
+```
+
+Le wizard (lancé automatiquement par `create-project`) demande où tourne la
+base de données (docker embarquée / dev local sur 5433 / PostgreSQL externe
+managé), le fournisseur d'embeddings de la base de connaissances (presets
+OpenAI, Ollama, Mistral ou endpoint custom compatible OpenAI), teste la
+connexion base et l'endpoint d'embeddings si vous le souhaitez, écrit le
+`.env` (sans toucher aux clés qu'il ne gère pas), génère l'`APP_KEY`, puis
+propose migrations et build frontend. Il fixe `KNOWLEDGE_EMBEDDINGS_DIMENSIONS`
+**avant** la première migration, comme l'exige la colonne pgvector. Relançable
+à tout moment (`php artisan taskr:install`), il est idempotent ; sans terminal
+interactif, il retombe sur les valeurs détectées dans le `.env`.
+
+**Option b — depuis un clone des sources** :
+
 ```bash
 cp .env.example .env         # puis décommenter DB_HOST=127.0.0.1 et DB_PORT=5433 (mode « dev hôte », voir .env.example)
 docker compose up -d postgres  # PostgreSQL 18 + pgvector exposé sur le port 5433 (voir docker-compose.yml)
@@ -203,6 +224,14 @@ docker compose up -d   # les migrations s'exécutent au démarrage du rôle web
 > Si tu as épinglé `TASKR_VERSION` (recommandé en production), c'est lui le
 > vrai geste de mise à jour : passe-le à la nouvelle version dans le `.env`
 > avant le `pull`, sinon `docker compose pull` retélécharge l'ancienne.
+
+> Pour être notifié des nouvelles versions, active le profil `diun`
+> (`COMPOSE_PROFILES=bundled-db,diun` dans le `.env`, puis `docker compose
+> up -d`) : [Diun](https://crazymax.dev/diun/) vérifie GHCR toutes les 6 h et
+> signale chaque nouveau tag stable — dans les logs (`docker compose logs
+> diun`) ou via un canal `DIUN_NOTIF_*` du `.env` (Telegram, ntfy, mail…).
+> Il ne déploie rien : la mise à jour reste le geste explicite ci-dessus,
+> migrations comprises.
 
 > En exposition publique : `APP_ENV=production`, `APP_DEBUG=false`, un `APP_URL`
 > correct, un `DB_PASSWORD` dédié avant le premier boot, et un reverse proxy en
