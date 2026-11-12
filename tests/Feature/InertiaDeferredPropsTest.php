@@ -84,8 +84,10 @@ class InertiaDeferredPropsTest extends TestCase
         ]);
 
         // The fiche shell (detail, statuses, members, labels) renders
-        // immediately; the thread, the journal and the two full-workspace
-        // candidate lists load in parallel.
+        // immediately; the thread and the dependency candidates load in
+        // parallel. The parent autocomplete no longer ships a full
+        // candidate list: the client fetches live through the search
+        // endpoint.
         $this->actingAs($owner)
             ->get("/issues/{$issue->id}")
             ->assertOk()
@@ -94,16 +96,14 @@ class InertiaDeferredPropsTest extends TestCase
                 ->has('issue')
                 ->missing('comments')
                 ->missing('activity')
-                ->missing('candidates')
                 ->missing('dependencyCandidates'));
 
         $this->actingAs($owner)
-            ->get("/issues/{$issue->id}", $this->partial('Issues/Show', ['comments', 'activity', 'candidates', 'dependencyCandidates']))
+            ->get("/issues/{$issue->id}", $this->partial('Issues/Show', ['comments', 'activity', 'dependencyCandidates']))
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->has('comments', 0)
                 ->has('activity')
-                ->has('candidates', 0)
                 ->has('dependencyCandidates', 0));
     }
 

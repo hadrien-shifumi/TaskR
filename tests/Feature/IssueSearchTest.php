@@ -126,6 +126,28 @@ class IssueSearchTest extends TestCase
             ->assertJsonCount(1);
     }
 
+    public function test_archived_issues_are_not_returned_by_the_search(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspace();
+        $archivedIssue = CreateIssue::run($workspace, ['project_id' => $project->id, 'title' => 'Rapport annuel']);
+        $activeIssue = CreateIssue::run($workspace, ['project_id' => $project->id, 'title' => 'Compte client']);
+
+        $archivedIssue->update(['archived_at' => now()]);
+
+        // The archived issue never surfaces, even by its own words.
+        $this->actingAs($owner)
+            ->getJson(route('issues.search', ['q' => 'rapport']))
+            ->assertOk()
+            ->assertJsonCount(0);
+
+        // The active sibling of the same workspace still answers the search.
+        $this->actingAs($owner)
+            ->getJson(route('issues.search', ['q' => 'compte']))
+            ->assertOk()
+            ->assertJsonCount(1)
+            ->assertJsonPath('0.id', $activeIssue->id);
+    }
+
     public function test_search_matches_an_identifier_prefix(): void
     {
         [$owner, $workspace, $project] = $this->setupWorkspace();

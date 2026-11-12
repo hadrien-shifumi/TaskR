@@ -247,6 +247,8 @@ const fr: typeof en = {
         parentTitle: "Définir le ticket parent",
         parentHint: "Même espace de travail uniquement · cycles interdits.",
         parentIssue: "Ticket parent",
+        parentSearchPlaceholder: "Rechercher un ticket parent…",
+        parentSearchEmpty: "Aucun ticket parent ne correspond.",
         noParent: "Aucun parent",
         cycleRefused: "Rattachement refusé :",
         cycleError:
@@ -724,6 +726,8 @@ const fr: typeof en = {
         delete: "Supprimer l'échéance",
         parentTitle: "Définir l'échéance parente",
         parentHint: "Même projet uniquement · cycles interdits.",
+        parentSearchPlaceholder: "Rechercher une échéance parente…",
+        parentSearchEmpty: "Aucun parent ne correspond.",
         noParent: "Aucun parent",
         setParent: "Définir le parent",
         parentRefused: "Rattachement refusé :",

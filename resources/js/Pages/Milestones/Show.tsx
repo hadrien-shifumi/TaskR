@@ -20,7 +20,7 @@ import { formatDate } from '@/lib/format-date';
 import { ArrowLeft, MoreHorizontal } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { MilestoneCard, MilestoneOption } from '@/types';
+import type { MilestoneCard } from '@/types';
 import type { IssueRow } from '@/Pages/Issues/Index/types';
 
 type MilestoneDetail = MilestoneCard & {
@@ -37,7 +37,6 @@ type PageProps = {
         description: string | null;
         targetDate: string | null;
     };
-    parentCandidates: MilestoneOption[];
     canContribute: boolean;
     canManage: boolean;
 };
@@ -49,7 +48,7 @@ type PageProps = {
  * for every project member, deletion for the managers only.
  */
 export default function Show() {
-    const { milestone, project, parentCandidates, canContribute, canManage } = usePage<PageProps>().props;
+    const { milestone, project, canContribute, canManage } = usePage<PageProps>().props;
     const { t } = useTranslation();
 
     const [editing, setEditing] = useState(false);
@@ -231,7 +230,7 @@ export default function Show() {
             <MilestoneDeleteDialog milestone={deleting} onClose={() => setDeleting(null)} />
             <MilestoneSetParentDialog
                 milestone={milestone}
-                candidates={parentCandidates}
+                currentTitle={milestone.parent?.title ?? null}
                 open={settingParent}
                 onClose={() => setSettingParent(false)}
             />

@@ -23,7 +23,6 @@ type IssueDetailProps = {
     statuses: { id: string; name: string; category: string }[];
     members: UserRef[];
     labels: LabelRef[];
-    candidates: { id: string; title: string }[];
     dependencyCandidates: { id: string; title: string }[];
     /** Milestones of the issue's project, offered by the sidebar's dialog. */
     milestoneOptions: MilestoneOption[];
@@ -60,7 +59,6 @@ export function IssueDetail({
     statuses,
     members,
     labels,
-    candidates,
     dependencyCandidates,
     milestoneOptions,
     canContribute,
@@ -210,7 +208,6 @@ export function IssueDetail({
                 statuses={statuses}
                 members={members}
                 labels={labels}
-                candidates={candidates}
                 dependencyCandidates={dependencyCandidates}
                 milestoneOptions={milestoneOptions}
                 canContribute={canContribute}

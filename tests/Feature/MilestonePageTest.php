@@ -159,8 +159,6 @@ class MilestonePageTest extends TestCase
                 ->has('milestone.children', 1)
                 ->where('milestone.children.0.id', $child->id)
                 ->where('project.id', $project->id)
-                ->has('parentCandidates', 1)
-                ->where('parentCandidates.0.id', $child->id)
                 ->where('canContribute', true)
                 ->where('canManage', true));
     }

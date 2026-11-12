@@ -79,8 +79,7 @@ class ProjectBoardIssueDetailTest extends TestCase
                 ->where('issueDetail.comments.0.body', 'Un commentaire')
                 ->has('issueDetail.timeEntries', 1)
                 ->where('issueDetail.timeEntries.0.hours', 1.5)
-                ->has('issueDetail.statuses', 4)
-                ->has('issueDetail.candidates', 0));
+                ->has('issueDetail.statuses', 4));
     }
 
     public function test_board_issue_param_unknown_issue_is_not_found(): void

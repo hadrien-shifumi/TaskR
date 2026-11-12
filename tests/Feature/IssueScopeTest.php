@@ -154,22 +154,6 @@ class IssueScopeTest extends TestCase
             ->assertNotFound();
     }
 
-    public function test_guest_parent_candidates_are_scoped_on_detail_page(): void
-    {
-        [$owner, $workspace, $inScopeIssue, $outOfScopeIssue, $guest] = $this->setupScopedGuest();
-        $child = CreateIssue::run($workspace, ['project_id' => $inScopeIssue->project_id, 'title' => 'Enfant']);
-
-        $this->actingAs($guest)
-            ->get(route('issues.show', $child->id), [
-                'X-Inertia-Partial-Component' => 'Issues/Show',
-                'X-Inertia-Partial-Data' => 'candidates',
-            ])
-            ->assertOk()
-            ->assertInertia(fn (AssertableInertia $props) => $props
-                ->has('candidates', 1)
-                ->where('candidates.0.id', $inScopeIssue->id));
-    }
-
     // ── CRUD ─────────────────────────────────────────────────────────
 
     public function test_guest_cannot_create_an_issue_out_of_scope(): void

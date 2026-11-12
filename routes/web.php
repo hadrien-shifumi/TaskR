@@ -56,6 +56,7 @@ use App\Actions\Milestones\CloseMilestone;
 use App\Actions\Milestones\CreateMilestone;
 use App\Actions\Milestones\DeleteMilestone;
 use App\Actions\Milestones\ListMilestones;
+use App\Actions\Milestones\SearchMilestones;
 use App\Actions\Milestones\SetIssueMilestone;
 use App\Actions\Milestones\SetMilestoneParent;
 use App\Actions\Milestones\ShowMilestonePage;
@@ -194,6 +195,10 @@ Route::middleware(['auth', 'workspace'])->group(function (): void {
     Route::get('/projects/{project}/milestones', ShowMilestonesPage::class)->name('projects.milestones');
     Route::get('/projects/{project}/milestones/list', ListMilestones::class)->name('milestones.index');
     Route::post('/projects/{project}/milestones', CreateMilestone::class)->name('milestones.store');
+    // Live parent autocomplete: LIKE title search within the project, for
+    // the set-parent dialog. Declared before /milestones/{milestone} so the
+    // "search" path segment is never captured as an id.
+    Route::get('/projects/{project}/milestones/search', SearchMilestones::class)->name('milestones.search');
     Route::get('/milestones/{milestone}', ShowMilestonePage::class)->name('milestones.show');
     Route::match(['put', 'patch'], '/milestones/{milestone}', UpdateMilestone::class)->name('milestones.update');
     Route::delete('/milestones/{milestone}', DeleteMilestone::class)->name('milestones.destroy');

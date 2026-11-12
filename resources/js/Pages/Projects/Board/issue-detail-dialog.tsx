@@ -20,7 +20,6 @@ export type IssueDetailPayload = {
     statuses: { id: string; name: string; category: string }[];
     members: UserRef[];
     labels: LabelRef[];
-    candidates: { id: string; title: string }[];
     dependencyCandidates: { id: string; title: string }[];
     milestoneOptions: MilestoneOption[];
     canContribute: boolean;
@@ -110,7 +109,6 @@ export function IssueDetailDialog({ projectId, filters, parentsOnly, detail }: I
                         statuses={detail.statuses}
                         members={detail.members}
                         labels={detail.labels}
-                        candidates={detail.candidates}
                         dependencyCandidates={detail.dependencyCandidates}
                         milestoneOptions={detail.milestoneOptions}
                         canContribute={detail.canContribute}

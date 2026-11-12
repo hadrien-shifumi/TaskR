@@ -127,14 +127,17 @@ it('refuses a parent that would create a cycle, with a danger banner', function 
 
     $page = visit('/projects/'.$project->id.'/milestones');
 
-    // Version 1's own child as parent: refused by the action.
+    // Version 1's own child as parent: refused by the action. The
+    // autocomplete searches the title live, the result is picked from the list.
     $page->click('button[aria-label="Actions for Version 1"]');
     $page->click('@milestone-set-parent');
-    $page->click('@milestone-parent-select');
-    $page->click('[role="option"]:has-text("Sprint 1")');
+    $page->fill('@milestone-parent-search-input', 'Sprint 1');
+    $page->waitForEvent('networkidle');
+    $page->click('[data-test="milestone-parent-search-result"]:has-text("Sprint 1")');
     $page->click('@milestone-parent-submit');
 
     // The 422 refusal surfaces as a dedicated banner inside the dialog.
+    $page->waitForEvent('networkidle');
     $page->assertPresent('@milestone-parent-error');
 
     app(WorkspaceContext::class)->set($workspace);
@@ -154,8 +157,8 @@ it('sets and detaches the parent from the milestone dialog', function () {
     // indentation probe shows both rows at the same depth afterwards.
     $page->click('button[aria-label="Actions for Sprint 1"]');
     $page->click('@milestone-set-parent');
-    $page->click('@milestone-parent-select');
-    $page->click('[role="option"]:has-text("No parent")');
+    $page->fill('@milestone-parent-search-input', '');
+    $page->click('[data-test="milestone-parent-none"]');
     $page->click('@milestone-parent-submit');
     $page->waitForEvent('networkidle');
     $page->assertSee('Milestone updated.');

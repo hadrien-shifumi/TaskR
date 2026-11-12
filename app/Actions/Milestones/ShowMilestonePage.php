@@ -29,11 +29,12 @@ class ShowMilestonePage
     /**
      * Present the detail page of a milestone: the fiche (parent, dates,
      * progression), its unarchived issues, its child milestones and
-     * the same permission props as the project's Échéances tab. The
-     * parent candidates feed the set-parent dialog; cycle and
-     * cross-project rules stay enforced by the mutation action.
+     * the same permission props as the project's Échéances tab. The set-
+     * parent dialog fetches its live candidates through the milestones
+     * search endpoint; cycle and cross-project rules stay enforced by the
+     * mutation action.
      *
-     * @return array{milestone: array<string, mixed>, project: array<string, mixed>, parentCandidates: array<int, array{id: string, title: string}>, canContribute: bool, canManage: bool}
+     * @return array{milestone: array<string, mixed>, project: array<string, mixed>, canContribute: bool, canManage: bool}
      */
     public function handle(Milestone $milestone, ?User $user = null): array
     {
@@ -60,18 +61,9 @@ class ShowMilestonePage
             ->orderBy('created_at')
             ->get();
 
-        $candidates = $milestone->project->milestones()
-            ->whereKeyNot($milestone->getKey())
-            ->orderBy('title')
-            ->get();
-
         return [
             'milestone' => MilestonePresenter::detail($milestone, $parent, $children, $issues),
             'project' => ProjectPresenter::summary($milestone->project),
-            'parentCandidates' => $candidates
-                ->map(fn (Milestone $candidate) => MilestonePresenter::option($candidate))
-                ->values()
-                ->all(),
             'canContribute' => $user instanceof User && $milestone->project->isContributor($user),
             'canManage' => $user instanceof User && $milestone->project->canManage($user),
         ];

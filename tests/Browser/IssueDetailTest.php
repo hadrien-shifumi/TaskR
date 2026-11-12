@@ -119,9 +119,12 @@ it('refuses a parent that would create a cycle', function () {
 
     $page = visit('/issues/'.$parent->id);
 
+    // The autocomplete searches the title live: typing the child's title
+    // filters the issues server-side, the result is picked from the list.
     $page->click('@parent-dialog-open');
-    $page->click('@parent-select');
-    $page->click('[role="option"]:has-text("Child issue")');
+    $page->fill('@parent-search-input', 'Child issue');
+    $page->waitForEvent('networkidle');
+    $page->click('[data-test="parent-search-result"]:has-text("Child issue")');
     $page->click('@parent-submit');
 
     // The 422 refusal surfaces as a dedicated banner inside the dialog.

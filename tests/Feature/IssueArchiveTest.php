@@ -474,25 +474,6 @@ class IssueArchiveTest extends TestCase
         );
     }
 
-    public function test_archived_issues_leave_parent_candidates(): void
-    {
-        [$owner, $workspace, $project] = $this->setupWorkspace();
-        $issue = $this->createIssue($workspace, $project, StatusCategory::Backlog);
-        $archived = $this->createIssue($workspace, $project, StatusCategory::Done);
-        $archived->update(['archived_at' => now()]);
-
-        $this->actingAs($owner)
-            ->get("/issues/{$issue->id}", [
-                'X-Inertia-Partial-Component' => 'Issues/Show',
-                'X-Inertia-Partial-Data' => 'candidates',
-            ])
-            ->assertOk()
-            ->assertInertia(
-                fn (AssertableInertia $page) => $page
-                    ->has('candidates', 0)
-            );
-    }
-
     public function test_archives_view_lists_project_archived_issues_by_recency(): void
     {
         [$owner, $workspace, $project] = $this->setupWorkspace();

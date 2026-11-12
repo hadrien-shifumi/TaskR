@@ -8,33 +8,27 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
 import { router } from '@inertiajs/react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { MilestoneCard, MilestoneOption } from '@/types';
+import { ParentAutocomplete, type ParentSearchResult } from '@/components/parent-autocomplete';
+import type { MilestoneCard } from '@/types';
 
 type MilestoneSetParentDialogProps = {
     milestone: MilestoneCard;
-    /** Same-project milestones minus the milestone itself. */
-    candidates: MilestoneOption[];
+    /** Title of the attached parent, when any — the autocomplete displays it. */
+    currentTitle?: string | null;
     open: boolean;
     onClose: () => void;
 };
 
 /**
- * Maquette dlg-set-parent pattern applied to milestones: same-project
- * candidates only, cycles and self-parenting refused by the action —
- * the 422 refusal surfaces as a banner-danger inside the dialog.
+ * Live parent autocomplete for milestones: debounced title search scoped
+ * to the project server-side, results picked from a list, "no parent" option
+ * reachable while the query is empty. The cycle and cross-project rules live
+ * in the action — the 422 refusal surfaces as a banner-danger inside.
  */
-export function MilestoneSetParentDialog({ milestone, candidates, open, onClose }: MilestoneSetParentDialogProps) {
+export function MilestoneSetParentDialog({ milestone, currentTitle, open, onClose }: MilestoneSetParentDialogProps) {
     return (
         <Dialog
             open={open}
@@ -42,30 +36,34 @@ export function MilestoneSetParentDialog({ milestone, candidates, open, onClose 
                 if (!o) onClose();
             }}
         >
-            {open ? (
-                <MilestoneSetParentForm milestone={milestone} candidates={candidates} onClose={onClose} />
-            ) : null}
+            {open ? <MilestoneSetParentForm milestone={milestone} currentTitle={currentTitle} onClose={onClose} /> : null}
         </Dialog>
     );
 }
 
 function MilestoneSetParentForm({
     milestone,
-    candidates,
+    currentTitle,
     onClose,
 }: {
     milestone: MilestoneCard;
-    candidates: MilestoneOption[];
+    currentTitle?: string | null;
     onClose: () => void;
 }) {
     const { t } = useTranslation();
     const [parentId, setParentId] = useState<string>(milestone.parentId ?? 'none');
     const [refused, setRefused] = useState<string | null>(null);
 
+    const handleChange = (id: string) => {
+        setParentId(id);
+        setRefused(null);
+    };
+
     const setParent = (e: React.FormEvent) => {
         e.preventDefault();
         setRefused(null);
-        router.post(            route('milestones.parent', milestone.id),
+        router.post(
+            route('milestones.parent', milestone.id),
             { parent_id: parentId === 'none' ? null : parentId },
             {
                 onSuccess: () => onClose(),
@@ -77,6 +75,14 @@ function MilestoneSetParentForm({
         );
     };
 
+    const searchMilestones = (q: string): Promise<ParentSearchResult[]> =>
+        fetch(route('milestones.search', { project: milestone.projectId, q, limit: 10 }), {
+            headers: { Accept: 'application/json' },
+        })
+            .then((response) => (response.ok ? response.json() : Promise.reject(response.status)))
+            .then((payload: ParentSearchResult[]) => payload)
+            .catch(() => []);
+
     return (
         <DialogContent>
             <DialogHeader>
@@ -84,35 +90,24 @@ function MilestoneSetParentForm({
                 <DialogDescription>{t('milestones.parentHint')}</DialogDescription>
             </DialogHeader>
             <form onSubmit={setParent} className="grid gap-4">
-                <div className="grid gap-2">
-                    <Label htmlFor="milestone-parent-select">{t('milestones.parentTitle')}</Label>
-                    <Select
-                        value={parentId}
-                        onValueChange={(value) => {
-                            if (value) {
-                                setParentId(value);
-                                setRefused(null);
-                            }
-                        }}
-                    >
-                        <SelectTrigger id="milestone-parent-select" data-test="milestone-parent-select" className="w-full">
-                            <SelectValue>
-                                {parentId === 'none'
-                                    ? t('milestones.noParent')
-                                    : (candidates.find((c) => c.id === parentId)?.title ??
-                                      t('milestones.noParent'))}
-                            </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="none">{t('milestones.noParent')}</SelectItem>
-                            {candidates.map((candidate) => (
-                                <SelectItem key={candidate.id} value={candidate.id}>
-                                    {candidate.title}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </div>
+                <ParentAutocomplete
+                    value={parentId}
+                    onChange={handleChange}
+                    currentTitle={currentTitle}
+                    search={searchMilestones}
+                    excludeIds={[milestone.id]}
+                    labelKey="milestones.parentTitle"
+                    placeholderKey="milestones.parentSearchPlaceholder"
+                    emptyKey="milestones.parentSearchEmpty"
+                    loadingKey="common.loading"
+                    noParentKey="milestones.noParent"
+                    inputId="milestone-parent-search-input"
+                    inputTestId="milestone-parent-search-input"
+                    resultsTestId="milestone-parent-search-results"
+                    resultTestId="milestone-parent-search-result"
+                    emptyTestId="milestone-parent-search-empty"
+                    noneTestId="milestone-parent-none"
+                />
                 {refused ? (
                     <Banner variant="danger" role="alert" data-test="milestone-parent-error">
                         <strong>{t('milestones.parentRefused')}</strong> {refused}

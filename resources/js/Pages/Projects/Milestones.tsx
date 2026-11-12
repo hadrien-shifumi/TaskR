@@ -20,7 +20,7 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
 import { ArrowLeft, MoreHorizontal, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { MilestoneCard, MilestoneOption } from '@/types';
+import type { MilestoneCard } from '@/types';
 
 type PageProps = {
     project: {
@@ -209,18 +209,15 @@ export default function Milestones() {
             {settingParent !== null ? (
                 <MilestoneSetParentDialog
                     milestone={settingParent}
-                    candidates={parentCandidates(milestones, settingParent.id)}
+                    currentTitle={
+                        settingParent.parentId
+                            ? milestones.find((milestone) => milestone.id === settingParent.parentId)?.title ?? null
+                            : null
+                    }
                     open
                     onClose={() => setSettingParent(null)}
                 />
             ) : null}
         </AppLayout>
     );
-}
-
-/** Same-project candidates minus the milestone itself — cycles stay the action's job. */
-function parentCandidates(milestones: MilestoneCard[], milestoneId: string): MilestoneOption[] {
-    return milestones
-        .filter((milestone) => milestone.id !== milestoneId)
-        .map((milestone) => ({ id: milestone.id, title: milestone.title }));
 }

@@ -248,6 +248,8 @@ const en = {
         parentTitle: "Set parent issue",
         parentHint: "Same workspace only · cycles are forbidden.",
         parentIssue: "Parent issue",
+        parentSearchPlaceholder: "Search a parent issue…",
+        parentSearchEmpty: "No parent issue matches.",
         noParent: "No parent",
         cycleRefused: "Attachment refused:",
         cycleError:
@@ -719,6 +721,8 @@ const en = {
         delete: "Delete milestone",
         parentTitle: "Set parent milestone",
         parentHint: "Same project only · cycles are forbidden.",
+        parentSearchPlaceholder: "Search a parent milestone…",
+        parentSearchEmpty: "No parent milestone matches.",
         noParent: "No parent",
         setParent: "Set parent",
         parentRefused: "Attachment refused:",

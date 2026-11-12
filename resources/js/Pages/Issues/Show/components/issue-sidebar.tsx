@@ -39,7 +39,6 @@ type IssueSidebarProps = {
     statuses: { id: string; name: string; category: string }[];
     members: UserRef[];
     labels: LabelRef[];
-    candidates: { id: string; title: string }[];
     dependencyCandidates: { id: string; title: string }[];
     /** Milestones of the issue's project, offered by the milestone dialog. */
     milestoneOptions: MilestoneOption[];
@@ -102,7 +101,6 @@ export function IssueSidebar({
     statuses,
     members,
     labels,
-    candidates,
     dependencyCandidates,
     milestoneOptions,
     canContribute,
@@ -699,7 +697,6 @@ export function IssueSidebar({
             />
             <SetParentDialog
                 issue={issue}
-                candidates={candidates}
                 open={parentOpen}
                 onClose={() => setParentOpen(false)}
             />

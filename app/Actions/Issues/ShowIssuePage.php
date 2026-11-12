@@ -37,7 +37,6 @@ class ShowIssuePage
             ...$this->handleShell($workspace, $issue, $user),
             'comments' => $this->comments($issue),
             'activity' => $this->activity($issue),
-            'candidates' => $this->candidateParents($issue, $user),
             'dependencyCandidates' => $this->dependencyCandidates($issue, $user),
         ];
     }
@@ -148,13 +147,14 @@ class ShowIssuePage
         $user = $request->user();
 
         // The heavy extras ride deferred props: the fiche shell paints
-        // immediately and the client fetches thread, journal and candidate
-        // lists in a parallel partial reload.
+        // immediately and the client fetches thread, journal and dependency
+        // candidate lists in a parallel partial reload. The parent
+        // autocomplete fetches live through the search endpoint instead of
+        // shipping a full candidate list.
         $data = [
             ...$this->handleShell($workspace, $issue, $user),
             'comments' => Inertia::defer(fn (): array => $this->comments($issue)),
             'activity' => Inertia::defer(fn (): array => $this->activity($issue)),
-            'candidates' => Inertia::defer(fn (): array => $this->candidateParents($issue, $user)),
             'dependencyCandidates' => Inertia::defer(fn (): array => $this->dependencyCandidates($issue, $user)),
         ];
 
@@ -179,29 +179,6 @@ class ShowIssuePage
             ->orderBy('name')
             ->get()
             ->map(fn ($project) => ProjectPresenter::option($project))
-            ->all();
-    }
-
-    /**
-     * Candidate parents: every issue of the workspace, minus the issue
-     * itself. A guest only sees the issues of their perimeter — parent
-     * candidates included, or the hierarchy would leak hidden titles.
-     *
-     * @return array<int, array{id: string, title: string}>
-     */
-    private function candidateParents(Issue $issue, ?User $user): array
-    {
-        $scope = $user !== null
-            ? app(WorkspaceContext::class)->accessibleProjectIds($user)
-            : null;
-
-        return Issue::query()
-            ->unarchived()
-            ->whereKeyNot($issue->id)
-            ->when($scope !== null, fn ($query) => $query->whereIn('project_id', $scope))
-            ->orderBy('title')
-            ->get(['id', 'title'])
-            ->map(fn (Issue $candidate) => ['id' => $candidate->id, 'title' => $candidate->title])
             ->all();
     }
 

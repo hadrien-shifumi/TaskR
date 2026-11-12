@@ -35,7 +35,6 @@ type PageProps = {
     statuses: { id: string; name: string; category: string }[];
     members: UserRef[];
     labels: LabelRef[];
-    candidates?: { id: string; title: string }[];
     dependencyCandidates?: { id: string; title: string }[];
     milestoneOptions: MilestoneOption[];
     canContribute: boolean;
@@ -47,7 +46,7 @@ type PageProps = {
 };
 
 export default function Show() {
-    const { issue, comments, timeEntries, activity, statuses, members, labels, candidates, dependencyCandidates, milestoneOptions, canContribute, projects, workspace, timers } = usePage<PageProps>().props;
+    const { issue, comments, timeEntries, activity, statuses, members, labels, dependencyCandidates, milestoneOptions, canContribute, projects, workspace, timers } = usePage<PageProps>().props;
     const { t } = useTranslation();
     const [editingTitle, setEditingTitle] = useState(false);
     const [deleting, setDeleting] = useState(false);
@@ -80,7 +79,6 @@ export default function Show() {
     // partial reload lands; the dialogs read the same lists.
     const resolvedComments = comments ?? [];
     const resolvedActivity = activity ?? [];
-    const resolvedCandidates = candidates ?? [];
     const resolvedDependencyCandidates = dependencyCandidates ?? [];
 
     // Archiving is an owner-only workspace management action, reserved to
@@ -183,7 +181,6 @@ export default function Show() {
                 statuses={statuses}
                 members={members}
                 labels={labels}
-                candidates={resolvedCandidates}
                 dependencyCandidates={resolvedDependencyCandidates}
                 milestoneOptions={milestoneOptions}
                 canContribute={canContribute}
