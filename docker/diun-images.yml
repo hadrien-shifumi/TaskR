@@ -1,0 +1,16 @@
+# Images watched by Diun (file provider), mounted read-only into the `diun`
+# service of docker-compose.yml. Schema:
+# https://crazymax.dev/diun/providers/file/
+#
+# The release workflow publishes ghcr.io/hadrien-shifumi/taskr as 1.2.0, 1.2,
+# 1 and latest (git tag v1.2.0 → image tags without the "v"). Only full stable
+# versions are watched: "1.2"/"1" would re-notify the same release, "latest"
+# moves on every stable one (the new x.y.z tag already covers it), and dashed
+# pre-release tags are skipped on purpose.
+- name: ghcr.io/hadrien-shifumi/taskr
+  watch_repo: true
+  # Semver ordering keeps the newest versions under the max_tags cap.
+  sort_tags: semver
+  max_tags: 5
+  include_tags:
+    - ^\d+\.\d+\.\d+$

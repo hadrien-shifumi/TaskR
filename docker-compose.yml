@@ -96,5 +96,38 @@ services:
       retries: 10
     restart: unless-stopped
 
+  # Optional release notifier, opt-in via COMPOSE_PROFILES=diun (see .env
+  # example) — useful on a server, pointless locally. Diun polls GHCR for new
+  # stable tags of the TaskR image (docker/diun-images.yml) and reports them:
+  # in its logs by default, or through any DIUN_NOTIF_* channel set in .env
+  # (e.g. DIUN_NOTIF_TELEGRAM_TOKEN + DIUN_NOTIF_TELEGRAM_CHATIDS —
+  # https://crazymax.dev/diun/notif/). It never deploys anything: updates stay
+  # manual (README "Mise à jour"), so migrations only run when you decide.
+  diun:
+    image: crazymax/diun:4
+    container_name: taskr-diun
+    profiles: ["diun"]
+    # `serve` runs the watcher: a first check at startup, then per schedule.
+    command: serve
+    volumes:
+      # Images to watch (file provider) + the bbolt db that remembers already
+      # reported tags, so each release notifies once.
+      - ./docker/diun-images.yml:/etc/diun/images.yml:ro
+      - taskr-diun-data:/data
+    env_file: .env
+    environment:
+      DIUN_PROVIDERS_FILE_FILENAME: /etc/diun/images.yml
+      # Check every 6h (overridable from .env, e.g. "0 8 * * *").
+      DIUN_WATCH_SCHEDULE: ${DIUN_WATCH_SCHEDULE:-0 */6 * * *}
+      TZ: ${DIUN_TZ:-Europe/Paris}
+    healthcheck:
+      test: ["CMD", "diun", "healthcheck"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+
 volumes:
   taskr-pgdata:
+  taskr-diun-data:
