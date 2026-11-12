@@ -219,6 +219,7 @@ it('keeps the project filter when opening a page from search results', function 
         'base_url' => 'https://embeddings.test/v1',
         'api_key' => 'test-key',
         'model' => 'text-embedding-3-small',
+        'dimensions' => 2,
     ]);
     Http::fake([
         'embeddings.test/v1/embeddings' => Http::response(['data' => [['embedding' => [1.0, 0.0]]]]),

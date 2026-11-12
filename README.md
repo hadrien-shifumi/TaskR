@@ -53,13 +53,69 @@ L'application est alors sur http://localhost:8000. Pense à définir `APP_NAME=T
 Configuration notable (`.env`) :
 
 - `DB_*` : PostgreSQL (port **5433** par défaut avec le compose, pour que les commandes artisan locales tapent la même base que les conteneurs). L'extension **pgvector** est requise pour la recherche sémantique de la base de connaissances.
-- `KNOWLEDGE_EMBEDDINGS_*` (optionnel) : endpoint d'embeddings compatible OpenAI (ex. `https://api.mistral.ai/v1`, modèle `mistral-embed`) pour la vectorisation des pages de connaissance.
+- `KNOWLEDGE_EMBEDDINGS_*` (optionnel) : endpoint d'embeddings compatible OpenAI
+  (OpenAI, Ollama, vLLM, LM Studio, Mistral…) pour la vectorisation des pages de
+  connaissance. Quatre variables : `KNOWLEDGE_EMBEDDINGS_BASE_URL`,
+  `KNOWLEDGE_EMBEDDINGS_API_KEY`, `KNOWLEDGE_EMBEDDINGS_MODEL` et
+  `KNOWLEDGE_EMBEDDINGS_DIMENSIONS` (dimension renvoyée par le modèle, 1024 par
+  défaut) — voir « [Apportez votre fournisseur d'embeddings](#apportez-votre-fournisseur-dembeddings) » ci-dessous.
 
 Un déploiement « prod-like » local est aussi possible (repasse en mode 1 :
 recommente `DB_HOST`/`DB_PORT` dans le `.env`) : `docker compose up -d`
 démarre l'image publiée (app Octane/FrankenPHP sur http://localhost:8080, worker
 de queue, PostgreSQL/pgvector) ; `docker compose up -d --build` construit
 l'image localement pour tester tes propres changements.
+
+## Apportez votre fournisseur d'embeddings
+
+La recherche sémantique de la base de connaissance fonctionne avec n'importe
+quel endpoint d'embeddings compatible OpenAI. Renseignez quatre variables dans
+le `.env` :
+
+```bash
+KNOWLEDGE_EMBEDDINGS_BASE_URL=    # ex. https://api.openai.com/v1
+KNOWLEDGE_EMBEDDINGS_API_KEY=
+KNOWLEDGE_EMBEDDINGS_MODEL=       # ex. text-embedding-3-small
+KNOWLEDGE_EMBEDDINGS_DIMENSIONS=  # dimension renvoyée par le modèle (1024 par défaut)
+```
+
+Exemples de fournisseurs :
+
+| Fournisseur        | Endpoint                  | Modèle                 | Dimensions       |
+| ------------------ | ------------------------- | ---------------------- | ---------------- |
+| OpenAI             | `https://api.openai.com/v1` | `text-embedding-3-small` | 1536           |
+| Ollama             | `http://localhost:11434/v1` | `nomic-embed-text`     | 768              |
+| vLLM / LM Studio   | `http://localhost:8000/v1`  | votre modèle local     | selon le modèle  |
+| Mistral            | `https://api.mistral.ai/v1` | `mistral-embed`        | 1024             |
+
+> ⚠️ Fixez `KNOWLEDGE_EMBEDDINGS_DIMENSIONS` **avant** `php artisan migrate` :
+> la colonne pgvector `vector(N)` et son index sont dimensionnés d'après cette
+> valeur au moment de la migration. Si la config est cachée, lancez
+> `php artisan config:clear` avant de changer la valeur.
+
+Un garde-fou intégré compare la dimension renvoyée par le fournisseur à la
+dimension configurée : en cas d'écart, la vectorisation et la recherche
+échouent avec un message explicite (ajuster `KNOWLEDGE_EMBEDDINGS_DIMENSIONS`)
+plutôt qu'une erreur pgvector obscure. Sans configuration, la recherche
+sémantique se désactive proprement — écriture et navigation restent pleinement
+utilisables.
+
+**Changer de modèle ou de dimension sur une instance existante**
+(PostgreSQL + pgvector) :
+
+1. `php artisan config:clear`, puis mettez à jour le `.env` (nouveau
+   `KNOWLEDGE_EMBEDDINGS_MODEL` et `KNOWLEDGE_EMBEDDINGS_DIMENSIONS`).
+2. Sur la base, remplacez `N` par la nouvelle dimension et exécutez :
+
+   ```sql
+   DROP INDEX knowledge_pages_embedding_ivfflat;
+   UPDATE knowledge_pages SET embedding = NULL, embedded_at = NULL;
+   ALTER TABLE knowledge_pages ALTER COLUMN embedding TYPE vector(N);
+   CREATE INDEX knowledge_pages_embedding_ivfflat
+       ON knowledge_pages USING ivfflat (embedding vector_cosine_ops);
+   ```
+
+3. Re-vectorisez toutes les pages : `php artisan knowledge:reembed`.
 
 ## Tests
 
@@ -165,8 +221,10 @@ plutôt que la base embarquée :
    (`DB_SSLMODE=require` fonctionne aussi, `prefer` par défaut).
 3. Prérequis : PostgreSQL **avec l'extension pgvector**. Exécute
    `CREATE EXTENSION IF NOT EXISTS vector;` sur la base cible avant le premier
-   démarrage — la migration qui crée la colonne `embedding vector(1024)` tourne
-   automatiquement au boot du rôle web et échoue sans l'extension.
+   démarrage — la migration qui crée la colonne `embedding vector(N)`
+   (dimension lue de `KNOWLEDGE_EMBEDDINGS_DIMENSIONS`, 1024 par défaut,
+   au moment de la migration) tourne automatiquement au boot du rôle web et
+   échoue sans l'extension.
 4. `docker compose up -d` : l'app démarre sans attendre la base embarquée, les
    migrations s'exécutent comme d'habitude. Les sauvegardes se gèrent alors
    côté fournisseur (le `pg_dump` via compose ne s'applique qu'à la base

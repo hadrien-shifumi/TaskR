@@ -46,6 +46,7 @@ class McpKnowledgeToolsTest extends TestCase
             'base_url' => 'https://embeddings.test/v1',
             'api_key' => 'test-key',
             'model' => 'text-embedding-3-small',
+            'dimensions' => 2,
         ]);
 
         Http::fake([
@@ -188,6 +189,7 @@ class McpKnowledgeToolsTest extends TestCase
             'base_url' => null,
             'api_key' => null,
             'model' => null,
+            'dimensions' => 1024,
         ]);
 
         [$owner, $workspace] = $this->setupWorkspace();

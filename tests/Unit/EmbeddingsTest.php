@@ -2,6 +2,7 @@
 
 namespace Tests\Unit;
 
+use App\Support\EmbeddingDimensionMismatch;
 use App\Support\Embeddings;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
@@ -15,6 +16,7 @@ class EmbeddingsTest extends TestCase
             'base_url' => null,
             'api_key' => null,
             'model' => null,
+            'dimensions' => 1024,
         ]);
 
         parent::tearDown();
@@ -26,6 +28,7 @@ class EmbeddingsTest extends TestCase
             'base_url' => 'https://api.openai.com/v1',
             'api_key' => 'test-key',
             'model' => 'text-embedding-3-small',
+            'dimensions' => 3,
         ]);
 
         Http::fake([
@@ -53,6 +56,7 @@ class EmbeddingsTest extends TestCase
             'base_url' => 'https://embeddings.test/v1',
             'api_key' => 'test-key',
             'model' => 'text-embedding-3-small',
+            'dimensions' => 3,
         ]);
 
         Http::fake([
@@ -64,12 +68,72 @@ class EmbeddingsTest extends TestCase
         app(Embeddings::class)->embed('anything');
     }
 
+    public function test_embed_raises_on_dimension_mismatch(): void
+    {
+        config()->set('knowledge.embeddings', [
+            'base_url' => 'https://embeddings.test/v1',
+            'api_key' => 'test-key',
+            'model' => 'text-embedding-3-small',
+            'dimensions' => 3,
+        ]);
+
+        Http::fake([
+            'embeddings.test/v1/embeddings' => Http::response([
+                'data' => [
+                    ['embedding' => [0.1, 0.2]],
+                ],
+            ]),
+        ]);
+
+        try {
+            app(Embeddings::class)->embed('anything');
+
+            $this->fail('EmbeddingDimensionMismatch was not thrown.');
+        } catch (EmbeddingDimensionMismatch $exception) {
+            $this->assertStringContainsString('2', $exception->getMessage());
+            $this->assertStringContainsString('3', $exception->getMessage());
+            $this->assertStringContainsString('KNOWLEDGE_EMBEDDINGS_DIMENSIONS', $exception->getMessage());
+        }
+    }
+
+    public function test_embed_accepts_vector_matching_configured_dimension(): void
+    {
+        config()->set('knowledge.embeddings', [
+            'base_url' => 'https://embeddings.test/v1',
+            'api_key' => 'test-key',
+            'model' => 'text-embedding-3-small',
+            'dimensions' => 2,
+        ]);
+
+        Http::fake([
+            'embeddings.test/v1/embeddings' => Http::response([
+                'data' => [
+                    ['embedding' => [0.1, 0.2]],
+                ],
+            ]),
+        ]);
+
+        $vector = app(Embeddings::class)->embed('Processus de règlement');
+
+        $this->assertSame([0.1, 0.2], $vector);
+    }
+
     public function test_enabled_reflects_configuration(): void
     {
         config()->set('knowledge.embeddings', [
             'base_url' => null,
             'api_key' => null,
             'model' => 'text-embedding-3-small',
+            'dimensions' => 1024,
+        ]);
+
+        $this->assertFalse(app(Embeddings::class)->enabled());
+
+        config()->set('knowledge.embeddings', [
+            'base_url' => 'https://api.openai.com/v1',
+            'api_key' => 'test-key',
+            'model' => null,
+            'dimensions' => 1024,
         ]);
 
         $this->assertFalse(app(Embeddings::class)->enabled());
@@ -78,6 +142,7 @@ class EmbeddingsTest extends TestCase
             'base_url' => 'https://api.openai.com/v1',
             'api_key' => 'test-key',
             'model' => 'text-embedding-3-small',
+            'dimensions' => 1024,
         ]);
 
         $this->assertTrue(app(Embeddings::class)->enabled());

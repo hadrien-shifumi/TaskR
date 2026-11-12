@@ -8,6 +8,7 @@ use App\Actions\Workspaces\CreateWorkspace;
 use App\Jobs\VectorizeKnowledgePage;
 use App\Models\KnowledgePage;
 use App\Models\User;
+use App\Support\EmbeddingDimensionMismatch;
 use App\Support\Embeddings;
 use App\Support\WorkspaceContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -21,12 +22,13 @@ class KnowledgeVectorizationTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function configureEmbeddings(): void
+    private function configureEmbeddings(int $dimensions = 3): void
     {
         config()->set('knowledge.embeddings', [
             'base_url' => 'https://embeddings.test/v1',
             'api_key' => 'test-key',
             'model' => 'text-embedding-3-small',
+            'dimensions' => $dimensions,
         ]);
     }
 
@@ -69,7 +71,7 @@ class KnowledgeVectorizationTest extends TestCase
 
     public function test_updating_page_revectorizes_new_content(): void
     {
-        $this->configureEmbeddings();
+        $this->configureEmbeddings(2);
         $this->fakeEmbeddingResponse([0.4, 0.5]);
         [$owner, $workspace] = $this->setupWorkspace();
 
@@ -129,6 +131,33 @@ class KnowledgeVectorizationTest extends TestCase
         $this->assertNull($page->refresh()->embedding);
     }
 
+    public function test_vectorization_fails_with_clear_error_on_dimension_mismatch(): void
+    {
+        $this->configureEmbeddings(3);
+        $this->fakeEmbeddingResponse([0.1, 0.2]);
+        [$owner, $workspace] = $this->setupWorkspace();
+
+        $page = KnowledgePage::factory()->create([
+            'workspace_id' => $workspace->id,
+            'last_editor_id' => $owner->id,
+            'title' => 'Incohérent',
+            'body' => 'Le fournisseur renvoie une autre dimension.',
+        ]);
+
+        $job = new VectorizeKnowledgePage($page);
+
+        try {
+            $job->handle(app(Embeddings::class));
+
+            $this->fail('EmbeddingDimensionMismatch was not thrown.');
+        } catch (EmbeddingDimensionMismatch $exception) {
+            $this->assertStringContainsString('KNOWLEDGE_EMBEDDINGS_DIMENSIONS', $exception->getMessage());
+        }
+
+        $this->assertNull($page->refresh()->embedding);
+        $this->assertNull($page->embedded_at);
+    }
+
     public function test_reembed_command_revectorizes_all_pages_idempotently(): void
     {
         $this->configureEmbeddings();
@@ -144,6 +173,7 @@ class KnowledgeVectorizationTest extends TestCase
 
         Queue::fakeExcept([VectorizeKnowledgePage::class]);
         $this->fakeEmbeddingResponse([0.7]);
+        $this->configureEmbeddings(1);
 
         $this->assertSame(0, Artisan::call('knowledge:reembed'));
 

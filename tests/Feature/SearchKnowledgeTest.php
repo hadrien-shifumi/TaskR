@@ -35,6 +35,7 @@ class SearchKnowledgeTest extends TestCase
             'base_url' => null,
             'api_key' => null,
             'model' => null,
+            'dimensions' => 1024,
         ]);
 
         parent::tearDown();
@@ -46,6 +47,7 @@ class SearchKnowledgeTest extends TestCase
             'base_url' => 'https://embeddings.test/v1',
             'api_key' => 'test-key',
             'model' => 'text-embedding-3-small',
+            'dimensions' => 2,
         ]);
 
         Http::fake(function (Request $request) {
@@ -228,6 +230,23 @@ class SearchKnowledgeTest extends TestCase
             'base_url' => null,
             'api_key' => null,
             'model' => null,
+            'dimensions' => 1024,
+        ]);
+
+        $this->expectException(EmbeddingsNotConfigured::class);
+
+        SearchKnowledge::run($workspace, 'facturation');
+    }
+
+    public function test_unconfigured_model_raises_explicit_error(): void
+    {
+        [$owner, $workspace] = $this->setupWorkspace();
+
+        config()->set('knowledge.embeddings', [
+            'base_url' => 'https://embeddings.test/v1',
+            'api_key' => 'test-key',
+            'model' => null,
+            'dimensions' => 2,
         ]);
 
         $this->expectException(EmbeddingsNotConfigured::class);
@@ -243,6 +262,7 @@ class SearchKnowledgeTest extends TestCase
             'base_url' => null,
             'api_key' => null,
             'model' => null,
+            'dimensions' => 1024,
         ]);
 
         $this->actingAs($owner)
