@@ -42,8 +42,9 @@ TaskR est conçu pour être piloté **autant par des humains (UI web) que par de
 Prérequis : PHP ≥ 8.3 (8.5 recommandé), Node 22+, Composer, Docker (pour PostgreSQL).
 
 ```bash
-composer setup               # install dépendances, .env, clé d'app, migrations, npm install, build Vite
+cp .env.example .env         # puis décommenter DB_HOST=127.0.0.1 et DB_PORT=5433 (mode « dev hôte », voir .env.example)
 docker compose up -d postgres  # PostgreSQL 18 + pgvector exposé sur le port 5433 (voir docker-compose.yml)
+composer setup               # install dépendances, clé d'app, migrations, npm install, build Vite
 composer dev                 # lance serveur, queue, logs et Vite (php artisan dev)
 ```
 
@@ -54,7 +55,8 @@ Configuration notable (`.env`) :
 - `DB_*` : PostgreSQL (port **5433** par défaut avec le compose, pour que les commandes artisan locales tapent la même base que les conteneurs). L'extension **pgvector** est requise pour la recherche sémantique de la base de connaissances.
 - `KNOWLEDGE_EMBEDDINGS_*` (optionnel) : endpoint d'embeddings compatible OpenAI (ex. `https://api.mistral.ai/v1`, modèle `mistral-embed`) pour la vectorisation des pages de connaissance.
 
-Un déploiement « prod-like » local est aussi possible : `docker compose up -d`
+Un déploiement « prod-like » local est aussi possible (repasse en mode 1 :
+recommente `DB_HOST`/`DB_PORT` dans le `.env`) : `docker compose up -d`
 démarre l'image publiée (app Octane/FrankenPHP sur http://localhost:8080, worker
 de queue, PostgreSQL/pgvector) ; `docker compose up -d --build` construit
 l'image localement pour tester tes propres changements.
@@ -124,12 +126,14 @@ Note : générer `APP_KEY` avec `openssl rand -base64 32` plutôt que
 clé dans le conteneur éphémère (`.env` n'y est pas monté), elle serait perdue.
 
 L'app répond sur http://localhost:8080 (rôles `web` + `worker` +
-PostgreSQL 18/pgvector). Les données persistent dans le volume `taskr-pgdata`
-et le montage `./storage`. PostgreSQL n'est exposé que sur `127.0.0.1:5433`
-(pour les commandes artisan lancées depuis l'hôte) ; ses identifiants sont lus
-depuis `.env` (`DB_USERNAME`/`DB_PASSWORD`/`DB_DATABASE`, utilisés seulement
-au premier boot du volume). Par défaut le compose suit `latest` — épingle une
-version précise avec `TASKR_VERSION=1.2.0` dans le `.env`.
+PostgreSQL 18/pgvector embarqué, actif par défaut via
+`COMPOSE_PROFILES=bundled-db`). Les données persistent dans le volume
+`taskr-pgdata` et le montage `./storage`. PostgreSQL n'est exposé que sur
+`127.0.0.1:5433` (pour les commandes artisan lancées depuis l'hôte) ; ses
+identifiants sont lus depuis `.env` (`DB_USERNAME`/`DB_PASSWORD`/`DB_DATABASE`,
+utilisés seulement au premier boot du volume). Par défaut le compose suit
+`latest` — épingle une version précise avec `TASKR_VERSION=1.2.0` dans le
+`.env`.
 
 Mise à jour :
 
@@ -140,9 +144,33 @@ docker compose pull
 docker compose up -d   # les migrations s'exécutent au démarrage du rôle web
 ```
 
+> Si tu as épinglé `TASKR_VERSION` (recommandé en production), c'est lui le
+> vrai geste de mise à jour : passe-le à la nouvelle version dans le `.env`
+> avant le `pull`, sinon `docker compose pull` retélécharge l'ancienne.
+
 > En exposition publique : `APP_ENV=production`, `APP_DEBUG=false`, un `APP_URL`
 > correct, un `DB_PASSWORD` dédié avant le premier boot, et un reverse proxy en
 > terminaison TLS devant le port 8080 (l'image sert en HTTP).
+
+#### Base de données externe (managée)
+
+Pour pointer sur un PostgreSQL externe ou managé (Supabase, Neon, Scaleway…)
+plutôt que la base embarquée :
+
+1. Dans le `.env`, commente `COMPOSE_PROFILES=bundled-db` — le service
+   `postgres` disparaît de la stack.
+2. Renseigne la connexion : soit les variables distinctes
+   (`DB_HOST`/`DB_PORT`/`DB_USERNAME`/`DB_PASSWORD`), soit une seule ligne
+   `DB_URL=postgres://user:password@host:5432/taskr?sslmode=require`
+   (`DB_SSLMODE=require` fonctionne aussi, `prefer` par défaut).
+3. Prérequis : PostgreSQL **avec l'extension pgvector**. Exécute
+   `CREATE EXTENSION IF NOT EXISTS vector;` sur la base cible avant le premier
+   démarrage — la migration qui crée la colonne `embedding vector(1024)` tourne
+   automatiquement au boot du rôle web et échoue sans l'extension.
+4. `docker compose up -d` : l'app démarre sans attendre la base embarquée, les
+   migrations s'exécutent comme d'habitude. Les sauvegardes se gèrent alors
+   côté fournisseur (le `pg_dump` via compose ne s'applique qu'à la base
+   embarquée).
 
 ### 2. Kamal 2 (VPS)
 

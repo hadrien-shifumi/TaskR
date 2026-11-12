@@ -13,9 +13,10 @@ services:
       - "8080:8080"
     env_file: .env
     environment:
-      # Inside the compose network the database is reached by service name.
-      DB_HOST: postgres
-      DB_PORT: 5432
+      # Bundled database: internal service name by default. .env wins for an
+      # external/managed database — see the three modes in .env.example.
+      DB_HOST: ${DB_HOST:-postgres}
+      DB_PORT: ${DB_PORT:-5432}
       # Public URL comes from .env (interpolated by compose), localhost default.
       APP_URL: ${APP_URL:-http://localhost:8080}
       # The entrypoint only runs migrations for the web role (octane command).
@@ -25,6 +26,9 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+        # Optional: with COMPOSE_PROFILES unset (external database), the
+        # bundled postgres service is absent and the app starts without it.
+        required: false
     healthcheck:
       test: ["CMD-SHELL", "php artisan octane:status || exit 1"]
       interval: 10s
@@ -43,8 +47,8 @@ services:
     command: ["php", "artisan", "queue:work", "--sleep=3", "--tries=3", "--max-time=3600"]
     env_file: .env
     environment:
-      DB_HOST: postgres
-      DB_PORT: 5432
+      DB_HOST: ${DB_HOST:-postgres}
+      DB_PORT: ${DB_PORT:-5432}
       APP_URL: ${APP_URL:-http://localhost:8080}
     volumes:
       - ./storage:/app/storage
@@ -62,6 +66,10 @@ services:
     restart: unless-stopped
 
   postgres:
+    # Bundled database, active via COMPOSE_PROFILES=bundled-db (.env.example
+    # ships it enabled). Comment that line out to use an external database —
+    # see "Base de données externe" in the README.
+    profiles: ["bundled-db"]
     image: pgvector/pgvector:pg18
     container_name: taskr-postgres
     ports:
