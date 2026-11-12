@@ -94,23 +94,33 @@ Exemple de configuration client (OpenCode) :
 }
 ```
 
-## Déploiement (production)
+## Auto-hébergement
 
-La production tourne sur **Scaleway**, déployée avec **Kamal 2** — voir le runbook complet dans [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) :
+TaskR est conçu pour être auto-hébergé. L'image Docker multi-stage (`Dockerfile`,
+FrankenPHP 1.13 / PHP 8.5, **Laravel Octane en mode worker** `octane:frankenphp`,
+build Vite en stage séparé, extensions `pdo_pgsql`, `intl`, `bcmath`…) tourne en
+deux rôles : `web` (Octane, migrations au boot via `docker/entrypoint.sh`,
+healthcheck sur `/up`) et `worker` (`queue:work`).
 
-- **Image Docker multi-stage** (`Dockerfile`) : FrankenPHP 1.13 / PHP 8.5 avec **Laravel Octane en mode worker** (`octane:frankenphp`), build Vite en stage séparé, extensions `pdo_pgsql`, `intl`, `bcmath`…
-- **Rôles** : `web` (Octane, migrations au boot via `docker/entrypoint.sh`) et `worker` (`queue:work`) ; healthcheck sur `/up`.
-- **Infrastructure** : serveur Scaleway durci avec Ansible (`ansible/secure.yml` : user `deploy`, UFW, fail2ban…), **Scaleway Container Registry** privé, **PostgreSQL managé Scaleway avec pgvector** (TLS obligatoire, `DB_SSLMODE=require`), proxy **Traefik** de Kamal en terminaison TLS (ACME/Let's Encrypt).
-- **Commande** : `kamal deploy` (config dans `config/deploy.yml`, secrets dans `.kamal/secrets`, jamais commités).
+Le `docker-compose.yml` fourni lance l'app, le worker et PostgreSQL/pgvector :
 
-Architecture cible : `utilisateur → proxy Kamal (443, ACME) → conteneur taskr (Octane/FrankenPHP :8080) → PostgreSQL managé (TLS, pgvector)`.
+```bash
+cp .env.example .env
+docker compose run --rm app php artisan key:generate   # remplit APP_KEY
+docker compose up -d
+```
+
+> L'instance de l'auteur, elle, est déployée sur Scaleway avec **Kamal 2**
+> (proxy Traefik en terminaison TLS, registry privé, PostgreSQL managé avec
+> pgvector) et provisionnée avec Ansible. Cette couche déploiement/opérations
+> vit dans un dépôt séparé privé (`taskr-infra`) — elle ne fait pas partie du
+> produit.
 
 ## Documentation & conventions
 
 - [`AGENTS.md`](AGENTS.md) — conventions du projet (TDD obligatoire, workflow `issue-dev` pour chaque issue : recherche → plan → implémentation → revue de la base de connaissances, géré dans TaskR lui-même).
 - [`docs/design-brief.md`](docs/design-brief.md) — brief produit (concepts, règles métier, écrans).
 - [`docs/design-system/`](docs/design-system) — design system (tokens, composants, patterns) et [`docs/maquettes/`](docs/maquettes) — maquettes HTML.
-- [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) — runbook de déploiement Scaleway/Ansible/Kamal.
 - `.opencode/skills/` — skills `taskr-backend`, `taskr-frontend`, `taskr-issue-dev`, `tdd`.
 
 ## Dépôt

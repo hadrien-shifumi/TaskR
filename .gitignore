@@ -29,6 +29,14 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 
+# Stale dev artifacts
+/taskr
+tsconfig.tsbuildinfo
+
+# Kamal config lives in the separate infra repo (taskr-infra); its bin/deploy
+# symlinks .kamal/secrets + .kamal/hooks into a TaskR checkout to run kamal.
+/.kamal/
+
 **/caddy
 frankenphp
 frankenphp-worker.php

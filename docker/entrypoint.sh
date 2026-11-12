@@ -25,7 +25,7 @@ until php artisan db:monitor --databases=pgsql > /dev/null 2>&1; do
     sleep 2
 done
 
-# One-time boot tasks, run by the web role only (see config/deploy.yml).
+# One-time boot tasks, run by the web role only.
 # No --isolated: the cache-lock table does not exist yet on a fresh database.
 if [ "$ROLE" = "web" ] && [ "${RUN_MIGRATIONS:-false}" = "true" ]; then
     php artisan migrate --force
