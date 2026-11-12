@@ -42,9 +42,9 @@ TaskR est conçu pour être piloté **autant par des humains (UI web) que par de
 Prérequis : PHP ≥ 8.3 (8.5 recommandé), Node 22+, Composer, Docker (pour PostgreSQL).
 
 ```bash
-composer setup        # install dépendances, .env, clé d'app, migrations, npm install, build Vite
-docker compose up -d  # PostgreSQL 18 + pgvector exposé sur le port 5433 (voir docker-compose.yml)
-composer dev          # lance serveur, queue, logs et Vite (php artisan dev)
+composer setup               # install dépendances, .env, clé d'app, migrations, npm install, build Vite
+docker compose up -d postgres  # PostgreSQL 18 + pgvector exposé sur le port 5433 (voir docker-compose.yml)
+composer dev                 # lance serveur, queue, logs et Vite (php artisan dev)
 ```
 
 L'application est alors sur http://localhost:8000. Pense à définir `APP_NAME=Taskr` dans ton `.env`.
@@ -54,12 +54,10 @@ Configuration notable (`.env`) :
 - `DB_*` : PostgreSQL (port **5433** par défaut avec le compose, pour que les commandes artisan locales tapent la même base que les conteneurs). L'extension **pgvector** est requise pour la recherche sémantique de la base de connaissances.
 - `KNOWLEDGE_EMBEDDINGS_*` (optionnel) : endpoint d'embeddings compatible OpenAI (ex. `https://api.mistral.ai/v1`, modèle `mistral-embed`) pour la vectorisation des pages de connaissance.
 
-Un déploiement « prod-like » local est aussi possible avec les mêmes images que la production :
-
-```bash
-docker compose up --build
-# app (Octane/FrankenPHP) sur http://localhost:8080, worker queue:work, PostgreSQL pgvector
-```
+Un déploiement « prod-like » local est aussi possible : `docker compose up -d`
+démarre l'image publiée (app Octane/FrankenPHP sur http://localhost:8080, worker
+de queue, PostgreSQL/pgvector) ; `docker compose up -d --build` construit
+l'image localement pour tester tes propres changements.
 
 ## Tests
 
@@ -96,25 +94,58 @@ Exemple de configuration client (OpenCode) :
 
 ## Auto-hébergement
 
-TaskR est conçu pour être auto-hébergé. L'image Docker multi-stage (`Dockerfile`,
-FrankenPHP 1.13 / PHP 8.5, **Laravel Octane en mode worker** `octane:frankenphp`,
-build Vite en stage séparé, extensions `pdo_pgsql`, `intl`, `bcmath`…) tourne en
-deux rôles : `web` (Octane, migrations au boot via `docker/entrypoint.sh`,
-healthcheck sur `/up`) et `worker` (`queue:work`).
+TaskR est conçu pour être auto-hébergé : une image Docker multi-stage
+(`Dockerfile`, FrankenPHP 1.13 / PHP 8.5, **Laravel Octane en mode worker**
+`octane:frankenphp`, build Vite en stage séparé, extensions `pdo_pgsql`,
+`intl`, `bcmath`…) tourne en deux rôles : `web` (Octane, migrations au boot via
+`docker/entrypoint.sh`) et `worker` (`queue:work`).
 
-Le `docker-compose.yml` fourni lance l'app, le worker et PostgreSQL/pgvector :
+### 1. Docker Compose + image pré-construite (recommandé)
+
+Chaque tag de version (`v*`) est construit par la CI en image multi-arch
+`linux/amd64` + `linux/arm64` et publié sur GHCR :
+[`ghcr.io/hadrien-shifumi/taskr`](https://github.com/hadrien-shifumi/TaskR/pkgs/container/taskr).
 
 ```bash
+git clone https://github.com/hadrien-shifumi/TaskR.git && cd TaskR
 cp .env.example .env
 docker compose run --rm app php artisan key:generate   # remplit APP_KEY
 docker compose up -d
 ```
 
-> L'instance de l'auteur, elle, est déployée sur Scaleway avec **Kamal 2**
-> (proxy Traefik en terminaison TLS, registry privé, PostgreSQL managé avec
-> pgvector) et provisionnée avec Ansible. Cette couche déploiement/opérations
-> vit dans un dépôt séparé privé (`taskr-infra`) — elle ne fait pas partie du
-> produit.
+L'app répond sur http://localhost:8080 (rôles `web` + `worker` +
+PostgreSQL 18/pgvector). Les données persistent dans le volume `taskr-pgdata`
+et le montage `./storage`. Par défaut le compose suit `latest` — épingle une
+version précise avec `TASKR_VERSION=1.2.0` dans le `.env`.
+
+Mise à jour :
+
+```bash
+docker compose exec postgres pg_dump -U postgres taskr > backup-$(date +%F).sql  # sauvegarde conseillée
+docker compose pull
+docker compose up -d   # les migrations s'exécutent au démarrage du rôle web
+```
+
+> En exposition publique : `APP_ENV=production`, `APP_DEBUG=false`, un `APP_URL`
+> correct et des identifiants PostgreSQL dédiés (le compose local utilise
+> `postgres`/`root` par défaut).
+
+### 2. Kamal 2 (VPS)
+
+Le `Dockerfile` se construit tel quel avec Kamal, ou le déploiement peut
+consommer directement l'image GHCR (`image:
+ghcr.io/hadrien-shifumi/taskr:1.2.0` dans `config/deploy.yml`). L'instance de
+l'auteur, déployée sur Scaleway avec **Kamal 2** (proxy Traefik en terminaison
+TLS, PostgreSQL managé avec pgvector) et provisionnée avec Ansible, vit dans un
+dépôt séparé privé (`taskr-infra`) — cette couche opérations ne fait pas partie
+du produit.
+
+### 3. Depuis les sources
+
+PHP ≥ 8.3, Node 22, PostgreSQL + pgvector : suivre
+« [Installation (développement local)](#installation-développement-local) »
+ci-dessus — `composer setup`, puis servir avec `composer dev` ou l'image locale
+(`docker compose up --build`).
 
 ## Documentation & conventions
 

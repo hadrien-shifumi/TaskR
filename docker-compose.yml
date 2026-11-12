@@ -1,6 +1,13 @@
 services:
   app:
-    build: .
+    # Published multi-arch image (GHCR), built by CI on every v* tag. Pin a
+    # version by setting TASKR_VERSION in .env (defaults to latest).
+    image: ghcr.io/hadrien-shifumi/taskr:${TASKR_VERSION:-latest}
+    # Prefer the published image: `docker compose up` pulls it. Force a local
+    # prod-like build with `docker compose up --build`.
+    pull_policy: always
+    build:
+      context: .
     container_name: taskr-app
     ports:
       - "8080:8080"
@@ -26,7 +33,10 @@ services:
     restart: unless-stopped
 
   worker:
-    build: .
+    image: ghcr.io/hadrien-shifumi/taskr:${TASKR_VERSION:-latest}
+    pull_policy: always
+    build:
+      context: .
     container_name: taskr-worker
     # Anything other than the octane command is treated as a worker by the entrypoint.
     command: ["php", "artisan", "queue:work", "--sleep=3", "--tries=3", "--max-time=3600"]
