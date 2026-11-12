@@ -16,7 +16,8 @@ services:
       # Inside the compose network the database is reached by service name.
       DB_HOST: postgres
       DB_PORT: 5432
-      APP_URL: http://localhost:8080
+      # Public URL comes from .env (interpolated by compose), localhost default.
+      APP_URL: ${APP_URL:-http://localhost:8080}
       # The entrypoint only runs migrations for the web role (octane command).
       RUN_MIGRATIONS: "true"
     volumes:
@@ -44,7 +45,7 @@ services:
     environment:
       DB_HOST: postgres
       DB_PORT: 5432
-      APP_URL: http://localhost:8080
+      APP_URL: ${APP_URL:-http://localhost:8080}
     volumes:
       - ./storage:/app/storage
     depends_on:
@@ -64,13 +65,16 @@ services:
     image: pgvector/pgvector:pg18
     container_name: taskr-postgres
     ports:
-      # 5433 on the host, matching DB_PORT in .env, so host-run artisan
-      # commands (php artisan test, migrate, tinker) hit the same database.
-      - "5433:5432"
+      # 5433 on the host, loopback only so the database is never exposed
+      # publicly, matching DB_PORT in .env, so host-run artisan commands
+      # (php artisan test, migrate, tinker) hit the same database.
+      - "127.0.0.1:5433:5432"
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: root
-      POSTGRES_DB: taskr
+      # Interpolated from .env so the app and the database always agree. Only
+      # used when the data volume is initialized from scratch.
+      POSTGRES_USER: ${DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-root}
+      POSTGRES_DB: ${DB_DATABASE:-taskr}
     volumes:
       # pg18 images expect the mount at /var/lib/postgresql (data lives in a
       # major-version subdirectory), not /var/lib/postgresql/data.
@@ -78,7 +82,7 @@ services:
       # Runs only when the data volume is initialized from scratch.
       - ./docker/postgres-init.sql:/docker-entrypoint-initdb.d/10-pgvector.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d taskr"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-postgres} -d ${DB_DATABASE:-taskr}"]
       interval: 5s
       timeout: 5s
       retries: 10

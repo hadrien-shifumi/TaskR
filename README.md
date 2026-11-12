@@ -109,26 +109,40 @@ Chaque tag de version (`v*`) est construit par la CI en image multi-arch
 ```bash
 git clone https://github.com/hadrien-shifumi/TaskR.git && cd TaskR
 cp .env.example .env
-docker compose run --rm app php artisan key:generate   # remplit APP_KEY
+
+# Éditer .env :
+#   APP_KEY=base64:…     # openssl rand -base64 32
+#   TASKR_VERSION=1.2.0  # épingler une version plutôt que latest
+#   En exposition publique : APP_ENV=production, APP_DEBUG=false,
+#   APP_URL=https://taskr.example.com, DB_PASSWORD dédié (avant le 1er boot)
+
 docker compose up -d
 ```
 
+Note : générer `APP_KEY` avec `openssl rand -base64 32` plutôt que
+`docker compose run --rm app php artisan key:generate` — la commande écrit la
+clé dans le conteneur éphémère (`.env` n'y est pas monté), elle serait perdue.
+
 L'app répond sur http://localhost:8080 (rôles `web` + `worker` +
 PostgreSQL 18/pgvector). Les données persistent dans le volume `taskr-pgdata`
-et le montage `./storage`. Par défaut le compose suit `latest` — épingle une
+et le montage `./storage`. PostgreSQL n'est exposé que sur `127.0.0.1:5433`
+(pour les commandes artisan lancées depuis l'hôte) ; ses identifiants sont lus
+depuis `.env` (`DB_USERNAME`/`DB_PASSWORD`/`DB_DATABASE`, utilisés seulement
+au premier boot du volume). Par défaut le compose suit `latest` — épingle une
 version précise avec `TASKR_VERSION=1.2.0` dans le `.env`.
 
 Mise à jour :
 
 ```bash
 docker compose exec postgres pg_dump -U postgres taskr > backup-$(date +%F).sql  # sauvegarde conseillée
+git pull                   # docker-compose.yml / .env.example ne vivent pas dans l'image GHCR
 docker compose pull
 docker compose up -d   # les migrations s'exécutent au démarrage du rôle web
 ```
 
 > En exposition publique : `APP_ENV=production`, `APP_DEBUG=false`, un `APP_URL`
-> correct et des identifiants PostgreSQL dédiés (le compose local utilise
-> `postgres`/`root` par défaut).
+> correct, un `DB_PASSWORD` dédié avant le premier boot, et un reverse proxy en
+> terminaison TLS devant le port 8080 (l'image sert en HTTP).
 
 ### 2. Kamal 2 (VPS)
 
