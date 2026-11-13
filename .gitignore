@@ -15,6 +15,9 @@
 /.vscode
 /.zed
 
+# Local linked worktrees (OpenCode worktrees live in .worktrees/)
+/.worktrees/
+
 # Personal OpenCode config — points at the operator's own instance, not the product
 /opencode.json
 /auth.json
