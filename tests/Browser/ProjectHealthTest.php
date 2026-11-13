@@ -1,6 +1,10 @@
 <?php
 
+use App\Enums\WorkspaceRole;
+use App\Models\Invitation;
+use App\Models\User;
 use App\Support\WorkspaceContext;
+use Illuminate\Support\Str;
 
 it('shows the project health overview badge and the health page indicators', function () {
     [$owner, $workspace] = setupBrowserWorkspace();
@@ -64,6 +68,53 @@ it('shows the project health overview badge and the health page indicators', fun
     expect($project->name)->toBe('Refonte site vitrine');
 
     $page->assertNoSmoke();
+});
+
+it('lists a member who joined through a scoped invitation in the team workload', function () {
+    [$owner, $workspace, $project] = setupBrowserWorkspace(withProject: true);
+
+    // Invitation of a member announced on this project only.
+    $newcomer = User::factory()->create([
+        'name' => 'Newcomer',
+        'email' => 'newcomer@example.com',
+    ]);
+    $invitation = Invitation::withoutWorkspaceScope()->create([
+        'workspace_id' => $workspace->id,
+        'email' => 'newcomer@example.com',
+        'role' => WorkspaceRole::Member->value,
+        'token' => Str::random(64),
+        'expires_at' => now()->addDays(7),
+    ]);
+    $invitation->attachScope([$project->id]);
+
+    // The newcomer accepts through the invitation landing page and logs in.
+    $page = visit("/invitations/{$invitation->token}/accept");
+
+    $page->assertSee('Accept the invitation')
+        ->click('Accept the invitation');
+
+    $page->assertPathIs('/login')
+        ->fill('email', 'newcomer@example.com')
+        ->fill('password', 'password')
+        ->click('button[type="submit"]');
+
+    $page->assertPathIs('/')
+        ->assertSee('WS')
+        ->assertNoSmoke();
+
+    app(WorkspaceContext::class)->set($workspace);
+
+    // The announced perimeter also joined the newcomer to the project team.
+    expect($project->projectMembers()->where('user_id', $newcomer->id)->exists())->toBeTrue();
+
+    // The owner sees the newcomer in the team workload of the health page.
+    $this->actingAs($owner);
+
+    $page = visit("/projects/{$project->id}/health");
+
+    $page->assertVisible('@team-workload')
+        ->assertSeeIn('@team-workload', 'Newcomer')
+        ->assertNoSmoke();
 });
 
 it('recalculates the projection when the target date is edited', function () {

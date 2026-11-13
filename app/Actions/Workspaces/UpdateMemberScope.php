@@ -2,8 +2,10 @@
 
 namespace App\Actions\Workspaces;
 
+use App\Enums\ProjectRole;
 use App\Enums\WorkspaceRole;
 use App\Models\Membership;
+use App\Models\ProjectMember;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Responders\Workspaces\UpdateMemberScopeResponder;
@@ -74,6 +76,22 @@ class UpdateMemberScope
         DB::transaction(function () use ($membership, $projectIds): void {
             $membership->update(['is_scoped' => $projectIds !== []]);
             $membership->syncProjectScope($projectIds);
+
+            // Every granted project also joins the member to its team —
+            // the same rule as invitation acceptance, so the perimeter and
+            // the team stay aligned and pre-fix scopes self-heal on the
+            // first edit. Removals never leave a team: the roster stays
+            // manually piloted. firstOrCreate keeps manual roles intact.
+            foreach ($projectIds as $projectId) {
+                ProjectMember::firstOrCreate(
+                    [
+                        'workspace_id' => $membership->workspace_id,
+                        'project_id' => $projectId,
+                        'user_id' => $membership->user_id,
+                    ],
+                    ['role' => ProjectRole::Member->value],
+                );
+            }
         });
 
         // The request may already have resolved this member's scope (list

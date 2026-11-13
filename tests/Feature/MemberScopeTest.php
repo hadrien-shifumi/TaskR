@@ -8,6 +8,7 @@ use App\Actions\Knowledge\CreateKnowledgePage;
 use App\Actions\Projects\CreateProject;
 use App\Actions\Workspaces\CreateWorkspace;
 use App\Enums\DigestFrequency;
+use App\Enums\ProjectRole;
 use App\Enums\WorkspaceRole;
 use App\Jobs\SendAccountDigest;
 use App\Mail\DigestMail;
@@ -22,6 +23,7 @@ use App\Models\Issue;
 use App\Models\Membership;
 use App\Models\NotificationPreference;
 use App\Models\Project;
+use App\Models\ProjectMember;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Support\MentionParser;
@@ -210,6 +212,86 @@ class MemberScopeTest extends TestCase
         $this->assertSame([$alpha->id], $membership->projectScopeIds());
     }
 
+    public function test_accepting_a_scoped_member_invitation_joins_the_announced_project_teams(): void
+    {
+        [$owner, $workspace, $alpha, $beta, $gamma] = $this->setupWorkspace();
+        $invitation = $this->memberInvitation($workspace, [$alpha, $beta]);
+
+        $invitee = User::factory()->create(['email' => 'peer@example.com']);
+
+        $this->actingAs($invitee)
+            ->get(route('invitations.accept', $invitation->token))
+            ->assertRedirect(route('home'));
+
+        app(WorkspaceContext::class)->set($workspace);
+
+        // The announced perimeter is also the joined project teams, with
+        // the plain contributor role — never a widening visibility role.
+        $this->assertSame(
+            ProjectRole::Member,
+            ProjectMember::query()->where('project_id', $alpha->id)->where('user_id', $invitee->id)->value('role'),
+        );
+        $this->assertSame(
+            ProjectRole::Member,
+            ProjectMember::query()->where('project_id', $beta->id)->where('user_id', $invitee->id)->value('role'),
+        );
+        $this->assertNull(
+            ProjectMember::query()->where('project_id', $gamma->id)->where('user_id', $invitee->id)->value('role'),
+        );
+    }
+
+    public function test_accepting_an_unscoped_member_invitation_joins_no_project_team(): void
+    {
+        [$owner, $workspace, $alpha] = $this->setupWorkspace();
+        $invitation = $this->memberInvitation($workspace, []);
+
+        $invitee = User::factory()->create(['email' => 'peer@example.com']);
+
+        $this->actingAs($invitee)
+            ->get(route('invitations.accept', $invitation->token))
+            ->assertRedirect(route('home'));
+
+        app(WorkspaceContext::class)->set($workspace);
+
+        // Full workspace access never silently joins every project team.
+        $this->assertSame(0, ProjectMember::query()->where('user_id', $invitee->id)->count());
+    }
+
+    public function test_acceptance_by_an_existing_member_preserves_their_manual_team_roles(): void
+    {
+        [$owner, $workspace, $alpha, $beta] = $this->setupWorkspace();
+        [$member] = $this->addMember($workspace);
+        $alpha->projectMembers()->create([
+            'user_id' => $member->id,
+            'role' => ProjectRole::Manager->value,
+        ]);
+
+        $invitation = Invitation::withoutWorkspaceScope()->create([
+            'workspace_id' => $workspace->id,
+            'email' => $member->email,
+            'role' => WorkspaceRole::Member->value,
+            'token' => Str::random(64),
+            'expires_at' => now()->addDays(7),
+        ]);
+        $invitation->attachScope([$alpha->id, $beta->id]);
+
+        $this->actingAs($member)
+            ->get(route('invitations.accept', $invitation->token))
+            ->assertRedirect(route('home'));
+
+        app(WorkspaceContext::class)->set($workspace);
+
+        // A team role granted by hand is never downgraded by the acceptance.
+        $this->assertSame(
+            ProjectRole::Manager,
+            ProjectMember::query()->where('project_id', $alpha->id)->where('user_id', $member->id)->value('role'),
+        );
+        $this->assertSame(
+            ProjectRole::Member,
+            ProjectMember::query()->where('project_id', $beta->id)->where('user_id', $member->id)->value('role'),
+        );
+    }
+
     public function test_acceptance_by_an_existing_guest_keeps_the_roster_perimeter(): void
     {
         [$owner, $workspace, $alpha] = $this->setupWorkspace();
@@ -302,6 +384,74 @@ class MemberScopeTest extends TestCase
         $membership->refresh();
         $this->assertFalse((bool) $membership->is_scoped);
         $this->assertSame([], $membership->projectScopeIds());
+    }
+
+    public function test_granting_a_perimeter_joins_the_member_to_the_project_teams(): void
+    {
+        [$owner, $workspace, $alpha, $beta, $gamma] = $this->setupWorkspace();
+        [$member, $membership] = $this->addMember($workspace);
+
+        $this->actingAs($owner)
+            ->patch(route('workspaces.members.scope', [$workspace->id, $member->id]), [
+                'project_ids' => [$alpha->id, $gamma->id],
+            ])
+            ->assertRedirect(route('settings.members'));
+
+        app(WorkspaceContext::class)->set($workspace);
+
+        // Every granted project joins the member to its team: this also
+        // repairs scopes granted before the fix on any later edit.
+        $joined = ProjectMember::query()->where('user_id', $member->id)->pluck('project_id')->all();
+        sort($joined);
+        $expected = [$alpha->id, $gamma->id];
+        sort($expected);
+        $this->assertSame($expected, $joined);
+        $this->assertSame(
+            ProjectRole::Member,
+            ProjectMember::query()->where('project_id', $gamma->id)->where('user_id', $member->id)->value('role'),
+        );
+    }
+
+    public function test_removing_projects_from_a_perimeter_keeps_the_roster_rows(): void
+    {
+        [$owner, $workspace, $alpha, $beta, $gamma] = $this->setupWorkspace();
+        [$member, $membership] = $this->addMember($workspace);
+        $membership->update(['is_scoped' => true]);
+        $membership->syncProjectScope([$alpha->id, $gamma->id]);
+        $alpha->projectMembers()->create(['user_id' => $member->id, 'role' => ProjectRole::Member->value]);
+        $gamma->projectMembers()->create(['user_id' => $member->id, 'role' => ProjectRole::Member->value]);
+
+        $this->actingAs($owner)
+            ->patch(route('workspaces.members.scope', [$workspace->id, $member->id]), [
+                'project_ids' => [$alpha->id],
+            ])
+            ->assertRedirect(route('settings.members'));
+
+        app(WorkspaceContext::class)->set($workspace);
+
+        // Leaving a project's perimeter never leaves its team: the roster
+        // stays manually piloted.
+        $this->assertTrue(ProjectMember::query()->where('project_id', $alpha->id)->where('user_id', $member->id)->exists());
+        $this->assertTrue(ProjectMember::query()->where('project_id', $gamma->id)->where('user_id', $member->id)->exists());
+    }
+
+    public function test_emptying_a_perimeter_keeps_the_roster_rows(): void
+    {
+        [$owner, $workspace, $alpha] = $this->setupWorkspace();
+        [$member, $membership] = $this->addMember($workspace);
+        $membership->update(['is_scoped' => true]);
+        $membership->syncProjectScope([$alpha->id]);
+        $alpha->projectMembers()->create(['user_id' => $member->id, 'role' => ProjectRole::Member->value]);
+
+        $this->actingAs($owner)
+            ->patch(route('workspaces.members.scope', [$workspace->id, $member->id]), [
+                'project_ids' => [],
+            ])
+            ->assertRedirect(route('settings.members'));
+
+        app(WorkspaceContext::class)->set($workspace);
+
+        $this->assertTrue(ProjectMember::query()->where('project_id', $alpha->id)->where('user_id', $member->id)->exists());
     }
 
     public function test_non_owner_cannot_update_a_member_perimeter(): void

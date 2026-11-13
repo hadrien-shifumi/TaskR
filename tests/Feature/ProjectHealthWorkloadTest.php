@@ -9,6 +9,8 @@ use App\Actions\TimeTracking\CreateTimeEntry;
 use App\Actions\TimeTracking\SetIssueEstimate;
 use App\Actions\Workspaces\CreateWorkspace;
 use App\Enums\ProjectRole;
+use App\Enums\WorkspaceRole;
+use App\Models\Invitation;
 use App\Models\Issue;
 use App\Models\Membership;
 use App\Models\Project;
@@ -19,6 +21,7 @@ use App\Models\Workspace;
 use App\Support\WorkspaceContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia;
 use Tests\TestCase;
 
@@ -250,6 +253,40 @@ class ProjectHealthWorkloadTest extends TestCase
                 ->has('teamWorkload', 2)
                 ->where('teamWorkload.1.estimatedHours', 10)
                 ->where('teamWorkload.1.loggedHours', 4));
+    }
+
+    public function test_team_workload_includes_a_member_who_joined_via_a_scoped_invitation(): void
+    {
+        [$owner, $workspace, $project, $statuses] = $this->setupWorkspaceWithProject();
+
+        $invitation = Invitation::withoutWorkspaceScope()->create([
+            'workspace_id' => $workspace->id,
+            'email' => 'peer@example.com',
+            'role' => WorkspaceRole::Member->value,
+            'token' => Str::random(64),
+            'expires_at' => now()->addDays(7),
+        ]);
+        $invitation->attachScope([$project->id]);
+
+        $invitee = User::factory()->create(['email' => 'peer@example.com']);
+        $this->actingAs($invitee)
+            ->get(route('invitations.accept', $invitation->token))
+            ->assertRedirect(route('home'));
+
+        app(WorkspaceContext::class)->set($workspace);
+
+        // A task assigned to the freshly joined colleague: their load used
+        // to be aggregated then dropped because they were not in the team.
+        $this->createIssue($project, $statuses, 'in_progress', 'Colleague task', $invitee);
+
+        $this->actingAs($owner)
+            ->get(route('projects.health', $project->id))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->has('teamWorkload', 2)
+                ->where('teamWorkload.0.userId', $owner->id)
+                ->where('teamWorkload.1.userId', $invitee->id)
+                ->where('teamWorkload.1.openIssues', 1));
     }
 
     // ── Cross-workspace isolation ─────────────────────────────────────

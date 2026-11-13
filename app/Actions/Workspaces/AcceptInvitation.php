@@ -58,18 +58,10 @@ class AcceptInvitation
             if ($invitation->role === WorkspaceRole::Guest) {
                 $projectIds = InvitationProject::query()
                     ->where('invitation_id', $invitation->getKey())
-                    ->pluck('project_id');
+                    ->pluck('project_id')
+                    ->all();
 
-                foreach ($projectIds as $projectId) {
-                    ProjectMember::firstOrCreate(
-                        [
-                            'workspace_id' => $invitation->workspace_id,
-                            'project_id' => $projectId,
-                            'user_id' => $user->getKey(),
-                        ],
-                        ['role' => ProjectRole::Member->value],
-                    );
-                }
+                $this->joinProjectTeams($invitation->workspace_id, $user->getKey(), $projectIds);
             }
 
             // A member joins with the perimeter announced at invitation
@@ -86,6 +78,12 @@ class AcceptInvitation
                 if ($announcedScope !== []) {
                     $membership->update(['is_scoped' => true]);
                     $membership->syncProjectScope($announcedScope);
+
+                    // The announced perimeter is also the team the member
+                    // joins — same rule as guests, so scoped members stop
+                    // being invisible in the project rosters and the team
+                    // workload. Manual roles are never downgraded.
+                    $this->joinProjectTeams($invitation->workspace_id, $user->getKey(), $announcedScope);
                 }
             }
 
@@ -93,6 +91,28 @@ class AcceptInvitation
 
             return $invitation->workspace;
         });
+    }
+
+    /**
+     * Add the user to each project's team as a plain contributor. The
+     * roster rows are the real project team, never a visibility grant:
+     * they carry the member role only, and an existing row (manual role)
+     * is left untouched.
+     *
+     * @param  array<int, string>  $projectIds
+     */
+    private function joinProjectTeams(string $workspaceId, int $userId, array $projectIds): void
+    {
+        foreach ($projectIds as $projectId) {
+            ProjectMember::firstOrCreate(
+                [
+                    'workspace_id' => $workspaceId,
+                    'project_id' => $projectId,
+                    'user_id' => $userId,
+                ],
+                ['role' => ProjectRole::Member->value],
+            );
+        }
     }
 
     public function asController(Invitation $invitation): RedirectResponse|Response
