@@ -61,6 +61,19 @@ pgvector column requires. Re-runnable at any time
 (`php artisan taskr:install`), it is idempotent; without an interactive
 terminal it falls back to the values detected in the `.env`.
 
+**Updating a `create-project` install**: this install has no `.git` history
+to `git pull` from (`create-project` downloads a release archive, not a
+clone). Run `php artisan taskr:update` instead — it checks GitHub for a newer
+release, downloads and applies it in place (every tracked file is
+overwritten or added; `.env`, `storage/` data, `vendor/` and `node_modules/`
+are never part of the archive, so they are left untouched), then offers to
+run `composer install`, rebuild the frontend and run the migrations. Add
+`--check` to only report whether an update is available, or `--force` to
+skip every confirmation (required in non-interactive contexts, e.g. a cron
+job). Back up your database before running it — see
+“[Self-hosting](#self-hosting)” below for the equivalent `git pull`-based
+procedure if you cloned the sources instead.
+
 **Option b — from a clone of the sources**:
 
 ```bash
@@ -256,6 +269,20 @@ instead of the bundled database:
 4. `docker compose up -d`: the app starts without waiting for the bundled
    database, migrations run as usual. Backups are then managed provider-side
    (the compose `pg_dump` only applies to the bundled database).
+
+### 2. `composer create-project` (self-hosted, no Docker)
+
+Same installer as “[Installation (local development)](#installation-local-development)”
+above — `composer create-project hadrien-shifumi/taskr && cd taskr && php
+artisan taskr:install` — configured for a public/production deployment when
+the wizard asks (`APP_ENV=production`, `APP_DEBUG=false`, the real
+`APP_URL`). Serve it behind Octane (`php artisan octane:start`) or any
+PHP-FPM setup, with a reverse proxy doing TLS termination.
+
+Updating: this install has no `.git` history to `git pull` from — run `php
+artisan taskr:update` (see “[Updating a `create-project` install](#installation-local-development)”
+above). It checks GitHub for a newer release and applies it in place, then
+offers to run `composer install`, rebuild the frontend and migrate.
 
 ### 3. From the sources
 

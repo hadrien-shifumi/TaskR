@@ -1,10 +1,15 @@
 # Publishes the production image to GHCR on every version tag (v*).
 #
-#   git tag v1.2.0 && git push --tags
+#   echo 1.2.0 > VERSION && git add VERSION && git commit -m "Bump VERSION to 1.2.0"
+#   git tag v1.2.0 && git push && git push --tags
 #     → ghcr.io/hadrien-shifumi/taskr:1.2.0
 #     → ghcr.io/hadrien-shifumi/taskr:1.2
 #     → ghcr.io/hadrien-shifumi/taskr:1
 #     → ghcr.io/hadrien-shifumi/taskr:latest
+#
+# The VERSION file must be bumped in the same commit as the tag: it ships in
+# the composer create-project archive and `php artisan taskr:update` reads it
+# to detect the installed version. This workflow fails fast if they drift.
 #
 # The image is built for linux/amd64 and linux/arm64 (arm64 runs under QEMU,
 # which makes releases slower but keeps this workflow simple). The docker.yml
@@ -31,6 +36,15 @@ jobs:
     steps:
       - name: Check out the repo
         uses: actions/checkout@v5
+
+      - name: Verify the VERSION file matches the pushed tag
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          version="$(cat VERSION)"
+          if [ "$tag" != "$version" ]; then
+            echo "VERSION file ($version) does not match the pushed tag ($tag) — bump VERSION before tagging. The file ships in the composer create-project archive and powers \`php artisan taskr:update\`." >&2
+            exit 1
+          fi
 
       - name: Set up QEMU (arm64 emulation)
         uses: docker/setup-qemu-action@v3
