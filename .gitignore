@@ -11,6 +11,7 @@
 /.nova
 /.phpunit.cache
 /.opencode/
+/AGENTS.md
 /.vscode
 /.zed
 
