@@ -2,7 +2,7 @@
 
 # TaskR
 
-**TaskR** is a minimalist, multi-tenant ticket tracker built around the **workspace**: teams create projects and issues, track statuses, time spent and project health — no sprints, no issue types, no configurable workflow. Steering happens by convention: the workspace imposes its statuses on all of its projects.
+**TaskR** is a minimalist, multi-tenant ticket tracker built around the **workspace**: teams create projects and issues, track statuses, time spent and project health — no complex agility patterns, no issue types, no configurable workflow. Steering happens by convention: the workspace imposes its statuses on all of its projects.
 
 TaskR is designed to be driven **by humans (web UI) and AI agents alike** through a dedicated MCP server. Identifiers are opaque ULIDs in URLs (no “TASK-42”), and there are only two roles: `owner` and `member`.
 
@@ -256,16 +256,6 @@ instead of the bundled database:
 4. `docker compose up -d`: the app starts without waiting for the bundled
    database, migrations run as usual. Backups are then managed provider-side
    (the compose `pg_dump` only applies to the bundled database).
-
-### 2. Kamal 2 (VPS)
-
-The `Dockerfile` builds as-is with Kamal, or the deployment can consume the
-GHCR image directly (`image: ghcr.io/hadrien-shifumi/taskr:0.1.2` in
-`config/deploy.yml`). The author's instance, deployed on Scaleway with
-**Kamal 2** (Traefik proxy doing TLS termination, managed PostgreSQL with
-pgvector) and provisioned with Ansible, lives in a separate private
-repository (`taskr-infra`) — this operations layer is not part of the
-product.
 
 ### 3. From the sources
 
