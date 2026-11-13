@@ -13,10 +13,12 @@ php artisan taskr:install
 The wizard (started automatically by `create-project`) asks where the
 database runs (bundled docker / local dev on 5433 / external managed
 PostgreSQL), the knowledge base embeddings provider (OpenAI, Ollama, Mistral
-presets or any OpenAI-compatible custom endpoint), tests the database
-connection and the embeddings endpoint if you want, writes the `.env`
-(without touching the keys it does not manage), generates the `APP_KEY`, then
-offers migrations and the frontend build. It sets
+presets or any OpenAI-compatible custom endpoint), and how outgoing mail
+should be sent — password resets, invitations, digests (an SMTP server, or
+staying on the log-only mode until one is configured), tests the database
+connection, the embeddings endpoint and a test e-mail send if you want,
+writes the `.env` (without touching the keys it does not manage), generates
+the `APP_KEY`, then offers migrations and the frontend build. It sets
 `KNOWLEDGE_EMBEDDINGS_DIMENSIONS` **before** the first migration, as the
 pgvector column requires. Re-runnable at any time
 (`php artisan taskr:install`), it is idempotent; without an interactive
@@ -55,6 +57,13 @@ Notable configuration (`.env`):
   `KNOWLEDGE_EMBEDDINGS_API_KEY`, `KNOWLEDGE_EMBEDDINGS_MODEL` and
   `KNOWLEDGE_EMBEDDINGS_DIMENSIONS` (dimension returned by the model, 1024 by
   default) — see “[Bring your own embeddings provider](#bring-your-own-embeddings-provider)” below.
+- `MAIL_*` (optional but recommended before a public deployment): the
+  sending transport (`MAIL_MAILER=smtp` plus `MAIL_HOST`/`MAIL_PORT`/
+  `MAIL_USERNAME`/`MAIL_PASSWORD`) and the sender identity
+  (`MAIL_FROM_ADDRESS`/`MAIL_FROM_NAME`). Defaults to `MAIL_MAILER=log`:
+  mail (password resets, invitations, digests) is written to the logs
+  instead of actually delivered. Handled by the `taskr:install` wizard
+  (option a, with a test send), edit it by hand otherwise.
 
 A local “prod-like” deployment is also possible (switch back to mode 1:
 re-comment `DB_HOST`/`DB_PORT` in the `.env`): `docker compose up -d` starts

@@ -14,9 +14,12 @@ L'assistant (lancé automatiquement par `create-project`) demande où tourne
 la base de données (docker embarqué / dev local sur le port 5433 / PostgreSQL
 managé externe), le fournisseur d'embeddings de la base de connaissance
 (préréglages OpenAI, Ollama, Mistral, ou tout endpoint personnalisé
-compatible OpenAI), teste si vous le souhaitez la connexion à la base et au
-endpoint d'embeddings, écrit le `.env` (sans toucher aux clés qu'il ne gère
-pas), génère l'`APP_KEY`, puis propose les migrations et le build frontend.
+compatible OpenAI) et comment envoyer les mails sortants — reset de mot de
+passe, invitations, digests (serveur SMTP, ou rester en mode « log » tant
+qu'aucun n'est configuré), teste si vous le souhaitez la connexion à la base,
+l'endpoint d'embeddings et l'envoi d'un mail de test, écrit le `.env` (sans
+toucher aux clés qu'il ne gère pas), génère l'`APP_KEY`, puis propose les
+migrations et le build frontend.
 Il fixe `KNOWLEDGE_EMBEDDINGS_DIMENSIONS` **avant** la première migration,
 comme l'exige la colonne pgvector. Relançable à tout moment
 (`php artisan taskr:install`), il est idempotent ; sans terminal interactif,
@@ -59,6 +62,13 @@ Configuration notable (`.env`) :
   `KNOWLEDGE_EMBEDDINGS_MODEL` et `KNOWLEDGE_EMBEDDINGS_DIMENSIONS`
   (dimension renvoyée par le modèle, 1024 par défaut) — voir
   « [Choisir son propre fournisseur d'embeddings](#choisir-son-propre-fournisseur-dembeddings) » ci-dessous.
+- `MAIL_*` (optionnel mais recommandé avant une exposition publique) :
+  transport d'envoi (`MAIL_MAILER=smtp` plus `MAIL_HOST`/`MAIL_PORT`/
+  `MAIL_USERNAME`/`MAIL_PASSWORD`) et identité d'expéditeur
+  (`MAIL_FROM_ADDRESS`/`MAIL_FROM_NAME`). Par défaut `MAIL_MAILER=log` :
+  les mails (reset de mot de passe, invitations, digests) sont écrits dans
+  les logs plutôt que réellement délivrés. Géré par l'assistant
+  `taskr:install` (option a, avec test d'envoi), à éditer manuellement sinon.
 
 Un déploiement local « prod-like » est également possible (repasser en mode 1 :
 recommenter `DB_HOST`/`DB_PORT` dans le `.env`) : `docker compose up -d`

@@ -31,6 +31,14 @@ Remarque : générez l'`APP_KEY` avec `openssl rand -base64 32` plutôt qu'avec
 écrit la clé à l'intérieur du conteneur éphémère (`.env` n'y est pas monté),
 elle serait donc perdue.
 
+Configurez aussi l'envoi des mails (reset de mot de passe, invitations,
+digests) avant une exposition publique : `MAIL_MAILER=smtp` plus
+`MAIL_HOST`/`MAIL_PORT`/`MAIL_USERNAME`/`MAIL_PASSWORD`/
+`MAIL_FROM_ADDRESS`/`MAIL_FROM_NAME` dans le `.env`. Par défaut,
+`MAIL_MAILER=log` écrit les mails dans les logs sans les délivrer. Passer
+par `php artisan taskr:install` (section 2 ci-dessous) pose la question et
+teste l'envoi pour vous.
+
 L'application répond sur http://localhost:8080 (rôles `web` + `worker` +
 PostgreSQL 18/pgvector embarqué, actif par défaut via
 `COMPOSE_PROFILES=bundled-db`). Les données persistent dans le volume
@@ -96,7 +104,8 @@ Même installateur que [`installation_FR.md`](installation_FR.md) ci-dessus —
 `composer create-project hadrien-shifumi/taskr && cd taskr && php artisan
 taskr:install` — configuré pour un déploiement public/production quand
 l'assistant le demande (`APP_ENV=production`, `APP_DEBUG=false`, le vrai
-`APP_URL`). Servez-le derrière Octane (`php artisan octane:start`) ou
+`APP_URL`), avec configuration de l'envoi des mails (SMTP, avec test
+d'envoi) au passage. Servez-le derrière Octane (`php artisan octane:start`) ou
 n'importe quel setup PHP-FPM, avec un reverse proxy faisant la terminaison
 TLS.
 

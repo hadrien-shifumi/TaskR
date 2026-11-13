@@ -30,6 +30,14 @@ Note: generate `APP_KEY` with `openssl rand -base64 32` rather than
 the key inside the ephemeral container (`.env` is not mounted there), so it
 would be lost.
 
+Also configure outgoing mail (password resets, invitations, digests) before
+a public deployment: `MAIL_MAILER=smtp` plus
+`MAIL_HOST`/`MAIL_PORT`/`MAIL_USERNAME`/`MAIL_PASSWORD`/
+`MAIL_FROM_ADDRESS`/`MAIL_FROM_NAME` in the `.env`. It defaults to
+`MAIL_MAILER=log`, which writes mail to the logs instead of delivering it.
+Running `php artisan taskr:install` (section 2 below) asks for it and tests
+the send for you.
+
 The app answers on http://localhost:8080 (`web` + `worker` roles + bundled
 PostgreSQL 18/pgvector, active by default via `COMPOSE_PROFILES=bundled-db`).
 Data persists in the `taskr-pgdata` volume and the `./storage` bind mount.
@@ -90,9 +98,10 @@ instead of the bundled database:
 Same installer as [`installation_EN.md`](installation_EN.md) above —
 `composer create-project hadrien-shifumi/taskr && cd taskr && php artisan
 taskr:install` — configured for a public/production deployment when the
-wizard asks (`APP_ENV=production`, `APP_DEBUG=false`, the real `APP_URL`).
-Serve it behind Octane (`php artisan octane:start`) or any PHP-FPM setup,
-with a reverse proxy doing TLS termination.
+wizard asks (`APP_ENV=production`, `APP_DEBUG=false`, the real `APP_URL`),
+with outgoing mail configured (SMTP, with a test send) along the way. Serve
+it behind Octane (`php artisan octane:start`) or any PHP-FPM setup, with a
+reverse proxy doing TLS termination.
 
 Updating: this install has no `.git` history to `git pull` from — run `php
 artisan taskr:update` (see [`installation_EN.md`](installation_EN.md)). It checks

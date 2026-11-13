@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Support\DatabaseProber;
+use App\Support\MailProber;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
@@ -75,6 +76,27 @@ class InstallTaskrCommandTest extends TestCase
         ]);
     }
 
+    /**
+     * @param  array{ok: bool, message?: string}  $result
+     */
+    private function fakeMailProber(array $result): void
+    {
+        $result = ['ok' => $result['ok'], 'message' => $result['message'] ?? 'fake probe'];
+
+        $prober = new class($result) extends MailProber
+        {
+            /** @param array{ok: bool, message: string} $result */
+            public function __construct(private readonly array $result) {}
+
+            public function probe(array $parameters, string $to): array
+            {
+                return $this->result;
+            }
+        };
+
+        $this->instance(MailProber::class, $prober);
+    }
+
     public function test_local_dev_mode_with_mistral_preset_configures_env_embeddings_and_app_key(): void
     {
         $this->fakeProber(['ok' => true, 'pgvector' => true]);
@@ -89,6 +111,7 @@ class InstallTaskrCommandTest extends TestCase
             ->expectsQuestion('Embeddings provider for the knowledge base semantic search?', 'mistral')
             ->expectsQuestion('Mistral API key', 'sk-mistral-test')
             ->expectsConfirmation('Test the embeddings endpoint now?', 'yes')
+            ->expectsQuestion('How should outgoing mail (password resets, invitations, digests) be sent?', 'log')
             ->expectsConfirmation('Configure for a public/production deployment?', 'no')
             ->expectsConfirmation('Write these settings to the .env file?', 'yes')
             ->expectsConfirmation('Install npm dependencies and build the frontend now?', 'no')
@@ -114,6 +137,7 @@ class InstallTaskrCommandTest extends TestCase
         $this->artisan('taskr:install')
             ->expectsQuestion('Where will the database run?', 'bundled')
             ->expectsQuestion('Embeddings provider for the knowledge base semantic search?', 'none')
+            ->expectsQuestion('How should outgoing mail (password resets, invitations, digests) be sent?', 'log')
             ->expectsConfirmation('Configure for a public/production deployment?', 'no')
             ->expectsConfirmation('Write these settings to the .env file?', 'yes')
             ->expectsConfirmation('Install npm dependencies and build the frontend now?', 'no')
@@ -143,6 +167,7 @@ class InstallTaskrCommandTest extends TestCase
             ->expectsQuestion('Database password (leave empty to keep the current one)', 's3cr3t!')
             ->expectsConfirmation('Test the database connection now?', 'yes')
             ->expectsQuestion('Embeddings provider for the knowledge base semantic search?', 'none')
+            ->expectsQuestion('How should outgoing mail (password resets, invitations, digests) be sent?', 'log')
             ->expectsConfirmation('Configure for a public/production deployment?', 'yes')
             ->expectsQuestion('Application URL', 'https://taskr.example.com')
             ->expectsConfirmation('Write these settings to the .env file?', 'yes')
@@ -177,6 +202,7 @@ class InstallTaskrCommandTest extends TestCase
             ->expectsConfirmation('Test the database connection now?', 'yes')
             ->expectsOutputToContain('connection refused')
             ->expectsQuestion('Embeddings provider for the knowledge base semantic search?', 'none')
+            ->expectsQuestion('How should outgoing mail (password resets, invitations, digests) be sent?', 'log')
             ->expectsConfirmation('Configure for a public/production deployment?', 'no')
             ->expectsConfirmation('Write these settings to the .env file?', 'yes')
             ->expectsConfirmation('Install npm dependencies and build the frontend now?', 'no')
@@ -198,6 +224,7 @@ class InstallTaskrCommandTest extends TestCase
             ->expectsQuestion('Mistral API key', 'sk-mistral-test')
             ->expectsConfirmation('Test the embeddings endpoint now?', 'yes')
             ->expectsOutputToContain('KNOWLEDGE_EMBEDDINGS_DIMENSIONS')
+            ->expectsQuestion('How should outgoing mail (password resets, invitations, digests) be sent?', 'log')
             ->expectsConfirmation('Configure for a public/production deployment?', 'no')
             ->expectsConfirmation('Write these settings to the .env file?', 'yes')
             ->expectsConfirmation('Install npm dependencies and build the frontend now?', 'no')
@@ -214,6 +241,7 @@ class InstallTaskrCommandTest extends TestCase
         $this->artisan('taskr:install')
             ->expectsQuestion('Where will the database run?', 'bundled')
             ->expectsQuestion('Embeddings provider for the knowledge base semantic search?', 'none')
+            ->expectsQuestion('How should outgoing mail (password resets, invitations, digests) be sent?', 'log')
             ->expectsConfirmation('Configure for a public/production deployment?', 'no')
             ->expectsConfirmation('Write these settings to the .env file?', 'no')
             ->assertSuccessful();
@@ -231,6 +259,7 @@ class InstallTaskrCommandTest extends TestCase
             ->expectsQuestion('Embeddings vector dimensions', '1024')
             ->expectsQuestion('Embeddings API key (optional)', 'local-key')
             ->expectsConfirmation('Test the embeddings endpoint now?', 'no')
+            ->expectsQuestion('How should outgoing mail (password resets, invitations, digests) be sent?', 'log')
             ->expectsConfirmation('Configure for a public/production deployment?', 'no')
             ->expectsConfirmation('Write these settings to the .env file?', 'yes')
             ->expectsConfirmation('Install npm dependencies and build the frontend now?', 'no')
@@ -256,6 +285,7 @@ class InstallTaskrCommandTest extends TestCase
             ->expectsQuestion('Where will the database run?', 'bundled')
             ->expectsQuestion('Embeddings provider for the knowledge base semantic search?', 'none')
             ->expectsConfirmation('Clear the existing embeddings configuration?', 'yes')
+            ->expectsQuestion('How should outgoing mail (password resets, invitations, digests) be sent?', 'log')
             ->expectsConfirmation('Configure for a public/production deployment?', 'no')
             ->expectsConfirmation('Write these settings to the .env file?', 'yes')
             ->expectsConfirmation('Install npm dependencies and build the frontend now?', 'no')
@@ -279,6 +309,7 @@ class InstallTaskrCommandTest extends TestCase
         $this->artisan('taskr:install')
             ->expectsQuestion('Where will the database run?', 'bundled')
             ->expectsQuestion('Embeddings provider for the knowledge base semantic search?', 'none')
+            ->expectsQuestion('How should outgoing mail (password resets, invitations, digests) be sent?', 'log')
             ->expectsConfirmation('Configure for a public/production deployment?', 'no')
             ->expectsConfirmation('Generate a new application key?', 'no')
             ->expectsConfirmation('Write these settings to the .env file?', 'yes')
@@ -304,5 +335,126 @@ class InstallTaskrCommandTest extends TestCase
         // Non-interactive keeps the detected setup untouched otherwise.
         $this->assertMatchesRegularExpression('/^# DB_HOST=/m', $env);
         $this->assertStringContainsString('KNOWLEDGE_EMBEDDINGS_BASE_URL=', $env);
+        $this->assertStringContainsString("\nMAIL_MAILER=log\n", $env);
+    }
+
+    public function test_smtp_mode_writes_host_port_credentials_and_from_identity(): void
+    {
+        $this->fakeMailProber(['ok' => true]);
+
+        $this->artisan('taskr:install')
+            ->expectsQuestion('Where will the database run?', 'bundled')
+            ->expectsQuestion('Embeddings provider for the knowledge base semantic search?', 'none')
+            ->expectsQuestion('How should outgoing mail (password resets, invitations, digests) be sent?', 'smtp')
+            ->expectsQuestion('SMTP host', 'smtp.example.com')
+            ->expectsQuestion('SMTP port', '587')
+            ->expectsQuestion('SMTP username (leave empty if none)', 'taskr@example.com')
+            ->expectsQuestion('SMTP password (leave empty to keep the current one)', 's3cr3t!')
+            ->expectsQuestion('"From" e-mail address', 'noreply@example.com')
+            ->expectsQuestion('"From" display name', 'TaskR')
+            ->expectsConfirmation('Send a test email now?', 'yes')
+            ->expectsQuestion('Send the test email to which address?', 'noreply@example.com')
+            ->expectsOutputToContain('Test e-mail sent')
+            ->expectsConfirmation('Configure for a public/production deployment?', 'no')
+            ->expectsConfirmation('Write these settings to the .env file?', 'yes')
+            ->expectsConfirmation('Install npm dependencies and build the frontend now?', 'no')
+            ->assertSuccessful();
+
+        $env = file_get_contents($this->envPath);
+
+        $this->assertStringContainsString("\nMAIL_MAILER=smtp\n", $env);
+        $this->assertStringContainsString("\nMAIL_HOST=smtp.example.com\n", $env);
+        $this->assertStringContainsString("\nMAIL_PORT=587\n", $env);
+        $this->assertStringContainsString("\nMAIL_USERNAME=taskr@example.com\n", $env);
+        $this->assertStringContainsString("MAIL_PASSWORD='s3cr3t!'", $env);
+        $this->assertStringContainsString("\nMAIL_FROM_ADDRESS=noreply@example.com\n", $env);
+        $this->assertStringContainsString("\nMAIL_FROM_NAME=TaskR\n", $env);
+    }
+
+    public function test_log_mode_skips_smtp_questions_and_keeps_mail_mailer_as_log(): void
+    {
+        $this->artisan('taskr:install')
+            ->expectsQuestion('Where will the database run?', 'bundled')
+            ->expectsQuestion('Embeddings provider for the knowledge base semantic search?', 'none')
+            ->expectsQuestion('How should outgoing mail (password resets, invitations, digests) be sent?', 'log')
+            ->expectsConfirmation('Configure for a public/production deployment?', 'no')
+            ->expectsConfirmation('Write these settings to the .env file?', 'yes')
+            ->expectsConfirmation('Install npm dependencies and build the frontend now?', 'no')
+            ->assertSuccessful();
+
+        $env = file_get_contents($this->envPath);
+
+        $this->assertStringContainsString("\nMAIL_MAILER=log\n", $env);
+    }
+
+    public function test_declining_the_mail_test_skips_sending(): void
+    {
+        $this->artisan('taskr:install')
+            ->expectsQuestion('Where will the database run?', 'bundled')
+            ->expectsQuestion('Embeddings provider for the knowledge base semantic search?', 'none')
+            ->expectsQuestion('How should outgoing mail (password resets, invitations, digests) be sent?', 'smtp')
+            ->expectsQuestion('SMTP host', 'smtp.example.com')
+            ->expectsQuestion('SMTP port', '587')
+            ->expectsQuestion('SMTP username (leave empty if none)', '')
+            ->expectsQuestion('SMTP password (leave empty to keep the current one)', '')
+            ->expectsQuestion('"From" e-mail address', 'noreply@example.com')
+            ->expectsQuestion('"From" display name', 'TaskR')
+            ->expectsConfirmation('Send a test email now?', 'no')
+            ->expectsConfirmation('Configure for a public/production deployment?', 'no')
+            ->expectsConfirmation('Write these settings to the .env file?', 'yes')
+            ->expectsConfirmation('Install npm dependencies and build the frontend now?', 'no')
+            ->assertSuccessful();
+    }
+
+    public function test_failing_mail_test_is_reported_as_a_warning(): void
+    {
+        $this->fakeMailProber(['ok' => false, 'message' => 'Connection could not be established.']);
+
+        $this->artisan('taskr:install')
+            ->expectsQuestion('Where will the database run?', 'bundled')
+            ->expectsQuestion('Embeddings provider for the knowledge base semantic search?', 'none')
+            ->expectsQuestion('How should outgoing mail (password resets, invitations, digests) be sent?', 'smtp')
+            ->expectsQuestion('SMTP host', 'smtp.example.com')
+            ->expectsQuestion('SMTP port', '587')
+            ->expectsQuestion('SMTP username (leave empty if none)', '')
+            ->expectsQuestion('SMTP password (leave empty to keep the current one)', '')
+            ->expectsQuestion('"From" e-mail address', 'noreply@example.com')
+            ->expectsQuestion('"From" display name', 'TaskR')
+            ->expectsConfirmation('Send a test email now?', 'yes')
+            ->expectsQuestion('Send the test email to which address?', 'noreply@example.com')
+            ->expectsOutputToContain('Connection could not be established.')
+            ->expectsConfirmation('Configure for a public/production deployment?', 'no')
+            ->expectsConfirmation('Write these settings to the .env file?', 'yes')
+            ->expectsConfirmation('Install npm dependencies and build the frontend now?', 'no')
+            ->assertSuccessful();
+    }
+
+    public function test_existing_smtp_password_is_kept_when_left_blank(): void
+    {
+        file_put_contents($this->envPath, str_replace(
+            "MAIL_PASSWORD=null\n",
+            "MAIL_PASSWORD=existing-secret\n",
+            (string) file_get_contents($this->envPath),
+        ));
+
+        $this->artisan('taskr:install')
+            ->expectsQuestion('Where will the database run?', 'bundled')
+            ->expectsQuestion('Embeddings provider for the knowledge base semantic search?', 'none')
+            ->expectsQuestion('How should outgoing mail (password resets, invitations, digests) be sent?', 'smtp')
+            ->expectsQuestion('SMTP host', 'smtp.example.com')
+            ->expectsQuestion('SMTP port', '587')
+            ->expectsQuestion('SMTP username (leave empty if none)', '')
+            ->expectsQuestion('SMTP password (leave empty to keep the current one)', '')
+            ->expectsQuestion('"From" e-mail address', 'noreply@example.com')
+            ->expectsQuestion('"From" display name', 'TaskR')
+            ->expectsConfirmation('Send a test email now?', 'no')
+            ->expectsConfirmation('Configure for a public/production deployment?', 'no')
+            ->expectsConfirmation('Write these settings to the .env file?', 'yes')
+            ->expectsConfirmation('Install npm dependencies and build the frontend now?', 'no')
+            ->assertSuccessful();
+
+        $env = file_get_contents($this->envPath);
+
+        $this->assertStringContainsString("\nMAIL_PASSWORD=existing-secret\n", $env);
     }
 }

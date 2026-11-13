@@ -7,6 +7,7 @@ use App\Support\DatabaseProber;
 use App\Support\EmbeddingDimensionMismatch;
 use App\Support\Embeddings;
 use App\Support\EnvFile;
+use App\Support\MailProber;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
@@ -16,7 +17,7 @@ use Symfony\Component\Process\ExecutableFinder;
 use Symfony\Component\Process\Process;
 
 #[Signature('taskr:install')]
-#[Description('Interactive installer: configure the database mode, the embeddings provider and the app key in .env, then optionally migrate and build the frontend.')]
+#[Description('Interactive installer: configure the database mode, the embeddings provider, outgoing mail and the app key in .env, then optionally migrate and build the frontend.')]
 class InstallTaskr extends Command
 {
     /** @var array<string, string> */
@@ -26,7 +27,13 @@ class InstallTaskr extends Command
         'external' => 'External / managed PostgreSQL',
     ];
 
-    public function __construct(private readonly DatabaseProber $prober)
+    /** @var array<string, string> */
+    private const MAIL_MODES = [
+        'smtp' => 'SMTP server',
+        'log' => 'Not yet — write e-mails to the log only',
+    ];
+
+    public function __construct(private readonly DatabaseProber $prober, private readonly MailProber $mailProber)
     {
         parent::__construct();
     }
@@ -120,6 +127,32 @@ class InstallTaskr extends Command
             $this->probeEmbeddings($embeddings);
         }
 
+        // --- Mail -----------------------------------------------------------
+        $mailMode = $interactive
+            ? $this->choice('How should outgoing mail (password resets, invitations, digests) be sent?', self::MAIL_MODES, $this->detectMailMode($env))
+            : $this->detectMailMode($env);
+
+        $mail = null;
+
+        if ($mailMode === 'smtp') {
+            $mail = [
+                'host' => (string) $this->ask('SMTP host', $this->nullableEnvValue($env, 'MAIL_HOST') ?? '127.0.0.1'),
+                'port' => (string) $this->ask('SMTP port', $this->nullableEnvValue($env, 'MAIL_PORT') ?? '587'),
+                'username' => (string) $this->ask('SMTP username (leave empty if none)', $this->nullableEnvValue($env, 'MAIL_USERNAME') ?? ''),
+                'password' => (string) ($this->secret('SMTP password (leave empty to keep the current one)') ?? ''),
+                'from_address' => (string) $this->ask('"From" e-mail address', $this->nullableEnvValue($env, 'MAIL_FROM_ADDRESS') ?? 'hello@example.com'),
+                'from_name' => (string) $this->ask('"From" display name', $this->nullableEnvValue($env, 'MAIL_FROM_NAME') ?? '${APP_NAME}'),
+            ];
+
+            $mail['password'] = $mail['password'] !== ''
+                ? $mail['password']
+                : (string) ($this->nullableEnvValue($env, 'MAIL_PASSWORD') ?? '');
+
+            if ($interactive && $this->confirm('Send a test email now?', true)) {
+                $this->probeMail($mail);
+            }
+        }
+
         // --- Application --------------------------------------------------
         $production = $interactive && $this->confirm('Configure for a public/production deployment?', false);
 
@@ -150,7 +183,9 @@ class InstallTaskr extends Command
             $env->set('KNOWLEDGE_EMBEDDINGS_API_KEY', $embeddings['api_key']);
         }
 
-        $this->renderRecap($mode, $database, $preset, $embeddings, $production, $keyStatus);
+        $this->applyMailMode($env, $mailMode, $mail);
+
+        $this->renderRecap($mode, $database, $preset, $embeddings, $mailMode, $mail, $production, $keyStatus);
 
         if ($interactive && ! $this->confirm('Write these settings to the .env file?', true)) {
             $this->components->info('No changes were written. Re-run taskr:install any time.');
@@ -302,13 +337,67 @@ class InstallTaskr extends Command
             ->contains(fn (?string $value): bool => $value !== null && $value !== '');
     }
 
+    // --- Mail helpers ---------------------------------------------------------
+
+    /**
+     * @param  array{host: string, port: string, username: string, password: string, from_address: string, from_name: string}|null  $mail
+     */
+    private function applyMailMode(EnvFile $env, string $mode, ?array $mail): void
+    {
+        if ($mode === 'smtp' && $mail !== null) {
+            $env->set('MAIL_MAILER', 'smtp');
+            $env->set('MAIL_HOST', $mail['host']);
+            $env->set('MAIL_PORT', $mail['port']);
+            $env->set('MAIL_USERNAME', $mail['username'] !== '' ? $mail['username'] : 'null');
+            $env->set('MAIL_PASSWORD', $mail['password'] !== '' ? $mail['password'] : 'null');
+            $env->set('MAIL_FROM_ADDRESS', $mail['from_address']);
+            $env->set('MAIL_FROM_NAME', $mail['from_name']);
+        } else {
+            $env->set('MAIL_MAILER', 'log');
+        }
+    }
+
+    /**
+     * @param  array{host: string, port: string, username: string, password: string, from_address: string, from_name: string}  $mail
+     */
+    private function probeMail(array $mail): void
+    {
+        $to = (string) $this->ask('Send the test email to which address?', $mail['from_address']);
+
+        $result = $this->mailProber->probe($mail, $to);
+
+        if ($result['ok']) {
+            $this->components->info("Test e-mail sent — {$result['message']}");
+        } else {
+            $this->components->warn('Test e-mail failed: '.$result['message']);
+        }
+    }
+
+    private function detectMailMode(EnvFile $env): string
+    {
+        return $env->get('MAIL_MAILER') === 'smtp' ? 'smtp' : 'log';
+    }
+
+    /**
+     * Value of a key treating the literal "null" the same as absent — used
+     * for MAIL_USERNAME/MAIL_PASSWORD, which .env.example sets to the bare
+     * word "null" rather than leaving them empty.
+     */
+    private function nullableEnvValue(EnvFile $env, string $key): ?string
+    {
+        $value = $env->peek($key);
+
+        return ($value === null || $value === '' || strtolower($value) === 'null') ? null : $value;
+    }
+
     // --- Presentation ---------------------------------------------------------
 
     /**
      * @param  array{host: string, port: string, database: string, username: string, password: string}  $database
      * @param  array{base_url: string, model: string, dimensions: string, api_key: string}|null  $embeddings
+     * @param  array{host: string, port: string, username: string, password: string, from_address: string, from_name: string}|null  $mail
      */
-    private function renderRecap(string $mode, array $database, ?EmbeddingPreset $preset, ?array $embeddings, bool $production, string $keyStatus): void
+    private function renderRecap(string $mode, array $database, ?EmbeddingPreset $preset, ?array $embeddings, string $mailMode, ?array $mail, bool $production, string $keyStatus): void
     {
         $databaseTarget = match ($mode) {
             'bundled' => 'Docker — bundled PostgreSQL (compose profile bundled-db)',
@@ -320,12 +409,17 @@ class InstallTaskr extends Command
             ? 'Unchanged'
             : ($embeddings['base_url'] === '' ? 'Disabled (semantic search off)' : "{$embeddings['base_url']} — {$embeddings['model']} ({$embeddings['dimensions']} dimensions)");
 
+        $mailTarget = $mailMode === 'smtp' && $mail !== null
+            ? "SMTP — {$mail['host']}:{$mail['port']} (from {$mail['from_address']})"
+            : 'Log only (no e-mail is actually delivered)';
+
         $this->table(['Setting', 'Value'], [
             ['Database', $databaseTarget],
             ['DB username', $database['username']],
             ['DB password', $database['password'] === '' ? '(empty)' : str_repeat('●', 8)],
             ['Embeddings', $embeddingsTarget],
             ['Embeddings API key', $embeddings === null || $embeddings['api_key'] === '' ? '(not set)' : str_repeat('●', 8)],
+            ['Mail', $mailTarget],
             ['App environment', $production ? 'production (debug off)' : 'unchanged'],
             ['APP_KEY', $keyStatus],
         ]);
