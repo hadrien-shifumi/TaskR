@@ -65,10 +65,15 @@ class GuestCompatibilityTest extends TestCase
             'role' => 'member',
         ]);
 
+        // The member sits on every team: their access covers the whole
+        // workspace, now carried by the roster.
+        $alpha->projectMembers()->create(['user_id' => $member->id, 'role' => 'member']);
+        $beta->projectMembers()->create(['user_id' => $member->id, 'role' => 'member']);
+
         return [$owner, $member, $workspace, $alpha, $beta];
     }
 
-    // ── Rétrocompatibilité : un member voit tout, comme avant ─────────
+    // ── Rétrocompatibilité : un member teamé partout voit tout ────────
 
     public function test_member_sees_all_projects_issues_and_knowledge(): void
     {
@@ -106,7 +111,7 @@ class GuestCompatibilityTest extends TestCase
             ->and($betaIssue->exists())->toBeTrue();
     }
 
-    public function test_mcp_member_response_shapes_are_unchanged(): void
+    public function test_mcp_member_response_shapes_follow_the_roster_role(): void
     {
         [$owner, $member, $workspace, $alpha, $beta] = $this->setupWorkspaceWithMember();
 
@@ -118,19 +123,25 @@ class GuestCompatibilityTest extends TestCase
         $this->assertSame(['projects'], array_keys($projects));
         $this->assertSame(['Alpha', 'Beta'], array_column($projects['projects'], 'name'));
 
-        // get_project_health: a full member still gets the global KPIs.
+        // get_project_health: the roster role decides (D13) — a roster
+        // member receives the contributor view, exactly like the web page.
         $health = TaskrServer::actingAs($member)->tool(GetProjectHealth::class, [
             'workspace_id' => $workspace->id,
             'project_id' => $alpha->id,
         ])->assertOk()->payload();
 
-        $this->assertArrayHasKey('health', $health);
-        $this->assertArrayNotHasKey('myWorkload', $health);
-        $this->assertSame(0, $health['health']['totalIssues']);
+        $this->assertNull($health['health']);
+        $this->assertFalse($health['canSeeGlobalKpis']);
+        $this->assertSame($member->id, $health['myWorkload']['userId']);
 
-        // Anti-rename guard: the member health contract is the twelve keys,
-        // in order — the two hierarchy indicators are additive, never a
-        // replacement or a reorder.
+        // Anti-rename guard: the manager health contract is the twelve
+        // keys, in order — the two hierarchy indicators are additive,
+        // never a replacement or a reorder.
+        $ownerHealth = TaskrServer::actingAs($owner)->tool(GetProjectHealth::class, [
+            'workspace_id' => $workspace->id,
+            'project_id' => $alpha->id,
+        ])->assertOk()->payload();
+
         $this->assertSame([
             'issuesByCategory',
             'totalIssues',
@@ -144,7 +155,7 @@ class GuestCompatibilityTest extends TestCase
             'targetDate',
             'weightedCompletionPercentage',
             'leafCompletionPercentage',
-        ], array_keys($health['health']));
+        ], array_keys($ownerHealth['health']));
 
         // The project issues resource stays readable with the same shape.
         $result = TaskrServer::actingAs($member)
@@ -246,7 +257,7 @@ class GuestCompatibilityTest extends TestCase
 
     public function test_guest_invitation_accepted_by_an_existing_member_keeps_role(): void
     {
-        [$owner, $member, $workspace, $alpha] = $this->setupWorkspaceWithMember();
+        [$owner, $member, $workspace, $alpha, $beta] = $this->setupWorkspaceWithMember();
 
         $invitation = Invitation::withoutWorkspaceScope()->create([
             'workspace_id' => $workspace->id,
@@ -263,16 +274,17 @@ class GuestCompatibilityTest extends TestCase
 
         app(WorkspaceContext::class)->set($workspace);
 
-        // An existing membership wins: no downgrade, no duplicate, and the
-        // announced scope is attached anyway (a no-op for a full member).
+        // An existing membership wins: no downgrade, no duplicate. The
+        // announced projects are joined for real — here a no-op, the
+        // member already sits on every team.
         $memberships = Membership::where('user_id', $member->id)
             ->where('workspace_id', $workspace->id)
             ->get();
         $this->assertCount(1, $memberships);
         $this->assertSame(WorkspaceRole::Member, $memberships->first()->role);
         $this->assertSame(
-            [$alpha->id],
-            ProjectMember::where('user_id', $member->id)->pluck('project_id')->all(),
+            [$alpha->id, $beta->id],
+            ProjectMember::where('user_id', $member->id)->pluck('project_id')->sortBy('project_id')->values()->all(),
         );
 
         // The full member keeps the unrestricted view of the workspace.

@@ -25,8 +25,9 @@ use Lorisleiva\Actions\Concerns\AsObject;
  * Read-only: never writes, in particular never touches
  * notification_preferences.last_digest_at — the sending job owns it.
  * The workspace comes from the context; every query is scoped to it, to
- * the projects the user may access (a guest's roster) and to unarchived
- * projects. Dates are computed in the account timezone.
+ * the projects of the user's project teams (the workspace owner sees
+ * them all) and to unarchived projects. Dates are computed in the
+ * account timezone.
  */
 class BuildDigest
 {
@@ -205,18 +206,15 @@ class BuildDigest
 
     /**
      * Manager-only KPIs: late issues plus the gap between the real and the
-     * expected completion. A guest is never a manager, even when the
-     * project roster says so.
+     * expected completion. The roster role alone decides (D7), like the
+     * health page: a workspace guest carrying a Manager line gets the
+     * highlights of their project; a project guest never does.
      *
      * @param  list<string>|null  $projectIds
      * @return array<int, array<string, mixed>>
      */
     private function managerHighlights(DigestContext $context, ?array $projectIds): array
     {
-        if ($context->workspace->isGuest($context->user)) {
-            return [];
-        }
-
         $projects = Project::query()
             ->active()
             ->when($projectIds !== null, fn (Builder $query) => $query->whereIn('id', $projectIds))

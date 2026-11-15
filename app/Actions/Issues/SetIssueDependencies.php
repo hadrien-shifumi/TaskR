@@ -47,11 +47,11 @@ class SetIssueDependencies
      */
     public function handle(Issue $issue, array $blockedByIds, ?User $user = null): Issue
     {
-        // Out-of-scope issues fail exactly like non-existent ones.
-        // Without an explicit user this is a trusted internal object run:
-        // HTTP and MCP callers always pass the actor.
+        // Out-of-scope issues and project-guest actors fail exactly like
+        // non-existent ones. Without an explicit user this is a trusted
+        // internal object run: HTTP and MCP callers always pass the actor.
         if ($user !== null) {
-            app(WorkspaceContext::class)->abortUnlessIssueAccessible($user, $issue);
+            app(WorkspaceContext::class)->abortUnlessIssueContributor($user, $issue);
         }
 
         if (in_array($issue->id, $blockedByIds, true)) {

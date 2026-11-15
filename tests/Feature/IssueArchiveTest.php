@@ -11,6 +11,7 @@ use App\Mcp\Tools\ListIssues as ListIssuesTool;
 use App\Models\Issue;
 use App\Models\Membership;
 use App\Models\Project;
+use App\Models\ProjectMember;
 use App\Models\Status;
 use App\Models\User;
 use App\Models\Workspace;
@@ -124,7 +125,11 @@ class IssueArchiveTest extends TestCase
         ]);
     }
 
-    private function memberOf(Workspace $workspace): User
+    /**
+     * A member of the workspace, teamed on the given project — the team
+     * line carries their access.
+     */
+    private function memberOf(Workspace $workspace, ?Project $project = null): User
     {
         $member = User::factory()->create();
         Membership::create([
@@ -132,6 +137,14 @@ class IssueArchiveTest extends TestCase
             'workspace_id' => $workspace->id,
             'role' => 'member',
         ]);
+
+        if ($project !== null) {
+            ProjectMember::create([
+                'project_id' => $project->id,
+                'user_id' => $member->id,
+                'role' => 'member',
+            ]);
+        }
 
         return $member;
     }
@@ -522,7 +535,7 @@ class IssueArchiveTest extends TestCase
     public function test_members_can_view_the_archives_list(): void
     {
         [$owner, $workspace, $project] = $this->setupWorkspace();
-        $member = $this->memberOf($workspace);
+        $member = $this->memberOf($workspace, $project);
         $issue = $this->createIssue($workspace, $project, StatusCategory::Done);
         $issue->update(['archived_at' => now()]);
 

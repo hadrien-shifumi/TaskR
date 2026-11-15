@@ -13,6 +13,7 @@ use App\Actions\Workspaces\CreateWorkspace;
 use App\Models\Issue;
 use App\Models\Membership;
 use App\Models\Project;
+use App\Models\ProjectMember;
 use App\Models\Status;
 use App\Models\User;
 use App\Models\Workspace;
@@ -502,6 +503,13 @@ class ProjectHealthTest extends TestCase
         Membership::create([
             'user_id' => $member->id,
             'workspace_id' => $workspace->id,
+            'role' => 'member',
+        ]);
+
+        // A plain contributor line: the team carries the health access.
+        ProjectMember::create([
+            'project_id' => $project->id,
+            'user_id' => $member->id,
             'role' => 'member',
         ]);
 

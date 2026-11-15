@@ -8,6 +8,7 @@ use App\Enums\AuditEventType;
 use App\Jobs\VectorizeKnowledgePage;
 use App\Models\KnowledgePage;
 use App\Models\KnowledgePageVersion;
+use App\Models\Project;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Responders\Knowledge\KnowledgeRedirectResponder;
@@ -76,6 +77,16 @@ class CreateKnowledgePage
                         'parent_id' => [__('validation.knowledge.parent_out_of_scope')],
                     ]);
                 }
+            }
+
+            // The roster role gates the write itself: a project Guest
+            // reads the pages of their project fully but never writes
+            // them, whatever their workspace role.
+            if ($projectId !== null
+                && ! Project::query()->findOrFail($projectId)->isContributor($editor)) {
+                throw ValidationException::withMessages([
+                    'project_id' => [__('validation.knowledge.project_guest_read_only')],
+                ]);
             }
         }
 

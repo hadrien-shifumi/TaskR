@@ -271,6 +271,82 @@ class KnowledgeScopeTest extends TestCase
         $this->assertDatabaseHas('knowledge_pages', ['id' => $outOfScopePage->id]);
     }
 
+    // ── Invité projet : lecture complète, pages projet en lecture seule ─
+
+    /**
+     * A workspace member carrying the roster role Guest on the project:
+     * they see the project's pages fully, but never write them.
+     *
+     * @return array{0: User, 1: Workspace, 2: KnowledgePage, 3: User}
+     */
+    private function setupProjectGuest(): array
+    {
+        Queue::fake();
+
+        $owner = User::factory()->create();
+        $workspace = CreateWorkspace::run($owner, ['name' => 'WS']);
+        app(WorkspaceContext::class)->set($workspace);
+
+        $project = CreateProject::run($workspace, $owner, ['name' => 'Alpha']);
+        $page = CreateKnowledgePage::run($workspace, $owner, [
+            'title' => 'Page du projet', 'body' => 'Corps', 'project_id' => $project->id,
+        ]);
+
+        $projectGuest = User::factory()->create();
+        Membership::create([
+            'user_id' => $projectGuest->id,
+            'workspace_id' => $workspace->id,
+            'role' => 'member',
+        ]);
+        ProjectMember::create([
+            'project_id' => $project->id,
+            'user_id' => $projectGuest->id,
+            'role' => 'guest',
+        ]);
+
+        return [$owner, $workspace, $page, $projectGuest];
+    }
+
+    public function test_project_guest_reads_in_scope_project_pages(): void
+    {
+        [$owner, $workspace, $page, $projectGuest] = $this->setupProjectGuest();
+
+        $this->actingAs($projectGuest)
+            ->get(route('knowledge.show', $page->id))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $assert) => $assert
+                ->where('selected.id', $page->id));
+    }
+
+    public function test_project_guest_cannot_create_a_project_page(): void
+    {
+        [$owner, $workspace, $page, $projectGuest] = $this->setupProjectGuest();
+
+        $this->actingAs($projectGuest)
+            ->post(route('knowledge.store'), [
+                'title' => 'Page interdite', 'body' => 'Corps', 'project_id' => $page->project_id,
+            ])
+            ->assertSessionHasErrors('project_id');
+
+        $this->assertDatabaseMissing('knowledge_pages', ['title' => 'Page interdite']);
+    }
+
+    public function test_project_guest_cannot_update_a_project_page(): void
+    {
+        [$owner, $workspace, $page, $projectGuest] = $this->setupProjectGuest();
+
+        $this->actingAs($projectGuest)
+            ->patch(route('knowledge.update', $page->id), [
+                'title' => 'Pirate', 'body' => 'Corps', 'project_id' => $page->project_id,
+            ])
+            ->assertSessionHasErrors('project_id');
+
+        $this->assertDatabaseHas('knowledge_pages', [
+            'id' => $page->id,
+            'title' => 'Page du projet',
+        ]);
+    }
+
     // ── MCP ──────────────────────────────────────────────────────────
 
     public function test_guest_mcp_list_knowledge_returns_only_scope_pages(): void

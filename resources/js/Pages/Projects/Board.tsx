@@ -71,6 +71,8 @@ type BoardCardProps = {
     onDragEnd: () => void;
     onRequestMove: (issue: BoardIssue, statusId: string) => void;
     onToggleTimer: (issue: BoardIssue) => void;
+    /** False for a project Guest: the card never leaves its column. */
+    canDrag: boolean;
 };
 
 /**
@@ -90,20 +92,22 @@ const BoardCard = memo(function BoardCard({
     onDragEnd,
     onRequestMove,
     onToggleTimer,
+    canDrag,
 }: BoardCardProps) {
     const { t } = useTranslation();
     const isTiming = timedIssueIds.includes(issue.id);
 
     return (
         <article
-            draggable
+            draggable={canDrag}
             data-test={`board-card-${issue.id}`}
             onDragStart={(e) => {
+                if (!canDrag) return;
                 e.dataTransfer.setData('text/plain', issue.id);
                 onDragStart(issue.id);
             }}
             onDragEnd={onDragEnd}
-            className={`flex cursor-grab flex-col gap-2 rounded-lg border bg-card px-3 py-2.75 shadow-xs hover:border-primary/40 ${
+            className={`flex ${canDrag ? 'cursor-grab' : ''} flex-col gap-2 rounded-lg border bg-card px-3 py-2.75 shadow-xs hover:border-primary/40 ${
                 isDragging ? 'opacity-35' : ''
             }`}
         >
@@ -213,6 +217,8 @@ type PageProps = {
     milestones?: MilestoneOption[];
     /** Present when the URL carries an `?issue=` param: the modal is open. */
     issueDetail?: IssueDetailPayload | null;
+    /** May the user write this project's content? False for a roster Guest. */
+    canContribute?: boolean;
     /** Shared prop — the user's running timers in this workspace. */
     timers?: TimerState[];
     /** Shared by HandleInertiaRequests — drives the owner-only archive button. */
@@ -233,6 +239,7 @@ export default function Board() {
         members,
         milestones,
         issueDetail,
+        canContribute,
         workspace,
         timers,
     } = usePage<PageProps>().props;
@@ -409,16 +416,18 @@ export default function Board() {
                     </span>
                     <ProjectViewSwitcher projectId={project.id} active="board" />
                     <ProjectMenu project={project} issuesCount={health.totalIssues} />
-                    <Button
-                        size="sm"
-                        onClick={() => {
-                            setCreateDefaultStatusId(null);
-                            setCreating(true);
-                        }}
-                    >
-                        <Plus className="size-3.5" aria-hidden />
-                        {t('issues.newIssue')}
-                    </Button>
+                    {canContribute ? (
+                        <Button
+                            size="sm"
+                            onClick={() => {
+                                setCreateDefaultStatusId(null);
+                                setCreating(true);
+                            }}
+                        >
+                            <Plus className="size-3.5" aria-hidden />
+                            {t('issues.newIssue')}
+                        </Button>
+                    ) : null}
                 </>
             }
         >
@@ -522,18 +531,20 @@ export default function Board() {
                                 {column.issuesCount}
                             </Badge>
                             <div className="ml-auto" />
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                data-test={`board-column-add-${column.category}`}
-                                aria-label={t('projectBoard.addInColumn', { name: column.name })}
-                                onClick={() => {
-                                    setCreateDefaultStatusId(column.id);
-                                    setCreating(true);
-                                }}
-                            >
-                                <Plus className="size-3.5" aria-hidden />
-                            </Button>
+                            {canContribute ? (
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    data-test={`board-column-add-${column.category}`}
+                                    aria-label={t('projectBoard.addInColumn', { name: column.name })}
+                                    onClick={() => {
+                                        setCreateDefaultStatusId(column.id);
+                                        setCreating(true);
+                                    }}
+                                >
+                                    <Plus className="size-3.5" aria-hidden />
+                                </Button>
+                            ) : null}
                         </div>
                         <div
                             className={`flex min-h-24 flex-col gap-2.5 px-3.5 pb-3 pl-3.5 ${
@@ -555,6 +566,7 @@ export default function Board() {
                                     onDragEnd={handleCardDragEnd}
                                     onRequestMove={handleRequestMove}
                                     onToggleTimer={handleToggleTimer}
+                                    canDrag={Boolean(canContribute)}
                                 />
                             ))}
                             {column.issues.length === 0 ? (

@@ -6,6 +6,7 @@ use App\Actions\Issues\CreateIssue;
 use App\Actions\Projects\CreateProject;
 use App\Actions\SavedViews\CreateSavedView;
 use App\Actions\Workspaces\CreateWorkspace;
+use App\Enums\ProjectRole;
 use App\Mcp\Resources\ProjectIssues;
 use App\Mcp\Servers\TaskrServer;
 use App\Mcp\Tools\ArchiveProject as ArchiveProjectTool;
@@ -238,9 +239,37 @@ class McpGuestScopeTest extends TestCase
         $this->assertDatabaseMissing('projects', ['name' => 'Guest project']);
     }
 
-    // ── GetProjectHealth : vue contributeur pour un guest ─────────────
+    // ── GetProjectHealth : les KPIs globaux suivent le rôle projet ─────
 
-    public function test_guest_mcp_get_project_health_in_scope_returns_member_view(): void
+    public function test_guest_project_manager_mcp_get_project_health_returns_global_kpis(): void
+    {
+        [$owner, $workspace, $inScope, , $guest, $statuses] = $this->setupScopedGuest();
+        app(WorkspaceContext::class)->set($workspace);
+
+        // D7/D13 : le rôle projet décide seul — un Guest du workspace
+        // Manager du projet reçoit les KPIs globaux, comme la page web.
+        ProjectMember::query()
+            ->where('project_id', $inScope->id)
+            ->where('user_id', $guest->id)
+            ->update(['role' => ProjectRole::Manager->value]);
+
+        $issue = CreateIssue::run($workspace, [
+            'project_id' => $inScope->id,
+            'title' => 'Mine',
+            'status_id' => $statuses['in_progress']->id,
+        ]);
+        $issue->assignees()->attach($guest);
+
+        $payload = TaskrServer::actingAs($guest)->tool(GetProjectHealth::class, [
+            'workspace_id' => $workspace->id,
+            'project_id' => $inScope->id,
+        ])->assertOk()->payload();
+
+        $this->assertNotNull($payload['health']);
+        $this->assertSame(1, $payload['health']['totalIssues']);
+    }
+
+    public function test_guest_roster_member_mcp_get_project_health_stays_on_my_workload(): void
     {
         [$owner, $workspace, $inScope, , $guest, $statuses] = $this->setupScopedGuest();
         app(WorkspaceContext::class)->set($workspace);
@@ -256,16 +285,123 @@ class McpGuestScopeTest extends TestCase
             'project_id' => $inScope->id,
         ])->assertOk()->payload();
 
-        // A guest never gets the global KPIs: contributor view only.
+        // Refusé par son rôle projet (Member), pas par son rôle workspace :
+        // la garde ne filtre plus sur le rôle de l'espace.
         $this->assertNull($payload['health']);
         $this->assertFalse($payload['canSeeGlobalKpis']);
         $this->assertSame($guest->id, $payload['myWorkload']['userId']);
         $this->assertSame(1, $payload['myWorkload']['openIssues']);
 
         // The hierarchy indicators are global KPIs: they must not leak
-        // into the guest contributor view.
+        // into the contributor view.
         $this->assertArrayNotHasKey('weightedCompletionPercentage', $payload['myWorkload']);
         $this->assertArrayNotHasKey('leafCompletionPercentage', $payload['myWorkload']);
+    }
+
+    public function test_roster_member_mcp_get_project_health_returns_my_workload_only(): void
+    {
+        [$owner, $workspace, $inScope, , , $statuses] = $this->setupScopedGuest();
+        app(WorkspaceContext::class)->set($workspace);
+
+        // Un member du workspace, simple ligne Member de l'équipe : parité
+        // web stricte — les KPIs globaux restent aux managers.
+        $member = User::factory()->create();
+        Membership::create([
+            'user_id' => $member->id,
+            'workspace_id' => $workspace->id,
+            'role' => 'member',
+        ]);
+        ProjectMember::create([
+            'project_id' => $inScope->id,
+            'user_id' => $member->id,
+            'role' => 'member',
+        ]);
+
+        $issue = CreateIssue::run($workspace, [
+            'project_id' => $inScope->id,
+            'title' => 'Mine',
+            'status_id' => $statuses['in_progress']->id,
+        ]);
+        $issue->assignees()->attach($member);
+
+        $payload = TaskrServer::actingAs($member)->tool(GetProjectHealth::class, [
+            'workspace_id' => $workspace->id,
+            'project_id' => $inScope->id,
+        ])->assertOk()->payload();
+
+        $this->assertNull($payload['health']);
+        $this->assertFalse($payload['canSeeGlobalKpis']);
+        $this->assertSame($member->id, $payload['myWorkload']['userId']);
+        $this->assertSame(1, $payload['myWorkload']['openIssues']);
+    }
+
+    public function test_workspace_owner_without_team_line_mcp_get_project_health_returns_global_kpis(): void
+    {
+        [$owner, $workspace, , , , $statuses] = $this->setupScopedGuest();
+        app(WorkspaceContext::class)->set($workspace);
+
+        // D3/D13 : l'owner du workspace voit les KPIs de tout projet,
+        // même sans ligne d'équipe.
+        $projectOwner = User::factory()->create();
+        Membership::create([
+            'user_id' => $projectOwner->id,
+            'workspace_id' => $workspace->id,
+            'role' => 'member',
+        ]);
+        $third = CreateProject::run($workspace, $projectOwner, ['name' => 'Gamma']);
+
+        CreateIssue::run($workspace, [
+            'project_id' => $third->id,
+            'title' => 'A1',
+            'status_id' => $statuses['backlog']->id,
+        ]);
+
+        $payload = TaskrServer::actingAs($owner)->tool(GetProjectHealth::class, [
+            'workspace_id' => $workspace->id,
+            'project_id' => $third->id,
+        ])->assertOk()->payload();
+
+        $this->assertNotNull($payload['health']);
+        $this->assertSame(1, $payload['health']['totalIssues']);
+    }
+
+    public function test_project_guest_mcp_get_project_health_returns_my_workload_only(): void
+    {
+        [$owner, $workspace, $inScope, , , $statuses] = $this->setupScopedGuest();
+        app(WorkspaceContext::class)->set($workspace);
+
+        // A workspace member demoted to the roster role Guest on the
+        // project: same contributor view as a workspace guest.
+        $projectGuest = User::factory()->create();
+        Membership::create([
+            'user_id' => $projectGuest->id,
+            'workspace_id' => $workspace->id,
+            'role' => 'member',
+        ]);
+        ProjectMember::create([
+            'project_id' => $inScope->id,
+            'user_id' => $projectGuest->id,
+            'role' => 'guest',
+        ]);
+
+        $issue = CreateIssue::run($workspace, [
+            'project_id' => $inScope->id,
+            'title' => 'Mine',
+            'status_id' => $statuses['in_progress']->id,
+        ]);
+        $issue->assignees()->attach($projectGuest);
+
+        $payload = TaskrServer::actingAs($projectGuest)->tool(GetProjectHealth::class, [
+            'workspace_id' => $workspace->id,
+            'project_id' => $inScope->id,
+        ])->assertOk()->payload();
+
+        // The project role gates the global KPIs exactly like the
+        // workspace role does: "Ma charge" only.
+        $this->assertNull($payload['health']);
+        $this->assertFalse($payload['canSeeGlobalKpis']);
+        $this->assertSame($projectGuest->id, $payload['myWorkload']['userId']);
+        $this->assertSame(1, $payload['myWorkload']['openIssues']);
     }
 
     // ── Invitations guest via MCP : parité et garde croisée ───────────
@@ -420,12 +556,12 @@ class McpGuestScopeTest extends TestCase
             ->assertHasErrors(['You are not a member of this workspace.']);
     }
 
-    public function test_get_issue_description_states_the_guest_perimeter_rule(): void
+    public function test_get_issue_description_states_the_team_access_rule(): void
     {
         $attributes = (new ReflectionClass(GetIssue::class))->getAttributes(Description::class);
 
         $this->assertCount(1, $attributes);
-        $this->assertStringContainsStringIgnoringCase('guest', $attributes[0]->newInstance()->value);
-        $this->assertStringContainsStringIgnoringCase('perimeter', $attributes[0]->newInstance()->value);
+        $this->assertStringContainsStringIgnoringCase('project teams', $attributes[0]->newInstance()->value);
+        $this->assertStringContainsStringIgnoringCase('not found', $attributes[0]->newInstance()->value);
     }
 }

@@ -2,7 +2,6 @@
 
 namespace App\Actions\Workspaces;
 
-use App\Enums\ProjectRole;
 use App\Enums\WorkspaceRole;
 use App\Exceptions\InvitationEmailMismatchException;
 use App\Models\Invitation;
@@ -14,6 +13,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Support\EmailMask;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Lorisleiva\Actions\Concerns\AsController;
@@ -51,40 +51,31 @@ class AcceptInvitation
                 ['role' => $invitation->role->value],
             );
 
-            // A guest joins with the perimeter announced at invitation
-            // time: one roster row per linked project. The acceptance route
-            // has no workspace context, so the ids come from the pivot (an
-            // unscoped model), never through the Project global scope.
+            // A guest joins with the projects announced at invitation
+            // time, each with its role: one roster row per linked project.
+            // The acceptance route has no workspace context, so the rows
+            // come from the pivot (an unscoped model), never through the
+            // Project global scope.
             if ($invitation->role === WorkspaceRole::Guest) {
-                $projectIds = InvitationProject::query()
+                $announced = InvitationProject::query()
                     ->where('invitation_id', $invitation->getKey())
-                    ->pluck('project_id')
-                    ->all();
+                    ->get();
 
-                $this->joinProjectTeams($invitation->workspace_id, $user->getKey(), $projectIds);
+                $this->joinProjectTeams($invitation->workspace_id, $user->getKey(), $announced);
             }
 
-            // A member joins with the perimeter announced at invitation
-            // time: it replaces any previous one — the latest invitation
-            // defines the member's perimeter. A guest keeps their
-            // roster-driven perimeter, and an invitation without projects
-            // leaves the default full workspace access.
+            // A member joins with the teams announced at invitation time.
+            // An already-member keeps their current role (no downgrade),
+            // a guest keeps their roster-driven perimeter and the owner
+            // stays unrestricted — only a member gains team rows here.
+            // An invitation without projects leaves the member teamless:
+            // no default full access anymore.
             if ($invitation->role === WorkspaceRole::Member && $membership->role === WorkspaceRole::Member) {
-                $announcedScope = InvitationProject::query()
+                $announced = InvitationProject::query()
                     ->where('invitation_id', $invitation->getKey())
-                    ->pluck('project_id')
-                    ->all();
+                    ->get();
 
-                if ($announcedScope !== []) {
-                    $membership->update(['is_scoped' => true]);
-                    $membership->syncProjectScope($announcedScope);
-
-                    // The announced perimeter is also the team the member
-                    // joins — same rule as guests, so scoped members stop
-                    // being invisible in the project rosters and the team
-                    // workload. Manual roles are never downgraded.
-                    $this->joinProjectTeams($invitation->workspace_id, $user->getKey(), $announcedScope);
-                }
+                $this->joinProjectTeams($invitation->workspace_id, $user->getKey(), $announced);
             }
 
             $invitation->update(['accepted_at' => now()]);
@@ -94,23 +85,23 @@ class AcceptInvitation
     }
 
     /**
-     * Add the user to each project's team as a plain contributor. The
-     * roster rows are the real project team, never a visibility grant:
-     * they carry the member role only, and an existing row (manual role)
-     * is left untouched.
+     * Add the user to each announced project's team with the role the
+     * invitation carries for that project. The roster row is the real
+     * project team and the real access grant; an existing row (manual
+     * role) is left untouched.
      *
-     * @param  array<int, string>  $projectIds
+     * @param  Collection<int, InvitationProject>  $announced
      */
-    private function joinProjectTeams(string $workspaceId, int $userId, array $projectIds): void
+    private function joinProjectTeams(string $workspaceId, int $userId, Collection $announced): void
     {
-        foreach ($projectIds as $projectId) {
+        foreach ($announced as $project) {
             ProjectMember::firstOrCreate(
                 [
                     'workspace_id' => $workspaceId,
-                    'project_id' => $projectId,
+                    'project_id' => $project->project_id,
                     'user_id' => $userId,
                 ],
-                ['role' => ProjectRole::Member->value],
+                ['role' => $project->role->value],
             );
         }
     }
@@ -132,12 +123,25 @@ class AcceptInvitation
                 ->first()
                 ?->user;
 
-            // No workspace context on this route: read the announced scope
-            // through the unscoped pivot, then the project names without the
-            // global scope. Guests and members alike announce a perimeter.
-            $scopeProjectIds = InvitationProject::query()
+            // No workspace context on this route: read the announced
+            // projects through the unscoped pivot, then the project names
+            // without the global scope. Guests and members alike announce
+            // their projects, each with the role the invitee lands with.
+            $announced = InvitationProject::query()
                 ->where('invitation_id', $invitation->getKey())
-                ->pluck('project_id');
+                ->get();
+
+            $scopeProjects = $announced->isEmpty()
+                ? []
+                : Project::withoutWorkspaceScope()
+                    ->whereIn('id', $announced->pluck('project_id'))
+                    ->orderBy('name')
+                    ->get()
+                    ->map(fn (Project $project): array => [
+                        'name' => $project->name,
+                        'role' => $announced->firstWhere('project_id', $project->id)->role->value,
+                    ])
+                    ->all();
 
             return Inertia::render('Auth/AcceptInvitation', [
                 'invitation' => [
@@ -145,13 +149,7 @@ class AcceptInvitation
                     'inviterName' => $owner?->name ?? $workspace->name,
                     'email' => $invitation->email,
                     'role' => $invitation->role->value,
-                    'projects' => $scopeProjectIds !== []
-                        ? Project::withoutWorkspaceScope()
-                            ->whereIn('id', $scopeProjectIds)
-                            ->orderBy('name')
-                            ->pluck('name')
-                            ->all()
-                        : [],
+                    'projects' => $scopeProjects,
                     'acceptUrl' => "/invitations/{$invitation->token}/accept",
                 ],
             ])->toResponse(request());

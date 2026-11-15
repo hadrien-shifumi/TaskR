@@ -265,109 +265,136 @@ export function IssueSidebar({
             <Card className="py-5">
                 <CardContent className="flex flex-col px-5">
                     <PropRow label={t('issues.fields.status')} hint={t('issueShow.statusHint')}>
-                        <Select value={issue.status.id} onValueChange={(value) => value && requestMove(value)}>
-                            <SelectTrigger
-                                data-test="status-select"
-                                className="w-full"
-                                aria-label={t('issueShow.statusAria')}
-                            >
-                                <SelectValue>{issue.status.name}</SelectValue>
-                            </SelectTrigger>
-                            <SelectContent>
-                                {statuses.map((status) => (
-                                    <SelectItem key={status.id} value={status.id}>
-                                        {status.name}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                        {moveError ? (
-                            <p role="alert" data-test="move-error" className="text-sm text-destructive">
-                                {moveError}
-                            </p>
-                        ) : null}
+                        {canContribute ? (
+                            <>
+                                <Select value={issue.status.id} onValueChange={(value) => value && requestMove(value)}>
+                                    <SelectTrigger
+                                        data-test="status-select"
+                                        className="w-full"
+                                        aria-label={t('issueShow.statusAria')}
+                                    >
+                                        <SelectValue>{issue.status.name}</SelectValue>
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {statuses.map((status) => (
+                                            <SelectItem key={status.id} value={status.id}>
+                                                {status.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                {moveError ? (
+                                    <p role="alert" data-test="move-error" className="text-sm text-destructive">
+                                        {moveError}
+                                    </p>
+                                ) : null}
+                            </>
+                        ) : (
+                            <p className="text-sm">{issue.status.name}</p>
+                        )}
                     </PropRow>
 
                     <PropRow label={t('issues.fields.priority')}>
-                        <Select
-                            value={issue.priority}
-                            onValueChange={(value) => value && changePriority(value)}
-                        >
-                            <SelectTrigger
-                                data-test="priority-select"
-                                className="w-full"
-                                aria-label={t('issues.fields.priority')}
+                        {canContribute ? (
+                            <Select
+                                value={issue.priority}
+                                onValueChange={(value) => value && changePriority(value)}
                             >
-                                <SelectValue>{t(`priority.${issue.priority}`)}</SelectValue>
-                            </SelectTrigger>
-                            <SelectContent>
-                                {PRIORITIES.map((priority) => (
-                                    <SelectItem key={priority} value={priority}>
-                                        {t(`priority.${priority}`)}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                                <SelectTrigger
+                                    data-test="priority-select"
+                                    className="w-full"
+                                    aria-label={t('issues.fields.priority')}
+                                >
+                                    <SelectValue>{t(`priority.${issue.priority}`)}</SelectValue>
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {PRIORITIES.map((priority) => (
+                                        <SelectItem key={priority} value={priority}>
+                                            {t(`priority.${priority}`)}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        ) : (
+                            <p className="text-sm">{t(`priority.${issue.priority}`)}</p>
+                        )}
                     </PropRow>
 
                     <PropRow
                         label={t('columns.assignees')}
                         action={
-                            <DropdownMenu>
-                                <DropdownMenuTrigger
-                                    aria-label={t('issueShow.addAssignee')}
-                                    render={
-                                        <PropAction>
-                                            <Plus className="size-3" aria-hidden />
-                                        </PropAction>
-                                    }
-                                />
-                                {assigneeMenuContent}
-                            </DropdownMenu>
+                            canContribute ? (
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger
+                                        aria-label={t('issueShow.addAssignee')}
+                                        render={
+                                            <PropAction>
+                                                <Plus className="size-3" aria-hidden />
+                                            </PropAction>
+                                        }
+                                    />
+                                    {assigneeMenuContent}
+                                </DropdownMenu>
+                            ) : undefined
                         }
                         hint={t('issueShow.assigneesHint')}
                     >
                         <span className="flex items-center">
-                            {issue.assignees.map((assignee, index) => (
-                                <button
-                                    key={assignee.id}
-                                    type="button"
-                                    data-test="assignee-remove"
-                                    aria-label={t('issueShow.remove', { name: assignee.name })}
-                                    title={t('issueShow.remove', { name: assignee.name })}
-                                    onClick={() => toggleAssignee(assignee.id)}
-                                    className={`inline-flex rounded-full ring-2 ring-card transition-shadow hover:ring-destructive/40 ${
-                                        index > 0 ? '-ml-1.75' : ''
-                                    }`}
-                                >
-                                    <Avatar name={assignee.name} title={assignee.name} />
-                                </button>
-                            ))}
-                            <DropdownMenu>
-                                <DropdownMenuTrigger
-                                    aria-label={t('issueShow.addAssignee')}
-                                    data-test="assignee-add"
-                                    className={`grid size-5.5 place-items-center rounded-full border-2 border-card bg-muted text-muted-foreground transition-colors hover:text-foreground ${
-                                        issue.assignees.length > 0 ? '-ml-1.75' : ''
-                                    }`}
-                                >
-                                    <Plus className="size-3" aria-hidden />
-                                </DropdownMenuTrigger>
-                                {assigneeMenuContent}
-                            </DropdownMenu>
+                            {issue.assignees.map((assignee, index) =>
+                                canContribute ? (
+                                    <button
+                                        key={assignee.id}
+                                        type="button"
+                                        data-test="assignee-remove"
+                                        aria-label={t('issueShow.remove', { name: assignee.name })}
+                                        title={t('issueShow.remove', { name: assignee.name })}
+                                        onClick={() => toggleAssignee(assignee.id)}
+                                        className={`inline-flex rounded-full ring-2 ring-card transition-shadow hover:ring-destructive/40 ${
+                                            index > 0 ? '-ml-1.75' : ''
+                                        }`}
+                                    >
+                                        <Avatar name={assignee.name} title={assignee.name} />
+                                    </button>
+                                ) : (
+                                    <span
+                                        key={assignee.id}
+                                        className={`inline-flex ${
+                                            index > 0 ? '-ml-1.75' : ''
+                                        }`}
+                                    >
+                                        <Avatar name={assignee.name} title={assignee.name} />
+                                    </span>
+                                ),
+                            )}
+                            {canContribute ? (
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger
+                                        aria-label={t('issueShow.addAssignee')}
+                                        data-test="assignee-add"
+                                        className={`grid size-5.5 place-items-center rounded-full border-2 border-card bg-muted text-muted-foreground transition-colors hover:text-foreground ${
+                                            issue.assignees.length > 0 ? '-ml-1.75' : ''
+                                        }`}
+                                    >
+                                        <Plus className="size-3" aria-hidden />
+                                    </DropdownMenuTrigger>
+                                    {assigneeMenuContent}
+                                </DropdownMenu>
+                            ) : null}
                         </span>
                     </PropRow>
 
                     <PropRow
                         label={t('columns.labels')}
                         action={
-                            <PropAction
-                                aria-label={t('issueShow.add')}
-                                data-test="label-add"
-                                onClick={() => setAddingLabel((value) => !value)}
-                            >
-                                <Plus className="size-3" aria-hidden />
-                            </PropAction>
+                            canContribute ? (
+                                <PropAction
+                                    aria-label={t('issueShow.add')}
+                                    data-test="label-add"
+                                    onClick={() => setAddingLabel((value) => !value)}
+                                >
+                                    <Plus className="size-3" aria-hidden />
+                                </PropAction>
+                            ) : undefined
                         }
                         hint={t('issueShow.labelsHint')}
                     >
@@ -379,22 +406,24 @@ export function IssueSidebar({
                                         className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2 py-0.5 font-mono text-xs text-muted-foreground"
                                     >
                                         {label.name}
-                                        <button
-                                            type="button"
-                                            data-test="label-remove"
-                                            aria-label={t('issueShow.removeLabel', { name: label.name })}
-                                            onClick={() => toggleLabel(label.id)}
-                                            className="rounded-full text-muted-foreground transition-colors hover:text-foreground"
-                                        >
-                                            <X className="size-3" aria-hidden />
-                                        </button>
+                                        {canContribute ? (
+                                            <button
+                                                type="button"
+                                                data-test="label-remove"
+                                                aria-label={t('issueShow.removeLabel', { name: label.name })}
+                                                onClick={() => toggleLabel(label.id)}
+                                                className="rounded-full text-muted-foreground transition-colors hover:text-foreground"
+                                            >
+                                                <X className="size-3" aria-hidden />
+                                            </button>
+                                        ) : null}
                                     </span>
                                 ))}
                             </span>
                         ) : (
                             <span className="text-sm text-muted-foreground">—</span>
                         )}
-                        {addingLabel ? (
+                        {addingLabel && canContribute ? (
                             <form onSubmit={submitLabel} className="flex items-start gap-2">
                                 <Input
                                     data-test="label-new-name"
@@ -423,9 +452,11 @@ export function IssueSidebar({
                     <PropRow
                         label={t('issueShow.dueDateLabel')}
                         action={
-                            <PropAction data-test="dates-dialog-open" onClick={() => setDatesOpen(true)}>
-                                {t('issueShow.edit')}
-                            </PropAction>
+                            canContribute ? (
+                                <PropAction data-test="dates-dialog-open" onClick={() => setDatesOpen(true)}>
+                                    {t('issueShow.edit')}
+                                </PropAction>
+                            ) : undefined
                         }
                         hint={
                             issue.overdue
@@ -447,9 +478,11 @@ export function IssueSidebar({
                     <PropRow
                         label={t('issueShow.estimation')}
                         action={
-                            <PropAction data-test="estimate-dialog-open" onClick={() => setEstimateOpen(true)}>
-                                {t('issueShow.edit')}
-                            </PropAction>
+                            canContribute ? (
+                                <PropAction data-test="estimate-dialog-open" onClick={() => setEstimateOpen(true)}>
+                                    {t('issueShow.edit')}
+                                </PropAction>
+                            ) : undefined
                         }
                     >
                         <p className="font-mono text-[13px] tabular-nums">{formatHours(issue.estimatedHours)}</p>
@@ -482,9 +515,11 @@ export function IssueSidebar({
                     <PropRow
                         label={t('issueShow.parentIssue')}
                         action={
-                            <PropAction data-test="parent-dialog-open" onClick={() => setParentOpen(true)}>
-                                {t('issueShow.setAction')}
-                            </PropAction>
+                            canContribute ? (
+                                <PropAction data-test="parent-dialog-open" onClick={() => setParentOpen(true)}>
+                                    {t('issueShow.setAction')}
+                                </PropAction>
+                            ) : undefined
                         }
                         hint={t('issueShow.softHierarchyHint')}
                     >
@@ -511,23 +546,33 @@ export function IssueSidebar({
                                 : t('issueShow.autoCompleteNoChildren')
                         }
                     >
-                        <Checkbox
-                            data-test="auto-complete-toggle"
-                            aria-label={t('issueShow.autoComplete')}
-                            checked={issue.autoCompleteChildren}
-                            onCheckedChange={(checked) => toggleAutoCompletion(checked === true)}
-                        />
+                        {canContribute ? (
+                            <Checkbox
+                                data-test="auto-complete-toggle"
+                                aria-label={t('issueShow.autoComplete')}
+                                checked={issue.autoCompleteChildren}
+                                onCheckedChange={(checked) => toggleAutoCompletion(checked === true)}
+                            />
+                        ) : (
+                            <Checkbox
+                                aria-label={t('issueShow.autoComplete')}
+                                checked={issue.autoCompleteChildren}
+                                disabled
+                            />
+                        )}
                     </PropRow>
 
                     <PropRow
                         label={t('issueShow.dependencies')}
                         action={
-                            <PropAction
-                                data-test="dependencies-dialog-open"
-                                onClick={() => setDependenciesOpen(true)}
-                            >
-                                {t('issueShow.addBlocker')}
-                            </PropAction>
+                            canContribute ? (
+                                <PropAction
+                                    data-test="dependencies-dialog-open"
+                                    onClick={() => setDependenciesOpen(true)}
+                                >
+                                    {t('issueShow.addBlocker')}
+                                </PropAction>
+                            ) : undefined
                         }
                         hint={t('issueShow.dependenciesHint')}
                     >
@@ -569,17 +614,19 @@ export function IssueSidebar({
                                                 category={blocker.statusCategory ?? 'backlog'}
                                             />
                                         ) : null}
-                                        <button
-                                            type="button"
-                                            data-test="blocker-remove"
-                                            aria-label={t('issueShow.removeBlocker', {
-                                                name: blocker.title,
-                                            })}
-                                            onClick={() => removeBlocker(blocker.id)}
-                                            className="rounded-full text-muted-foreground transition-colors hover:text-foreground"
-                                        >
-                                            <X className="size-3" aria-hidden />
-                                        </button>
+                                        {canContribute ? (
+                                            <button
+                                                type="button"
+                                                data-test="blocker-remove"
+                                                aria-label={t('issueShow.removeBlocker', {
+                                                    name: blocker.title,
+                                                })}
+                                                onClick={() => removeBlocker(blocker.id)}
+                                                className="rounded-full text-muted-foreground transition-colors hover:text-foreground"
+                                            >
+                                                <X className="size-3" aria-hidden />
+                                            </button>
+                                        ) : null}
                                     </li>
                                 ))}
                             </ul>
@@ -607,17 +654,19 @@ export function IssueSidebar({
                                                 category={dependent.statusCategory ?? 'backlog'}
                                             />
                                         ) : null}
-                                        <button
-                                            type="button"
-                                            data-test="blocks-remove"
-                                            aria-label={t('issueShow.removeBlocks', {
-                                                name: dependent.title,
-                                            })}
-                                            onClick={() => stopBlocking(dependent)}
-                                            className="rounded-full text-muted-foreground transition-colors hover:text-foreground"
-                                        >
-                                            <X className="size-3" aria-hidden />
-                                        </button>
+                                        {canContribute ? (
+                                            <button
+                                                type="button"
+                                                data-test="blocks-remove"
+                                                aria-label={t('issueShow.removeBlocks', {
+                                                    name: dependent.title,
+                                                })}
+                                                onClick={() => stopBlocking(dependent)}
+                                                className="rounded-full text-muted-foreground transition-colors hover:text-foreground"
+                                            >
+                                                <X className="size-3" aria-hidden />
+                                            </button>
+                                        ) : null}
                                     </li>
                                 ))}
                             </ul>
@@ -629,12 +678,14 @@ export function IssueSidebar({
                     <PropRow
                         label={t('knowledge.title')}
                         action={
-                            <PropAction
-                                data-test="knowledge-dialog-open"
-                                onClick={() => setKnowledgeOpen(true)}
-                            >
-                                {t('issueShow.linkPages')}
-                            </PropAction>
+                            canContribute ? (
+                                <PropAction
+                                    data-test="knowledge-dialog-open"
+                                    onClick={() => setKnowledgeOpen(true)}
+                                >
+                                    {t('issueShow.linkPages')}
+                                </PropAction>
+                            ) : undefined
                         }
                         hint={t('issueShow.knowledgeHint')}
                     >

@@ -50,6 +50,8 @@ type PageProps = {
     /** Active URL filters; `label` is an array when several labels are selected. */
     filters: Record<string, string | string[]>;
     projects: { id: string; name: string }[];
+    /** May the user create an issue anywhere? False when every team line carries the Guest role. */
+    canCreateIssue: boolean;
     statuses: { id: string; name: string; category: string }[];
     labels: LabelRef[];
     members: UserRef[];
@@ -97,6 +99,7 @@ export default function Index() {
         members,
         templates,
         savedViews,
+        canCreateIssue,
     } = usePage<PageProps>().props;
     const { t } = useTranslation();
     const [creating, setCreating] = useState(false);
@@ -290,9 +293,11 @@ export default function Index() {
                     <Button variant="outline" size="sm" onClick={() => setCreatingLabel(true)}>
                         {t('issuesPage.newLabel')}
                     </Button>
-                    <Button size="sm" onClick={() => setCreating(true)}>
-                        {t('issues.newIssue')}
-                    </Button>
+                    {canCreateIssue ? (
+                        <Button size="sm" onClick={() => setCreating(true)}>
+                            {t('issues.newIssue')}
+                        </Button>
+                    ) : null}
                 </>
             }
         >

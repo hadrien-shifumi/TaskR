@@ -9,13 +9,15 @@ import { SectionHead } from './section-head';
 
 type DescriptionSectionProps = {
     issue: IssueDetail;
+    /** False for a project Guest: the section stays read-only. */
+    canContribute: boolean;
 };
 
 /**
  * Maquette issue-description: rendered markdown, inline edition (textarea,
  * save/cancel, "edited by" meta) and a markdown preview toggle.
  */
-export function DescriptionSection({ issue }: DescriptionSectionProps) {
+export function DescriptionSection({ issue, canContribute }: DescriptionSectionProps) {
     const { auth } = usePage<{ auth: { user: { id: number; name: string } | null } }>().props;
     const { t } = useTranslation();
     const [editing, setEditing] = useState(false);
@@ -54,7 +56,7 @@ export function DescriptionSection({ issue }: DescriptionSectionProps) {
             <SectionHead
                 title={t('issueShow.description')}
                 action={
-                    editing ? undefined : (
+                    editing || !canContribute ? undefined : (
                         <Button variant="ghost" size="sm" data-test="description-edit" onClick={startEditing}>
                             {t('issueShow.edit')}
                         </Button>

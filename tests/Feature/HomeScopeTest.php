@@ -148,7 +148,7 @@ class HomeScopeTest extends TestCase
                 ->where('myIssues.0.id', $inScopeIssue->id));
     }
 
-    public function test_member_home_counters_remain_workspace_wide(): void
+    public function test_teamed_member_home_counters_cover_their_teams(): void
     {
         [$owner, $workspace, $inScope, $outOfScope, $guest, $statuses] = $this->setupScopedGuest();
 
@@ -162,6 +162,11 @@ class HomeScopeTest extends TestCase
             'role' => 'member',
         ]);
 
+        // A member sees exactly their teams: here both projects, and the
+        // home counters cover them — unlike a guest, the full stats stay.
+        $inScope->projectMembers()->create(['user_id' => $member->id, 'role' => 'member']);
+        $outOfScope->projectMembers()->create(['user_id' => $member->id, 'role' => 'member']);
+
         $this->actingAs($member)
             ->get(route('home'))
             ->assertOk()
@@ -171,14 +176,14 @@ class HomeScopeTest extends TestCase
                 ->has('projects', 2));
     }
 
-    // ── Page Health : vue « member » pour un guest ────────────────────
+    // ── Page Health : le rôle projet décide des KPIs globaux ──────────
 
-    public function test_guest_project_health_page_shows_member_view_only(): void
+    public function test_guest_project_manager_health_page_shows_global_kpis(): void
     {
         [$owner, $workspace, $inScope, $outOfScope, $guest, $statuses] = $this->setupScopedGuest();
 
-        // Guest roster-manager du projet de son périmètre : la décision du
-        // Owner ne lui ouvre pas les KPIs globaux.
+        // D7/D13 : le rôle projet décide seul — un Guest du workspace
+        // Manager du projet voit les KPIs globaux de SON projet.
         ProjectMember::query()
             ->where('project_id', $inScope->id)
             ->where('user_id', $guest->id)
@@ -193,13 +198,18 @@ class HomeScopeTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Projects/Health')
-                ->where('canSeeGlobalKpis', false)
-                ->where('health', null)
-                ->has('teamWorkload', 0)
+                ->where('canSeeGlobalKpis', true)
+                ->where('health.totalIssues', 2)
+                ->has('teamWorkload', 2)
                 ->has('lateIssues', 0)
                 ->where('myWorkload.userId', $guest->id)
-                ->where('myWorkload.openIssues', 1)
-                ->where('myWorkload.totalIssues', 1));
+                ->where('myWorkload.openIssues', 1));
+
+        // Hors de ses équipes, le projet reste introuvable : la vue
+        // manager ne contourne jamais le périmètre d'accès.
+        $this->actingAs($guest)
+            ->get(route('projects.health', $outOfScope->id))
+            ->assertNotFound();
     }
 
     public function test_project_manager_health_page_keeps_global_kpis(): void
@@ -227,5 +237,35 @@ class HomeScopeTest extends TestCase
                 ->component('Projects/Health')
                 ->where('canSeeGlobalKpis', true)
                 ->where('health.totalIssues', 1));
+    }
+
+    public function test_project_guest_home_counts_their_team_project(): void
+    {
+        [$owner, $workspace, $inScope, $outOfScope, $guest, $statuses] = $this->setupScopedGuest();
+
+        // A roster Guest line still opens the project: the home is a
+        // scope question, not a role question.
+        $this->createIssue($inScope, $statuses['backlog'], 'A1');
+        $this->createIssue($outOfScope, $statuses['backlog'], 'B1');
+
+        $projectGuest = User::factory()->create();
+        Membership::create([
+            'user_id' => $projectGuest->id,
+            'workspace_id' => $workspace->id,
+            'role' => 'member',
+        ]);
+        ProjectMember::create([
+            'project_id' => $inScope->id,
+            'user_id' => $projectGuest->id,
+            'role' => ProjectRole::Guest->value,
+        ]);
+
+        $this->actingAs($projectGuest)
+            ->get(route('home'))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('stats.totalIssues', 1)
+                ->where('stats.openIssues', 1)
+                ->has('projects', 1));
     }
 }

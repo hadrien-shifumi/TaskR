@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Actions\Projects\CreateProject;
 use App\Actions\Workspaces\CreateWorkspace;
+use App\Enums\ProjectRole;
 use App\Enums\WorkspaceRole;
 use App\Models\Membership;
 use App\Models\ProjectMember;
@@ -53,6 +54,43 @@ class GuestRoleTest extends TestCase
 
         $this->assertSame(WorkspaceRole::Guest, $membership->role);
         $this->assertSame(WorkspaceRole::Guest, $workspace->roleOf($guest));
+    }
+
+    public function test_is_contributor_follows_the_project_role_only(): void
+    {
+        [$owner, $workspace] = $this->setupWorkspace();
+        $project = CreateProject::run($workspace, $owner, ['name' => 'Site vitrine']);
+
+        // The workspace owner is a contributor everywhere, without a
+        // team row (god mode, D3).
+        $this->assertTrue($project->isContributor($owner));
+
+        // Every roster line except Guest contributes, whatever the
+        // workspace role (orthogonality, D7).
+        foreach ([ProjectRole::Owner, ProjectRole::Manager, ProjectRole::Member] as $role) {
+            $workspaceGuest = $this->addUser($workspace, 'guest');
+            ProjectMember::create([
+                'project_id' => $project->id,
+                'user_id' => $workspaceGuest->id,
+                'role' => $role->value,
+            ]);
+
+            $this->assertTrue($project->isContributor($workspaceGuest), $role->value);
+        }
+
+        // The roster role Guest never contributes, even for a full
+        // workspace member.
+        $member = $this->addUser($workspace, 'member');
+        ProjectMember::create([
+            'project_id' => $project->id,
+            'user_id' => $member->id,
+            'role' => ProjectRole::Guest->value,
+        ]);
+        $this->assertFalse($project->isContributor($member));
+
+        // No team row, no contribution — even for a workspace member.
+        $teamed = $this->addUser($workspace, 'member');
+        $this->assertFalse($project->isContributor($teamed));
     }
 
     public function test_guest_can_navigate_project_board(): void

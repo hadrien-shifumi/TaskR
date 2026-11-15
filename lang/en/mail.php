@@ -63,6 +63,11 @@ return [
             'member' => 'Member',
             'guest' => 'Guest',
         ],
+        'project_roles' => [
+            'manager' => 'manager',
+            'member' => 'member',
+            'guest' => 'guest',
+        ],
     ],
 
 ];

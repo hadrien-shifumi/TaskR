@@ -8,6 +8,7 @@ use App\Enums\AuditEventType;
 use App\Jobs\VectorizeKnowledgePage;
 use App\Models\KnowledgePage;
 use App\Models\KnowledgePageVersion;
+use App\Models\Project;
 use App\Models\User;
 use App\Responders\Knowledge\KnowledgeRedirectResponder;
 use App\Support\WorkspaceContext;
@@ -113,6 +114,18 @@ class UpdateKnowledgePage
                 if ($parent === null || ! $context->canAccessKnowledgePage($editor, $parent)) {
                     throw ValidationException::withMessages([
                         'parent_id' => [__('validation.knowledge.parent_out_of_scope')],
+                    ]);
+                }
+            }
+
+            // Project pages are contributor territory: a roster Guest
+            // reads them fully but never writes them — neither the page
+            // they edit (its current project) nor the project they
+            // would move it to, whatever their workspace role (D6/D7).
+            foreach (array_unique(array_filter([$page->project_id, $projectId])) as $contributorCheck) {
+                if (! Project::query()->findOrFail($contributorCheck)->isContributor($editor)) {
+                    throw ValidationException::withMessages([
+                        'project_id' => [__('validation.knowledge.project_guest_read_only')],
                     ]);
                 }
             }

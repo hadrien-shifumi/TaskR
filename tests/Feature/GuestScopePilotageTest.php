@@ -59,7 +59,9 @@ class GuestScopePilotageTest extends TestCase
         return $manager;
     }
 
-    // ── Pilotage Owner-only des lignes de roster guest ────────────────
+    // ── Pilotage N+1 des lignes de roster guest (D7 + D9-D11) ────────
+    // Le rang projet décide seul : un Manager projet pilote la ligne
+    // d'un invité du workspace, l'owner ws bypass partout.
 
     public function test_workspace_owner_can_add_a_guest_to_the_project_roster(): void
     {
@@ -80,38 +82,51 @@ class GuestScopePilotageTest extends TestCase
         ]);
     }
 
-    public function test_project_manager_cannot_add_a_guest_to_the_project_roster(): void
+    public function test_project_manager_can_add_a_workspace_guest_to_the_roster(): void
     {
         [$owner, $workspace, $project] = $this->setupWorkspaceWithProject();
         $manager = $this->projectManager($workspace, $project);
         $guest = $this->addWorkspaceMember($workspace, 'guest');
 
+        // D7 : le rôle ws n'apparaît plus dans les gardes équipe —
+        // le rang projet décide, la ligne d'un guest ws se pilote
+        // comme toute ligne strictement inférieure.
         $this->actingAs($manager)
             ->post(route('projects.members.store', $project->id), [
                 'user_id' => $guest->id,
-                'role' => 'member',
+                'role' => 'guest',
             ])
-            ->assertForbidden();
+            ->assertRedirect();
 
-        $this->assertDatabaseMissing('project_members', [
+        $this->assertDatabaseHas('project_members', [
             'project_id' => $project->id,
             'user_id' => $guest->id,
+            'role' => 'guest',
         ]);
     }
 
-    public function test_project_owner_cannot_change_a_guest_roster_role(): void
+    public function test_project_owner_can_change_a_workspace_guest_roster_role(): void
     {
         [$owner, $workspace, $project] = $this->setupWorkspaceWithProject();
         $guest = $this->addWorkspaceMember($workspace, 'guest');
 
-        // A project owner who is not the workspace owner cannot pilot a guest.
+        // A project owner who is not the workspace owner pilots the
+        // guest's line too: the roster role alone decides.
         $otherProject = CreateProject::run($workspace, $owner, ['name' => 'Autre projet']);
         $projectOwner = $this->addWorkspaceMember($workspace);
         ProjectMember::create([
             'project_id' => $otherProject->id,
             'user_id' => $projectOwner->id,
-            'role' => ProjectRole::Owner->value,
+            'role' => ProjectRole::Manager->value,
         ]);
+
+        // Hand the project over so the actor owns it legitimately.
+        $this->actingAs($owner)
+            ->patch(route('projects.members.update', [$otherProject->id, $projectOwner->id]), [
+                'role' => 'owner',
+            ])
+            ->assertRedirect();
+
         ProjectMember::create([
             'project_id' => $otherProject->id,
             'user_id' => $guest->id,
@@ -122,16 +137,16 @@ class GuestScopePilotageTest extends TestCase
             ->patch(route('projects.members.update', [$otherProject->id, $guest->id]), [
                 'role' => 'manager',
             ])
-            ->assertForbidden();
+            ->assertRedirect();
 
         $this->assertDatabaseHas('project_members', [
             'project_id' => $otherProject->id,
             'user_id' => $guest->id,
-            'role' => 'member',
+            'role' => 'manager',
         ]);
     }
 
-    public function test_project_manager_cannot_remove_a_guest_from_the_roster(): void
+    public function test_project_manager_can_remove_a_workspace_guest_with_remaining_scope(): void
     {
         [$owner, $workspace, $project] = $this->setupWorkspaceWithProject();
         $manager = $this->projectManager($workspace, $project);
@@ -148,12 +163,18 @@ class GuestScopePilotageTest extends TestCase
             'role' => ProjectRole::Member->value,
         ]);
 
+        // N+1 pur : le Manager retire la ligne du guest ws, la
+        // protection du dernier projet ne s'applique pas (il en reste un).
         $this->actingAs($manager)
             ->delete(route('projects.members.destroy', [$project->id, $guest->id]))
-            ->assertForbidden();
+            ->assertRedirect();
 
-        $this->assertDatabaseHas('project_members', [
+        $this->assertDatabaseMissing('project_members', [
             'project_id' => $project->id,
+            'user_id' => $guest->id,
+        ]);
+        $this->assertDatabaseHas('project_members', [
+            'project_id' => $secondProject->id,
             'user_id' => $guest->id,
         ]);
     }

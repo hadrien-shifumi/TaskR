@@ -9,6 +9,7 @@ use App\Enums\Priority;
 use App\Models\Issue;
 use App\Models\IssueTemplate;
 use App\Models\Milestone;
+use App\Models\Project;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Responders\Issues\IssueRedirectResponder;
@@ -35,6 +36,23 @@ class CreateIssue
     {
         $workspace = $this->currentWorkspace();
 
+        // Base rule: any workspace member. The workspace owner keeps it
+        // (god mode, no roster line); a roster-driven actor — member or
+        // guest of the workspace — may only assign the people of the
+        // target project's roster, the same rule as the post-creation
+        // assign action: an out-of-team assignee could not even see the
+        // ticket (D2), and assignable means a team line (D6).
+        $assigneeRule = Rule::exists('memberships', 'user_id')->where('workspace_id', $workspace?->id);
+
+        $projectId = request()->input('project_id');
+        $user = request()->user();
+
+        if ($projectId !== null
+            && $user !== null
+            && app(WorkspaceContext::class)->accessibleProjectIds($user) !== null) {
+            $assigneeRule = Rule::exists('project_members', 'user_id')->where('project_id', $projectId);
+        }
+
         return [
             'project_id' => ['required', 'ulid', Rule::exists('projects', 'id')->where('workspace_id', $workspace?->id)],
             'title' => ['required', 'string', 'max:500'],
@@ -43,7 +61,7 @@ class CreateIssue
             'priority' => ['nullable', 'string', 'in:'.implode(',', array_column(Priority::cases(), 'value'))],
             'due_date' => ['nullable', 'date'],
             'assignees' => ['nullable', 'array'],
-            'assignees.*' => [Rule::exists('memberships', 'user_id')->where('workspace_id', $workspace?->id)],
+            'assignees.*' => [$assigneeRule],
             'label_ids' => ['nullable', 'array'],
             'label_ids.*' => ['ulid', Rule::exists('labels', 'id')->where('workspace_id', $workspace?->id)],
             'milestone_id' => ['nullable', 'ulid', Rule::exists('milestones', 'id')->where('workspace_id', $workspace?->id)],
@@ -66,6 +84,14 @@ class CreateIssue
             throw ValidationException::withMessages([
                 'project_id' => [__('validation.issue.project_out_of_scope')],
             ]);
+        }
+
+        // The roster role gates the write itself: a project Guest reads
+        // and comments but never creates. The refusal answers exactly
+        // like a non-existent project (404 / not_found), never a 403.
+        if ($user !== null) {
+            $project = Project::query()->findOrFail($data['project_id']);
+            app(WorkspaceContext::class)->abortUnlessProjectContributor($user, $project);
         }
 
         $data = $this->applyTemplateDefaults($workspace, $data);

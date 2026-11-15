@@ -10,6 +10,7 @@ use App\Actions\Workspaces\CreateWorkspace;
 use App\Models\IssueTemplate;
 use App\Models\Label;
 use App\Models\Membership;
+use App\Models\ProjectMember;
 use App\Models\Scopes\WorkspaceScope;
 use App\Models\User;
 use App\Support\WorkspaceContext;
@@ -33,6 +34,14 @@ class TemplateTest extends TestCase
         Membership::create([
             'user_id' => $member->id,
             'workspace_id' => $workspace->id,
+            'role' => 'member',
+        ]);
+
+        // The acting member works on the project: a team line carries
+        // their access.
+        ProjectMember::create([
+            'project_id' => $project->id,
+            'user_id' => $member->id,
             'role' => 'member',
         ]);
 

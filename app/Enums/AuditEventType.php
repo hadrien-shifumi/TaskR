@@ -59,4 +59,7 @@ enum AuditEventType: string
 
     case IssueMilestoneSet = 'issue.milestone_set';
     case IssueMilestoneRemoved = 'issue.milestone_removed';
+
+    case MembershipRoleChanged = 'membership.role_changed';
+    case WorkspaceOwnershipTransferred = 'workspace.ownership_transferred';
 }

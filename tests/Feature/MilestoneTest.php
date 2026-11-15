@@ -156,7 +156,7 @@ class MilestoneTest extends TestCase
         ]);
     }
 
-    public function test_workspace_member_outside_the_project_roster_cannot_create(): void
+    public function test_workspace_member_outside_the_project_team_gets_404(): void
     {
         [$owner, $workspace, $project] = $this->setupWorkspace();
 
@@ -167,9 +167,11 @@ class MilestoneTest extends TestCase
             'role' => 'member',
         ]);
 
+        // Off the team, the project behaves as non-existent — 404, never
+        // a 403 that would confirm it exists.
         $this->actingAs($outsider)
             ->post(route('milestones.store', $project), ['title' => 'Interdit'])
-            ->assertStatus(403);
+            ->assertNotFound();
 
         $this->assertDatabaseCount('milestones', 0);
     }
@@ -178,23 +180,50 @@ class MilestoneTest extends TestCase
     {
         [$owner, $workspace, $project] = $this->setupWorkspace();
 
-        $guest = User::factory()->create();
+        // The roster role alone decides: a project Guest never writes
+        // milestones, whatever their workspace role.
+        $projectGuest = User::factory()->create();
         Membership::create([
-            'user_id' => $guest->id,
+            'user_id' => $projectGuest->id,
+            'workspace_id' => $workspace->id,
+            'role' => 'member',
+        ]);
+        ProjectMember::create([
+            'project_id' => $project->id,
+            'user_id' => $projectGuest->id,
+            'role' => 'guest',
+        ]);
+
+        $this->actingAs($projectGuest)
+            ->post(route('milestones.store', $project), ['title' => 'Interdit'])
+            ->assertStatus(403);
+
+        $this->assertDatabaseCount('milestones', 0);
+    }
+
+    public function test_workspace_guest_roster_member_can_create_within_their_roster_project(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspace();
+
+        // D7: the workspace role never caps project rights — a workspace
+        // guest rostered Member writes milestones like anyone.
+        $workspaceGuest = User::factory()->create();
+        Membership::create([
+            'user_id' => $workspaceGuest->id,
             'workspace_id' => $workspace->id,
             'role' => 'guest',
         ]);
         ProjectMember::create([
             'project_id' => $project->id,
-            'user_id' => $guest->id,
+            'user_id' => $workspaceGuest->id,
             'role' => 'member',
         ]);
 
-        $this->actingAs($guest)
-            ->post(route('milestones.store', $project), ['title' => 'Interdit'])
-            ->assertStatus(403);
+        $this->actingAs($workspaceGuest)
+            ->post(route('milestones.store', $project), ['title' => 'V1'])
+            ->assertRedirect();
 
-        $this->assertDatabaseCount('milestones', 0);
+        $this->assertDatabaseCount('milestones', 1);
     }
 
     public function test_workspace_owner_can_create_without_being_in_the_roster(): void

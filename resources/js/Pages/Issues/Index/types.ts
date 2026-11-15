@@ -64,5 +64,7 @@ export interface KanbanColumn {
 
 export interface ProjectBoard {
     project: { id: string; name: string };
+    /** May the user write this project's issues? False for a roster Guest. */
+    canContribute: boolean;
     columns: KanbanColumn[];
 }

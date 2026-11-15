@@ -9,6 +9,7 @@ use App\Actions\Workspaces\CreateWorkspace;
 use App\Models\Issue;
 use App\Models\Membership;
 use App\Models\Project;
+use App\Models\ProjectMember;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Support\WorkspaceContext;
@@ -98,6 +99,7 @@ class TimerPageTest extends TestCase
 
         $colleague = User::factory()->create();
         Membership::create(['user_id' => $colleague->id, 'workspace_id' => $workspace->id, 'role' => 'member']);
+        ProjectMember::create(['project_id' => $project->id, 'user_id' => $colleague->id, 'role' => 'member']);
 
         $this->actingAs($colleague)
             ->get(route('projects.board', $project->id))

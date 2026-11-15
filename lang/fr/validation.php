@@ -103,6 +103,7 @@ return [
     'knowledge' => [
         'project_out_of_scope' => 'Une page de connaissance doit rester rattachée à un projet de votre périmètre.',
         'parent_out_of_scope' => "La page parente est en dehors de votre périmètre d'accès.",
+        'project_guest_read_only' => 'Les pages de connaissance du projet sont réservées aux contributeurs de son équipe : le rôle Invité ne permet pas de les créer ni de les modifier.',
         'conflict_detected' => 'Cette page a été modifiée par :editor pendant votre édition.',
     ],
 

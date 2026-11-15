@@ -7,6 +7,7 @@ use App\Actions\Comments\AddComment;
 use App\Actions\Issues\CreateIssue;
 use App\Actions\Projects\CreateProject;
 use App\Actions\Workspaces\CreateWorkspace;
+use App\Actions\Workspaces\UpdateMemberWorkspaceRole;
 use App\Enums\AuditEventType;
 use App\Mcp\Servers\TaskrServer;
 use App\Mcp\Tools\ListActivity;
@@ -271,7 +272,7 @@ class McpActivityTest extends TestCase
         $this->assertArrayHasKey('type', $payload['fields']);
     }
 
-    public function test_list_activity_requires_exactly_one_subject(): void
+    public function test_list_activity_accepts_at_most_one_subject(): void
     {
         [$owner, $workspace, $project] = $this->setupWorkspace();
         $issue = $this->createIssue($workspace, $project, 'Sujets', $owner);
@@ -285,12 +286,14 @@ class McpActivityTest extends TestCase
         $this->assertSame('validation_failed', $both['error']);
         $this->assertArrayHasKey('fields', $both);
 
-        // No subject at all: refused too.
+        // No subject at all: the workspace-level journal (empty here —
+        // no membership event was recorded).
         $none = TaskrServer::actingAs($owner)->tool(ListActivity::class, [
             'workspace_id' => $workspace->id,
-        ])->payload();
-        $this->assertSame('validation_failed', $none['error']);
-        $this->assertArrayHasKey('fields', $none);
+        ])->assertOk()->payload();
+        $this->assertSame('workspace', $none['subject']['type']);
+        $this->assertSame($workspace->id, $none['subject']['id']);
+        $this->assertSame([], $none['events']);
     }
 
     // ── Scoping guest ──────────────────────────────────────────────────
@@ -391,6 +394,46 @@ class McpActivityTest extends TestCase
             ->values();
 
         $this->assertSame([], $mutators->all(), 'No audit event mutation tool may exist.');
+    }
+
+    // ── Lecture au niveau workspace ─────────────────────────────────────
+
+    public function test_list_activity_without_subject_returns_the_workspace_journal(): void
+    {
+        [$owner, $workspace] = $this->setupWorkspace();
+        $member = User::factory()->create();
+        Membership::create([
+            'user_id' => $member->id,
+            'workspace_id' => $workspace->id,
+            'role' => 'member',
+        ]);
+
+        UpdateMemberWorkspaceRole::run($workspace, $member, ['role' => 'guest'], $owner);
+
+        $result = TaskrServer::actingAs($owner)->tool(ListActivity::class, [
+            'workspace_id' => $workspace->id,
+        ])->assertOk()->payload();
+
+        $this->assertSame('workspace', $result['subject']['type']);
+        $this->assertSame($workspace->id, $result['subject']['id']);
+
+        $this->assertCount(1, $result['events']);
+        $event = $result['events'][0];
+        $this->assertSame('membership.role_changed', $event['type']);
+        $this->assertSame($owner->id, $event['actor']['id']);
+        $this->assertSame('guest', $event['changes']['role']['after']);
+        $this->assertSame($member->name, $event['changes']['member']['name']);
+    }
+
+    public function test_the_workspace_journal_is_reserved_to_full_members(): void
+    {
+        [$owner, $workspace, , , $guest] = $this->setupScopedGuest();
+
+        $refusal = TaskrServer::actingAs($guest)->tool(ListActivity::class, [
+            'workspace_id' => $workspace->id,
+        ])->assertHasErrors()->payload();
+
+        $this->assertSame('forbidden', $refusal['error']);
     }
 
     // ── Helpers ────────────────────────────────────────────────────────

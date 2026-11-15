@@ -1,3 +1,4 @@
+import { Banner } from '@/components/banner';
 import { FlashBanner } from '@/components/flash-banner';
 import { Button } from '@/components/ui/button';
 import {
@@ -134,10 +135,12 @@ export default function Show() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                             <DropdownMenuGroup>
-                                <DropdownMenuItem onClick={() => setEditingTitle(true)}>
-                                    <Pencil aria-hidden />
-                                    {t('issueShow.editTitle')}
-                                </DropdownMenuItem>
+                                {canContribute ? (
+                                    <DropdownMenuItem onClick={() => setEditingTitle(true)}>
+                                        <Pencil aria-hidden />
+                                        {t('issueShow.editTitle')}
+                                    </DropdownMenuItem>
+                                ) : null}
                                 {canToggleArchive ? (
                                     <>
                                         <DropdownMenuSeparator />
@@ -152,11 +155,15 @@ export default function Show() {
                                         </DropdownMenuItem>
                                     </>
                                 ) : null}
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem variant="destructive" onClick={() => setDeleting(true)}>
-                                    <Trash2 aria-hidden />
-                                    {t('issueShow.deleteIssue')}
-                                </DropdownMenuItem>
+                                {canContribute ? (
+                                    <>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem variant="destructive" onClick={() => setDeleting(true)}>
+                                            <Trash2 aria-hidden />
+                                            {t('issueShow.deleteIssue')}
+                                        </DropdownMenuItem>
+                                    </>
+                                ) : null}
                             </DropdownMenuGroup>
                         </DropdownMenuContent>
                     </DropdownMenu>

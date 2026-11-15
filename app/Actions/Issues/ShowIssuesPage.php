@@ -2,6 +2,8 @@
 
 namespace App\Actions\Issues;
 
+use App\Enums\ProjectRole;
+use App\Models\ProjectMember;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Presenters\Issues\IssuePresenter;
@@ -52,16 +54,27 @@ class ShowIssuesPage
             ? app(WorkspaceContext::class)->accessibleProjectIds($user)
             : null;
 
+        $projects = $workspace->projects()
+            ->active()
+            ->when($scope !== null, fn ($query) => $query->whereIn('id', $scope))
+            ->orderBy('name')
+            ->get();
+
         $data = [
             'view' => $view,
             'filters' => array_filter($filters, fn ($value) => $value !== null && $value !== ''),
-            'projects' => $workspace->projects()
-                ->active()
-                ->when($scope !== null, fn ($query) => $query->whereIn('id', $scope))
-                ->orderBy('name')
-                ->get()
+            'projects' => $projects
                 ->map(fn ($project) => ProjectPresenter::option($project))
                 ->all(),
+            // The "New issue" button needs at least one project where the
+            // actor carries a contributing role — the workspace owner
+            // writes everywhere, a roster Guest never does. One grouped
+            // roster query, never a per-project membership lookup.
+            'canCreateIssue' => $user !== null && ($scope === null || ProjectMember::query()
+                ->where('user_id', $user->getKey())
+                ->whereIn('project_id', $projects->modelKeys())
+                ->whereNot('role', ProjectRole::Guest->value)
+                ->exists()),
             'statuses' => $workspace->cachedStatuses()->map(fn ($status) => StatusPresenter::option($status))->all(),
         ];
 
@@ -87,7 +100,7 @@ class ShowIssuesPage
 
         $issues = ListIssues::run($workspace, $filters, null, 0, $user);
 
-        return $this->buildProjectBoards($workspace, $issues['issues'], $filters, $scope);
+        return $this->buildProjectBoards($workspace, $issues['issues'], $filters, $scope, $user);
     }
 
     /**
@@ -176,7 +189,7 @@ class ShowIssuesPage
             ->all();
         $data['savedViews'] = $workspace->savedViews()
             ->get()
-            ->map(fn ($view) => SavedViewPresenter::present($view))
+            ->map(fn ($view) => SavedViewPresenter::present($view, $request->user()))
             ->all();
 
         return $responder->toResponse($request, $data);
@@ -204,7 +217,7 @@ class ShowIssuesPage
      * @param  list<string>|null  $scope  Project ids of the user's perimeter, null when unrestricted
      * @return array<int, array<string, mixed>>
      */
-    private function buildProjectBoards(Workspace $workspace, array $issues, array $filters = [], ?array $scope = null): array
+    private function buildProjectBoards(Workspace $workspace, array $issues, array $filters = [], ?array $scope = null, ?User $user = null): array
     {
         $statuses = $workspace->cachedStatuses();
 
@@ -223,7 +236,7 @@ class ShowIssuesPage
         $projects = $projectsQuery->get();
 
         return $projects
-            ->map(function ($project) use ($statuses, $issuesByProject) {
+            ->map(function ($project) use ($statuses, $issuesByProject, $user) {
                 $projectIssues = $issuesByProject->get($project->id, collect());
 
                 // Group this project's issues by status id.
@@ -231,6 +244,9 @@ class ShowIssuesPage
 
                 return [
                     'project' => ['id' => $project->id, 'name' => $project->name],
+                    // The move affordances (drag, move menu) follow the
+                    // roster role: a project guest reads, never moves.
+                    'canContribute' => $user !== null && $project->isContributor($user),
                     'columns' => $statuses
                         ->map(fn ($status) => [
                             'id' => $status->id,

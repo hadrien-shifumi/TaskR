@@ -11,6 +11,7 @@ use App\Actions\TimeTracking\UpdateTimeEntry;
 use App\Actions\Workspaces\CreateWorkspace;
 use App\Models\Issue;
 use App\Models\Membership;
+use App\Models\ProjectMember;
 use App\Models\TimeEntry;
 use App\Models\User;
 use App\Models\Workspace;
@@ -35,6 +36,14 @@ class TimeTrackingTest extends TestCase
         Membership::create([
             'user_id' => $member->id,
             'workspace_id' => $workspace->id,
+            'role' => 'member',
+        ]);
+
+        // The acting member works on the project: a team line carries
+        // their access.
+        ProjectMember::create([
+            'project_id' => $project->id,
+            'user_id' => $member->id,
             'role' => 'member',
         ]);
 

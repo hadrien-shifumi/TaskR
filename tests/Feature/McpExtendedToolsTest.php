@@ -7,7 +7,9 @@ use App\Actions\Issues\SetIssueParent;
 use App\Actions\Projects\CreateProject;
 use App\Actions\TimeTracking\CreateTimeEntry;
 use App\Actions\TimeTracking\SetIssueEstimate as SetIssueEstimateAction;
+use App\Actions\Workspaces\AcceptInvitation;
 use App\Actions\Workspaces\CreateWorkspace;
+use App\Enums\ProjectRole;
 use App\Mcp\Servers\TaskrServer;
 use App\Mcp\Tools\AddComment;
 use App\Mcp\Tools\CreateIssue;
@@ -33,10 +35,13 @@ use App\Mcp\Tools\UpdateComment;
 use App\Mcp\Tools\UpdateStatus;
 use App\Mcp\Tools\UpdateTemplate;
 use App\Mcp\Tools\UpdateTimeEntry;
+use App\Models\Invitation;
+use App\Models\InvitationProject;
 use App\Models\IssueTemplate;
 use App\Models\KnowledgePage;
 use App\Models\Membership;
 use App\Models\Project;
+use App\Models\ProjectMember;
 use App\Models\Status;
 use App\Models\User;
 use App\Models\Workspace;
@@ -636,6 +641,56 @@ class McpExtendedToolsTest extends TestCase
 
         $this->assertSame('new@example.com', $result['invitation']['email']);
         $this->assertDatabaseHas('invitations', ['workspace_id' => $workspace->id, 'email' => 'new@example.com']);
+    }
+
+    public function test_invite_member_with_a_role_per_project(): void
+    {
+        [$owner, $workspace] = $this->setupWorkspace();
+        $alpha = CreateProject::run($workspace, $owner, ['name' => 'Alpha']);
+        $beta = CreateProject::run($workspace, $owner, ['name' => 'Beta']);
+
+        // D16: the agent announces each project with the role the
+        // invitee lands with at acceptance.
+        TaskrServer::actingAs($owner)->tool(InviteMember::class, [
+            'workspace_id' => $workspace->id,
+            'email' => 'new@example.com',
+            'role' => 'member',
+            'projects' => [
+                ['project_id' => $alpha->id, 'role' => 'manager'],
+                ['project_id' => $beta->id, 'role' => 'guest'],
+            ],
+        ])->assertOk();
+
+        $invitation = Invitation::withoutWorkspaceScope()
+            ->where('workspace_id', $workspace->id)
+            ->where('email', 'new@example.com')
+            ->firstOrFail();
+
+        $announced = InvitationProject::query()
+            ->where('invitation_id', $invitation->id)
+            ->get();
+
+        $this->assertSame(
+            ['manager', 'guest'],
+            [$announced->firstWhere('project_id', $alpha->id)->role->value, $announced->firstWhere('project_id', $beta->id)->role->value],
+        );
+
+        // The acceptance lands the announced roles. The agent tool call
+        // flushed the request-scoped workspace context: re-bind it before
+        // reading scoped models.
+        app(WorkspaceContext::class)->set($workspace);
+
+        $invitee = User::factory()->create(['email' => 'new@example.com']);
+        AcceptInvitation::run($invitation, $invitee);
+
+        $this->assertSame(
+            ProjectRole::Manager,
+            ProjectMember::query()->where('project_id', $alpha->id)->where('user_id', $invitee->id)->value('role')
+        );
+        $this->assertSame(
+            ProjectRole::Guest,
+            ProjectMember::query()->where('project_id', $beta->id)->where('user_id', $invitee->id)->value('role')
+        );
     }
 
     public function test_invite_member_refused_for_non_owner(): void

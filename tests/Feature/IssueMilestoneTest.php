@@ -181,7 +181,7 @@ class IssueMilestoneTest extends TestCase
         ]);
     }
 
-    public function test_workspace_member_outside_roster_cannot_attach(): void
+    public function test_workspace_member_outside_the_project_team_gets_404(): void
     {
         [$owner, $workspace, , $issue, $milestone] = $this->setupIssueAndMilestone();
 
@@ -192,9 +192,11 @@ class IssueMilestoneTest extends TestCase
             'role' => 'member',
         ]);
 
+        // Off the team, the issue behaves as non-existent — 404, never
+        // a 403 that would confirm it exists.
         $this->actingAs($outsider)
             ->post(route('issues.milestone', $issue), ['milestone_id' => $milestone->id])
-            ->assertStatus(403);
+            ->assertNotFound();
 
         $this->assertDatabaseHas('issues', [
             'id' => $issue->id,
@@ -206,25 +208,56 @@ class IssueMilestoneTest extends TestCase
     {
         [$owner, $workspace, $project, $issue, $milestone] = $this->setupIssueAndMilestone();
 
-        $guest = User::factory()->create();
+        // The roster role alone decides: a project Guest never writes,
+        // whatever their workspace role. The refusal answers like a
+        // non-existent issue (404), never a 403.
+        $projectGuest = User::factory()->create();
         Membership::create([
-            'user_id' => $guest->id,
+            'user_id' => $projectGuest->id,
+            'workspace_id' => $workspace->id,
+            'role' => 'member',
+        ]);
+        ProjectMember::create([
+            'project_id' => $project->id,
+            'user_id' => $projectGuest->id,
+            'role' => 'guest',
+        ]);
+
+        $this->actingAs($projectGuest)
+            ->post(route('issues.milestone', $issue), ['milestone_id' => $milestone->id])
+            ->assertNotFound();
+
+        $this->assertDatabaseHas('issues', [
+            'id' => $issue->id,
+            'milestone_id' => null,
+        ]);
+    }
+
+    public function test_workspace_guest_roster_member_can_attach(): void
+    {
+        [$owner, $workspace, $project, $issue, $milestone] = $this->setupIssueAndMilestone();
+
+        // D7: the workspace role never caps project rights — a workspace
+        // guest carrying a roster Member line attaches like anyone.
+        $workspaceGuest = User::factory()->create();
+        Membership::create([
+            'user_id' => $workspaceGuest->id,
             'workspace_id' => $workspace->id,
             'role' => 'guest',
         ]);
         ProjectMember::create([
             'project_id' => $project->id,
-            'user_id' => $guest->id,
+            'user_id' => $workspaceGuest->id,
             'role' => 'member',
         ]);
 
-        $this->actingAs($guest)
+        $this->actingAs($workspaceGuest)
             ->post(route('issues.milestone', $issue), ['milestone_id' => $milestone->id])
-            ->assertStatus(403);
+            ->assertRedirect();
 
         $this->assertDatabaseHas('issues', [
             'id' => $issue->id,
-            'milestone_id' => null,
+            'milestone_id' => $milestone->id,
         ]);
     }
 
@@ -366,7 +399,9 @@ class IssueMilestoneTest extends TestCase
                 ->where('milestoneOptions.0.id', $milestone->id)
                 ->where('milestoneOptions.0.title', 'V1'));
 
-        // Guest on the roster: reads the fiche, never contributes.
+        // D7: the roster line carries the rights, the workspace role
+        // never caps them — a workspace guest rostered Member is a
+        // contributor like any other.
         $guest = User::factory()->create();
         Membership::create([
             'user_id' => $guest->id,
@@ -383,7 +418,7 @@ class IssueMilestoneTest extends TestCase
             ->get(route('issues.show', $issue))
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
-                ->where('canContribute', false)
+                ->where('canContribute', true)
                 ->has('milestoneOptions', 1));
     }
 

@@ -33,6 +33,8 @@ type KanbanCardProps = {
     onDragStart: (issueId: string) => void;
     onDragEnd: () => void;
     onRequestMove: (issue: KanbanIssue, statusId: string) => void;
+    /** False for a roster Guest: the card never drags, the move menu hides. */
+    canContribute: boolean;
 };
 
 /**
@@ -49,19 +51,20 @@ const KanbanCard = memo(function KanbanCard({
     onDragStart,
     onDragEnd,
     onRequestMove,
+    canContribute,
 }: KanbanCardProps) {
     const { t } = useTranslation();
 
     return (
         <article
-            draggable
+            draggable={canContribute}
             data-test={`kanban-card-${issue.id}`}
             onDragStart={(e) => {
                 e.dataTransfer.setData('text/plain', issue.id);
                 onDragStart(issue.id);
             }}
             onDragEnd={onDragEnd}
-            className={`flex cursor-grab flex-col gap-2 rounded-lg border bg-card px-3 py-2.75 shadow-xs hover:border-primary/40 ${
+            className={`flex ${canContribute ? 'cursor-grab' : ''} flex-col gap-2 rounded-lg border bg-card px-3 py-2.75 shadow-xs hover:border-primary/40 ${
                 isDragging ? 'opacity-35' : ''
             }`}
         >
@@ -98,29 +101,31 @@ const KanbanCard = memo(function KanbanCard({
                 <span className="flex">
                     <AvatarStack people={issue.assignees} />
                 </span>
-                <DropdownMenu>
-                    <DropdownMenuTrigger
-                        aria-label={t('issuesPage.kanban.moveToAria', { title: issue.title })}
-                        className="inline-flex h-6 cursor-pointer items-center gap-1 rounded-md px-1.5 font-mono text-[11px] text-muted-foreground outline-none hover:bg-accent hover:text-foreground"
-                    >
-                        <MoveRight className="size-3" />
-                        {t('issuesPage.kanban.moveTo')}
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                        <DropdownMenuGroup>
-                            <DropdownMenuLabel>{t('issuesPage.kanban.moveTo')}</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            {otherColumns.map((candidate) => (
-                                <DropdownMenuItem
-                                    key={candidate.id}
-                                    onClick={() => onRequestMove(issue, candidate.id)}
-                                >
-                                    {candidate.name}
-                                </DropdownMenuItem>
-                            ))}
-                        </DropdownMenuGroup>
-                    </DropdownMenuContent>
-                </DropdownMenu>
+                {canContribute ? (
+                    <DropdownMenu>
+                        <DropdownMenuTrigger
+                            aria-label={t('issuesPage.kanban.moveToAria', { title: issue.title })}
+                            className="inline-flex h-6 cursor-pointer items-center gap-1 rounded-md px-1.5 font-mono text-[11px] text-muted-foreground outline-none hover:bg-accent hover:text-foreground"
+                        >
+                            <MoveRight className="size-3" />
+                            {t('issuesPage.kanban.moveTo')}
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuGroup>
+                                <DropdownMenuLabel>{t('issuesPage.kanban.moveTo')}</DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                {otherColumns.map((candidate) => (
+                                    <DropdownMenuItem
+                                        key={candidate.id}
+                                        onClick={() => onRequestMove(issue, candidate.id)}
+                                    >
+                                        {candidate.name}
+                                    </DropdownMenuItem>
+                                ))}
+                            </DropdownMenuGroup>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                ) : null}
             </div>
         </article>
     );
@@ -254,6 +259,7 @@ export function ProjectKanbanBoard({ board }: ProjectKanbanBoardProps) {
                                     onDragStart={handleCardDragStart}
                                     onDragEnd={handleCardDragEnd}
                                     onRequestMove={handleRequestMove}
+                                    canContribute={board.canContribute}
                                 />
                             ))}
                             {column.issues.length === 0 ? (

@@ -2,28 +2,33 @@
 
 namespace App\Support;
 
+use App\Models\User;
 use App\Models\Workspace;
 
 /**
  * Builds the human-readable snapshot of a saved view's filters.
  *
  * The summary is generated once, at creation, in the creator's locale —
- * a memory of the saved context, never recomputed on display. Resolved
- * names (project, status, labels, assignee) are looked up within the
- * workspace; an unknown id contributes nothing. Dates stay in the
- * unambiguous Y-m-d form.
+ * a memory of the saved context. Resolved names (project, status,
+ * labels, assignee) are looked up within the workspace; an unknown id
+ * contributes nothing. Dates stay in the unambiguous Y-m-d form.
+ *
+ * Visibility (D2): the project name is resolved only for a viewer who
+ * may see that project. The stored summary keeps the creator's copy;
+ * read paths recompute it per reader, so a shared view never names a
+ * project outside someone's teams.
  */
 class SavedViewSummary
 {
     /**
      * @param  array<string, string|array<int, string>|null>  $filters
      */
-    public static function make(Workspace $workspace, array $filters, ?string $sort, ?string $dir): ?string
+    public static function make(Workspace $workspace, array $filters, ?string $sort, ?string $dir, ?User $viewer = null): ?string
     {
         $parts = [];
 
         if (! empty($filters['project'])) {
-            $name = $workspace->projects()->whereKey($filters['project'])->value('name');
+            $name = self::visibleProjectName($workspace, (string) $filters['project'], $viewer);
 
             if ($name !== null) {
                 $parts[] = __('saved_view.summary.project', ['value' => $name]);
@@ -95,6 +100,25 @@ class SavedViewSummary
         }
 
         return implode(' · ', $parts);
+    }
+
+    /**
+     * The filtered project's name, resolved only when the viewer may
+     * see the project: their roster covers it, or they are the
+     * unrestricted workspace owner. A null viewer (trusted internal
+     * call) keeps the historical unscoped resolution.
+     */
+    private static function visibleProjectName(Workspace $workspace, string $projectId, ?User $viewer): ?string
+    {
+        if ($viewer !== null) {
+            $scope = app(WorkspaceContext::class)->accessibleProjectIds($viewer);
+
+            if ($scope !== null && ! in_array($projectId, $scope, true)) {
+                return null;
+            }
+        }
+
+        return $workspace->projects()->whereKey($projectId)->value('name');
     }
 
     /**

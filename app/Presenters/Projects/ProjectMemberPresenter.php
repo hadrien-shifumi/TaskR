@@ -10,9 +10,9 @@ class ProjectMemberPresenter
     /**
      * Row of the project roster.
      *
-     * @return array{id: int, name: string, email: string, role: string, joinedAt: string|null}
+     * @return array{id: int, name: string, email: string, role: string, joinedAt: string|null, canManageRow: bool}
      */
-    public static function rosterMember(ProjectMember $member): array
+    public static function rosterMember(ProjectMember $member, bool $canManageRow = false): array
     {
         return [
             'id' => $member->user->id,
@@ -20,6 +20,7 @@ class ProjectMemberPresenter
             'email' => $member->user->email,
             'role' => $member->role->value,
             'joinedAt' => $member->created_at?->toISOString(),
+            'canManageRow' => $canManageRow,
         ];
     }
 

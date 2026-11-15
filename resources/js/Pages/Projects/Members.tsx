@@ -44,8 +44,9 @@ interface ProjectMemberRow {
     id: number;
     name: string;
     email: string;
-    role: 'owner' | 'manager' | 'member';
+    role: 'owner' | 'manager' | 'member' | 'guest';
     joinedAt: string | null;
+    canManageRow: boolean;
 }
 
 interface AvailableMember {
@@ -62,19 +63,16 @@ type PageProps = {
     members: ProjectMemberRow[];
     availableMembers: AvailableMember[];
     canManage: boolean;
+    assignableRoles: string[];
 };
 
 const MENU_TRIGGER_CLASS =
     'grid size-6.5 place-items-center rounded-md text-muted-foreground outline-none hover:bg-accent hover:text-foreground';
 
-const ROLE_LABELS: Record<string, string> = {
-    owner: 'Owner',
-    manager: 'Manager',
-    member: 'Member',
-};
+const roleLabel = (role: string, t: (key: string) => string) => t(`layout.roles.${role}`);
 
 export default function Members() {
-    const { project, members, availableMembers, canManage } = usePage<PageProps>().props;
+    const { project, members, availableMembers, canManage, assignableRoles } = usePage<PageProps>().props;
     const { t } = useTranslation();
     const [onboarding, setOnboarding] = useState(false);
 
@@ -162,14 +160,14 @@ export default function Members() {
                                         variant="secondary"
                                         className="rounded-full bg-secondary text-muted-foreground"
                                     >
-                                        {ROLE_LABELS[member.role] ?? member.role}
+                                        {roleLabel(member.role, t)}
                                     </Badge>
                                 </TableCell>
                                 <TableCell className="text-sm text-muted-foreground">
                                     {member.joinedAt ? formatMonthYear(member.joinedAt) : '—'}
                                 </TableCell>
                                 <TableCell>
-                                    {canManage && member.role !== 'owner' ? (
+                                    {member.role !== 'owner' && member.canManageRow ? (
                                         <DropdownMenu>
                                             <DropdownMenuTrigger
                                                 aria-label={`Actions for ${member.name}`}
@@ -179,16 +177,16 @@ export default function Members() {
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
                                                 <DropdownMenuGroup>
-                                                    <DropdownMenuItem
-                                                        onClick={() => updateRole(member, 'manager')}
-                                                    >
-                                                        Promote to manager
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem
-                                                        onClick={() => updateRole(member, 'member')}
-                                                    >
-                                                        Demote to member
-                                                    </DropdownMenuItem>
+                                                    {assignableRoles
+                                                        .filter((role) => role !== member.role)
+                                                        .map((role) => (
+                                                            <DropdownMenuItem
+                                                                key={role}
+                                                                onClick={() => updateRole(member, role)}
+                                                            >
+                                                                Set as {roleLabel(role, t)}
+                                                            </DropdownMenuItem>
+                                                        ))}
                                                     <DropdownMenuSeparator />
                                                     <DropdownMenuItem
                                                         variant="destructive"
@@ -259,8 +257,11 @@ export default function Members() {
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="member">Member</SelectItem>
-                                    <SelectItem value="manager">Manager</SelectItem>
+                                    {assignableRoles.map((role) => (
+                                        <SelectItem key={role} value={role}>
+                                            {roleLabel(role, t)}
+                                        </SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                             {addForm.errors.role ? (

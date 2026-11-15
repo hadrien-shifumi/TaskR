@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\ProjectRole;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\Pivot;
@@ -12,7 +13,11 @@ class InvitationProject extends Pivot
 
     protected $table = 'invitation_project';
 
-    protected $fillable = ['invitation_id', 'project_id'];
+    protected $fillable = ['invitation_id', 'project_id', 'role'];
+
+    protected $casts = [
+        'role' => ProjectRole::class,
+    ];
 
     /**
      * @return BelongsTo<Invitation, $this>

@@ -464,7 +464,7 @@ class InvitationActionsTest extends TestCase
             && str_contains($mail->acceptUrl, $invitation->token)
             && $mail->workspaceName === 'WS'
             && $mail->role === 'guest'
-            && $mail->projectNames === ['Alpha']);
+            && $mail->projectNames === ['Alpha ('.__('mail.invitation.project_roles.member').')']);
     }
 
     public function test_reinviting_sends_the_email_again_with_the_fresh_link(): void

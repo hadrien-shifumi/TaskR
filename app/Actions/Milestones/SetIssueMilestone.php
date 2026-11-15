@@ -10,7 +10,6 @@ use App\Models\Milestone;
 use App\Models\User;
 use App\Responders\Issues\IssueRedirectResponder;
 use App\Support\WorkspaceContext;
-use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -45,20 +44,16 @@ class SetIssueMilestone
      * must belong to the issue's project — a move replaces, never
      * stacks.
      *
-     * @throws AuthorizationException
      * @throws ValidationException
      */
     public function handle(Issue $issue, ?string $milestoneId, ?User $user = null): Issue
     {
-        // Out-of-scope issues fail exactly like non-existent ones.
-        // Without an explicit user this is a trusted internal object run:
-        // HTTP and MCP callers always pass the actor.
+        // Out-of-scope issues and project-guest actors fail exactly like
+        // non-existent ones (404, never a 403): attaching a milestone
+        // writes the issue. Without an explicit user this is a trusted
+        // internal object run: HTTP and MCP callers always pass the actor.
         if ($user !== null) {
-            app(WorkspaceContext::class)->abortUnlessIssueAccessible($user, $issue);
-
-            if (! $issue->project->isContributor($user)) {
-                throw new AuthorizationException('Only project members and the workspace owner can attach milestones.');
-            }
+            app(WorkspaceContext::class)->abortUnlessIssueContributor($user, $issue);
         }
 
         if ($milestoneId !== null) {

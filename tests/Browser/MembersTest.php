@@ -105,8 +105,9 @@ it('lets an owner invite a member with a project perimeter from the members sett
 
     $page = visit('/settings/members');
 
-    // Scenario "Inviter un membre restreint a un perimetre": member role
-    // keeps the project chips — the default (no chip) stays full access.
+    // Scenario "Inviter un membre avec des projets annoncés": member role
+    // keeps the project chips — every chosen project is joined as a team
+    // at acceptance, no chip leaves the member teamless.
     $page->click('button:has-text("Invite")')
         ->fill('invite-email', 'peer@example.com')
         ->click('button:has-text("Projet client")')
@@ -124,40 +125,29 @@ it('lets an owner invite a member with a project perimeter from the members sett
     $page->assertNoSmoke();
 });
 
-it('lets an owner edit a member perimeter from the members settings', function () {
+it('offers no perimeter editor on a member row — access is piloted by the project teams', function () {
     [$owner, $workspace] = setupBrowserWorkspace();
     app(WorkspaceContext::class)->set($workspace);
     $client = CreateProject::run($workspace, $owner, ['name' => 'Projet client']);
-    $internal = CreateProject::run($workspace, $owner, ['name' => 'Interne secret']);
 
     $member = User::factory()->create(['name' => 'Robin']);
-    $membership = Membership::create([
+    Membership::create([
         'user_id' => $member->id,
         'workspace_id' => $workspace->id,
         'role' => 'member',
     ]);
-    $membership->update(['is_scoped' => true]);
-    $membership->syncProjectScope([$client->id]);
+    $client->projectMembers()->create(['user_id' => $member->id, 'role' => 'member']);
 
     $this->actingAs($owner);
 
     $page = visit('/settings/members');
 
-    // The scoped member's row announces the current perimeter.
-    $page->assertSee('Projet client');
-
-    // Scenario "Modifier le perimetre": the row menu opens the editor,
-    // preselected on the current perimeter; adding the internal project
-    // extends it, saving persists the new list.
+    // The row menu offers only the removal: the perimeter editor is gone,
+    // the team roster is the single source of project access.
     $page->click('button[aria-label="Actions for Robin"]')
-        ->click('Edit perimeter…')
-        ->click('button:has-text("Interne secret")')
-        ->click('button[type="submit"]');
-
-    app(WorkspaceContext::class)->set($workspace);
-    $membership->refresh();
-    expect($membership->is_scoped)->toBeTrue()
-        ->and($membership->projectScopeIds())->toBe([$client->id, $internal->id]);
+        ->assertSee('Remove from workspace…')
+        ->assertMissing('button:has-text("Edit perimeter…")')
+        ->assertDontSee('Edit perimeter');
 
     $page->assertNoSmoke();
 });

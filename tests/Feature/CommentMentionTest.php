@@ -77,6 +77,7 @@ class CommentMentionTest extends TestCase
         $project = $this->addProject($workspace, $owner, 'Site Vitrine');
         $issue = $this->addIssue($workspace, $project, 'Bug du formulaire');
         $alice = $this->addUser($workspace, 'member', 'alice', 'Alice');
+        $project->projectMembers()->create(['user_id' => $alice->id, 'role' => 'member']);
 
         $comment = AddComment::run($issue, $owner, 'Coucou @alice, peux-tu regarder ?');
 
@@ -137,6 +138,8 @@ class CommentMentionTest extends TestCase
         $issue = $this->addIssue($workspace, $project, 'Bug du formulaire');
         $alice = $this->addUser($workspace, 'member', 'alice', 'Alice');
         $bob = $this->addUser($workspace, 'member', 'bob', 'Bob');
+        $project->projectMembers()->create(['user_id' => $alice->id, 'role' => 'member']);
+        $project->projectMembers()->create(['user_id' => $bob->id, 'role' => 'member']);
 
         $comment = AddComment::run($issue, $owner, 'Hey @alice');
         $this->assertDatabaseCount('comment_mentions', 1);
@@ -206,6 +209,7 @@ class CommentMentionTest extends TestCase
         $project = $this->addProject($workspace, $owner, 'Site Vitrine');
         $issue = $this->addIssue($workspace, $project, 'Bug du formulaire');
         $alice = $this->addUser($workspace, 'member', 'alice', 'Alice');
+        $project->projectMembers()->create(['user_id' => $alice->id, 'role' => 'member']);
 
         $this->travelTo(now()->subHour());
         $older = AddComment::run($issue, $owner, '@alice ancien point');
@@ -256,6 +260,7 @@ class CommentMentionTest extends TestCase
         $project = $this->addProject($workspace, $owner, 'Site Vitrine');
         $issue = $this->addIssue($workspace, $project, 'Bug du formulaire');
         $alice = $this->addUser($workspace, 'member', 'alice', 'Alice');
+        $project->projectMembers()->create(['user_id' => $alice->id, 'role' => 'member']);
 
         $this->travelTo(now()->subHour());
         $older = AddComment::run($issue, $owner, '@alice ancien point');
@@ -294,6 +299,8 @@ class CommentMentionTest extends TestCase
         $issueTwo = $this->addIssue($workspace, $project, 'Autre ticket');
         $alice = $this->addUser($workspace, 'member', 'alice', 'Alice');
         $bob = $this->addUser($workspace, 'member', 'bob', 'Bob');
+        $project->projectMembers()->create(['user_id' => $alice->id, 'role' => 'member']);
+        $project->projectMembers()->create(['user_id' => $bob->id, 'role' => 'member']);
 
         AddComment::run($issueOne, $owner, '@alice premier');
         AddComment::run($issueTwo, $owner, '@bob pour toi');
@@ -315,6 +322,7 @@ class CommentMentionTest extends TestCase
         $project = $this->addProject($workspace, $owner, 'Site Vitrine');
         $issue = $this->addIssue($workspace, $project, 'Bug du formulaire');
         $alice = $this->addUser($workspace, 'member', 'alice', 'Alice');
+        $project->projectMembers()->create(['user_id' => $alice->id, 'role' => 'member']);
 
         AddComment::run($issue, $owner, '@alice à lire');
         $mention = CommentMention::query()->where('user_id', $alice->id)->firstOrFail();
@@ -334,6 +342,8 @@ class CommentMentionTest extends TestCase
         $issue = $this->addIssue($workspace, $project, 'Bug du formulaire');
         $alice = $this->addUser($workspace, 'member', 'alice', 'Alice');
         $bob = $this->addUser($workspace, 'member', 'bob', 'Bob');
+        $project->projectMembers()->create(['user_id' => $alice->id, 'role' => 'member']);
+        $project->projectMembers()->create(['user_id' => $bob->id, 'role' => 'member']);
 
         AddComment::run($issue, $owner, '@alice un');
         AddComment::run($issue, $owner, '@alice deux');
@@ -406,6 +416,7 @@ class CommentMentionTest extends TestCase
         $project = $this->addProject($workspace, $owner, 'Site Vitrine');
         $issue = $this->addIssue($workspace, $project, 'Bug du formulaire');
         $alice = $this->addUser($workspace, 'member', 'alice', 'Alice');
+        $project->projectMembers()->create(['user_id' => $alice->id, 'role' => 'member']);
 
         AddComment::run($issue, $owner, '@alice à lire');
         $mention = CommentMention::query()->where('user_id', $alice->id)->firstOrFail();

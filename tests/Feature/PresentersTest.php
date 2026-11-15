@@ -314,6 +314,10 @@ class PresentersTest extends TestCase
         $this->assertSame($member->email, $roster['email']);
         $this->assertSame($projectMember->role->value, $roster['role']);
         $this->assertSame($projectMember->created_at->toISOString(), $roster['joinedAt']);
+        $this->assertFalse($roster['canManageRow']);
+
+        $piloted = ProjectMemberPresenter::rosterMember($projectMember->load('user'), true);
+        $this->assertTrue($piloted['canManageRow']);
 
         $this->assertSame(
             ['id' => $member->id, 'name' => $member->name],
@@ -344,7 +348,7 @@ class PresentersTest extends TestCase
         $this->assertSame($invitation->id, $presented['id']);
         $this->assertSame('client@example.fr', $presented['email']);
         $this->assertSame('guest', $presented['role']);
-        $this->assertSame(['Site vitrine'], $presented['projects']);
+        $this->assertSame([['name' => 'Site vitrine', 'role' => 'member']], $presented['projects']);
         $this->assertSame('sent', $presented['status']);
         $this->assertSame($invitation->created_at->toISOString(), $presented['invitedAt']);
 

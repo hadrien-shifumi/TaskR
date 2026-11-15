@@ -117,7 +117,7 @@ class KnowledgeSearchScopeTest extends TestCase
                 ->where('results.0.title', 'Page client'));
     }
 
-    public function test_member_search_sees_every_page(): void
+    public function test_teamed_member_search_sees_their_team_pages(): void
     {
         $this->configureEmbeddings();
         [$owner, $workspace, $inScope, $outOfScope, $guest] = $this->setupScopedGuest();
@@ -127,6 +127,10 @@ class KnowledgeSearchScopeTest extends TestCase
             'workspace_id' => $workspace->id,
             'role' => 'member',
         ]);
+
+        // A member searches exactly their teams: both projects here.
+        $inScope->projectMembers()->create(['user_id' => $member->id, 'role' => 'member']);
+        $outOfScope->projectMembers()->create(['user_id' => $member->id, 'role' => 'member']);
 
         $results = app(\App\Actions\Knowledge\SearchKnowledge::class)->handle(
             $workspace,

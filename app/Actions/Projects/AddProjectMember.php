@@ -25,19 +25,17 @@ class AddProjectMember
         $user = request()->user();
         $project = request()->route('project');
 
-        if (! $user instanceof User
-            || ! $project instanceof Project
-            || ! $project->canManage($user)) {
+        if (! $user instanceof User || ! $project instanceof Project) {
             return false;
         }
 
-        // A guest's roster row is their access scope: only the workspace
-        // owner pilots guests. Project managers keep managing classic members.
-        $target = User::find(request()->input('user_id'));
+        // N+1 (D10): a manager or above onboards strictly lower roles
+        // only; the workspace owner bypasses the hierarchy (D11). The
+        // workspace role of the invitee never appears (D7). A second
+        // owner stays refused for everyone by the single-owner rule.
+        $role = ProjectRole::tryFrom((string) request()->input('role')) ?? ProjectRole::Member;
 
-        return $target === null
-            || ! $project->workspace->isGuest($target)
-            || $project->workspace->hasOwner($user);
+        return $project->canPilotRole($user, $role);
     }
 
     public function rules(): array
@@ -50,7 +48,7 @@ class AddProjectMember
                 'integer',
                 Rule::exists('memberships', 'user_id')->where('workspace_id', $workspace?->id),
             ],
-            'role' => ['nullable', 'string', Rule::in(['owner', 'manager', 'member'])],
+            'role' => ['nullable', 'string', Rule::in(['owner', 'manager', 'member', 'guest'])],
         ];
     }
 

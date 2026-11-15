@@ -14,7 +14,7 @@ type PageProps = {
         inviterName: string;
         email: string;
         role: string;
-        projects: string[];
+        projects: { name: string; role: string }[];
         acceptUrl: string;
     };
 };
@@ -68,11 +68,11 @@ export default function AcceptInvitation() {
                             <div className="flex flex-wrap gap-2">
                                 {invitation.projects.map((project) => (
                                     <Badge
-                                        key={project}
+                                        key={project.name}
                                         variant="secondary"
                                         className="rounded-full bg-secondary text-muted-foreground"
                                     >
-                                        {project}
+                                        {project.name} · {t(`layout.roles.${project.role}`)}
                                     </Badge>
                                 ))}
                             </div>

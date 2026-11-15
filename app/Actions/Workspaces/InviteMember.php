@@ -2,6 +2,7 @@
 
 namespace App\Actions\Workspaces;
 
+use App\Enums\ProjectRole;
 use App\Enums\WorkspaceRole;
 use App\Models\Invitation;
 use App\Models\InvitationProject;
@@ -26,6 +27,21 @@ class InviteMember
 {
     use AsController;
     use AsObject;
+
+    /**
+     * Project roles an invitation may announce. The project ownership
+     * never rides an invitation: it transfers through the explicit
+     * action, once the invitee has arrived.
+     *
+     * @return array<int, string>
+     */
+    public static function invitableProjectRoles(): array
+    {
+        return array_map(
+            static fn (ProjectRole $role): string => $role->value,
+            array_filter(ProjectRole::cases(), static fn (ProjectRole $role): bool => $role !== ProjectRole::Owner),
+        );
+    }
 
     public function authorize(): bool
     {
@@ -59,9 +75,22 @@ class InviteMember
                 },
             ],
             'role' => ['nullable', 'string', 'in:'.implode(',', array_column(WorkspaceRole::cases(), 'value'))],
-            // A guest is onboarded with a perimeter: never empty, always
-            // projects of this workspace. A member may carry one too: an
-            // empty perimeter keeps the default full workspace access.
+            // D16: each announced project carries its own project role.
+            // The inviter is always the workspace owner (authorize above),
+            // so no N+1 rank constraint applies: any invitable role fits.
+            'projects' => ['nullable', 'array'],
+            'projects.*.project_id' => [
+                'required',
+                'ulid',
+                Rule::exists('projects', 'id')->where('workspace_id', $workspace?->id),
+            ],
+            'projects.*.role' => [
+                'nullable',
+                'string',
+                'in:'.implode(',', self::invitableProjectRoles()),
+            ],
+            // Legacy shape, kept for callers without per-project roles:
+            // every id lands as a plain member.
             'project_ids' => ['nullable', 'array'],
             'project_ids.*' => [
                 'ulid',
@@ -72,33 +101,70 @@ class InviteMember
 
     /**
      * Cross-field rule the base validator cannot express: a guest always
-     * carries a non-empty scope. Runs as an "after" hook — errors added
-     * before the run are wiped by the validator.
+     * carries a non-empty perimeter. Runs as an "after" hook — errors
+     * added before the run are wiped by the validator.
      */
     public function afterValidator(Validator $validator): void
     {
         $data = $validator->getData();
         $role = ($data['role'] ?? null) ?: WorkspaceRole::Member->value;
-        $projectIds = array_values($data['project_ids'] ?? []);
 
-        if ($role === WorkspaceRole::Guest->value && $projectIds === []) {
-            $validator->errors()->add('project_ids', __('validation.invitation.guest_requires_projects'));
+        if ($role === WorkspaceRole::Guest->value && self::normalizeProjects($data) === []) {
+            $validator->errors()->add('projects', __('validation.invitation.guest_requires_projects'));
         }
     }
 
     /**
-     * @param  array{email: string, role?: string, project_ids?: array<int, string>}  $data
+     * Merge the two accepted input shapes into the canonical list of
+     * announced projects: explicit "projects" entries (with their role,
+     * defaulting to member) win over the legacy "project_ids" ids, and
+     * a duplicated project keeps the last role announced.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<int, array{project_id: string, role: string}>
+     */
+    public static function normalizeProjects(array $data): array
+    {
+        $projects = [];
+
+        foreach (array_values($data['project_ids'] ?? []) as $projectId) {
+            $projectId = (string) $projectId;
+            $projects[$projectId] = [
+                'project_id' => $projectId,
+                'role' => ProjectRole::Member->value,
+            ];
+        }
+
+        foreach (array_values($data['projects'] ?? []) as $project) {
+            if (! is_array($project)) {
+                continue;
+            }
+
+            $projectId = (string) ($project['project_id'] ?? '');
+            $projects[$projectId] = [
+                'project_id' => $projectId,
+                'role' => (($project['role'] ?? null) !== null && $project['role'] !== '')
+                    ? (string) $project['role']
+                    : ProjectRole::Member->value,
+            ];
+        }
+
+        return array_values($projects);
+    }
+
+    /**
+     * @param  array{email: string, role?: string, project_ids?: array<int, string>, projects?: array<int, array{project_id: string, role?: string}>}  $data
      */
     public function handle(Workspace $workspace, array $data): Invitation
     {
         $role = $data['role'] ?? WorkspaceRole::Member->value;
-        $projectIds = array_values($data['project_ids'] ?? []);
+        $projects = self::normalizeProjects($data);
 
         // Object-level mirror of the HTTP cross-field rule: protects every
-        // call site (web, MCP, tests) from a scope-less guest invitation.
-        if ($role === WorkspaceRole::Guest->value && $projectIds === []) {
+        // call site (web, MCP, tests) from a perimeter-less guest invitation.
+        if ($role === WorkspaceRole::Guest->value && $projects === []) {
             throw ValidationException::withMessages([
-                'project_ids' => __('validation.invitation.guest_requires_projects'),
+                'projects' => __('validation.invitation.guest_requires_projects'),
             ]);
         }
 
@@ -109,13 +175,14 @@ class InviteMember
             ]);
         }
 
-        $invitation = DB::transaction(function () use ($workspace, $data, $projectIds, $role): Invitation {
+        $invitation = DB::transaction(function () use ($workspace, $data, $projects, $role): Invitation {
             // One invitation row per (workspace, email) — the unique
             // constraint enforces it at the database level. Re-inviting an
             // existing address (pending, expired, or accepted by a member
             // since removed) reactivates that row instead of crashing on
             // the constraint: fresh token and expiry, the consumed
-            // acceptance is reset, and the latest role and perimeter win.
+            // acceptance is reset, and the latest announced projects and
+            // roles win.
             $invitation = Invitation::withoutWorkspaceScope()
                 ->where('workspace_id', $workspace->id)
                 ->whereRaw('lower(email) = lower(?)', [$data['email']])
@@ -133,8 +200,8 @@ class InviteMember
                     ->where('invitation_id', $invitation->getKey())
                     ->delete();
 
-                if ($projectIds !== []) {
-                    $invitation->attachScope($projectIds);
+                if ($projects !== []) {
+                    $invitation->attachProjects($projects);
                 }
 
                 return $invitation;
@@ -148,11 +215,11 @@ class InviteMember
                 'expires_at' => now()->addDays(7),
             ]);
 
-            // Guest and member invitations alike announce their perimeter:
+            // Guest and member invitations alike announce their projects:
             // never empty for a guest, optional for a member (empty = the
-            // default full workspace access).
-            if ($projectIds !== []) {
-                $invitation->attachScope($projectIds);
+            // member joins no team and sees no project).
+            if ($projects !== []) {
+                $invitation->attachProjects($projects);
             }
 
             return $invitation;

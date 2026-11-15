@@ -42,15 +42,17 @@ class WorkspaceGuestScopeTest extends TestCase
         return $user;
     }
 
-    public function test_owner_and_member_have_unrestricted_scope(): void
+    public function test_owner_is_unrestricted_and_member_scope_follows_the_roster(): void
     {
         [$owner, $workspace] = $this->setupWorkspace();
         $member = $this->addUser($workspace, 'member');
 
         $context = app(WorkspaceContext::class);
 
+        // The workspace owner alone is unrestricted: a member without a
+        // team line sees no project at all.
         $this->assertNull($context->accessibleProjectIds($owner));
-        $this->assertNull($context->accessibleProjectIds($member));
+        $this->assertSame([], $context->accessibleProjectIds($member));
     }
 
     public function test_guest_scope_is_limited_to_roster_projects(): void
@@ -97,12 +99,16 @@ class WorkspaceGuestScopeTest extends TestCase
         $inScope = CreateProject::run($workspace, $owner, ['name' => 'Dans le périmètre']);
         $outScope = CreateProject::run($workspace, $owner, ['name' => 'Hors périmètre']);
         $inScope->projectMembers()->create(['user_id' => $guest->id, 'role' => 'member']);
+        $outScope->projectMembers()->create(['user_id' => $member->id, 'role' => 'member']);
 
         $context = app(WorkspaceContext::class);
 
         $this->assertTrue($context->canViewProject($guest, $inScope));
         $this->assertFalse($context->canViewProject($guest, $outScope));
+        // A member sees exactly their teams too: teamed on the out-of-scope
+        // project, they see it — without a line, they would not.
         $this->assertTrue($context->canViewProject($member, $outScope));
+        $this->assertFalse($context->canViewProject($member, $inScope));
     }
 
     public function test_can_access_issue_honors_guest_scope(): void

@@ -114,8 +114,34 @@ class Project extends BaseModel
     }
 
     /**
-     * May the user create and edit this project's content (milestones):
-     * any roster member plus the workspace owner; guests never.
+     * N+1 roster pilotage (D9–D11): can the user act on a roster line
+     * carrying the given role? The workspace owner bypasses the
+     * hierarchy everywhere; otherwise the project role alone decides —
+     * the workspace role never appears (D7). Pilotage is reserved to
+     * managers and above: a Member or a Guest never acts, even on a
+     * strictly lower line.
+     */
+    public function canPilotRole(User $user, ProjectRole $targetRole): bool
+    {
+        if ($this->workspace->hasOwner($user)) {
+            return true;
+        }
+
+        $actorRole = $this->roleOf($user);
+
+        if ($actorRole === null || $actorRole === ProjectRole::Member || $actorRole === ProjectRole::Guest) {
+            return false;
+        }
+
+        return $actorRole->outranks($targetRole);
+    }
+
+    /**
+     * May the user create and edit this project's content (milestones,
+     * knowledge pages, issues)? The roster role alone decides: any line
+     * except Guest contributes, whatever the workspace role (D7). The
+     * workspace owner is a contributor everywhere, with no team row
+     * required (D3).
      */
     public function isContributor(User $user): bool
     {
@@ -123,7 +149,9 @@ class Project extends BaseModel
             return true;
         }
 
-        return ! $this->workspace->isGuest($user) && $this->roleOf($user) !== null;
+        $role = $this->roleOf($user);
+
+        return $role !== null && $role !== ProjectRole::Guest;
     }
 
     public function scopeActive(Builder $query): Builder

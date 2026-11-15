@@ -87,7 +87,8 @@ class WeekTimesheetTest extends TestCase
     }
 
     /**
-     * A plain member of the workspace owning the given issue.
+     * A plain member of the workspace owning the given issue, teamed on
+     * its project — the team line carries their access.
      */
     private function memberOf(Issue $issue): User
     {
@@ -95,6 +96,11 @@ class WeekTimesheetTest extends TestCase
         Membership::create([
             'user_id' => $member->id,
             'workspace_id' => $issue->workspace_id,
+            'role' => 'member',
+        ]);
+        ProjectMember::create([
+            'project_id' => $issue->project_id,
+            'user_id' => $member->id,
             'role' => 'member',
         ]);
 

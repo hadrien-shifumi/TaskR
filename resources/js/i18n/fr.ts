@@ -626,12 +626,12 @@ const fr: typeof en = {
             memberPrefix: "En tant que",
             memberRole: "membre",
             memberSuffix:
-                ", vous avez accès aux projets, tickets, commentaires et à la saisie de temps de l'espace de travail. La gestion des statuts et des membres reste réservée aux propriétaires.",
+                ", vous rejoignez l'équipe de chaque projet listé ci-dessous — avec le rôle annoncé pour chacun — et accédez à ses tickets, commentaires et à la saisie de temps. Sans projet annoncé, vous n'accédez à aucun projet. La gestion des statuts et des membres reste réservée aux propriétaires.",
             guestPrefix: "En tant qu'",
             guestRole: "invité guest",
             guestSuffix:
-                ", vous n'accéderez qu'aux projets listés ci-dessous — leurs tickets, commentaires et la saisie de temps.",
-            scopeLabel: "Projets du périmètre",
+                ", vous n'accéderez qu'aux projets listés ci-dessous — avec le rôle annoncé pour chacun — leurs tickets, commentaires et la saisie de temps.",
+            scopeLabel: "Projets à rejoindre",
             invitationEmail: "Email de l'invitation",
             accept: "Accepter l'invitation",
             decline: "Refuser",
@@ -851,15 +851,22 @@ const fr: typeof en = {
 
     membersPage: {
         title: "Membres de l'espace de travail",
-        description: "Deux rôles uniquement — propriétaire et membre. Aucune permission fine.",
+        description: "Le propriétaire pilote l'espace — rôles (membre ou guest), invitations et retraits. Aucune permission fine.",
         invite: "Inviter",
         columnMember: "Membre",
         columnRole: "Rôle",
         columnStatus: "Statut",
         memberSince: "Membre depuis le {{date}}",
         memberAria: "Actions pour {{name}}",
+        roleAria: "Rôle de {{name}}",
         removeFromWorkspace: "Retirer de l'espace de travail…",
         removeConfirm: "Retirer {{name}} de cet espace de travail ?",
+        transferOwnership: "Transférer la propriété…",
+        transferTitle: "Transférer la propriété de l'espace",
+        transferDescription:
+            "Vous confiez la propriété de cet espace à {{name}} et redevenez un simple membre. Le transfert est immédiat.",
+        transferConfirm: "Transférer la propriété",
+        transferCancel: "Annuler",
         invitationSent: "Invitation envoyée",
         expired: "Expirée",
         invitationAria: "Actions pour l'invitation {{email}}",
@@ -872,25 +879,19 @@ const fr: typeof en = {
             "Les invitations sont réservées aux propriétaires. Un",
         memberWord: "membre",
         noteSuffix:
-            "accède à tout l'espace, sauf périmètre restreint ; un guest est restreint à son périmètre.",
+            "accède uniquement aux projets où il rejoint l'équipe ; un guest est restreint aux projets choisis.",
         inviteTitle: "Inviter",
         inviteDescriptionPrefix: "Un",
         inviteDescriptionSuffix:
-            "accède à tout l'espace par défaut et peut être restreint à des projets choisis ; un guest est restreint aux projets choisis.",
+            "rejoint l'équipe des projets choisis avec le rôle choisi — sans projet choisi, il n'accède à aucun projet ; un guest est restreint aux projets choisis.",
         roleLabel: "Rôle",
-        scopeLabel: "Périmètre de projets",
-        scopeHint: "Choisissez au moins un projet.",
+        scopeLabel: "Projets à rejoindre",
+        scopeHint:
+            "Choisissez au moins un projet — chacun avec le rôle projet que l'invité tiendra dans son équipe.",
         memberScopeHint:
-            "Laissez vide pour un accès complet à l'espace, ou choisissez des projets pour restreindre le membre.",
+            "L'invitation fait rejoindre l'équipe de chaque projet choisi avec son rôle choisi. Laissez vide pour n'en rejoindre aucune.",
+        projectRoleAria: "Rôle sur {{name}}",
         noProjects: "Aucun projet actif — créez-en un avant d'inviter.",
-        editScope: "Modifier le périmètre…",
-        editScopeTitle: "Modifier le périmètre",
-        editScopeDescription:
-            "Choisissez les projets visibles par {{name}}. Tout le reste se comporte comme inexistant pour cette personne.",
-        editScopeHint:
-            "Ne sélectionnez aucun projet pour un accès complet à l'espace.",
-        ownedScopeNote:
-            "Les projets dont la personne est propriétaire restent dans son périmètre.",
     },
 
     templatesPage: {

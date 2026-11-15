@@ -2,11 +2,9 @@
 
 namespace App\Support;
 
-use App\Enums\ProjectRole;
 use App\Enums\WorkspaceRole;
 use App\Models\Issue;
 use App\Models\KnowledgePage;
-use App\Models\Membership;
 use App\Models\Milestone;
 use App\Models\Project;
 use App\Models\ProjectMember;
@@ -24,8 +22,8 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
  * Also the authorization hub: canUseWorkspace is the belonging check
  * (any membership, guests included), isFullMember excludes guests from
  * workspace-wide surfaces, and accessibleProjectIds resolves a user's
- * scope — a guest's roster, a scoped member's granted perimeter — from
- * the membership data (null = unrestricted).
+ * project access — their roster on the project teams, whatever their
+ * workspace role (null = the unrestricted workspace owner).
  */
 class WorkspaceContext
 {
@@ -92,13 +90,11 @@ class WorkspaceContext
 
     /**
      * Project ids the user may access, or null for an unrestricted
-     * scope (owner and unscoped member). A guest's scope is its
-     * project_members roster; a scoped member's is the perimeter granted
-     * on its membership, extended by the projects it owns (a member can
-     * never be blind to a project they own — they create some, and
-     * ownership can be transferred to them). A non-member sees nothing.
-     * Resolved once per user for the lifetime of the current workspace
-     * binding.
+     * scope (the workspace owner, who never carries team rows). Every
+     * other role — member or guest — is roster-driven: the project team
+     * is the single source of access, whatever role the line carries.
+     * A non-member sees nothing. Resolved once per user for the
+     * lifetime of the current workspace binding.
      *
      * @return list<string>|null
      */
@@ -118,9 +114,9 @@ class WorkspaceContext
     }
 
     /**
-     * Forget the memoized project scopes (all users, or one). Perimeter
+     * Forget the memoized project scopes (all users, or one). Roster
      * writes that need a fresh read on the same instance within a single
-     * request call this after mutating the scope data.
+     * request call this after mutating the team data.
      */
     public function flushAccessibleProjectScope(?User $user = null): void
     {
@@ -144,47 +140,20 @@ class WorkspaceContext
             return [];
         }
 
-        if ($role === WorkspaceRole::Member) {
-            return $this->resolveMemberProjectIds($user, $workspace);
-        }
-
+        // The workspace owner keeps an implicit, unrestricted access to
+        // every project — no team row is ever created for them.
         if ($role === WorkspaceRole::Owner) {
             return null;
         }
 
+        // Members and guests alike are roster-driven: the project team
+        // is the single source of access, whatever role the line
+        // carries. The global workspace scope keeps the roster within
+        // the current workspace.
         return ProjectMember::query()
             ->where('user_id', $user->getKey())
             ->pluck('project_id')
             ->all();
-    }
-
-    /**
-     * A member carrying the scoped marker sees its granted perimeter
-     * extended by its owned projects; without the marker the scope is
-     * unrestricted. Plain roster rows (team membership) never widen the
-     * perimeter: the roster stays the real project team, not a scope.
-     *
-     * @return list<string>|null
-     */
-    private function resolveMemberProjectIds(User $user, Workspace $workspace): ?array
-    {
-        $membership = Membership::query()
-            ->where('workspace_id', $workspace->getKey())
-            ->where('user_id', $user->getKey())
-            ->first();
-
-        if (! ($membership?->is_scoped ?? false)) {
-            return null;
-        }
-
-        $granted = $membership->projectScopeIds();
-        $owned = ProjectMember::query()
-            ->where('user_id', $user->getKey())
-            ->where('role', ProjectRole::Owner->value)
-            ->pluck('project_id')
-            ->all();
-
-        return array_values(array_unique([...$granted, ...$owned]));
     }
 
     public function canViewProject(User $user, Project $project): bool
@@ -225,6 +194,35 @@ class WorkspaceContext
     {
         if ($user === null || ! $this->canAccessIssue($user, $issue)) {
             throw (new ModelNotFoundException)->setModel(Issue::class, [$issue->getKey()]);
+        }
+    }
+
+    /**
+     * Guard for issue mutations (create aside): the acting user must be
+     * in the issue's project scope AND carry a contributing role on it.
+     * A project Guest reads, comments and logs time but never writes:
+     * the refusal is the same 404 / not_found as a non-existent issue —
+     * never a 403 that would confirm the issue exists.
+     */
+    public function abortUnlessIssueContributor(?User $user, Issue $issue): void
+    {
+        $this->abortUnlessIssueAccessible($user, $issue);
+
+        if (! $issue->project->isContributor($user)) {
+            throw (new ModelNotFoundException)->setModel(Issue::class, [$issue->getKey()]);
+        }
+    }
+
+    /**
+     * Guard for project-level writes (issue creation): scope first, then
+     * the contributing role. Same anti-probing refusal as above.
+     */
+    public function abortUnlessProjectContributor(?User $user, Project $project): void
+    {
+        $this->abortUnlessProjectAccessible($user, $project);
+
+        if (! $project->isContributor($user)) {
+            throw (new ModelNotFoundException)->setModel(Project::class, [$project->getKey()]);
         }
     }
 

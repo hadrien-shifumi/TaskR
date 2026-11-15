@@ -20,6 +20,7 @@ use App\Enums\AuditEventType;
 use App\Models\AuditEvent;
 use App\Models\Label;
 use App\Models\Membership;
+use App\Models\ProjectMember;
 use App\Models\Status;
 use App\Models\User;
 use App\Models\Workspace;
@@ -196,6 +197,9 @@ class IssueActivityTest extends TestCase
         $project = CreateProject::run($workspace, $owner, ['name' => 'Site vitrine']);
         $label = Label::factory()->create(['workspace_id' => $workspace->id]);
         $parent = CreateIssue::run($workspace, ['project_id' => $project->id, 'title' => 'Parent'], $owner);
+
+        // The member comments on the issue: a team line carries their access.
+        ProjectMember::create(['project_id' => $project->id, 'user_id' => $member->id, 'role' => 'member']);
 
         $issue = CreateIssue::run($workspace, [
             'project_id' => $project->id,

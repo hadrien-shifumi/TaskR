@@ -376,6 +376,11 @@ class TimeEntryExportTest extends TestCase
             'workspace_id' => app(WorkspaceContext::class)->getOrFail()->id,
             'role' => 'member',
         ]);
+        ProjectMember::create([
+            'project_id' => $issue->project_id,
+            'user_id' => $member->id,
+            'role' => 'member',
+        ]);
 
         $today = CarbonImmutable::today()->toDateString();
         CreateTimeEntry::run($issue, $owner, ['hours' => 1.0, 'worked_at' => $today]);
@@ -400,6 +405,8 @@ class TimeEntryExportTest extends TestCase
             'workspace_id' => $workspace->id,
             'role' => 'member',
         ]);
+        ProjectMember::create(['project_id' => $alpha->id, 'user_id' => $member->id, 'role' => 'member']);
+        ProjectMember::create(['project_id' => $beta->id, 'user_id' => $member->id, 'role' => 'member']);
 
         $alphaIssue = CreateIssue::run($workspace, ['project_id' => $alpha->id, 'title' => 'Alpha 1']);
         $betaIssue = CreateIssue::run($workspace, ['project_id' => $beta->id, 'title' => 'Beta 1']);

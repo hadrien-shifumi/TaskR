@@ -32,18 +32,20 @@ class InvitationMailer
             ?->user;
 
         // The acceptance route has no workspace context: read the announced
-        // scope through the unscoped pivot and project names without the
-        // global scope, exactly like the acceptance landing page.
-        $projectIds = InvitationProject::query()
+        // projects through the unscoped pivot and the project names without
+        // the global scope, exactly like the acceptance landing page. Each
+        // project line carries the role the invitee lands with.
+        $announced = InvitationProject::query()
             ->where('invitation_id', $invitation->getKey())
-            ->pluck('project_id');
+            ->get();
 
-        $projectNames = $projectIds->isEmpty()
+        $projectNames = $announced->isEmpty()
             ? []
             : Project::withoutWorkspaceScope()
-                ->whereIn('id', $projectIds)
+                ->whereIn('id', $announced->pluck('project_id'))
                 ->orderBy('name')
-                ->pluck('name')
+                ->get()
+                ->map(fn (Project $project): string => $project->name.' ('.__('mail.invitation.project_roles.'.$announced->firstWhere('project_id', $project->id)->role->value).')')
                 ->all();
 
         try {

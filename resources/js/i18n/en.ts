@@ -622,12 +622,12 @@ const en = {
             memberPrefix: "As a",
             memberRole: "member",
             memberSuffix:
-                "you get access to the projects, issues, comments and time logging of the workspace. Managing statuses and members stays reserved for owners.",
+                ", you join the team of each project listed below — with the role announced for it — and get access to its issues, comments and time logging. Without an announced project, you access no project. Managing statuses and members stays reserved for owners.",
             guestPrefix: "As a",
             guestRole: "guest",
             guestSuffix:
-                ", you will only access the projects listed below — their issues, comments and time logging.",
-            scopeLabel: "Scope projects",
+                ", you will only access the projects listed below — with the role announced for each — their issues, comments and time logging.",
+            scopeLabel: "Projects to join",
             invitationEmail: "Invitation email",
             accept: "Accept the invitation",
             decline: "Decline",
@@ -844,15 +844,22 @@ const en = {
 
     membersPage: {
         title: "Workspace members",
-        description: "Two roles only — owner and member. No granular permissions.",
+        description: "The owner manages the workspace — roles (member or guest), invitations and removals. No granular permissions.",
         invite: "Invite",
         columnMember: "Member",
         columnRole: "Role",
         columnStatus: "Status",
         memberSince: "Member since {{date}}",
         memberAria: "Actions for {{name}}",
+        roleAria: "Role of {{name}}",
         removeFromWorkspace: "Remove from workspace…",
         removeConfirm: "Remove {{name}} from this workspace?",
+        transferOwnership: "Transfer ownership…",
+        transferTitle: "Transfer workspace ownership",
+        transferDescription:
+            "You will hand the ownership of this workspace to {{name}} and step down to a simple member. The transfer is immediate.",
+        transferConfirm: "Transfer ownership",
+        transferCancel: "Cancel",
         invitationSent: "Invitation sent",
         expired: "Expired",
         invitationAria: "Actions for invitation {{email}}",
@@ -863,23 +870,19 @@ const en = {
         notePrefix: "Invitations are reserved for owners. A",
         memberWord: "member",
         noteSuffix:
-            "sees the whole workspace unless restricted to a perimeter; a guest is restricted to their scope.",
+            "only accesses the projects whose team they join; a guest is restricted to the chosen projects.",
         inviteTitle: "Invite",
         inviteDescriptionPrefix: "A",
         inviteDescriptionSuffix:
-            "sees the whole workspace by default and can be restricted to chosen projects; a guest is restricted to the chosen projects.",
+            "joins the team of each chosen project with the chosen role — with no project chosen, they access no project; a guest is restricted to the chosen projects.",
         roleLabel: "Role",
-        scopeLabel: "Project perimeter",
-        scopeHint: "Pick at least one project.",
+        scopeLabel: "Projects to join",
+        scopeHint:
+            "Pick at least one project — each with the role the invitee lands with on its team.",
         memberScopeHint:
-            "Leave empty for full workspace access, or pick projects to restrict the member.",
+            "The invitation joins the team of every chosen project with its chosen role. Leave empty to join none.",
+        projectRoleAria: "Role on {{name}}",
         noProjects: "No active project — create one before inviting.",
-        editScope: "Edit perimeter…",
-        editScopeTitle: "Edit perimeter",
-        editScopeDescription:
-            "Choose the projects {{name}} can see. Everything else behaves as non-existent for them.",
-        editScopeHint: "Leave every project unselected for full workspace access.",
-        ownedScopeNote: "Projects owned by the member stay in their perimeter.",
     },
 
     templatesPage: {

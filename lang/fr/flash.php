@@ -64,6 +64,11 @@ return [
     'member' => [
         'removed' => 'Membre :name retiré.',
         'scope_updated' => 'Périmètre de projets de :name mis à jour.',
+        'role_updated' => 'Rôle de :name mis à jour.',
+    ],
+
+    'workspace' => [
+        'ownership_transferred' => 'La propriété de l\'espace de travail a été transférée à :name.',
     ],
 
     'template' => [

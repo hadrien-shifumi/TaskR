@@ -153,7 +153,7 @@ export function IssueDetail({
                     </div>
                 </div>
 
-                <DescriptionSection issue={issue} />
+                <DescriptionSection issue={issue} canContribute={canContribute} />
 
                 <section>
                     <SectionHead title={t('issueShow.childIssues')} count={issue.children.length} />

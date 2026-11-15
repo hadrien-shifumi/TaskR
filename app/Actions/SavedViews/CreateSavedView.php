@@ -54,7 +54,7 @@ class CreateSavedView
 
         return SavedView::create([
             'name' => $data['name'],
-            'summary' => SavedViewSummary::make($workspace, $filters, $sort, $dir),
+            'summary' => SavedViewSummary::make($workspace, $filters, $sort, $dir, $creator),
             'filters' => $filters === [] ? null : $filters,
             'sort' => $sort,
             'dir' => $dir,

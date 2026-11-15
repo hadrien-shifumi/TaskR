@@ -29,26 +29,35 @@ class UpdateProjectMemberRole
             return false;
         }
 
-        // Only the project owner (or workspace owner) can change roles.
-        $role = $project->roleOf($user);
+        $target = request()->route('member');
+        $currentRole = $target instanceof User ? $project->roleOf($target) : null;
+        $newRole = ProjectRole::tryFrom((string) request()->input('role'));
 
-        if (! $project->workspace->hasOwner($user) && $role !== ProjectRole::Owner) {
-            return false;
+        // Unknown roster line or role: the validation and the handle
+        // keep their historical refusals (422 / 404).
+        if ($currentRole === null || $newRole === null) {
+            return true;
         }
 
-        // A guest's roster row is their access scope: only the workspace
-        // owner pilots guests, even a project owner of another project.
-        $target = request()->route('member');
+        // Ownership transfer keeps its statu quo: the project owner or
+        // the workspace owner transfers, the previous owner is demoted.
+        if ($newRole === ProjectRole::Owner) {
+            return $project->workspace->hasOwner($user)
+                || $project->roleOf($user) === ProjectRole::Owner;
+        }
 
-        return ! $target instanceof User
-            || ! $project->workspace->isGuest($target)
-            || $project->workspace->hasOwner($user);
+        // N+1 (D9): the target line and the assigned role both sit
+        // strictly below the actor — never a pair, never a superior.
+        // The workspace owner bypasses (D11); the workspace role of
+        // the target never appears (D7).
+        return $project->canPilotRole($user, $currentRole)
+            && $project->canPilotRole($user, $newRole);
     }
 
     public function rules(): array
     {
         return [
-            'role' => ['required', 'string', Rule::in(['owner', 'manager', 'member'])],
+            'role' => ['required', 'string', Rule::in(['owner', 'manager', 'member', 'guest'])],
         ];
     }
 

@@ -31,8 +31,10 @@ class RemoveMember
     /**
      * Remove a member from the workspace. The acting owner cannot remove
      * themselves — a workspace always keeps at least its acting owner.
-     * The member's project roster rows go with the membership: their access
-     * scope disappears with their belonging.
+     *
+     * D15: the belonging carries everything — every team row of the
+     * workspace goes, and every assignment of the member's issues is
+     * released (the issues, their comments and their history stay).
      */
     public function handle(Workspace $workspace, User $member, User $actor): void
     {
@@ -50,6 +52,18 @@ class RemoveMember
             ProjectMember::withoutWorkspaceScope()
                 ->where('workspace_id', $workspace->id)
                 ->where('user_id', $member->id)
+                ->delete();
+
+            // The assignments follow the belonging: every issue of the
+            // workspace releases the removed member. Their rows in other
+            // workspaces never match this scope.
+            $issueIds = DB::table('issues')
+                ->where('workspace_id', $workspace->id)
+                ->pluck('id');
+
+            DB::table('issue_assignees')
+                ->where('user_id', $member->id)
+                ->whereIn('issue_id', $issueIds)
                 ->delete();
         });
     }

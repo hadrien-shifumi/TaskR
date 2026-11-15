@@ -14,7 +14,7 @@ use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
 #[IsReadOnly]
 #[Name('list_projects')]
-#[Description('List the projects of a workspace (id, name, description, target date, archived date). For a guest or a scoped member, only the projects of their perimeter.')]
+#[Description('List the projects of a workspace (id, name, description, target date, archived date). Each member only sees the projects of their teams; the workspace owner sees them all.')]
 class ListProjects extends AgentTool
 {
     /**

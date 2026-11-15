@@ -38,7 +38,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Head, router, useForm, usePage } from '@inertiajs/react';
-import { MoreHorizontal, Send, ShieldCheck, Trash2, X } from 'lucide-react';
+import { Crown, MoreHorizontal, Send, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { PageSharedProps } from '@/types';
@@ -49,8 +49,6 @@ interface MemberRow {
     name: string;
     email: string;
     role: 'owner' | 'member' | 'guest';
-    isScoped: boolean;
-    scopeProjects: Array<{ id: string; name: string; owned: boolean }>;
     joinedAt: string | null;
 }
 
@@ -58,7 +56,7 @@ interface InvitationRow {
     id: string;
     email: string;
     role: 'member' | 'guest';
-    projects: string[];
+    projects: { name: string; role: string }[];
     status: 'sent' | 'expired';
     invitedAt: string | null;
 }
@@ -81,53 +79,47 @@ function formatJoined(date: string | null): string {
 const MENU_TRIGGER_CLASS =
     'grid size-6.5 place-items-center rounded-md text-muted-foreground outline-none hover:bg-accent hover:text-foreground';
 
+type InviteProjectRole = 'manager' | 'member' | 'guest';
+
+interface InviteProject {
+    project_id: string;
+    role: InviteProjectRole;
+}
+
 export default function Members() {
     const { members, invitations, projects } = usePage<PageProps>().props;
     const { workspace, auth } = usePage<PageSharedProps>().props;
     const { t } = useTranslation();
     const isOwner = workspace?.role === 'owner';
     const [inviting, setInviting] = useState(false);
-    const [scopeEditing, setScopeEditing] = useState<MemberRow | null>(null);
+    const [transferring, setTransferring] = useState<MemberRow | null>(null);
 
-    const inviteForm = useForm<{ email: string; role: 'member' | 'guest'; project_ids: string[] }>({
+    const inviteForm = useForm<{ email: string; role: 'member' | 'guest'; projects: InviteProject[] }>({
         email: '',
         role: 'member',
-        project_ids: [],
+        projects: [],
     });
 
-    const scopeForm = useForm<{ project_ids: string[] }>({ project_ids: [] });
+    const transferForm = useForm<Record<string, never>>({});
 
     const toggleProject = (id: string) => {
         inviteForm.setData(
-            'project_ids',
-            inviteForm.data.project_ids.includes(id)
-                ? inviteForm.data.project_ids.filter((p) => p !== id)
-                : [...inviteForm.data.project_ids, id],
+            'projects',
+            inviteForm.data.projects.some((p) => p.project_id === id)
+                ? inviteForm.data.projects.filter((p) => p.project_id !== id)
+                : [...inviteForm.data.projects, { project_id: id, role: 'member' }],
         );
     };
 
-    const openScopeEditor = (member: MemberRow) => {
-        setScopeEditing(member);
-        scopeForm.setData('project_ids', member.scopeProjects.map((p) => p.id));
-        scopeForm.clearErrors();
-    };
-
-    const toggleScopeProject = (id: string) => {
-        scopeForm.setData(
-            'project_ids',
-            scopeForm.data.project_ids.includes(id)
-                ? scopeForm.data.project_ids.filter((p) => p !== id)
-                : [...scopeForm.data.project_ids, id],
+    const setProjectRole = (id: string, role: InviteProjectRole) => {
+        inviteForm.setData(
+            'projects',
+            inviteForm.data.projects.map((p) => (p.project_id === id ? { ...p, role } : p)),
         );
     };
 
-    const submitScope = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!scopeEditing) return;
-        scopeForm.patch(route('workspaces.members.scope', [workspace?.id, scopeEditing.id]), {
-            onSuccess: () => setScopeEditing(null),
-        });
-    };
+    const roleOfInvitedProject = (id: string): InviteProjectRole =>
+        inviteForm.data.projects.find((p) => p.project_id === id)?.role ?? 'member';
 
     const submitInvite = (e: React.FormEvent) => {
         e.preventDefault();
@@ -142,6 +134,24 @@ export default function Members() {
     const remove = (member: MemberRow) => {
         if (!window.confirm(t('membersPage.removeConfirm', { name: member.name }))) return;
         router.delete(route('workspaces.members.destroy', [workspace?.id, member.id]));
+    };
+
+    // The owner alone flips Member ↔ Guest; the server enforces it again.
+    const changeRole = (member: MemberRow, role: 'member' | 'guest') => {
+        if (member.role === role) return;
+        router.patch(
+            route('workspaces.members.update', [workspace?.id, member.id]),
+            { role },
+            { preserveScroll: true },
+        );
+    };
+
+    const submitTransfer = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!transferring) return;
+        transferForm.post(route('workspaces.members.transfer-ownership', [workspace?.id, transferring.id]), {
+            onSuccess: () => setTransferring(null),
+        });
     };
 
     const resend = (invitation: InvitationRow) => {
@@ -191,18 +201,36 @@ export default function Members() {
                                             <p className="truncate text-xs text-muted-foreground">
                                                 {member.email}
                                             </p>
-                                            {member.isScoped && member.scopeProjects.length > 0 ? (
-                                                <p className="truncate text-xs text-muted-foreground">
-                                                    {member.scopeProjects.map((p) => p.name).join(' · ')}
-                                                </p>
-                                            ) : null}
                                         </div>
                                     </div>
                                 </TableCell>
                                 <TableCell>
-                                    <Badge variant="secondary" className="rounded-full bg-secondary text-muted-foreground">
-                                        {t(`layout.roles.${member.role}`)}
-                                    </Badge>
+                                    {isOwner && member.role !== 'owner' ? (
+                                        <Select
+                                            value={member.role}
+                                            onValueChange={(v) => {
+                                                if (v !== 'member' && v !== 'guest') return;
+                                                changeRole(member, v);
+                                            }}
+                                        >
+                                            <SelectTrigger
+                                                aria-label={t('membersPage.roleAria', { name: member.name })}
+                                                className="h-8 w-32"
+                                            >
+                                                <SelectValue>
+                                                    {t(`layout.roles.${member.role}`)}
+                                                </SelectValue>
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="member">{t('layout.roles.member')}</SelectItem>
+                                                <SelectItem value="guest">{t('layout.roles.guest')}</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    ) : (
+                                        <Badge variant="secondary" className="rounded-full bg-secondary text-muted-foreground">
+                                            {t(`layout.roles.${member.role}`)}
+                                        </Badge>
+                                    )}
                                 </TableCell>
                                 <TableCell className="text-sm text-muted-foreground">
                                     {t('membersPage.memberSince', { date: formatJoined(member.joinedAt) })}
@@ -218,12 +246,13 @@ export default function Members() {
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
                                                 <DropdownMenuGroup>
-                                                    {member.role === 'member' ? (
-                                                        <DropdownMenuItem onClick={() => openScopeEditor(member)}>
-                                                            <ShieldCheck aria-hidden />
-                                                            {t('membersPage.editScope')}
-                                                        </DropdownMenuItem>
-                                                    ) : null}
+                                                    <DropdownMenuItem onClick={() => setTransferring(member)}>
+                                                        <Crown aria-hidden />
+                                                        {t('membersPage.transferOwnership')}
+                                                    </DropdownMenuItem>
+                                                </DropdownMenuGroup>
+                                                <DropdownMenuSeparator />
+                                                <DropdownMenuGroup>
                                                     <DropdownMenuItem variant="destructive" onClick={() => remove(member)}>
                                                         <Trash2 aria-hidden />
                                                         {t('membersPage.removeFromWorkspace')}
@@ -248,7 +277,9 @@ export default function Members() {
                                             </p>
                                             {invitation.projects.length > 0 ? (
                                                 <p className="truncate text-xs text-muted-foreground">
-                                                    {invitation.projects.join(' · ')}
+                                                    {invitation.projects
+                                                        .map((project) => `${project.name} · ${t(`layout.roles.${project.role}`)}`)
+                                                        .join(' · ')}
                                                 </p>
                                             ) : null}
                                         </div>
@@ -376,20 +407,50 @@ export default function Members() {
                                     ? t('membersPage.scopeHint')
                                     : t('membersPage.memberScopeHint')}
                             </p>
-                            <div className="flex flex-wrap gap-2">
+                            <div className="grid gap-2">
                                 {projects.map((project) => {
-                                    const selected = inviteForm.data.project_ids.includes(project.id);
+                                    const selected = inviteForm.data.projects.some(
+                                        (p) => p.project_id === project.id,
+                                    );
                                     return (
-                                        <Button
-                                            key={project.id}
-                                            type="button"
-                                            size="sm"
-                                            variant={selected ? 'default' : 'outline'}
-                                            aria-pressed={selected}
-                                            onClick={() => toggleProject(project.id)}
-                                        >
-                                            {project.name}
-                                        </Button>
+                                        <div key={project.id} className="flex items-center gap-2">
+                                            <Button
+                                                type="button"
+                                                size="sm"
+                                                variant={selected ? 'default' : 'outline'}
+                                                aria-pressed={selected}
+                                                onClick={() => toggleProject(project.id)}
+                                            >
+                                                {project.name}
+                                            </Button>
+                                            {selected ? (
+                                                <Select
+                                                    value={roleOfInvitedProject(project.id)}
+                                                    onValueChange={(v) => {
+                                                        if (v !== 'manager' && v !== 'member' && v !== 'guest') return;
+                                                        setProjectRole(project.id, v);
+                                                    }}
+                                                >
+                                                    <SelectTrigger
+                                                        aria-label={t('membersPage.projectRoleAria', {
+                                                            name: project.name,
+                                                        })}
+                                                        className="h-8 w-32"
+                                                    >
+                                                        <SelectValue>
+                                                            {t(`layout.roles.${roleOfInvitedProject(project.id)}`)}
+                                                        </SelectValue>
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="manager">
+                                                            {t('layout.roles.manager')}
+                                                        </SelectItem>
+                                                        <SelectItem value="member">{t('layout.roles.member')}</SelectItem>
+                                                        <SelectItem value="guest">{t('layout.roles.guest')}</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            ) : null}
+                                        </div>
                                     );
                                 })}
                             </div>
@@ -398,9 +459,9 @@ export default function Members() {
                                     {t('membersPage.noProjects')}
                                 </p>
                             ) : null}
-                            {inviteForm.errors.project_ids ? (
+                            {inviteForm.errors.projects ? (
                                 <p className="text-sm text-destructive">
-                                    {inviteForm.errors.project_ids}
+                                    {inviteForm.errors.projects}
                                 </p>
                             ) : null}
                         </div>
@@ -413,52 +474,26 @@ export default function Members() {
                 </DialogContent>
             </Dialog>
 
-            <Dialog open={scopeEditing !== null} onOpenChange={(open) => (open ? null : setScopeEditing(null))}>
+            <Dialog open={transferring !== null} onOpenChange={(open) => (open ? null : setTransferring(null))}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>{t('membersPage.editScopeTitle')}</DialogTitle>
+                        <DialogTitle>{t('membersPage.transferTitle')}</DialogTitle>
                         <DialogDescription>
-                            {t('membersPage.editScopeDescription', { name: scopeEditing?.name ?? '' })}
+                            {t('membersPage.transferDescription', { name: transferring?.name ?? '' })}
                         </DialogDescription>
                     </DialogHeader>
-                    <form onSubmit={submitScope} className="grid gap-4">
-                        <div className="grid gap-2">
-                            <p className="text-sm text-muted-foreground">
-                                {t('membersPage.editScopeHint')}
-                            </p>
-                            <div className="flex flex-wrap gap-2">
-                                {projects.map((project) => {
-                                    const selected = scopeForm.data.project_ids.includes(project.id);
-                                    const owned = scopeEditing?.scopeProjects.some(
-                                        (p) => p.id === project.id && p.owned,
-                                    );
-                                    return (
-                                        <Button
-                                            key={project.id}
-                                            type="button"
-                                            size="sm"
-                                            variant={selected ? 'default' : 'outline'}
-                                            aria-pressed={selected}
-                                            disabled={owned}
-                                            onClick={() => toggleScopeProject(project.id)}
-                                        >
-                                            {project.name}
-                                        </Button>
-                                    );
-                                })}
-                            </div>
-                            {scopeEditing?.scopeProjects.some((p) => p.owned) ? (
-                                <p className="text-sm text-muted-foreground">
-                                    {t('membersPage.ownedScopeNote')}
-                                </p>
-                            ) : null}
-                            {scopeForm.errors.project_ids ? (
-                                <p className="text-sm text-destructive">{scopeForm.errors.project_ids}</p>
-                            ) : null}
-                        </div>
+                    <form onSubmit={submitTransfer} className="grid gap-4">
                         <DialogFooter>
-                            <Button type="submit" disabled={scopeForm.processing}>
-                                {t('membersPage.editScopeTitle')}
+                            <Button
+                                type="button"
+                                variant="outline"
+                                disabled={transferForm.processing}
+                                onClick={() => setTransferring(null)}
+                            >
+                                {t('membersPage.transferCancel')}
+                            </Button>
+                            <Button type="submit" disabled={transferForm.processing}>
+                                {t('membersPage.transferConfirm')}
                             </Button>
                         </DialogFooter>
                     </form>

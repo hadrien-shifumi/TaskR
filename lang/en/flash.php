@@ -64,6 +64,11 @@ return [
     'member' => [
         'removed' => 'Member :name removed.',
         'scope_updated' => 'Project perimeter of :name updated.',
+        'role_updated' => 'Role of :name updated.',
+    ],
+
+    'workspace' => [
+        'ownership_transferred' => 'Workspace ownership transferred to :name.',
     ],
 
     'template' => [

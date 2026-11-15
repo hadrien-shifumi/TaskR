@@ -4,10 +4,12 @@ namespace Tests\Feature;
 
 use App\Actions\Comments\AddComment;
 use App\Actions\Issues\CreateIssue;
+use App\Actions\Issues\SetAssignees;
 use App\Actions\Projects\CreateProject;
 use App\Actions\TimeTracking\CreateTimeEntry;
 use App\Actions\Workspaces\CreateWorkspace;
 use App\Mcp\Servers\TaskrServer;
+use App\Mcp\Tools\CreateIssue as CreateIssueTool;
 use App\Mcp\Tools\ListComments;
 use App\Mcp\Tools\ListIssues;
 use App\Mcp\Tools\ListTimeEntries;
@@ -15,6 +17,7 @@ use App\Mcp\Tools\UpdateIssue as UpdateIssueTool;
 use App\Models\Issue;
 use App\Models\Membership;
 use App\Models\ProjectMember;
+use App\Models\Scopes\WorkspaceScope;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Support\WorkspaceContext;
@@ -125,7 +128,7 @@ class IssueScopeTest extends TestCase
                 ->where('projectBoards.0.project.name', 'Alpha'));
     }
 
-    public function test_member_still_sees_every_issue(): void
+    public function test_teamed_member_sees_their_team_issues(): void
     {
         [$owner, $workspace, $inScopeIssue, $outOfScopeIssue, $guest] = $this->setupScopedGuest();
         $member = User::factory()->create();
@@ -134,6 +137,10 @@ class IssueScopeTest extends TestCase
             'workspace_id' => $workspace->id,
             'role' => 'member',
         ]);
+
+        // A member sees exactly their teams: both projects here.
+        $inScopeIssue->project->projectMembers()->create(['user_id' => $member->id, 'role' => 'member']);
+        $outOfScopeIssue->project->projectMembers()->create(['user_id' => $member->id, 'role' => 'member']);
 
         $this->actingAs($member)
             ->get(route('issues.index'))
@@ -270,6 +277,58 @@ class IssueScopeTest extends TestCase
         ]);
     }
 
+    public function test_issue_creation_only_accepts_roster_members_of_the_target_project(): void
+    {
+        [$owner, $workspace, $inScopeIssue, $outOfScopeIssue, $guest] = $this->setupScopedGuest();
+        $project = $inScopeIssue->project;
+
+        // A contributor of the project (roster line) creating in it.
+        $contributor = User::factory()->create();
+        Membership::create([
+            'user_id' => $contributor->id,
+            'workspace_id' => $workspace->id,
+            'role' => 'member',
+        ]);
+        ProjectMember::create([
+            'project_id' => $project->id,
+            'user_id' => $contributor->id,
+            'role' => 'member',
+        ]);
+
+        // A workspace member who is NOT on the target project's roster:
+        // assignable = a team line (D6) — an out-of-team assignee could
+        // not even see the ticket (D2).
+        $outsider = User::factory()->create();
+        Membership::create([
+            'user_id' => $outsider->id,
+            'workspace_id' => $workspace->id,
+            'role' => 'member',
+        ]);
+
+        $this->actingAs($contributor)
+            ->post('/issues', [
+                'project_id' => $project->id,
+                'title' => 'Avec un hors équipe',
+                'assignees' => [$outsider->id],
+            ])
+            ->assertSessionHasErrors('assignees.0');
+
+        $this->assertDatabaseMissing('issues', ['title' => 'Avec un hors équipe']);
+
+        // The same creation with a roster member goes through.
+        $this->actingAs($contributor)
+            ->post('/issues', [
+                'project_id' => $project->id,
+                'title' => 'Avec un équipier',
+                'assignees' => [$guest->id],
+            ])
+            ->assertRedirect();
+
+        $issue = $workspace->issues()->withoutGlobalScope(WorkspaceScope::class)->where('title', 'Avec un équipier')->firstOrFail();
+
+        $this->assertSame([$guest->id], $issue->assignees()->pluck('users.id')->all());
+    }
+
     // ── Commentaires et temps ─────────────────────────────────────────
 
     public function test_guest_cannot_comment_on_out_of_scope_issue(): void
@@ -373,5 +432,316 @@ class IssueScopeTest extends TestCase
         ]);
 
         $this->assertSame('not_found', $timeEntries->payload()['error']);
+    }
+
+    // ── Invité projet : lecture + commentaires + temps, aucune écriture ─
+
+    /**
+     * A workspace member carrying the roster role Guest on the issue's
+     * project: the project-role perimeter (T2). Whatever their workspace
+     * role, a project guest reads, comments, logs time and stays
+     * assignable — but never writes the issue.
+     *
+     * @return array{0: User, 1: Workspace, 2: Issue, 3: User}
+     */
+    private function setupProjectGuest(): array
+    {
+        $owner = User::factory()->create();
+        $workspace = CreateWorkspace::run($owner, ['name' => 'WS']);
+        app(WorkspaceContext::class)->set($workspace);
+
+        $project = CreateProject::run($workspace, $owner, ['name' => 'Alpha']);
+        $issue = CreateIssue::run($workspace, ['project_id' => $project->id, 'title' => 'Ticket equipe']);
+
+        $projectGuest = User::factory()->create();
+        Membership::create([
+            'user_id' => $projectGuest->id,
+            'workspace_id' => $workspace->id,
+            'role' => 'member',
+        ]);
+        ProjectMember::create([
+            'project_id' => $project->id,
+            'user_id' => $projectGuest->id,
+            'role' => 'guest',
+        ]);
+
+        return [$owner, $workspace, $issue, $projectGuest];
+    }
+
+    public function test_project_guest_reads_the_issue_detail_page(): void
+    {
+        [$owner, $workspace, $issue, $projectGuest] = $this->setupProjectGuest();
+
+        $this->actingAs($projectGuest)
+            ->get(route('issues.show', $issue->id))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('issue.id', $issue->id)
+                ->where('canContribute', false));
+    }
+
+    public function test_project_guest_cannot_create_an_issue(): void
+    {
+        [$owner, $workspace, $issue, $projectGuest] = $this->setupProjectGuest();
+
+        $this->actingAs($projectGuest)
+            ->post(route('issues.store'), [
+                'project_id' => $issue->project_id,
+                'title' => 'Ticket interdit',
+            ])
+            ->assertNotFound();
+
+        $this->assertDatabaseMissing('issues', ['title' => 'Ticket interdit']);
+    }
+
+    public function test_project_guest_cannot_update_an_issue(): void
+    {
+        [$owner, $workspace, $issue, $projectGuest] = $this->setupProjectGuest();
+
+        $this->actingAs($projectGuest)
+            ->patch(route('issues.update', $issue->id), ['title' => 'Pirate'])
+            ->assertNotFound();
+
+        $this->assertDatabaseHas('issues', ['id' => $issue->id, 'title' => 'Ticket equipe']);
+    }
+
+    public function test_project_guest_cannot_delete_an_issue(): void
+    {
+        [$owner, $workspace, $issue, $projectGuest] = $this->setupProjectGuest();
+
+        $this->actingAs($projectGuest)
+            ->delete(route('issues.destroy', $issue->id))
+            ->assertNotFound();
+
+        $this->assertDatabaseHas('issues', ['id' => $issue->id]);
+    }
+
+    public function test_project_guest_cannot_move_an_issue(): void
+    {
+        [$owner, $workspace, $issue, $projectGuest] = $this->setupProjectGuest();
+        $status = $workspace->statuses()->first();
+
+        $this->actingAs($projectGuest)
+            ->post(route('issues.move', $issue->id), ['status_id' => $status->id])
+            ->assertNotFound();
+    }
+
+    public function test_project_guest_cannot_set_labels(): void
+    {
+        [$owner, $workspace, $issue, $projectGuest] = $this->setupProjectGuest();
+
+        $this->actingAs($projectGuest)
+            ->post(route('issues.labels', $issue->id), ['label_ids' => []])
+            ->assertNotFound();
+    }
+
+    public function test_project_guest_cannot_assign(): void
+    {
+        [$owner, $workspace, $issue, $projectGuest] = $this->setupProjectGuest();
+
+        // A valid roster target: the project owner. The refusal is about
+        // the actor's role, not the target.
+        $this->actingAs($projectGuest)
+            ->post(route('issues.assignees', $issue->id), ['assignees' => [$owner->id]])
+            ->assertNotFound();
+
+        $this->assertDatabaseMissing('issue_assignees', [
+            'issue_id' => $issue->id,
+            'user_id' => $owner->id,
+        ]);
+    }
+
+    public function test_project_guest_cannot_set_a_parent(): void
+    {
+        [$owner, $workspace, $issue, $projectGuest] = $this->setupProjectGuest();
+
+        $this->actingAs($projectGuest)
+            ->post(route('issues.parent', $issue->id), ['parent_id' => null])
+            ->assertNotFound();
+    }
+
+    public function test_project_guest_cannot_set_dependencies(): void
+    {
+        [$owner, $workspace, $issue, $projectGuest] = $this->setupProjectGuest();
+
+        $this->actingAs($projectGuest)
+            ->post(route('issues.dependencies', $issue->id), ['blocked_by' => []])
+            ->assertNotFound();
+    }
+
+    public function test_project_guest_cannot_set_the_estimate(): void
+    {
+        [$owner, $workspace, $issue, $projectGuest] = $this->setupProjectGuest();
+
+        $this->actingAs($projectGuest)
+            ->post(route('issues.estimate', $issue->id), ['estimated_hours' => 2])
+            ->assertNotFound();
+
+        $this->assertDatabaseHas('issues', ['id' => $issue->id, 'estimated_hours' => null]);
+    }
+
+    public function test_project_guest_cannot_toggle_auto_completion(): void
+    {
+        [$owner, $workspace, $issue, $projectGuest] = $this->setupProjectGuest();
+
+        $this->actingAs($projectGuest)
+            ->post(route('issues.auto-complete', $issue->id), ['enabled' => true])
+            ->assertNotFound();
+
+        $this->assertDatabaseHas('issues', ['id' => $issue->id, 'auto_complete_children' => false]);
+    }
+
+    public function test_project_guest_cannot_link_knowledge_pages(): void
+    {
+        [$owner, $workspace, $issue, $projectGuest] = $this->setupProjectGuest();
+
+        $this->actingAs($projectGuest)
+            ->post(route('issues.knowledge', $issue->id), ['page_ids' => []])
+            ->assertNotFound();
+    }
+
+    public function test_project_guest_cannot_set_the_milestone(): void
+    {
+        [$owner, $workspace, $issue, $projectGuest] = $this->setupProjectGuest();
+
+        $this->actingAs($projectGuest)
+            ->post(route('issues.milestone', $issue->id), ['milestone_id' => null])
+            ->assertNotFound();
+    }
+
+    public function test_project_guest_can_comment(): void
+    {
+        [$owner, $workspace, $issue, $projectGuest] = $this->setupProjectGuest();
+
+        $this->actingAs($projectGuest)
+            ->post(route('comments.store', $issue->id), ['body' => 'Note du guest projet'])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('comments', [
+            'issue_id' => $issue->id,
+            'body' => 'Note du guest projet',
+        ]);
+    }
+
+    public function test_project_guest_can_log_time(): void
+    {
+        [$owner, $workspace, $issue, $projectGuest] = $this->setupProjectGuest();
+
+        $this->actingAs($projectGuest)
+            ->post(route('issues.time-entries.store', $issue->id), ['hours' => 1.5])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('time_entries', [
+            'issue_id' => $issue->id,
+            'author_id' => $projectGuest->id,
+        ]);
+    }
+
+    public function test_project_guest_can_fill_the_week_timesheet(): void
+    {
+        [$owner, $workspace, $issue, $projectGuest] = $this->setupProjectGuest();
+
+        $monday = now()->startOfWeek()->toDateString();
+
+        $this->actingAs($projectGuest)
+            ->postJson(route('time-entries.week.store'), [
+                'week' => $monday,
+                'lines' => [[
+                    'issueId' => $issue->id,
+                    'note' => null,
+                    'days' => [$monday => 2],
+                ]],
+            ])
+            ->assertOk()
+            ->assertJsonPath('created', 1);
+
+        $this->assertDatabaseHas('time_entries', [
+            'issue_id' => $issue->id,
+            'author_id' => $projectGuest->id,
+            'hours' => 2,
+        ]);
+    }
+
+    public function test_project_guest_is_assignable(): void
+    {
+        [$owner, $workspace, $issue, $projectGuest] = $this->setupProjectGuest();
+
+        // A roster line makes the project guest a legitimate assignee
+        // target, whoever assigns (here the workspace owner).
+        SetAssignees::run($issue, [$projectGuest->id], $owner);
+
+        $this->assertDatabaseHas('issue_assignees', [
+            'issue_id' => $issue->id,
+            'user_id' => $projectGuest->id,
+        ]);
+    }
+
+    public function test_project_guest_issues_index_hides_the_create_button(): void
+    {
+        [$owner, $workspace, $issue, $projectGuest] = $this->setupProjectGuest();
+
+        $this->actingAs($projectGuest)
+            ->get(route('issues.index'))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('canCreateIssue', false));
+    }
+
+    public function test_project_guest_mcp_create_issue_is_not_found(): void
+    {
+        [$owner, $workspace, $issue, $projectGuest] = $this->setupProjectGuest();
+
+        $response = TaskrServer::actingAs($projectGuest)->tool(CreateIssueTool::class, [
+            'workspace_id' => $workspace->id,
+            'project_id' => $issue->project_id,
+            'title' => 'Ticket interdit',
+        ]);
+
+        $this->assertSame('not_found', $response->payload()['error']);
+        $this->assertDatabaseMissing('issues', ['title' => 'Ticket interdit']);
+    }
+
+    public function test_project_guest_mcp_update_issue_is_not_found(): void
+    {
+        [$owner, $workspace, $issue, $projectGuest] = $this->setupProjectGuest();
+
+        $response = TaskrServer::actingAs($projectGuest)->tool(UpdateIssueTool::class, [
+            'workspace_id' => $workspace->id,
+            'issue_id' => $issue->id,
+            'title' => 'Pirate',
+        ]);
+
+        $this->assertSame('not_found', $response->payload()['error']);
+        $this->assertDatabaseHas('issues', ['id' => $issue->id, 'title' => 'Ticket equipe']);
+    }
+
+    // ── Orthogonalité : le rôle ws ne décide plus des droits projet ──
+
+    public function test_workspace_guest_roster_manager_can_create_an_issue(): void
+    {
+        [$owner, $workspace, $issue, $projectGuest] = $this->setupProjectGuest();
+
+        // D7: a workspace guest promoted project manager exercises the
+        // project role fully, whatever their workspace role.
+        $workspaceGuest = User::factory()->create();
+        Membership::create([
+            'user_id' => $workspaceGuest->id,
+            'workspace_id' => $workspace->id,
+            'role' => 'guest',
+        ]);
+        ProjectMember::create([
+            'project_id' => $issue->project_id,
+            'user_id' => $workspaceGuest->id,
+            'role' => 'manager',
+        ]);
+
+        $this->actingAs($workspaceGuest)
+            ->post(route('issues.store'), [
+                'project_id' => $issue->project_id,
+                'title' => 'Ticket du manager invite',
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('issues', ['title' => 'Ticket du manager invite']);
     }
 }

@@ -15,13 +15,17 @@ it('lets an invited user join the workspace through the acceptance link', functi
     CreateIssue::run($workspace, ['project_id' => $project->id, 'title' => 'Page de profil']);
 
     // There is no invitation UI yet: the owner's invite is the domain's
-    // (InviteMember), the browser covers the acceptance journey.
+    // (InviteMember), the browser covers the acceptance journey. The
+    // announced projects are the teams Bob joins on acceptance — the
+    // team line is what carries his access to the project.
     $invitation = Invitation::withoutWorkspaceScope()->create([
         'workspace_id' => $workspace->id,
         'email' => 'bob@example.com',
+        'role' => 'member',
         'token' => Str::random(64),
         'expires_at' => now()->addDays(7),
     ]);
+    $invitation->attachScope([$project->id]);
 
     $bob = User::factory()->create(['email' => 'bob@example.com']);
     $this->actingAs($bob);

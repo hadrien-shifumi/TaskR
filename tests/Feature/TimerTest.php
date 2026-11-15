@@ -177,6 +177,7 @@ class TimerTest extends TestCase
 
         $colleague = User::factory()->create();
         Membership::create(['user_id' => $colleague->id, 'workspace_id' => $workspace->id, 'role' => 'member']);
+        ProjectMember::create(['project_id' => $issue->project_id, 'user_id' => $colleague->id, 'role' => 'member']);
         $colleaguesTimer = StartTimer::run($issue, $colleague)['timer'];
 
         $this->actingAs($owner)
@@ -330,6 +331,7 @@ class TimerTest extends TestCase
 
         $colleague = User::factory()->create();
         Membership::create(['user_id' => $colleague->id, 'workspace_id' => $workspace->id, 'role' => 'member']);
+        ProjectMember::create(['project_id' => $issue->project_id, 'user_id' => $colleague->id, 'role' => 'member']);
         $colleaguesTimer = StartTimer::run($issue, $colleague)['timer'];
 
         $otherProject = CreateProject::run($workspace, $owner, ['name' => 'Autre projet']);

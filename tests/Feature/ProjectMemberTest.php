@@ -49,14 +49,43 @@ class ProjectMemberTest extends TestCase
         return $member;
     }
 
+    /**
+     * Give a workspace member a roster row on the project.
+     */
+    private function addProjectMember(Project $project, User $user, ProjectRole $role = ProjectRole::Member): void
+    {
+        ProjectMember::create([
+            'project_id' => $project->id,
+            'user_id' => $user->id,
+            'role' => $role->value,
+        ]);
+    }
+
     // ── Enum ProjectRole ──────────────────────────────────────────────
 
-    public function test_project_role_enum_has_three_cases(): void
+    public function test_project_role_enum_has_four_cases(): void
     {
         $this->assertSame('owner', ProjectRole::Owner->value);
         $this->assertSame('manager', ProjectRole::Manager->value);
         $this->assertSame('member', ProjectRole::Member->value);
-        $this->assertCount(3, ProjectRole::cases());
+        $this->assertSame('guest', ProjectRole::Guest->value);
+        $this->assertCount(4, ProjectRole::cases());
+    }
+
+    public function test_project_role_rank_orders_the_n_plus_1_hierarchy(): void
+    {
+        $this->assertSame(3, ProjectRole::Owner->rank());
+        $this->assertSame(2, ProjectRole::Manager->rank());
+        $this->assertSame(1, ProjectRole::Member->rank());
+        $this->assertSame(0, ProjectRole::Guest->rank());
+
+        // Strict superiority only: never a pair, never an inferior.
+        $this->assertTrue(ProjectRole::Owner->outranks(ProjectRole::Manager));
+        $this->assertTrue(ProjectRole::Manager->outranks(ProjectRole::Member));
+        $this->assertTrue(ProjectRole::Member->outranks(ProjectRole::Guest));
+        $this->assertFalse(ProjectRole::Owner->outranks(ProjectRole::Owner));
+        $this->assertFalse(ProjectRole::Manager->outranks(ProjectRole::Manager));
+        $this->assertFalse(ProjectRole::Guest->outranks(ProjectRole::Owner));
     }
 
     // ── CreateProject auto-onboard ────────────────────────────────────
@@ -119,6 +148,20 @@ class ProjectMemberTest extends TestCase
             'project_id' => $project->id,
             'user_id' => $member->id,
             'role' => ProjectRole::Member->value,
+        ]);
+
+        $this->assertFalse($project->isManager($member));
+    }
+
+    public function test_project_is_manager_returns_false_for_guest_role(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspaceWithProject();
+        $member = $this->addWorkspaceMember($workspace);
+
+        ProjectMember::create([
+            'project_id' => $project->id,
+            'user_id' => $member->id,
+            'role' => ProjectRole::Guest->value,
         ]);
 
         $this->assertFalse($project->isManager($member));
@@ -268,6 +311,25 @@ class ProjectMemberTest extends TestCase
             ->assertSessionHasErrors();
     }
 
+    public function test_add_project_member_accepts_the_guest_role(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspaceWithProject();
+        $member = $this->addWorkspaceMember($workspace);
+
+        $this->actingAs($owner)
+            ->post(route('projects.members.store', $project->id), [
+                'user_id' => $member->id,
+                'role' => 'guest',
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('project_members', [
+            'project_id' => $project->id,
+            'user_id' => $member->id,
+            'role' => 'guest',
+        ]);
+    }
+
     public function test_add_project_member_is_denied_for_regular_member(): void
     {
         [$owner, $workspace, $project] = $this->setupWorkspaceWithProject();
@@ -393,6 +455,41 @@ class ProjectMemberTest extends TestCase
         ]);
     }
 
+    public function test_update_project_member_role_accepts_the_guest_role_both_ways(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspaceWithProject();
+        $member = $this->addWorkspaceMember($workspace);
+        ProjectMember::create([
+            'project_id' => $project->id,
+            'user_id' => $member->id,
+            'role' => ProjectRole::Member->value,
+        ]);
+
+        $this->actingAs($owner)
+            ->patch(route('projects.members.update', [$project->id, $member->id]), [
+                'role' => 'guest',
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('project_members', [
+            'project_id' => $project->id,
+            'user_id' => $member->id,
+            'role' => 'guest',
+        ]);
+
+        $this->actingAs($owner)
+            ->patch(route('projects.members.update', [$project->id, $member->id]), [
+                'role' => 'member',
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('project_members', [
+            'project_id' => $project->id,
+            'user_id' => $member->id,
+            'role' => 'member',
+        ]);
+    }
+
     public function test_update_project_member_role_transfers_ownership(): void
     {
         [$owner, $workspace, $project] = $this->setupWorkspaceWithProject();
@@ -446,6 +543,480 @@ class ProjectMemberTest extends TestCase
             ->assertForbidden();
     }
 
+    // ── N+1 : changement de rôle (D9) ─────────────────────────────────
+
+    public function test_manager_can_promote_and_demote_between_member_and_guest(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspaceWithProject();
+        $manager = $this->addWorkspaceMember($workspace);
+        $this->addProjectMember($project, $manager, ProjectRole::Manager);
+        $member = $this->addWorkspaceMember($workspace);
+        $this->addProjectMember($project, $member);
+
+        // Down to guest, back to member: both directions allowed.
+        $this->actingAs($manager)
+            ->patch(route('projects.members.update', [$project->id, $member->id]), [
+                'role' => 'guest',
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('project_members', [
+            'project_id' => $project->id,
+            'user_id' => $member->id,
+            'role' => 'guest',
+        ]);
+
+        $this->actingAs($manager)
+            ->patch(route('projects.members.update', [$project->id, $member->id]), [
+                'role' => 'member',
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('project_members', [
+            'project_id' => $project->id,
+            'user_id' => $member->id,
+            'role' => 'member',
+        ]);
+    }
+
+    public function test_manager_cannot_change_the_role_of_another_manager(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspaceWithProject();
+        $manager = $this->addWorkspaceMember($workspace);
+        $this->addProjectMember($project, $manager, ProjectRole::Manager);
+        $peer = $this->addWorkspaceMember($workspace);
+        $this->addProjectMember($project, $peer, ProjectRole::Manager);
+
+        $this->actingAs($manager)
+            ->patch(route('projects.members.update', [$project->id, $peer->id]), [
+                'role' => 'member',
+            ])
+            ->assertForbidden();
+
+        $this->assertDatabaseHas('project_members', [
+            'project_id' => $project->id,
+            'user_id' => $peer->id,
+            'role' => 'manager',
+        ]);
+    }
+
+    public function test_manager_cannot_change_the_role_of_the_project_owner(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspaceWithProject();
+        $manager = $this->addWorkspaceMember($workspace);
+        $this->addProjectMember($project, $manager, ProjectRole::Manager);
+
+        $this->actingAs($manager)
+            ->patch(route('projects.members.update', [$project->id, $owner->id]), [
+                'role' => 'member',
+            ])
+            ->assertForbidden();
+
+        $this->assertDatabaseHas('project_members', [
+            'project_id' => $project->id,
+            'user_id' => $owner->id,
+            'role' => 'owner',
+        ]);
+    }
+
+    public function test_regular_member_cannot_change_roles(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspaceWithProject();
+        $member = $this->addWorkspaceMember($workspace);
+        $this->addProjectMember($project, $member);
+        $guest = $this->addWorkspaceMember($workspace);
+        $this->addProjectMember($project, $guest, ProjectRole::Guest);
+
+        // A member never acts, not even on a strictly lower line.
+        $this->actingAs($member)
+            ->patch(route('projects.members.update', [$project->id, $guest->id]), [
+                'role' => 'member',
+            ])
+            ->assertForbidden();
+
+        $this->assertDatabaseHas('project_members', [
+            'project_id' => $project->id,
+            'user_id' => $guest->id,
+            'role' => 'guest',
+        ]);
+    }
+
+    public function test_project_guest_cannot_change_roles(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspaceWithProject();
+        $guest = $this->addWorkspaceMember($workspace);
+        $this->addProjectMember($project, $guest, ProjectRole::Guest);
+        $member = $this->addWorkspaceMember($workspace);
+        $this->addProjectMember($project, $member);
+
+        $this->actingAs($guest)
+            ->patch(route('projects.members.update', [$project->id, $member->id]), [
+                'role' => 'guest',
+            ])
+            ->assertForbidden();
+
+        $this->assertDatabaseHas('project_members', [
+            'project_id' => $project->id,
+            'user_id' => $member->id,
+            'role' => 'member',
+        ]);
+    }
+
+    public function test_workspace_owner_bypasses_and_changes_any_role(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspaceWithProject();
+        $manager = $this->addWorkspaceMember($workspace);
+        $this->addProjectMember($project, $manager, ProjectRole::Manager);
+
+        // D11: the workspace owner acts on every line, even a manager.
+        $this->actingAs($owner)
+            ->patch(route('projects.members.update', [$project->id, $manager->id]), [
+                'role' => 'guest',
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('project_members', [
+            'project_id' => $project->id,
+            'user_id' => $manager->id,
+            'role' => 'guest',
+        ]);
+    }
+
+    public function test_manager_cannot_transfer_ownership(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspaceWithProject();
+        $manager = $this->addWorkspaceMember($workspace);
+        $this->addProjectMember($project, $manager, ProjectRole::Manager);
+        $member = $this->addWorkspaceMember($workspace);
+        $this->addProjectMember($project, $member);
+
+        $this->actingAs($manager)
+            ->patch(route('projects.members.update', [$project->id, $member->id]), [
+                'role' => 'owner',
+            ])
+            ->assertForbidden();
+
+        $this->assertDatabaseHas('project_members', [
+            'project_id' => $project->id,
+            'user_id' => $member->id,
+            'role' => 'member',
+        ]);
+        $this->assertDatabaseHas('project_members', [
+            'project_id' => $project->id,
+            'user_id' => $owner->id,
+            'role' => 'owner',
+        ]);
+    }
+
+    public function test_project_owner_can_transfer_ownership(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspaceWithProject();
+
+        // A project owner who is not the workspace owner transfers too:
+        // the workspace owner hands the project over first.
+        $projectOwner = $this->addWorkspaceMember($workspace);
+        $otherProject = CreateProject::run($workspace, $owner, ['name' => 'Autre projet']);
+        $this->addProjectMember($otherProject, $projectOwner, ProjectRole::Manager);
+
+        $this->actingAs($owner)
+            ->patch(route('projects.members.update', [$otherProject->id, $projectOwner->id]), [
+                'role' => 'owner',
+            ])
+            ->assertRedirect();
+
+        $member = $this->addWorkspaceMember($workspace);
+        $this->addProjectMember($otherProject, $member, ProjectRole::Manager);
+
+        $this->actingAs($projectOwner)
+            ->patch(route('projects.members.update', [$otherProject->id, $member->id]), [
+                'role' => 'owner',
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('project_members', [
+            'project_id' => $otherProject->id,
+            'user_id' => $member->id,
+            'role' => 'owner',
+        ]);
+        $this->assertDatabaseHas('project_members', [
+            'project_id' => $otherProject->id,
+            'user_id' => $projectOwner->id,
+            'role' => 'member',
+        ]);
+    }
+
+    public function test_promoted_manager_is_untouchable_by_peers_but_demotable_by_owners(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspaceWithProject();
+
+        // A project owner (not the workspace owner) promotes a member:
+        // the workspace owner hands the project over first.
+        $projectOwner = $this->addWorkspaceMember($workspace);
+        $otherProject = CreateProject::run($workspace, $owner, ['name' => 'Autre projet']);
+        $this->addProjectMember($otherProject, $projectOwner, ProjectRole::Manager);
+
+        $this->actingAs($owner)
+            ->patch(route('projects.members.update', [$otherProject->id, $projectOwner->id]), [
+                'role' => 'owner',
+            ])
+            ->assertRedirect();
+
+        $promoted = $this->addWorkspaceMember($workspace);
+        $this->addProjectMember($otherProject, $promoted);
+        $peer = $this->addWorkspaceMember($workspace);
+        $this->addProjectMember($otherProject, $peer, ProjectRole::Manager);
+
+        $this->actingAs($projectOwner)
+            ->patch(route('projects.members.update', [$otherProject->id, $promoted->id]), [
+                'role' => 'manager',
+            ])
+            ->assertRedirect();
+
+        // The new manager outranks nobody above them: a peer manager
+        // cannot touch the promoted line (D9).
+        $this->actingAs($peer)
+            ->patch(route('projects.members.update', [$otherProject->id, $promoted->id]), [
+                'role' => 'member',
+            ])
+            ->assertForbidden();
+
+        // The promoting project owner and the workspace owner still can.
+        $this->actingAs($projectOwner)
+            ->patch(route('projects.members.update', [$otherProject->id, $promoted->id]), [
+                'role' => 'member',
+            ])
+            ->assertRedirect();
+
+        $this->actingAs($owner)
+            ->patch(route('projects.members.update', [$otherProject->id, $promoted->id]), [
+                'role' => 'manager',
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('project_members', [
+            'project_id' => $otherProject->id,
+            'user_id' => $promoted->id,
+            'role' => 'manager',
+        ]);
+    }
+
+    public function test_transferred_owner_becomes_manageable_again(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspaceWithProject();
+
+        // Ownership transfer: the previous owner lands on a plain member
+        // line, back under the hierarchy.
+        $newOwner = $this->addWorkspaceMember($workspace);
+        $this->addProjectMember($project, $newOwner, ProjectRole::Manager);
+
+        $this->actingAs($owner)
+            ->patch(route('projects.members.update', [$project->id, $newOwner->id]), [
+                'role' => 'owner',
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('project_members', [
+            'project_id' => $project->id,
+            'user_id' => $owner->id,
+            'role' => 'member',
+        ]);
+
+        // The new owner outranks the demoted one and can move their line.
+        $this->actingAs($newOwner)
+            ->patch(route('projects.members.update', [$project->id, $owner->id]), [
+                'role' => 'guest',
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('project_members', [
+            'project_id' => $project->id,
+            'user_id' => $owner->id,
+            'role' => 'guest',
+        ]);
+    }
+
+    // ── N+1 : ajout (D10) ────────────────────────────────────────────
+
+    public function test_manager_can_add_a_member_and_a_guest(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspaceWithProject();
+        $manager = $this->addWorkspaceMember($workspace);
+        $this->addProjectMember($project, $manager, ProjectRole::Manager);
+        $member = $this->addWorkspaceMember($workspace);
+        $guest = $this->addWorkspaceMember($workspace);
+
+        $this->actingAs($manager)
+            ->post(route('projects.members.store', $project->id), [
+                'user_id' => $member->id,
+                'role' => 'member',
+            ])
+            ->assertRedirect();
+
+        $this->actingAs($manager)
+            ->post(route('projects.members.store', $project->id), [
+                'user_id' => $guest->id,
+                'role' => 'guest',
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('project_members', [
+            'project_id' => $project->id,
+            'user_id' => $member->id,
+            'role' => 'member',
+        ]);
+        $this->assertDatabaseHas('project_members', [
+            'project_id' => $project->id,
+            'user_id' => $guest->id,
+            'role' => 'guest',
+        ]);
+    }
+
+    public function test_manager_cannot_add_a_manager(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspaceWithProject();
+        $manager = $this->addWorkspaceMember($workspace);
+        $this->addProjectMember($project, $manager, ProjectRole::Manager);
+        $peer = $this->addWorkspaceMember($workspace);
+
+        // Onboarding a peer role would create an equal: refused.
+        $this->actingAs($manager)
+            ->post(route('projects.members.store', $project->id), [
+                'user_id' => $peer->id,
+                'role' => 'manager',
+            ])
+            ->assertForbidden();
+
+        $this->assertDatabaseMissing('project_members', [
+            'project_id' => $project->id,
+            'user_id' => $peer->id,
+        ]);
+    }
+
+    public function test_project_owner_can_add_a_manager(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspaceWithProject();
+
+        $projectOwner = $this->addWorkspaceMember($workspace);
+        $otherProject = CreateProject::run($workspace, $owner, ['name' => 'Autre projet']);
+        $this->addProjectMember($otherProject, $projectOwner, ProjectRole::Manager);
+
+        // Hand the project over so the actor owns it legitimately.
+        $this->actingAs($owner)
+            ->patch(route('projects.members.update', [$otherProject->id, $projectOwner->id]), [
+                'role' => 'owner',
+            ])
+            ->assertRedirect();
+
+        $manager = $this->addWorkspaceMember($workspace);
+
+        $this->actingAs($projectOwner)
+            ->post(route('projects.members.store', $otherProject->id), [
+                'user_id' => $manager->id,
+                'role' => 'manager',
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('project_members', [
+            'project_id' => $otherProject->id,
+            'user_id' => $manager->id,
+            'role' => 'manager',
+        ]);
+    }
+
+    public function test_project_guest_cannot_add_anyone(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspaceWithProject();
+        $guest = $this->addWorkspaceMember($workspace);
+        $this->addProjectMember($project, $guest, ProjectRole::Guest);
+        $member = $this->addWorkspaceMember($workspace);
+
+        // Even a strictly lower role: a guest never pilots the roster.
+        $this->actingAs($guest)
+            ->post(route('projects.members.store', $project->id), [
+                'user_id' => $member->id,
+                'role' => 'guest',
+            ])
+            ->assertForbidden();
+
+        $this->assertDatabaseMissing('project_members', [
+            'project_id' => $project->id,
+            'user_id' => $member->id,
+        ]);
+    }
+
+    // ── N+1 : retrait (D10) ──────────────────────────────────────────
+
+    public function test_manager_can_remove_a_member(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspaceWithProject();
+        $manager = $this->addWorkspaceMember($workspace);
+        $this->addProjectMember($project, $manager, ProjectRole::Manager);
+        $member = $this->addWorkspaceMember($workspace);
+        $this->addProjectMember($project, $member);
+
+        $this->actingAs($manager)
+            ->delete(route('projects.members.destroy', [$project->id, $member->id]))
+            ->assertRedirect();
+
+        $this->assertDatabaseMissing('project_members', [
+            'project_id' => $project->id,
+            'user_id' => $member->id,
+        ]);
+    }
+
+    public function test_manager_cannot_remove_another_manager(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspaceWithProject();
+        $manager = $this->addWorkspaceMember($workspace);
+        $this->addProjectMember($project, $manager, ProjectRole::Manager);
+        $peer = $this->addWorkspaceMember($workspace);
+        $this->addProjectMember($project, $peer, ProjectRole::Manager);
+
+        $this->actingAs($manager)
+            ->delete(route('projects.members.destroy', [$project->id, $peer->id]))
+            ->assertForbidden();
+
+        $this->assertDatabaseHas('project_members', [
+            'project_id' => $project->id,
+            'user_id' => $peer->id,
+            'role' => 'manager',
+        ]);
+    }
+
+    public function test_manager_cannot_remove_the_project_owner(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspaceWithProject();
+        $manager = $this->addWorkspaceMember($workspace);
+        $this->addProjectMember($project, $manager, ProjectRole::Manager);
+
+        $this->actingAs($manager)
+            ->delete(route('projects.members.destroy', [$project->id, $owner->id]))
+            ->assertForbidden();
+
+        $this->assertDatabaseHas('project_members', [
+            'project_id' => $project->id,
+            'user_id' => $owner->id,
+            'role' => 'owner',
+        ]);
+    }
+
+    public function test_workspace_owner_can_remove_a_manager(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspaceWithProject();
+        $manager = $this->addWorkspaceMember($workspace);
+        $this->addProjectMember($project, $manager, ProjectRole::Manager);
+
+        // D11: the workspace owner bypasses the hierarchy everywhere.
+        $this->actingAs($owner)
+            ->delete(route('projects.members.destroy', [$project->id, $manager->id]))
+            ->assertRedirect();
+
+        $this->assertDatabaseMissing('project_members', [
+            'project_id' => $project->id,
+            'user_id' => $manager->id,
+        ]);
+    }
+
     // ── ShowProjectMembers (list) ─────────────────────────────────────
 
     public function test_show_project_members_lists_roster(): void
@@ -483,6 +1054,65 @@ class ProjectMemberTest extends TestCase
         $this->actingAs($member)
             ->get(route('projects.members.index', $project->id))
             ->assertOk();
+    }
+
+    public function test_show_project_members_exposes_rank_scoped_pilotage(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspaceWithProject();
+        $manager = $this->addWorkspaceMember($workspace);
+        $this->addProjectMember($project, $manager, ProjectRole::Manager);
+        $peer = $this->addWorkspaceMember($workspace);
+        $this->addProjectMember($project, $peer, ProjectRole::Manager);
+        $member = $this->addWorkspaceMember($workspace);
+        $this->addProjectMember($project, $member);
+
+        // A manager pilots strictly lower roles only: the assignable
+        // list and the per-row flags follow the rank, not canManage.
+        $this->actingAs($manager)
+            ->get(route('projects.members.index', $project->id))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('assignableRoles', ['member', 'guest'])
+                ->where('members.0.canManageRow', false)  // owner
+                ->where('members.1.canManageRow', false)    // self, peer manager
+                ->where('members.2.canManageRow', false)    // peer manager
+                ->where('members.3.canManageRow', true));    // member
+    }
+
+    public function test_show_project_members_exposes_the_full_pilotage_to_the_workspace_owner(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspaceWithProject();
+        $manager = $this->addWorkspaceMember($workspace);
+        $this->addProjectMember($project, $manager, ProjectRole::Manager);
+
+        // D11: the workspace owner bypasses — every non-owner line is
+        // piloted and every role below owner is assignable.
+        $this->actingAs($owner)
+            ->get(route('projects.members.index', $project->id))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('assignableRoles', ['manager', 'member', 'guest'])
+                ->where('members.0.canManageRow', true)
+                ->where('members.1.canManageRow', true));
+    }
+
+    public function test_show_project_members_exposes_no_pilotage_to_a_regular_member(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspaceWithProject();
+        $member = $this->addWorkspaceMember($workspace);
+        $this->addProjectMember($project, $member);
+        $guest = $this->addWorkspaceMember($workspace);
+        $this->addProjectMember($project, $guest, ProjectRole::Guest);
+
+        // A member sees the roster but pilots nothing, not even a
+        // strictly lower line.
+        $this->actingAs($member)
+            ->get(route('projects.members.index', $project->id))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('assignableRoles', [])
+                ->where('canManage', false)
+                ->where('members.2.canManageRow', false));
     }
 
     // ── Data migration for existing projects ──────────────────────────

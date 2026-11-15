@@ -75,6 +75,16 @@ class SendDigestTest extends TestCase
             'role' => $role,
         ]);
 
+        // A member works on the reference project: the team line carries
+        // their access. A guest stays roster-driven.
+        if ($role !== 'guest') {
+            ProjectMember::create([
+                'project_id' => $this->project->id,
+                'user_id' => $user->id,
+                'role' => ProjectRole::Member->value,
+            ]);
+        }
+
         return $user;
     }
 
@@ -218,7 +228,7 @@ class SendDigestTest extends TestCase
         });
     }
 
-    public function test_a_guest_only_gets_its_roster_without_manager_kpis(): void
+    public function test_a_guest_manager_gets_the_highlights_of_their_roster_projects_only(): void
     {
         Mail::fake();
 
@@ -238,12 +248,17 @@ class SendDigestTest extends TestCase
 
         $this->runJobFor($guest);
 
-        Mail::assertSent(DigestMail::class, function (DigestMail $mail) use ($visible, $hidden): bool {
+        Mail::assertSent(DigestMail::class, function (DigestMail $mail) use ($visible, $hidden, $inScope): bool {
             $ids = array_map(fn (array $row) => $row['id'], $mail->digest['overdueIssues']);
 
+            $highlights = $mail->digest['managerHighlights'];
+
+            // The roster role alone decides (D7): the Manager line on the
+            // in-scope project brings its highlights — and only theirs.
             return $ids === [$visible->id]
                 && ! in_array($hidden->id, $ids, true)
-                && $mail->digest['managerHighlights'] === [];
+                && count($highlights) === 1
+                && $highlights[0]['projectId'] === $inScope->id;
         });
     }
 

@@ -16,7 +16,7 @@ use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
 #[IsReadOnly]
 #[Name('get_project_health')]
-#[Description('Get health indicators for a project: completion percentage, weighted completion (estimate-based), leaf completion (issues without sub-issues), overdue issues, time consumption, projection status. When the workspace setting "parents as containers" is enabled, container parents leave the weighted completion. For a guest or a scoped member, an out-of-perimeter project is not found. Guests receive only their own workload (myWorkload), never the global KPIs; a scoped member keeps them.')]
+#[Description('Get health indicators for a project: completion percentage, weighted completion (estimate-based), leaf completion (issues without sub-issues), overdue issues, time consumption, projection status. When the workspace setting "parents as containers" is enabled, container parents leave the weighted completion. For anyone outside the project team, the project is not found (the workspace owner sees every project). The global KPIs follow the project role: the project owner, its managers and the workspace owner receive them; project members and guests receive only their own workload (myWorkload).')]
 class GetProjectHealth extends AgentTool
 {
     /**
@@ -42,9 +42,11 @@ class GetProjectHealth extends AgentTool
         app(WorkspaceContext::class)->abortUnlessProjectAccessible($user, $project);
         $action = app(GetProjectHealthAction::class);
 
-        // A guest never gets the global KPIs, not even roster-manager: the
-        // contributor view mirrors the web page ("Ma charge" only).
-        if ($project->workspace->isGuest($user)) {
+        // The global KPIs follow the project role exactly like the web
+        // page (D13): project owner, managers and workspace owner see
+        // them; roster members and guests stay on the contributor view
+        // ("Ma charge" only).
+        if (! $project->canManage($user)) {
             return Response::structured([
                 'health' => null,
                 'canSeeGlobalKpis' => false,

@@ -9,6 +9,7 @@ use App\Models\KnowledgePage;
 use App\Models\Milestone;
 use App\Models\Project;
 use App\Models\User;
+use App\Models\Workspace;
 use Illuminate\Database\Eloquent\Model;
 use LogicException;
 use Lorisleiva\Actions\Concerns\AsObject;
@@ -23,7 +24,9 @@ class RecordActivity
      * Internal object action only (`::run()`): business actions call it when
      * they mutate a subject. The workspace is auto-filled from the
      * WorkspaceContext by BelongsToWorkspace; the subject FK is derived from
-     * the model type.
+     * the model type. A Workspace subject carries no FK at all: the event
+     * belongs to the workspace-level journal (membership and ownership
+     * events), read with no issue/project target.
      *
      * `changes` carries either a before/after pair per changed field
      * (`['status' => ['before' => 'Backlog', 'after' => 'In Progress']]`) or a
@@ -45,9 +48,10 @@ class RecordActivity
         // An unknown subject would produce an orphan event (no FK set):
         // refuse it instead of silently journaling nothing.
         if (! $subject instanceof Issue && ! $subject instanceof Project
-            && ! $subject instanceof KnowledgePage && ! $subject instanceof Milestone) {
+            && ! $subject instanceof KnowledgePage && ! $subject instanceof Milestone
+            && ! $subject instanceof Workspace) {
             throw new LogicException(sprintf(
-                'Unsupported audit subject [%s]: expected an Issue, a Project, a KnowledgePage or a Milestone.',
+                'Unsupported audit subject [%s]: expected an Issue, a Project, a KnowledgePage, a Milestone or a Workspace.',
                 $subject::class,
             ));
         }

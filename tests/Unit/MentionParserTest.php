@@ -81,7 +81,12 @@ class MentionParserTest extends TestCase
         [$owner, $workspace] = $this->setupWorkspace();
         $bob = $this->addUser($workspace, 'bob');
 
-        $targets = MentionParser::resolve($workspace, $owner, 'Salut @BOB !', 'irrelevant-project-id');
+        // The mention resolves within a project: bob must hold a team
+        // line on it to be a valid target.
+        $project = CreateProject::run($workspace, $owner, ['name' => 'Site Vitrine']);
+        $project->projectMembers()->create(['user_id' => $bob->id, 'role' => 'member']);
+
+        $targets = MentionParser::resolve($workspace, $owner, 'Salut @BOB !', $project->id);
 
         $this->assertCount(1, $targets);
         $this->assertSame($bob->id, $targets[0]['user']->id);

@@ -9,6 +9,7 @@ use App\Actions\Projects\CreateProject;
 use App\Actions\TimeTracking\CreateTimeEntry;
 use App\Actions\TimeTracking\SetIssueEstimate;
 use App\Actions\Workspaces\CreateWorkspace;
+use App\Actions\Workspaces\UpdateMemberWorkspaceRole;
 use App\Enums\DigestFrequency;
 use App\Enums\ProjectRole;
 use App\Models\Comment;
@@ -100,16 +101,28 @@ class DigestAggregationTest extends TestCase
             'role' => $role,
         ]);
 
+        // A member works on the reference project: the team line carries
+        // their access. A guest stays roster-driven — their perimeter is
+        // piloted by the test itself.
+        if ($role !== 'guest') {
+            $this->projectMember($this->project, $user);
+        }
+
         return $user;
     }
 
     private function projectMember(Project $project, User $user, ProjectRole $role = ProjectRole::Member): void
     {
-        ProjectMember::create([
-            'project_id' => $project->id,
-            'user_id' => $user->id,
-            'role' => $role->value,
-        ]);
+        ProjectMember::updateOrCreate(
+            [
+                'project_id' => $project->id,
+                'user_id' => $user->id,
+            ],
+            [
+                'workspace_id' => $this->workspace->id,
+                'role' => $role->value,
+            ],
+        );
     }
 
     private function digest(DigestContext $context): array
@@ -401,7 +414,7 @@ class DigestAggregationTest extends TestCase
         $this->assertSame(0.0, $digest['managerHighlights'][0]['gap']);
     }
 
-    public function test_a_guest_manager_is_downgraded_to_contributor(): void
+    public function test_a_workspace_guest_manager_gets_their_projects_highlights(): void
     {
         $guest = $this->member('guest');
         $this->projectMember($this->project, $guest, ProjectRole::Manager);
@@ -410,8 +423,34 @@ class DigestAggregationTest extends TestCase
 
         $digest = $this->digest($this->context($guest));
 
-        $this->assertSame([], $digest['managerHighlights']);
+        // D7: the roster role alone decides — a workspace guest carrying
+        // a Manager line receives the manager highlights of their
+        // project, exactly like the health page does.
+        $this->assertCount(1, $digest['managerHighlights']);
+        $this->assertSame($this->project->id, $digest['managerHighlights'][0]['projectId']);
+        $this->assertSame(1, $digest['managerHighlights'][0]['overdueIssues']);
         $this->assertCount(1, $digest['overdueIssues']);
+    }
+
+    public function test_a_demoted_member_keeps_their_roster_driven_digest(): void
+    {
+        $manager = $this->member();
+        $this->projectMember($this->project, $manager, ProjectRole::Manager);
+        $late = $this->issue(['due_date' => now()->subDays(2)->toDateString()]);
+        SetAssignees::run($late, [$manager->id]);
+
+        UpdateMemberWorkspaceRole::run($this->workspace, $manager, ['role' => 'guest'], $this->owner);
+
+        $digest = $this->digest($this->context($manager));
+
+        // D7: the demotion left the roster line alone — the
+        // roster-driven sections keep the person's own KPIs.
+        $this->assertSame([$late->id], $this->ids($digest['overdueIssues']));
+        $this->assertSame(1, $digest['workload']['openIssues']);
+        // The highlights follow the roster role too, like the health
+        // page since T3: the roster Manager line keeps them coming.
+        $this->assertCount(1, $digest['managerHighlights']);
+        $this->assertSame($this->project->id, $digest['managerHighlights'][0]['projectId']);
     }
 
     public function test_a_guest_only_sees_its_roster_perimeter(): void
@@ -478,6 +517,7 @@ class DigestAggregationTest extends TestCase
     {
         $member = $this->member();
         $archived = CreateProject::run($this->workspace, $this->owner, ['name' => 'Old']);
+        $this->projectMember($archived, $member);
         $late = $this->issue(['due_date' => now()->subDay()->toDateString()], $archived);
         SetAssignees::run($late, [$member->id]);
         $archived->update(['archived_at' => now()]);

@@ -3,12 +3,15 @@
 use App\Actions\Issues\CreateIssue;
 use App\Models\CommentMention;
 use App\Models\Membership;
+use App\Models\ProjectMember;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Support\WorkspaceContext;
 
 /**
- * A second full member of the workspace, the one being mentioned.
+ * A second full member of the workspace, the one being mentioned. They
+ * join the project team: a mention only reaches someone who can see the
+ * project, and the team line carries that access.
  */
 function addMentionedMember(Workspace $workspace, string $name = 'Bob Martin'): User
 {
@@ -17,6 +20,13 @@ function addMentionedMember(Workspace $workspace, string $name = 'Bob Martin'): 
     Membership::create([
         'user_id' => $member->id,
         'workspace_id' => $workspace->id,
+        'role' => 'member',
+    ]);
+
+    ProjectMember::create([
+        'workspace_id' => $workspace->id,
+        'project_id' => $workspace->projects()->firstOrFail()->id,
+        'user_id' => $member->id,
         'role' => 'member',
     ]);
 

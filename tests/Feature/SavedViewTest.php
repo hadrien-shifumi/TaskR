@@ -214,6 +214,14 @@ class SavedViewTest extends TestCase
         $front = CreateLabel::run($workspace, ['name' => 'front']);
         $status = $workspace->statuses()->where('category', 'in_progress')->first();
 
+        // The summary only names a project the creator may see: the
+        // member joins the project's team first.
+        ProjectMember::create([
+            'project_id' => $project->id,
+            'user_id' => $member->id,
+            'role' => 'member',
+        ]);
+
         app()->setLocale('fr');
 
         $view = CreateSavedView::run($workspace, $member, [

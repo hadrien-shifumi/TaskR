@@ -4,10 +4,12 @@ namespace Tests\Feature;
 
 use App\Actions\Projects\ArchiveProject;
 use App\Actions\Projects\CreateProject;
+use App\Actions\SavedViews\CreateSavedView;
 use App\Actions\Workspaces\CreateWorkspace;
 use App\Mcp\Servers\TaskrServer;
 use App\Mcp\Tools\GetProjectHealth;
 use App\Mcp\Tools\ListProjects;
+use App\Mcp\Tools\ListSavedViews;
 use App\Models\Membership;
 use App\Models\Project;
 use App\Models\ProjectMember;
@@ -75,7 +77,7 @@ class ProjectVisibilityScopeTest extends TestCase
                 ->has('projects.archived', 0));
     }
 
-    public function test_member_projects_page_lists_all_projects(): void
+    public function test_member_projects_page_lists_their_team_projects(): void
     {
         [$owner, $workspace, $inScope, $outOfScope, $guest] = $this->setupScopedGuest();
         $member = User::factory()->create();
@@ -84,7 +86,19 @@ class ProjectVisibilityScopeTest extends TestCase
             'workspace_id' => $workspace->id,
             'role' => 'member',
         ]);
+        ProjectMember::create([
+            'project_id' => $inScope->id,
+            'user_id' => $member->id,
+            'role' => 'member',
+        ]);
+        ProjectMember::create([
+            'project_id' => $outOfScope->id,
+            'user_id' => $member->id,
+            'role' => 'member',
+        ]);
 
+        // A member sees exactly their teams: both projects here, and a
+        // member with no team line would see none.
         $this->actingAs($member)
             ->get(route('projects.index'))
             ->assertOk()
@@ -180,5 +194,79 @@ class ProjectVisibilityScopeTest extends TestCase
         ]);
 
         $this->assertSame('not_found', $response->payload()['error']);
+    }
+
+    // ── Étanchéité : aucune fuite d'existence ──────────────────────────
+
+    public function test_saved_view_summary_hides_out_of_team_project_names(): void
+    {
+        [$owner, $workspace, $inScope, $outOfScope, $guest] = $this->setupScopedGuest();
+        app(WorkspaceContext::class)->set($workspace);
+
+        // A workspace-wide view filtered on a project invisible to most:
+        // its definition stays shared, but the plain-text summary must
+        // never name the project to someone outside its team.
+        $view = CreateSavedView::run($workspace, $owner, [
+            'name' => 'Travail Beta',
+            'filters' => ['project' => $outOfScope->id],
+            'sort' => null,
+            'dir' => null,
+        ]);
+
+        $this->actingAs($guest)
+            ->get(route('issues.index'))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->has('savedViews', 1)
+                ->where('savedViews.0.id', $view->id)
+                ->where('savedViews.0.summary', null));
+
+        $listing = TaskrServer::actingAs($guest)->tool(ListSavedViews::class, [
+            'workspace_id' => $workspace->id,
+        ])->assertOk()->payload();
+
+        $this->assertSame('Travail Beta', $listing['views'][0]['name']);
+        $this->assertNull($listing['views'][0]['summary']);
+
+        // The creator still reads the full summary: the view is theirs
+        // and the project is in their perimeter.
+        $ownerListing = TaskrServer::actingAs($owner)->tool(ListSavedViews::class, [
+            'workspace_id' => $workspace->id,
+        ])->assertOk()->payload();
+
+        $this->assertSame('Travail Beta', $ownerListing['views'][0]['name']);
+        $this->assertStringContainsString('Beta', (string) $ownerListing['views'][0]['summary']);
+    }
+
+    public function test_project_guest_board_page_ships_no_write_flag(): void
+    {
+        [$owner, $workspace, $inScope, $outOfScope, $guest] = $this->setupScopedGuest();
+
+        // A roster Guest line carries the access but not the write
+        // rights: the board stays readable, the write flag drops.
+        $projectGuest = User::factory()->create();
+        Membership::create([
+            'user_id' => $projectGuest->id,
+            'workspace_id' => $workspace->id,
+            'role' => 'member',
+        ]);
+        ProjectMember::create([
+            'project_id' => $inScope->id,
+            'user_id' => $projectGuest->id,
+            'role' => 'guest',
+        ]);
+
+        $this->actingAs($projectGuest)
+            ->get(route('projects.board', $inScope->id))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('canContribute', false));
+
+        // A roster member of the same board keeps the write flag.
+        $this->actingAs($guest)
+            ->get(route('projects.board', $inScope->id))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('canContribute', true));
     }
 }

@@ -8,6 +8,7 @@ use App\Models\ProjectMember;
 use App\Models\User;
 use App\Responders\Projects\ProjectMemberRedirectResponder;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Lorisleiva\Actions\ActionRequest;
 use Lorisleiva\Actions\Concerns\AsController;
@@ -23,19 +24,22 @@ class RemoveProjectMember
         $user = request()->user();
         $project = request()->route('project');
 
-        if (! $user instanceof User
-            || ! $project instanceof Project
-            || ! $project->canManage($user)) {
+        if (! $user instanceof User || ! $project instanceof Project) {
             return false;
         }
 
-        // A guest's roster row is their access scope: only the workspace
-        // owner pilots guests. Project managers keep managing classic members.
         $target = request()->route('member');
+        $targetRole = $target instanceof User ? $project->roleOf($target) : null;
 
-        return ! $target instanceof User
-            || ! $project->workspace->isGuest($target)
-            || $project->workspace->hasOwner($user);
+        // Unknown roster line: the handle keeps its historical 404.
+        if ($targetRole === null) {
+            return true;
+        }
+
+        // N+1 (D10): the target line sits strictly below the actor —
+        // never a pair, never a superior. The workspace owner bypasses
+        // (D11); the workspace role of the target never appears (D7).
+        return $project->canPilotRole($user, $targetRole);
     }
 
     public function handle(Project $project, User $member): void
@@ -66,7 +70,20 @@ class RemoveProjectMember
             }
         }
 
-        $projectMember->delete();
+        DB::transaction(function () use ($project, $member, $projectMember): void {
+            $projectMember->delete();
+
+            // D14: the assignments follow the roster line — the issues
+            // stay, unassigned; history and comments are untouched.
+            $issueIds = DB::table('issues')
+                ->where('project_id', $project->getKey())
+                ->pluck('id');
+
+            DB::table('issue_assignees')
+                ->where('user_id', $member->getKey())
+                ->whereIn('issue_id', $issueIds)
+                ->delete();
+        });
     }
 
     public function asController(ActionRequest $request, Project $project, User $member, ProjectMemberRedirectResponder $responder): RedirectResponse

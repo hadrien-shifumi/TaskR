@@ -72,9 +72,9 @@ class GuestInvitationTest extends TestCase
             ->post(route('workspaces.invite', $workspace), [
                 'email' => 'client@example.com',
                 'role' => 'guest',
-                'project_ids' => [],
+                'projects' => [],
             ])
-            ->assertInvalid('project_ids');
+            ->assertInvalid('projects');
 
         $this->assertDatabaseMissing('invitations', [
             'workspace_id' => $workspace->id,
@@ -238,8 +238,10 @@ class GuestInvitationTest extends TestCase
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Auth/AcceptInvitation')
                 ->where('invitation.role', 'guest')
-                ->where('invitation.projects.0', 'Alpha')
-                ->where('invitation.projects.1', 'Beta'));
+                ->where('invitation.projects.0.name', 'Alpha')
+                ->where('invitation.projects.0.role', 'member')
+                ->where('invitation.projects.1.name', 'Beta')
+                ->where('invitation.projects.1.role', 'member'));
     }
 
     public function test_resending_a_guest_invitation_keeps_role_and_scope(): void
@@ -274,8 +276,10 @@ class GuestInvitationTest extends TestCase
                 ->has('invitations', 1)
                 ->where('invitations.0.id', $invitation->id)
                 ->where('invitations.0.role', 'guest')
-                ->where('invitations.0.projects.0', 'Alpha')
-                ->where('invitations.0.projects.1', 'Beta')
+                ->where('invitations.0.projects.0.name', 'Alpha')
+                ->where('invitations.0.projects.0.role', 'member')
+                ->where('invitations.0.projects.1.name', 'Beta')
+                ->where('invitations.0.projects.1.role', 'member')
                 ->where('projects.0.name', 'Alpha')
                 ->where('projects.1.name', 'Beta'));
     }

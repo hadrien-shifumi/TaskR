@@ -31,9 +31,11 @@ class ListSavedViews extends AgentTool
     {
         $workspace = $this->resolveWorkspace($request);
 
+        $user = $this->currentUser($request);
+
         $views = $workspace->savedViews()
             ->get()
-            ->map(fn ($view) => SavedViewPresenter::present($view))
+            ->map(fn ($view) => SavedViewPresenter::present($view, $user))
             ->all();
 
         return Response::structured([

@@ -210,6 +210,132 @@ class ProjectHealthWorkloadTest extends TestCase
                 ->where('canSeeGlobalKpis', true));
     }
 
+    // ── D12 : l'équipe complète porte la charge d'équipe ──────────────
+
+    public function test_workspace_owner_teamed_appears_in_team_workload(): void
+    {
+        [$owner, $workspace, , $statuses] = $this->setupWorkspaceWithProject();
+
+        // Un projet porté par un autre propriétaire, où l'owner du
+        // workspace tient une ligne d'équipe : il apparaît dans la charge.
+        $projectOwner = $this->addWorkspaceMember($workspace);
+        $project = CreateProject::run($workspace, $projectOwner, ['name' => 'Autre projet']);
+        $this->addProjectMember($project, $owner, ProjectRole::Member);
+
+        $this->createIssue($project, $statuses, 'in_progress', 'Task of the ws owner', $owner);
+
+        $this->actingAs($projectOwner)
+            ->get(route('projects.health', $project->id))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->has('teamWorkload', 2)
+                ->where('teamWorkload.0.userId', $projectOwner->id)
+                ->where('teamWorkload.1.userId', $owner->id)
+                ->where('teamWorkload.1.openIssues', 1));
+    }
+
+    public function test_workspace_owner_without_team_line_stays_out_of_team_workload(): void
+    {
+        [$owner, $workspace, , $statuses] = $this->setupWorkspaceWithProject();
+
+        $projectOwner = $this->addWorkspaceMember($workspace);
+        $project = CreateProject::run($workspace, $projectOwner, ['name' => 'Autre projet']);
+
+        // L'owner du workspace garde l'accès complet (D3) mais sans
+        // ligne d'équipe, il ne porte aucune charge d'équipe (D12).
+        $this->createIssue($project, $statuses, 'in_progress', 'Unassigned task');
+
+        $this->actingAs($projectOwner)
+            ->get(route('projects.health', $project->id))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('canSeeGlobalKpis', true)
+                ->has('teamWorkload', 1)
+                ->where('teamWorkload.0.userId', $projectOwner->id));
+    }
+
+    public function test_workspace_owner_without_team_line_counts_assignments_in_own_workload_only(): void
+    {
+        [$owner, $workspace, , $statuses] = $this->setupWorkspaceWithProject();
+
+        $projectOwner = $this->addWorkspaceMember($workspace);
+        $project = CreateProject::run($workspace, $projectOwner, ['name' => 'Autre projet']);
+
+        // Porteur de tickets sans ligne d'équipe : sa charge personnelle
+        // reste visible pour lui, la charge d'équipe ne l'invente pas.
+        $this->createIssue($project, $statuses, 'in_progress', 'Task of the ws owner', $owner);
+
+        $this->actingAs($owner)
+            ->get(route('projects.health', $project->id))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('canSeeGlobalKpis', true)
+                ->where('health.totalIssues', 1)
+                ->where('myWorkload.userId', $owner->id)
+                ->where('myWorkload.openIssues', 1)
+                ->where('myWorkload.totalIssues', 1)
+                ->has('teamWorkload', 1)
+                ->where('teamWorkload.0.userId', $projectOwner->id));
+    }
+
+    // ── D13 : les KPIs globaux suivent le rôle projet ─────────────────
+
+    public function test_workspace_guest_manager_sees_global_kpis_of_their_project(): void
+    {
+        [$owner, $workspace, $project, $statuses] = $this->setupWorkspaceWithProject();
+
+        // D7/D13 : un Guest du workspace Manager d'un projet exerce son
+        // rôle projet — les KPIs globaux de SON projet lui sont ouverts.
+        $guest = User::factory()->create();
+        Membership::create([
+            'user_id' => $guest->id,
+            'workspace_id' => $workspace->id,
+            'role' => 'guest',
+        ]);
+        $this->addProjectMember($project, $guest, ProjectRole::Manager);
+
+        $this->createIssue($project, $statuses, 'in_progress', 'Mine', $guest);
+        $this->createIssue($project, $statuses, 'backlog', 'Other');
+
+        $this->actingAs($guest)
+            ->get(route('projects.health', $project->id))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->component('Projects/Health')
+                ->where('canSeeGlobalKpis', true)
+                ->where('health.totalIssues', 2)
+                ->has('teamWorkload', 2)
+                ->has('lateIssues', 0)
+                ->where('myWorkload.userId', $guest->id)
+                ->where('myWorkload.openIssues', 1));
+    }
+
+    public function test_project_guest_sees_my_workload_only(): void
+    {
+        [$owner, $workspace, $project, $statuses] = $this->setupWorkspaceWithProject();
+
+        // D13 : le rôle Guest de la ligne d'équipe ferme les KPIs globaux,
+        // quelle que soit la place dans le workspace.
+        $projectGuest = $this->addWorkspaceMember($workspace);
+        $this->addProjectMember($project, $projectGuest, ProjectRole::Guest);
+
+        $this->createIssue($project, $statuses, 'in_progress', 'Mine', $projectGuest);
+        $this->createIssue($project, $statuses, 'backlog', 'Other');
+
+        $this->actingAs($projectGuest)
+            ->get(route('projects.health', $project->id))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->component('Projects/Health')
+                ->where('canSeeGlobalKpis', false)
+                ->where('health', null)
+                ->has('teamWorkload', 0)
+                ->has('lateIssues', 0)
+                ->where('myWorkload.userId', $projectGuest->id)
+                ->where('myWorkload.openIssues', 1)
+                ->where('myWorkload.totalIssues', 1));
+    }
+
     // ── Team workload details ─────────────────────────────────────────
 
     public function test_team_workload_lists_all_roster_members(): void
@@ -303,13 +429,19 @@ class ProjectHealthWorkloadTest extends TestCase
             ->assertNotFound();
     }
 
-    // ── Member not in roster still sees their workload ────────────────
+    // ── Teamed member sees their workload without global KPIs ─────────
 
-    public function test_member_not_in_roster_sees_their_workload(): void
+    public function test_teamed_member_sees_their_workload_without_global_kpis(): void
     {
         [$owner, $workspace, $project, $statuses] = $this->setupWorkspaceWithProject();
         $member = $this->addWorkspaceMember($workspace);
-        // Note: member is NOT added to the project roster
+
+        // A plain contributor line: access without management.
+        ProjectMember::create([
+            'project_id' => $project->id,
+            'user_id' => $member->id,
+            'role' => 'member',
+        ]);
 
         $this->createIssue($project, $statuses, 'in_progress', 'Assigned to me', $member);
 

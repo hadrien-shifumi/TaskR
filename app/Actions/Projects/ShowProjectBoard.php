@@ -91,6 +91,9 @@ class ShowProjectBoard
             'project' => ProjectPresenter::summary($project),
             // Health feeds the pagebar badge and the projection meta.
             'health' => GetProjectHealth::run($project, $user)->toArray(),
+            // Write affordances (create, drag-move) follow the roster
+            // role: a project guest reads the board but never writes.
+            'canContribute' => $user !== null && $project->isContributor($user),
             'parentsOnly' => $parentsOnly,
             'filters' => array_filter($filters, fn ($value) => $value !== null && $value !== ''),
             'projectPeople' => $projectPeople,

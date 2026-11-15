@@ -4,6 +4,7 @@ use App\Actions\Issues\CreateIssue;
 use App\Actions\TimeTracking\CreateTimeEntry;
 use App\Actions\TimeTracking\SetIssueEstimate;
 use App\Models\Membership;
+use App\Models\ProjectMember;
 use App\Models\User;
 use App\Support\WorkspaceContext;
 
@@ -125,6 +126,12 @@ it('shows no edit actions on another member time entry', function () {
     Membership::create([
         'user_id' => $member->id,
         'workspace_id' => $workspace->id,
+        'role' => 'member',
+    ]);
+    ProjectMember::create([
+        'workspace_id' => $workspace->id,
+        'project_id' => $project->id,
+        'user_id' => $member->id,
         'role' => 'member',
     ]);
 

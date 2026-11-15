@@ -98,6 +98,8 @@ class MilestonePageTest extends TestCase
     {
         [$owner, $workspace, $project] = $this->setupWorkspace();
 
+        // D7: the roster line carries the rights — a workspace guest
+        // rostered Member contributes; the flags say so.
         $guest = User::factory()->create();
         Membership::create([
             'user_id' => $guest->id,
@@ -111,6 +113,26 @@ class MilestonePageTest extends TestCase
         ]);
 
         $this->actingAs($guest)
+            ->get(route('projects.milestones', $project))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('canContribute', true)
+                ->where('canManage', false));
+
+        // The roster Guest line, on the contrary, never writes.
+        $projectGuest = User::factory()->create();
+        Membership::create([
+            'user_id' => $projectGuest->id,
+            'workspace_id' => $workspace->id,
+            'role' => 'member',
+        ]);
+        ProjectMember::create([
+            'project_id' => $project->id,
+            'user_id' => $projectGuest->id,
+            'role' => 'guest',
+        ]);
+
+        $this->actingAs($projectGuest)
             ->get(route('projects.milestones', $project))
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
