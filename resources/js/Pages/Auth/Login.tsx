@@ -47,7 +47,7 @@ export default function Login() {
                         <Link
                             role="tab"
                             aria-selected="false"
-                            href={route('register')}
+                            href={route('register', redirect ? { redirect } : undefined)}
                             className="flex h-7.5 flex-1 items-center justify-center rounded-[6px] text-[13px] font-medium text-muted-foreground hover:text-foreground"
                         >
                             {t('auth.signupTab')}

@@ -15,7 +15,7 @@ export function StatusBadge({ name, category }: { name: string; category: string
             ? 'bg-info/10 text-info-strong'
             : category === 'done'
               ? 'bg-success/10 text-success-strong'
-              : 'bg-secondary/70 text-muted-foreground';
+              : 'bg-secondary/70 text-muted-foreground-strong';
 
     return (
         <Badge variant="secondary" className={`rounded-full ${tone}`}>
@@ -29,7 +29,7 @@ export function PriorityBadge({ priority }: { priority: string }) {    const { t
 
     if (priority === 'none') {
         return (
-            <Badge variant="secondary" className="rounded-full bg-secondary text-muted-foreground">
+            <Badge variant="secondary" className="rounded-full bg-secondary text-muted-foreground-strong">
                 {t('priority.none')}
             </Badge>
         );
@@ -37,7 +37,7 @@ export function PriorityBadge({ priority }: { priority: string }) {    const { t
 
     const tone =
         priority === 'urgent'
-            ? 'bg-destructive/10 text-destructive'
+            ? 'bg-destructive/10 text-destructive-strong'
             : priority === 'high'
               ? 'bg-warning/10 text-warning'
               : 'bg-info/10 text-info-strong';
@@ -85,7 +85,7 @@ export function KnowledgeBadge({ count, titles }: { count: number; titles: strin
     return (
         <Badge
             variant="secondary"
-            className="rounded-full bg-secondary/70 text-muted-foreground"
+            className="rounded-full bg-secondary/70 text-muted-foreground-strong"
             title={t('issueBadges.knowledgeTooltip', { titles: titles.join(', ') })}
             data-test="issue-knowledge-badge"
         >
@@ -124,7 +124,7 @@ export function HealthBadge({ status }: { status: string | null }) {
 
     if (status === null) {
         return (
-            <Badge variant="secondary" className="rounded-full bg-secondary text-muted-foreground">
+            <Badge variant="secondary" className="rounded-full bg-secondary text-muted-foreground-strong">
                 {t('health.noProjection')}
             </Badge>
         );
@@ -135,7 +135,7 @@ export function HealthBadge({ status }: { status: string | null }) {
             ? 'bg-success/10 text-success-strong'
             : status === 'at-risk'
               ? 'bg-warning/10 text-warning'
-              : 'bg-destructive/10 text-destructive';
+              : 'bg-destructive/10 text-destructive-strong';
 
     return (
         <Badge variant="secondary" className={`rounded-full ${tone}`}>

@@ -7,7 +7,7 @@ type BannerVariant = 'info' | 'warning' | 'danger';
 const VARIANT_STYLES: Record<BannerVariant, string> = {
     info: 'border-info/30 bg-info/10',
     warning: 'border-warning/35 bg-warning/10',
-    danger: 'border-destructive/35 bg-destructive/10 text-destructive',
+    danger: 'border-destructive/35 bg-destructive/10 text-destructive-strong',
 };
 
 const VARIANT_ICON_STYLES: Record<BannerVariant, string> = {

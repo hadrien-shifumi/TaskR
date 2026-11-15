@@ -37,12 +37,12 @@ export function MilestoneStateBadge({ state }: { state: MilestoneState }) {
 
     const tone =
         state === 'overdue'
-            ? 'bg-destructive/10 text-destructive'
+            ? 'bg-destructive/10 text-destructive-strong'
             : state === 'inProgress'
               ? 'bg-info/10 text-info-strong'
               : state === 'closed'
                 ? 'bg-success/10 text-success-strong'
-                : 'bg-secondary/70 text-muted-foreground';
+                : 'bg-secondary/70 text-muted-foreground-strong';
 
     return (
         <Badge variant="secondary" className={`rounded-full ${tone}`} data-test="milestone-state">

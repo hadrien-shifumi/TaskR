@@ -51,7 +51,7 @@ export function IssueCard({ issue }: { issue: IssueRow }) {
             {issue.labels.length > 0 ? (
                 <div className="flex flex-wrap gap-1">
                     {issue.labels.map((l) => (
-                        <Badge key={l.id} variant="outline" className="rounded-full text-muted-foreground">
+                        <Badge key={l.id} variant="outline" className="rounded-full text-muted-foreground-strong">
                             {l.name}
                         </Badge>
                     ))}

@@ -123,3 +123,41 @@ it('accepts an invitation through the landing page and login', function () {
     expect($newcomer->memberships()->where('workspace_id', $workspace->id)->exists())->toBeTrue()
         ->and($invitation->fresh()->accepted_at)->not->toBeNull();
 });
+
+it('registers through an invitation link and lands in the invited workspace', function () {
+    [, $workspace] = setupBrowserWorkspace();
+    $invitation = Invitation::withoutWorkspaceScope()->create([
+        'workspace_id' => $workspace->id,
+        'email' => 'newcomer@example.com',
+        'token' => Str::random(64),
+        'expires_at' => now()->addDays(7),
+    ]);
+
+    $page = visit("/invitations/{$invitation->token}/accept");
+
+    $page->assertSee('Accept the invitation')
+        ->click('Accept the invitation');
+
+    // The signup tab must hand the acceptance URL over to registration.
+    $page->assertPathIs('/login')
+        ->click('Sign up')
+        ->assertPathIs('/register');
+
+    // The personal workspace gets a distinct name: landing on the invited
+    // workspace afterwards is the very regression this journey protects.
+    $page->fill('name', 'Newcomer')
+        ->fill('email', 'newcomer@example.com')
+        ->fill('password', 'password')
+        ->fill('password_confirmation', 'password')
+        ->fill('workspace_name', 'Personal Corner')
+        ->press('Register');
+
+    $page->assertPathIs('/')
+        ->assertSee('WS')
+        ->assertNoSmoke();
+
+    $newcomer = User::where('email', 'newcomer@example.com')->firstOrFail();
+
+    expect($newcomer->memberships()->where('workspace_id', $workspace->id)->exists())->toBeTrue()
+        ->and($invitation->fresh()->accepted_at)->not->toBeNull();
+});

@@ -321,6 +321,7 @@ export default function Index() {
                     value={readFilter(filters, 'category')}
                     options={categoryOptions}
                     allLabel={t('issuesPage.filters.allStatuses')}
+                    ariaLabel={t('issuesPage.filters.category')}
                     onChange={(value) => setFilter('category', value)}
                     className="h-7.5 w-36 text-[13px]"
                 />
@@ -369,6 +370,7 @@ export default function Index() {
                     value={readFilter(filters, 'priority')}
                     options={priorityOptions}
                     allLabel={t('issuesPage.filters.allPriorities')}
+                    ariaLabel={t('issuesPage.filters.priority')}
                     onChange={(value) => setFilter('priority', value)}
                     className="h-7.5 w-32 text-[13px]"
                 />
@@ -377,6 +379,7 @@ export default function Index() {
                     value={readFilter(filters, 'assignee')}
                     options={assigneeOptions}
                     allLabel={t('issuesPage.filters.allAssignees')}
+                    ariaLabel={t('issuesPage.filters.assignee')}
                     onChange={(value) => setFilter('assignee', value)}
                     className="h-7.5 w-36 text-[13px]"
                 />
@@ -385,6 +388,7 @@ export default function Index() {
                     value={readFilter(filters, 'project')}
                     options={projectOptions}
                     allLabel={t('issuesPage.filters.allProjects')}
+                    ariaLabel={t('issuesPage.filters.project')}
                     onChange={(value) => setFilter('project', value)}
                     className="h-7.5 w-36 text-[13px]"
                 />
@@ -393,6 +397,7 @@ export default function Index() {
                     value={readFilter(filters, 'overdue')}
                     options={overdueOptions}
                     allLabel={t('issuesPage.filters.allIssues')}
+                    ariaLabel={t('issuesPage.filters.overdue')}
                     onChange={(value) => setFilter('overdue', value)}
                     className="h-7.5 w-32 text-[13px]"
                 />
@@ -401,6 +406,7 @@ export default function Index() {
                     value={readFilter(filters, 'blocked')}
                     options={blockedOptions}
                     allLabel={t('issuesPage.filters.allIssues')}
+                    ariaLabel={t('issuesPage.filters.blocked')}
                     onChange={(value) => setFilter('blocked', value)}
                     className="h-7.5 w-32 text-[13px]"
                 />

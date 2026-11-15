@@ -3,6 +3,7 @@
 namespace App\Responders\Auth;
 
 use App\Models\User;
+use App\Support\ReturnUrl;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
@@ -12,9 +13,9 @@ class LoginResponder
     {
         // Invitation and other guest pages forward their return URL through
         // the login form; only same-app paths are honored (open-redirect guard).
-        $requested = $request->input('redirect');
+        $requested = ReturnUrl::sanitize($request->input('redirect'));
 
-        if (is_string($requested) && str_starts_with($requested, '/') && ! str_starts_with($requested, '//')) {
+        if ($requested !== null) {
             return redirect()->to($requested);
         }
 

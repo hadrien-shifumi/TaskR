@@ -142,7 +142,7 @@ export function IssueDetail({
                                 variant="secondary"
                                 className={`rounded-full ${
                                     issue.overdue
-                                        ? 'bg-destructive/10 text-destructive'
+                                        ? 'bg-destructive/10 text-destructive-strong'
                                         : 'bg-secondary text-muted-foreground'
                                 }`}
                             >

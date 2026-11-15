@@ -56,6 +56,8 @@
     --color-primary-strong: var(--primary-strong);
     --color-success-strong: var(--success-strong);
     --color-info-strong: var(--info-strong);
+    --color-destructive-strong: var(--destructive-strong);
+    --color-muted-foreground-strong: var(--muted-foreground-strong);
     /* Maquette radii: 12px master, 8px for small elements (buttons, inputs). */
     --radius-sm: 0.5rem;
     --radius-md: 0.5rem;
@@ -102,10 +104,16 @@
     --success: oklch(0.58 0.13 150);
     --info: oklch(0.58 0.13 250);
     /* 88% tint of the base token: passes 4.5:1 on the /10 soft backgrounds
-     * (primary-strong: 4.8 on /25 and /20; info/success-strong: ~5.0 on /10). */
+     * (primary-strong: 4.8 on /25 and /20; info/success/destructive-strong:
+     * ~5.0 on /10). */
     --primary-strong: color-mix(in oklch, var(--primary) 88%, black);
     --success-strong: color-mix(in oklch, var(--success) 88%, black);
     --info-strong: color-mix(in oklch, var(--info) 88%, black);
+    --destructive-strong: color-mix(in oklch, var(--destructive) 88%, black);
+    /* Same idea for the neutral chips: muted-foreground sits right at 4.5:1
+     * on near-white surfaces, so a stacked tint (secondary over muted) tips
+     * it under. The 88% tint keeps the soft-gray look with margin. */
+    --muted-foreground-strong: color-mix(in oklch, var(--muted-foreground) 88%, black);
     --sidebar: oklch(0.985 0.003 240);
     --sidebar-foreground: oklch(0.18 0.012 250);
     --sidebar-primary: oklch(0.55 0.18 255);
@@ -149,6 +157,8 @@
     --primary-strong: var(--primary);
     --success-strong: var(--success);
     --info-strong: var(--info);
+    --destructive-strong: var(--destructive);
+    --muted-foreground-strong: var(--muted-foreground);
     --sidebar: oklch(0.18 0.012 250);
     --sidebar-foreground: oklch(0.95 0.002 240);
     --sidebar-primary: oklch(0.66 0.16 255);
