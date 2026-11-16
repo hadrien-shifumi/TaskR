@@ -89,7 +89,10 @@ class ShowIssuePage
             'issue' => $detail,
             'timeEntries' => $timeEntries->map(fn ($entry) => TimeEntryPresenter::detail($entry))->values()->all(),
             'statuses' => $workspace->cachedStatuses()->map(fn ($status) => StatusPresenter::option($status))->all(),
-            'members' => $workspace->members()->orderBy('name')->get()->map(fn ($member) => ProjectMemberPresenter::person($member))->all(),
+            // Assignee candidates = the issue's project roster only: the
+            // assign action rejects anyone else, so the sidebar never
+            // offers a name the server would refuse.
+            'members' => $issue->project->members()->orderBy('name')->get()->map(fn ($member) => ProjectMemberPresenter::person($member))->all(),
             'labels' => $workspace->labels()->orderBy('name')->get()->map(fn ($label) => LabelPresenter::present($label))->all(),
             'projects' => $this->projectOptions($workspace, $user),
             // The milestone dialog of the sidebar: every milestone of the

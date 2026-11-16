@@ -13,6 +13,7 @@ use App\Mcp\Tools\ListIssues as ListIssuesTool;
 use App\Models\Issue;
 use App\Models\Label;
 use App\Models\Membership;
+use App\Models\ProjectMember;
 use App\Models\Scopes\WorkspaceScope;
 use App\Models\User;
 use App\Support\WorkspaceContext;
@@ -72,6 +73,9 @@ class IssueTest extends TestCase
     public function test_full_creation_with_labels_and_assignees(): void
     {
         [$owner, $workspace, $project, $member] = $this->setupWorkspace();
+
+        // Assignable = the project roster: the member gets a team line.
+        ProjectMember::create(['project_id' => $project->id, 'user_id' => $member->id, 'role' => 'member']);
 
         $label = CreateLabel::run($workspace, ['name' => 'front']);
         $status = $workspace->statuses()->where('category', 'in_progress')->first();
@@ -173,6 +177,10 @@ class IssueTest extends TestCase
         $issue = CreateIssue::run($workspace, ['project_id' => $project->id, 'title' => 'Fullstack']);
         $another = User::factory()->create();
         Membership::create(['user_id' => $another->id, 'workspace_id' => $workspace->id, 'role' => 'member']);
+
+        // Assignable = the project roster: both targets get a team line.
+        ProjectMember::create(['project_id' => $project->id, 'user_id' => $member->id, 'role' => 'member']);
+        ProjectMember::create(['project_id' => $project->id, 'user_id' => $another->id, 'role' => 'member']);
 
         $this->actingAs($owner)
             ->post("/issues/{$issue->id}/assignees", ['assignees' => [$member->id, $another->id]])

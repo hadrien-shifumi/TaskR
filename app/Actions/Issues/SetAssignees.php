@@ -26,21 +26,20 @@ class SetAssignees
         return $this->currentUserCanUseWorkspace();
     }
 
-    public function rules(): array
+    /**
+     * Assignable = the issue's project roster, for every actor and
+     * every channel (web, agents): the workspace owner included. An
+     * out-of-team assignee could not even see the ticket, and
+     * assignable means a team line. The issue can be injected by
+     * object callers (MCP tools) — the HTTP fallback reads the route
+     * binding.
+     */
+    public function rules(?Issue $issue = null): array
     {
-        $issue = request()->route('issue');
+        $issue ??= request()->route('issue');
 
-        $assigneeRule = Rule::exists('memberships', 'user_id')
-            ->where('workspace_id', app(WorkspaceContext::class)->id());
-
-        // A guest can only assign the people of the issue's project roster.
-        $user = request()->user();
-        if ($issue instanceof Issue
-            && $user !== null
-            && app(WorkspaceContext::class)->accessibleProjectIds($user) !== null) {
-            $assigneeRule = Rule::exists('project_members', 'user_id')
-                ->where('project_id', $issue->project_id);
-        }
+        $assigneeRule = Rule::exists('project_members', 'user_id')
+            ->where('project_id', $issue?->project_id);
 
         return [
             'assignees' => ['present', 'array'],
