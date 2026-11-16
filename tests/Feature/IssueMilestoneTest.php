@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Actions\Issues\CreateIssue;
+use App\Actions\Issues\LoadActiveDescendants;
+use App\Actions\Issues\SetIssueParent;
 use App\Actions\Milestones\CreateMilestone;
 use App\Actions\Milestones\DeleteMilestone;
 use App\Actions\Milestones\SetIssueMilestone;
@@ -16,6 +18,7 @@ use App\Models\Project;
 use App\Models\ProjectMember;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Presenters\Issues\IssuePresenter;
 use App\Support\WorkspaceContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia;
@@ -433,5 +436,292 @@ class IssueMilestoneTest extends TestCase
                 ->has('milestones', 1)
                 ->where('milestones.0.id', $milestone->id)
                 ->where('milestones.0.title', 'V1'));
+    }
+
+    // ── Cascade de la descendance ────────────────────────────────────
+
+    /**
+     * A three-level tree: parent → child → grandchild, none attached.
+     *
+     * @return array{parent: Issue, child: Issue, grandchild: Issue}
+     */
+    private function seedThreeLevels(Workspace $workspace, Project $project): array
+    {
+        $parent = CreateIssue::run($workspace, ['project_id' => $project->id, 'title' => 'Parent']);
+        $child = CreateIssue::run($workspace, ['project_id' => $project->id, 'title' => 'Child']);
+        $grandchild = CreateIssue::run($workspace, ['project_id' => $project->id, 'title' => 'Grandchild']);
+        SetIssueParent::run($child, $parent->id);
+        SetIssueParent::run($grandchild, $child->id);
+
+        return ['parent' => $parent, 'child' => $child, 'grandchild' => $grandchild];
+    }
+
+    public function test_cascade_children_attaches_the_whole_active_subtree_over_three_levels(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspace();
+        ['parent' => $parent, 'child' => $child, 'grandchild' => $grandchild] = $this->seedThreeLevels($workspace, $project);
+        $milestone = CreateMilestone::run($project, ['title' => 'V1'], $owner);
+
+        $this->actingAs($owner)
+            ->post(route('issues.milestone', $parent), [
+                'milestone_id' => $milestone->id,
+                'cascade_children' => true,
+            ])
+            ->assertRedirect();
+
+        foreach ([$parent, $child, $grandchild] as $issue) {
+            $this->assertSame($milestone->id, $issue->fresh()->milestone_id);
+        }
+    }
+
+    public function test_without_cascade_only_the_parent_is_attached(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspace();
+        ['parent' => $parent, 'child' => $child, 'grandchild' => $grandchild] = $this->seedThreeLevels($workspace, $project);
+        $milestone = CreateMilestone::run($project, ['title' => 'V1'], $owner);
+
+        $this->actingAs($owner)
+            ->post(route('issues.milestone', $parent), ['milestone_id' => $milestone->id])
+            ->assertRedirect();
+
+        $this->assertSame($milestone->id, $parent->fresh()->milestone_id);
+        $this->assertNull($child->fresh()->milestone_id);
+        $this->assertNull($grandchild->fresh()->milestone_id);
+    }
+
+    public function test_cascade_skips_descendants_already_in_the_target_milestone(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspace();
+        ['parent' => $parent, 'child' => $child, 'grandchild' => $grandchild] = $this->seedThreeLevels($workspace, $project);
+        $milestone = CreateMilestone::run($project, ['title' => 'V1'], $owner);
+
+        // Arrange through the action: the child carries one real event,
+        // the cascade must not add a second one.
+        SetIssueMilestone::run($child, $milestone->id, $owner);
+
+        $this->actingAs($owner)
+            ->post(route('issues.milestone', $parent), [
+                'milestone_id' => $milestone->id,
+                'cascade_children' => true,
+            ])
+            ->assertRedirect();
+
+        // The already-attached child moved nothing: exactly one event, its own.
+        $this->assertSame(1, AuditEvent::query()
+            ->where('issue_id', $child->id)
+            ->where('type', 'issue.milestone_set')
+            ->count());
+
+        $this->assertSame($milestone->id, $parent->fresh()->milestone_id);
+        $this->assertSame($milestone->id, $grandchild->fresh()->milestone_id);
+    }
+
+    public function test_cascade_switches_descendants_from_another_milestone(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspace();
+        ['parent' => $parent, 'child' => $child] = $this->seedThreeLevels($workspace, $project);
+        $milestone = CreateMilestone::run($project, ['title' => 'V1'], $owner);
+        $other = CreateMilestone::run($project, ['title' => 'V2'], $owner);
+
+        $child->update(['milestone_id' => $other->id]);
+
+        $this->actingAs($owner)
+            ->post(route('issues.milestone', $parent), [
+                'milestone_id' => $milestone->id,
+                'cascade_children' => true,
+            ])
+            ->assertRedirect();
+
+        $this->assertSame($milestone->id, $child->fresh()->milestone_id);
+
+        $event = AuditEvent::query()
+            ->where('issue_id', $child->id)
+            ->where('type', 'issue.milestone_set')
+            ->firstOrFail();
+
+        $this->assertSame($other->id, $event->changes['milestone_id']['before']);
+        $this->assertSame($milestone->id, $event->changes['milestone_id']['after']);
+    }
+
+    public function test_cascade_never_touches_archived_descendants(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspace();
+        ['parent' => $parent, 'child' => $child] = $this->seedThreeLevels($workspace, $project);
+        $milestone = CreateMilestone::run($project, ['title' => 'V1'], $owner);
+
+        // An archived child left the parent's scope: it never follows.
+        $child->update(['archived_at' => now()]);
+
+        $this->actingAs($owner)
+            ->post(route('issues.milestone', $parent), [
+                'milestone_id' => $milestone->id,
+                'cascade_children' => true,
+            ])
+            ->assertRedirect();
+
+        $this->assertSame($milestone->id, $parent->fresh()->milestone_id);
+        $this->assertNull($child->fresh()->milestone_id);
+        $this->assertNotNull($child->fresh()->archived_at);
+    }
+
+    public function test_detaching_never_cascades_even_with_the_flag(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspace();
+        ['parent' => $parent, 'child' => $child] = $this->seedThreeLevels($workspace, $project);
+        $milestone = CreateMilestone::run($project, ['title' => 'V1'], $owner);
+
+        $parent->update(['milestone_id' => $milestone->id]);
+        $child->update(['milestone_id' => $milestone->id]);
+
+        $this->actingAs($owner)
+            ->post(route('issues.milestone', $parent), [
+                'milestone_id' => null,
+                'cascade_children' => true,
+            ])
+            ->assertRedirect();
+
+        // Detaching stays individual: the child keeps its milestone.
+        $this->assertNull($parent->fresh()->milestone_id);
+        $this->assertSame($milestone->id, $child->fresh()->milestone_id);
+    }
+
+    public function test_cascade_skips_descendants_of_another_project(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspace();
+        ['parent' => $parent, 'child' => $child] = $this->seedThreeLevels($workspace, $project);
+        $milestone = CreateMilestone::run($project, ['title' => 'V1'], $owner);
+
+        // The hierarchy is workspace-wide: this child lives in another
+        // project, outside the milestone's reach. It is skipped silently.
+        $otherProject = CreateProject::run($workspace, $owner, ['name' => 'Appli mobile']);
+        $child->update(['project_id' => $otherProject->id]);
+
+        $this->actingAs($owner)
+            ->post(route('issues.milestone', $parent), [
+                'milestone_id' => $milestone->id,
+                'cascade_children' => true,
+            ])
+            ->assertRedirect();
+
+        $this->assertSame($milestone->id, $parent->fresh()->milestone_id);
+        $this->assertNull($child->fresh()->milestone_id);
+    }
+
+    public function test_guest_cascade_ignores_subtrees_outside_their_perimeter(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspace();
+
+        $guest = User::factory()->create();
+        Membership::create(['user_id' => $guest->id, 'workspace_id' => $workspace->id, 'role' => 'guest']);
+        ProjectMember::create([
+            'workspace_id' => $workspace->id,
+            'project_id' => $project->id,
+            'user_id' => $guest->id,
+            'role' => 'member',
+        ]);
+
+        ['parent' => $parent, 'child' => $child] = $this->seedThreeLevels($workspace, $project);
+        $milestone = CreateMilestone::run($project, ['title' => 'V1'], $owner);
+
+        // The child sits in a project outside the guest's perimeter.
+        $otherProject = CreateProject::run($workspace, $owner, ['name' => 'Autre']);
+        $child->update(['project_id' => $otherProject->id]);
+
+        $this->actingAs($guest)
+            ->post(route('issues.milestone', $parent), [
+                'milestone_id' => $milestone->id,
+                'cascade_children' => true,
+            ])
+            ->assertRedirect();
+
+        $this->assertSame($milestone->id, $parent->fresh()->milestone_id);
+        $this->assertNull($child->fresh()->milestone_id);
+    }
+
+    public function test_every_cascaded_issue_journals_its_own_milestone_set_event(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspace();
+        ['parent' => $parent, 'child' => $child, 'grandchild' => $grandchild] = $this->seedThreeLevels($workspace, $project);
+        $milestone = CreateMilestone::run($project, ['title' => 'V1'], $owner);
+
+        $this->actingAs($owner)
+            ->post(route('issues.milestone', $parent), [
+                'milestone_id' => $milestone->id,
+                'cascade_children' => true,
+            ])
+            ->assertRedirect();
+
+        foreach ([$parent, $child, $grandchild] as $issue) {
+            $event = AuditEvent::query()
+                ->where('issue_id', $issue->id)
+                ->where('type', 'issue.milestone_set')
+                ->firstOrFail();
+
+            $this->assertSame($owner->id, $event->actor_id);
+            $this->assertNull($event->changes['milestone_id']['before']);
+            $this->assertSame($milestone->id, $event->changes['milestone_id']['after']);
+        }
+    }
+
+    public function test_cascade_children_must_be_a_boolean(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspace();
+        ['parent' => $parent] = $this->seedThreeLevels($workspace, $project);
+        $milestone = CreateMilestone::run($project, ['title' => 'V1'], $owner);
+
+        $this->actingAs($owner)
+            ->post(route('issues.milestone', $parent), [
+                'milestone_id' => $milestone->id,
+                'cascade_children' => 'maybe',
+            ])
+            ->assertSessionHasErrors('cascade_children');
+
+        $this->assertNull($parent->fresh()->milestone_id);
+    }
+
+    public function test_cascade_applies_when_the_parent_already_carries_the_target_milestone(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspace();
+        ['parent' => $parent, 'child' => $child] = $this->seedThreeLevels($workspace, $project);
+        $milestone = CreateMilestone::run($project, ['title' => 'V1'], $owner);
+
+        $parent->update(['milestone_id' => $milestone->id]);
+
+        $this->actingAs($owner)
+            ->post(route('issues.milestone', $parent), [
+                'milestone_id' => $milestone->id,
+                'cascade_children' => true,
+            ])
+            ->assertRedirect();
+
+        // The parent is unchanged (no new event), the child follows.
+        $this->assertSame(0, AuditEvent::query()
+            ->where('issue_id', $parent->id)
+            ->where('type', 'issue.milestone_set')
+            ->count());
+        $this->assertSame($milestone->id, $child->fresh()->milestone_id);
+    }
+
+    public function test_the_descendant_summary_counts_active_descendants_per_milestone(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspace();
+        ['parent' => $parent, 'child' => $child, 'grandchild' => $grandchild] = $this->seedThreeLevels($workspace, $project);
+        $milestone = CreateMilestone::run($project, ['title' => 'V1'], $owner);
+
+        $child->update(['milestone_id' => $milestone->id]);
+
+        // An archived descendant never counts.
+        $archived = CreateIssue::run($workspace, ['project_id' => $project->id, 'title' => 'Archived']);
+        SetIssueParent::run($archived, $parent->id);
+        $archived->update(['archived_at' => now()]);
+
+        $descendants = app(LoadActiveDescendants::class)->run(collect([$parent]));
+        $detail = IssuePresenter::detail($parent, null, [], $descendants);
+
+        $this->assertSame(['total' => 2, 'byStatus' => [
+            $grandchild->status_id => 2,
+        ], 'byMilestone' => [
+            $milestone->id => 1,
+        ]], $detail['descendants']);
     }
 }

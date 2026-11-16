@@ -502,6 +502,6 @@ class PresentersTest extends TestCase
         $this->assertSame(['total' => 2, 'byStatus' => [
             $backlog->id => 1,
             $done->id => 1,
-        ]], $detail['descendants']);
+        ], 'byMilestone' => []], $detail['descendants']);
     }
 }

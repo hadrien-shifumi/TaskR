@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Actions\Issues\CreateIssue as CreateIssueAction;
 use App\Actions\Issues\SetIssueParent;
+use App\Actions\Milestones\CreateMilestone;
 use App\Actions\Projects\CreateProject;
 use App\Actions\TimeTracking\CreateTimeEntry;
 use App\Actions\TimeTracking\SetIssueEstimate as SetIssueEstimateAction;
@@ -31,6 +32,7 @@ use App\Mcp\Tools\MoveIssue as MoveIssueTool;
 use App\Mcp\Tools\RemoveMember;
 use App\Mcp\Tools\ReorderStatuses;
 use App\Mcp\Tools\SetIssueEstimate;
+use App\Mcp\Tools\SetIssueMilestone as SetIssueMilestoneTool;
 use App\Mcp\Tools\UpdateComment;
 use App\Mcp\Tools\UpdateStatus;
 use App\Mcp\Tools\UpdateTemplate;
@@ -1144,6 +1146,101 @@ class McpExtendedToolsTest extends TestCase
         // The refusal is server-side: nothing moved at all.
         $this->assertSame($statuses['backlog']->id, $parent->fresh()->status_id);
         $this->assertSame($statuses['backlog']->id, $child->fresh()->status_id);
+    }
+
+    // ─── set_issue_milestone — cascade_children ─────────────────────────
+
+    public function test_set_issue_milestone_schema_exposes_cascade_children(): void
+    {
+        [$owner] = $this->setupWorkspace();
+
+        $properties = TaskrServer::actingAs($owner)->tools()->schemaFor('set_issue_milestone');
+
+        $this->assertArrayHasKey('cascade_children', $properties);
+        $this->assertSame('boolean', $properties['cascade_children']['type'] ?? null);
+    }
+
+    public function test_set_issue_milestone_with_cascade_children_moves_the_descendants(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspace();
+
+        $milestone = CreateMilestone::run($project, ['title' => 'V1'], $owner);
+        $parent = CreateIssueAction::run($workspace, ['project_id' => $project->id, 'title' => 'Parent']);
+        $child = CreateIssueAction::run($workspace, ['project_id' => $project->id, 'title' => 'Child']);
+        $grandchild = CreateIssueAction::run($workspace, ['project_id' => $project->id, 'title' => 'Grandchild']);
+        SetIssueParent::run($child, $parent->id);
+        SetIssueParent::run($grandchild, $child->id);
+
+        TaskrServer::actingAs($owner)->tool(SetIssueMilestoneTool::class, [
+            'workspace_id' => $workspace->id,
+            'issue_id' => $parent->id,
+            'milestone_id' => $milestone->id,
+            'cascade_children' => true,
+        ])->assertOk();
+
+        foreach ([$parent, $child, $grandchild] as $issue) {
+            $this->assertSame($milestone->id, $issue->fresh()->milestone_id);
+        }
+    }
+
+    public function test_set_issue_milestone_without_cascade_keeps_the_descendants(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspace();
+
+        $milestone = CreateMilestone::run($project, ['title' => 'V1'], $owner);
+        $parent = CreateIssueAction::run($workspace, ['project_id' => $project->id, 'title' => 'Parent']);
+        $child = CreateIssueAction::run($workspace, ['project_id' => $project->id, 'title' => 'Child']);
+        SetIssueParent::run($child, $parent->id);
+
+        TaskrServer::actingAs($owner)->tool(SetIssueMilestoneTool::class, [
+            'workspace_id' => $workspace->id,
+            'issue_id' => $parent->id,
+            'milestone_id' => $milestone->id,
+        ])->assertOk();
+
+        $this->assertSame($milestone->id, $parent->fresh()->milestone_id);
+        $this->assertNull($child->fresh()->milestone_id);
+    }
+
+    public function test_set_issue_milestone_detaches_the_parent_only_even_with_cascade(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspace();
+
+        $milestone = CreateMilestone::run($project, ['title' => 'V1'], $owner);
+        $parent = CreateIssueAction::run($workspace, ['project_id' => $project->id, 'title' => 'Parent']);
+        $child = CreateIssueAction::run($workspace, ['project_id' => $project->id, 'title' => 'Child']);
+        SetIssueParent::run($child, $parent->id);
+        $parent->update(['milestone_id' => $milestone->id]);
+        $child->update(['milestone_id' => $milestone->id]);
+
+        TaskrServer::actingAs($owner)->tool(SetIssueMilestoneTool::class, [
+            'workspace_id' => $workspace->id,
+            'issue_id' => $parent->id,
+            'milestone_id' => null,
+            'cascade_children' => true,
+        ])->assertOk();
+
+        // Detaching stays individual, whatever the flag says.
+        $this->assertNull($parent->fresh()->milestone_id);
+        $this->assertSame($milestone->id, $child->fresh()->milestone_id);
+    }
+
+    public function test_set_issue_milestone_refuses_a_milestone_of_another_project(): void
+    {
+        [$owner, $workspace, $project] = $this->setupWorkspace();
+        $otherProject = CreateProject::run($workspace, $owner, ['name' => 'Appli mobile']);
+        $foreign = CreateMilestone::run($otherProject, ['title' => 'Autre projet'], $owner);
+
+        $issue = CreateIssueAction::run($workspace, ['project_id' => $project->id, 'title' => 'Parent']);
+
+        $response = TaskrServer::actingAs($owner)->tool(SetIssueMilestoneTool::class, [
+            'workspace_id' => $workspace->id,
+            'issue_id' => $issue->id,
+            'milestone_id' => $foreign->id,
+        ]);
+
+        $this->assertSame('validation_failed', $response->payload()['error']);
+        $this->assertNull($issue->fresh()->milestone_id);
     }
 
     // ─── Helpers ────────────────────────────────────────────────────────

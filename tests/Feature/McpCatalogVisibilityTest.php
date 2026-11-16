@@ -138,6 +138,7 @@ class McpCatalogVisibilityTest extends TestCase
             'get_knowledge',
             'list_activity',
             'move_issue',
+            'set_issue_milestone',
             'set_issue_dependencies',
             'list_templates',
             'list_statuses',
@@ -192,7 +193,7 @@ class McpCatalogVisibilityTest extends TestCase
         // authorization remains the real guard.
         $names = TaskrServer::tools()->namesFor();
 
-        $this->assertCount(57, $names);
+        $this->assertCount(58, $names);
         $this->assertContains('invite_member', $names);
         $this->assertContains('remove_member', $names);
         $this->assertContains('create_label', $names);

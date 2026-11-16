@@ -359,6 +359,6 @@ class IssueMoveCascadeTest extends TestCase
         $this->assertSame(['total' => 2, 'byStatus' => [
             $statuses['backlog']->id => 1,
             $statuses['done']->id => 1,
-        ]], $card['descendants']);
+        ], 'byMilestone' => []], $card['descendants']);
     }
 }

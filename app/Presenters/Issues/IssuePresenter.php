@@ -185,28 +185,30 @@ class IssuePresenter
     }
 
     /**
-     * Active-descendant summary of an issue: the total and the count per
-     * status id. The screens compare it with the target status to decide
-     * whether a move must offer to bring the whole subtree along — and the
-     * move action enforces its Done guard on the very same set. The flat
-     * descendant collection comes from LoadActiveDescendants (archived
-     * descendants and out-of-scope subtrees already excluded); a null
-     * collection means "nothing to count" — the truthful answer for an
-     * archived issue, whose whole subtree left the scope with it.
+     * Active-descendant summary of an issue: the total, the count per
+     * status id and the count per milestone id. The screens compare it
+     * with the target status — or the target milestone — to decide
+     * whether a move must offer to bring the whole subtree along — and
+     * the move actions enforce their rules on the very same set. The
+     * flat descendant collection comes from LoadActiveDescendants
+     * (archived descendants and out-of-scope subtrees already excluded);
+     * a null collection means "nothing to count" — the truthful answer
+     * for an archived issue, whose whole subtree left the scope with it.
      *
      * @param  Collection<int, Issue>  $descendants
-     * @return array{total: int, byStatus: array<string, int>}
+     * @return array{total: int, byStatus: array<string, int>, byMilestone: array<string, int>}
      */
     public static function descendantSummary(Issue $issue, ?Collection $descendants = null): array
     {
         if ($descendants === null || $descendants->isEmpty()) {
-            return ['total' => 0, 'byStatus' => []];
+            return ['total' => 0, 'byStatus' => [], 'byMilestone' => []];
         }
 
         $byParent = $descendants->groupBy('parent_id');
 
         $total = 0;
         $byStatus = [];
+        $byMilestone = [];
         $parentIds = [$issue->getKey()];
 
         while ($parentIds !== []) {
@@ -220,11 +222,15 @@ class IssuePresenter
                     $byStatus[$statusId] = ($byStatus[$statusId] ?? 0) + 1;
                 }
 
+                if ($descendant->milestone_id !== null) {
+                    $byMilestone[$descendant->milestone_id] = ($byMilestone[$descendant->milestone_id] ?? 0) + 1;
+                }
+
                 $parentIds[] = $descendant->getKey();
             }
         }
 
-        return ['total' => $total, 'byStatus' => $byStatus];
+        return ['total' => $total, 'byStatus' => $byStatus, 'byMilestone' => $byMilestone];
     }
 
     /**

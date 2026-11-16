@@ -228,6 +228,13 @@ const fr: typeof en = {
         noMilestone: "Aucune échéance",
         milestoneRefused: "Rattachement refusé :",
         milestoneError: "l'échéance n'a pas pu être définie.",
+        milestoneCascadeTitle: "Rattacher aussi les sous-tickets ?",
+        milestoneCascadeDescriptionOne:
+            'Ce ticket a un sous-ticket actif hors de « {{milestone}} ». Rattacher aussi tout le sous-arbre à « {{milestone}} » ?',
+        milestoneCascadeDescriptionMany:
+            'Ce ticket a {{count}} sous-tickets actifs hors de « {{milestone}} ». Rattacher aussi tout le sous-arbre à « {{milestone}} » ?',
+        milestoneCascadeAccept: "Oui, rattacher tout le sous-arbre",
+        milestoneCascadeDecline: "Non, seulement ce ticket",
         childIssues: "Sous-tickets",
         noChildIssues: "Aucun sous-ticket.",
         deleteTitle: "Supprimer ce ticket ?",

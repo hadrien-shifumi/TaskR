@@ -51,6 +51,7 @@ use App\Mcp\Tools\SetAssignees;
 use App\Mcp\Tools\SetIssueDependencies;
 use App\Mcp\Tools\SetIssueEstimate;
 use App\Mcp\Tools\SetIssueKnowledge;
+use App\Mcp\Tools\SetIssueMilestone;
 use App\Mcp\Tools\SetIssueParent;
 use App\Mcp\Tools\SetLabels;
 use App\Mcp\Tools\UpdateComment;
@@ -113,6 +114,7 @@ class TaskrServer extends Server
         DeleteIssue::class,
         MoveIssue::class,
         SetIssueParent::class,
+        SetIssueMilestone::class,
         SetIssueDependencies::class,
         SetAssignees::class,
         SetLabels::class,

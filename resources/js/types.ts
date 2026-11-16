@@ -116,13 +116,15 @@ export interface MilestoneCard extends MilestoneSummary {
 }
 
 /**
- * Active-descendant summary of an issue: the total and the count per
- * status id. A screen compares it with the target status to decide whether
- * a move must offer to bring the whole sub-tree along.
+ * Active-descendant summary of an issue: the total, the count per status
+ * id and the count per milestone id. A screen compares it with the target
+ * status — or the target milestone — to decide whether a move must offer
+ * to bring the whole sub-tree along.
  */
 export interface DescendantsSummary {
     total: number;
     byStatus: Record<string, number>;
+    byMilestone: Record<string, number>;
 }
 
 /** Computed health indicators of a project (always calculated, never stored). */

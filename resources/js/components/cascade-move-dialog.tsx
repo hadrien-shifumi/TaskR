@@ -75,3 +75,19 @@ export function pendingDescendantsCount(
 
     return summary.total - (summary.byStatus[statusId] ?? 0);
 }
+
+/**
+ * Active sub-tickets of the issue not already in the target milestone,
+ * from the server-provided summary — 0 means the attach is direct, no
+ * confirmation. The server skips the same descendants (archived,
+ * out-of-perimeter, other project), so the offer never promises more
+ * than it can deliver.
+ */
+export function pendingMilestoneDescendantsCount(
+    summary: { total: number; byMilestone: Record<string, number> } | undefined,
+    milestoneId: string,
+): number {
+    if (!summary) return 0;
+
+    return summary.total - (summary.byMilestone[milestoneId] ?? 0);
+}

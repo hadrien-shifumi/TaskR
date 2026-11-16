@@ -229,6 +229,13 @@ const en = {
         noMilestone: "No milestone",
         milestoneRefused: "Attachment refused:",
         milestoneError: "the milestone could not be set.",
+        milestoneCascadeTitle: "Attach the sub-tickets too?",
+        milestoneCascadeDescriptionOne:
+            'This ticket has one active sub-ticket outside "{{milestone}}". Attach the whole sub-tree to "{{milestone}}" as well?',
+        milestoneCascadeDescriptionMany:
+            'This ticket has {{count}} active sub-tickets outside "{{milestone}}". Attach the whole sub-tree to "{{milestone}}" as well?',
+        milestoneCascadeAccept: "Yes, attach the whole sub-tree",
+        milestoneCascadeDecline: "No, only this ticket",
         childIssues: "Child issues",
         noChildIssues: "No child issues.",
         deleteTitle: "Delete this issue?",
