@@ -11,10 +11,44 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Support\WorkspaceContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Assert;
 use Tests\TestCase;
 
 uses(TestCase::class)->in('Unit', 'Feature');
 uses(TestCase::class, RefreshDatabase::class)->in('Browser');
+
+/**
+ * Browser suite guard: a live Vite dev server leaves a public/hot file, and the
+ * in-process HTTP server then serves the dev assets instead of public/build —
+ * unbundled modules where import.meta.env.PROD is false, so build-only
+ * behaviour (the PWA service worker registration) silently disappears and the
+ * suite fails behind opaque 5s timeouts. Fail fast with an actionable message
+ * instead. Covered by tests/Unit/ViteHotFileGuardTest.php.
+ *
+ * @param  string|null  $hotPath  Override for tests; defaults to public/hot.
+ */
+function ensureBuiltAssetsForBrowserSuite(?string $hotPath = null): void
+{
+    $hotPath ??= public_path('hot');
+
+    if (! file_exists($hotPath)) {
+        return;
+    }
+
+    Assert::fail(
+        'A Vite dev server is running (public/hot exists): the Browser suite must run against the built assets (npm run build). '
+        .'A dev server serves unbundled assets where import.meta.env.PROD is false, silently disabling build-only behaviour '
+        .'such as the service worker registration. Stop the dev server or delete public/hot, then re-run.',
+    );
+}
+
+// Every browser test starts from the built assets or fails immediately.
+// NB: hooks must be scoped through uses()->in()->beforeEach() — a plain
+// beforeEach(...)->in() silently registers an unscoped hook with a bogus
+// higher-order proxy, it does NOT filter by directory.
+uses()->in('Browser')->beforeEach(function (): void {
+    ensureBuiltAssetsForBrowserSuite();
+});
 
 /**
  * Browser fixture: an owner with a workspace (optionally a project), mirroring
