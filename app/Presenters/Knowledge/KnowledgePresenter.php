@@ -27,7 +27,7 @@ class KnowledgePresenter
     /**
      * Selected page of the knowledge editor.
      *
-     * @return array{id: string, title: string, body: string, parentId: string|null, projectId: string|null, parentChain: array<int, array{id: string, title: string}>, lastEditor: string|null, updatedAt: string|null}
+     * @return array{id: string, title: string, body: string, parentId: string|null, projectId: string|null, parentChain: array<int, array{id: string, title: string}>, children: array<int, array<string, mixed>>, lastEditor: string|null, updatedAt: string|null}
      */
     public static function detail(KnowledgePage $page): array
     {
@@ -38,6 +38,11 @@ class KnowledgePresenter
             'parentId' => $page->parent_id,
             'projectId' => $page->project_id,
             'parentChain' => $page->ancestorChain(),
+            'children' => $page->children()
+                ->orderBy('title')
+                ->get()
+                ->map(fn (KnowledgePage $child) => self::listItem($child))
+                ->all(),
             'lastEditor' => $page->lastEditor?->name,
             'updatedAt' => $page->updated_at?->toISOString(),
         ];

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Actions\Knowledge\CreateKnowledgePage;
+use App\Actions\Knowledge\GetKnowledgePage;
 use App\Actions\Projects\CreateProject;
 use App\Actions\Workspaces\CreateWorkspace;
 use App\Models\KnowledgePage;
@@ -262,6 +263,69 @@ class KnowledgePageTest extends TestCase
         $this->assertNotNull($trashed->deleted_at);
         $this->assertSame($owner->id, (int) $trashed->deleted_by_id);
         $this->assertSame('manual', $trashed->deleted_reason);
+    }
+
+    public function test_selected_page_payload_exposes_children(): void
+    {
+        Queue::fake();
+        [$owner, $workspace, $project] = $this->setupWorkspace();
+
+        $parent = CreateKnowledgePage::run($workspace, $owner, [
+            'title' => 'Guide',
+            'body' => 'Parent page.',
+            'project_id' => $project->id,
+        ]);
+        $childB = CreateKnowledgePage::run($workspace, $owner, [
+            'title' => 'Sous-page B',
+            'body' => 'Child B.',
+            'project_id' => $project->id,
+            'parent_id' => $parent->id,
+        ]);
+        $childA = CreateKnowledgePage::run($workspace, $owner, [
+            'title' => 'Sous-page A',
+            'body' => 'Child A.',
+            'project_id' => $project->id,
+            'parent_id' => $parent->id,
+        ]);
+
+        $payload = GetKnowledgePage::run($parent, $owner);
+
+        // Children ship as lightweight rows, sorted by title (root-first
+        // chain convention), without the heavy body.
+        $this->assertSame('Sous-page A', $payload['children'][0]['title']);
+        $this->assertSame('Sous-page B', $payload['children'][1]['title']);
+        $this->assertSame($childA->id, $payload['children'][0]['id']);
+        $this->assertSame($childB->id, $payload['children'][1]['id']);
+        $this->assertArrayNotHasKey('body', $payload['children'][0]);
+    }
+
+    public function test_selected_page_children_exclude_soft_deleted(): void
+    {
+        Queue::fake();
+        [$owner, $workspace, $project] = $this->setupWorkspace();
+
+        $parent = CreateKnowledgePage::run($workspace, $owner, [
+            'title' => 'Guide',
+            'body' => 'Parent page.',
+            'project_id' => $project->id,
+        ]);
+        CreateKnowledgePage::run($workspace, $owner, [
+            'title' => 'Sous-page vivante',
+            'body' => 'Child alive.',
+            'project_id' => $project->id,
+            'parent_id' => $parent->id,
+        ]);
+        CreateKnowledgePage::run($workspace, $owner, [
+            'title' => 'Sous-page corbeille',
+            'body' => 'Child trashed.',
+            'project_id' => $project->id,
+            'parent_id' => $parent->id,
+        ])->delete();
+
+        $payload = GetKnowledgePage::run($parent, $owner);
+
+        $this->assertCount(1, $payload['children']);
+        $this->assertSame('Sous-page vivante', $payload['children'][0]['title']);
     }
 
     public function test_knowledge_index_renders_tree_and_reader(): void

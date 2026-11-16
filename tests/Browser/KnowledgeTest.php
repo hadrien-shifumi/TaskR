@@ -31,16 +31,53 @@ it('walks a newcomer through the knowledge tree', function () {
     $page->assertSee('Select a project')
         ->assertDontSee('Glossaire métier');
 
-    // Picking the transverse scope reveals the tree.
+    // Picking the transverse scope reveals the tree (root only: branches
+    // start folded); expanding the root shows its sub-page.
     $page->click('@filter-select-project');
     $page->click('[role="option"]:has-text("Cross-workspace only")');
     $page->assertSee('Glossaire métier')
-        ->assertSee('Convention de branches');
+        ->assertDontSee('Convention de branches');
+    $page->click("@knowledge-toggle-{$root->id}");
+    $page->assertSee('Convention de branches');
 
     $page->navigate('/knowledge/'.$root->id);
     $page->assertSee('Vocabulaire')
         ->assertSee('cycle complet des invoices')
         ->assertNoSmoke();
+});
+
+it('creates a sub-page in one click with the parent pre-filled', function () {
+    Queue::fake();
+    [$owner, $workspace] = setupBrowserWorkspace();
+    app(WorkspaceContext::class)->set($workspace);
+
+    $parent = CreateKnowledgePage::run($workspace, $owner, [
+        'title' => 'Guide racine',
+        'body' => 'Corps du guide.',
+    ]);
+
+    $this->actingAs($owner);
+
+    $page = visit('/knowledge/'.$parent->id);
+
+    // The article header offers one-click sub-page creation.
+    $page->assertSee('New sub-page');
+    $page->click('@new-sub-page');
+
+    // The dialog opens with the parent pre-filled.
+    $page->assertSeeIn('[role="dialog"]', 'Guide racine');
+
+    $page->fill('new-knowledge-title', 'Sous-page créée');
+    $page->fill('[role="dialog"] .ProseMirror', 'Corps de la sous-page.');
+    $page->click('button:has-text("Create")');
+
+    $page->assertSee('Sous-page créée');
+
+    app(WorkspaceContext::class)->set($workspace);
+    $child = KnowledgePage::query()->where('title', 'Sous-page créée')->firstOrFail();
+    expect($child->parent_id)->toBe($parent->id);
+
+    $page->assertNoSmoke();
 });
 
 it('creates then edits a knowledge page from the UI', function () {

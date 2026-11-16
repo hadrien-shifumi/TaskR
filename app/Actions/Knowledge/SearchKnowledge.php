@@ -48,7 +48,8 @@ class SearchKnowledge
      * Embed the query, then rank the workspace's vectorized pages by cosine
      * similarity. The ranking seam is driver-dependent (pgvector operator in
      * production, exact cosine in PHP on sqlite for dev/tests) but the
-     * contract is identical: ranked results with id, title, excerpt, score.
+     * contract is identical: ranked results with id, title, excerpt, score
+     * and the ancestor path (parentChain) for breadcrumb display.
      *
      * @return array<int, array<string, mixed>>
      *
@@ -80,15 +81,24 @@ class SearchKnowledge
         $vector = $this->embeddings->embed($query);
 
         if (DB::connection()->getDriverName() === 'pgsql') {
-            return $this->pgsqlRankedQuery($vector, $projectId, $scope, $seesTransverse)
+            // The raw select yields stdClass rows: re-fetch the ranked pages
+            // as models so ancestorChain() can walk the parent relation.
+            $ranked = $this->pgsqlRankedQuery($vector, $projectId, $scope, $seesTransverse)
                 ->limit($limit)
+                ->get();
+            $pages = KnowledgePage::query()
+                ->whereIn('id', $ranked->pluck('id'))
                 ->get()
+                ->keyBy('id');
+
+            return $ranked
                 ->map(fn ($row): array => [
                     'id' => $row->id,
                     'title' => $row->title,
                     'excerpt' => $this->excerpt($row->body),
                     'score' => round((float) $row->similarity, 4),
                     'projectId' => $row->project_id,
+                    'parentChain' => $pages->get($row->id)?->ancestorChain() ?? [],
                 ])
                 ->all();
         }
@@ -117,6 +127,7 @@ class SearchKnowledge
                 'excerpt' => $this->excerpt($ranked['page']->body),
                 'score' => round($ranked['score'], 4),
                 'projectId' => $ranked['page']->project_id,
+                'parentChain' => $ranked['page']->ancestorChain(),
             ])
             ->all();
     }

@@ -993,6 +993,12 @@ const en = {
         body: "Body",
         parentPage: "Parent page",
         parentFallback: "Parent",
+        onThisPage: "On this page",
+        childPages: "Sub-pages",
+        newSubPage: "New sub-page",
+        newPageInProject: "New page in this project",
+        collapse: "Collapse",
+        expand: "Expand",
         trash: {
             title: "Trash",
             nav: "Trash",

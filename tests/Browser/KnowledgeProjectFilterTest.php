@@ -180,6 +180,8 @@ it('keeps the project filter when opening an ancestor from the breadcrumb', func
 
     $page = visit('/knowledge?project='.$alpha->id);
 
+    // Branches start folded: expand the root to reveal its sub-page.
+    $page->click("@knowledge-toggle-{$pageAlpha->id}");
     $page->click('nav[aria-label="Knowledge tree"] a:has-text("Sous-page Alpha")');
 
     $page->assertPathIs('/knowledge/'.$child->id)

@@ -114,6 +114,29 @@ class SearchKnowledgeTest extends TestCase
         $this->assertSame('Notre page', $results[0]['title']);
     }
 
+    public function test_results_expose_parent_chain(): void
+    {
+        $this->configureEmbeddings();
+        [$owner, $workspace] = $this->setupWorkspace();
+
+        $root = KnowledgePage::factory()->vectorized(self::STYLE_VECTOR)->create([
+            'workspace_id' => $workspace->id,
+            'title' => 'Racine',
+            'body' => 'Corps racine.',
+        ]);
+        KnowledgePage::factory()->vectorized(self::BILLING_VECTOR)->create([
+            'workspace_id' => $workspace->id,
+            'title' => 'Enfant',
+            'body' => 'Corps enfant.',
+            'parent_id' => $root->id,
+        ]);
+
+        $results = SearchKnowledge::run($workspace, 'facturation');
+
+        $this->assertSame('Enfant', $results[0]['title']);
+        $this->assertSame([['id' => $root->id, 'title' => 'Racine']], $results[0]['parentChain']);
+    }
+
     public function test_project_filter_restricts_results(): void
     {
         $this->configureEmbeddings();

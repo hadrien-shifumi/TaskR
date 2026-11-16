@@ -13,9 +13,9 @@ export const markdownProse = cn(
   "[&_blockquote]:my-2 [&_blockquote]:border-l-2 [&_blockquote]:border-border [&_blockquote]:pl-3 [&_blockquote]:text-muted-foreground",
   "[&_code]:rounded [&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-xs",
   "[&_pre]:my-2 [&_pre]:overflow-x-auto [&_pre]:rounded-md [&_pre]:bg-muted [&_pre]:p-3 [&_pre_code]:bg-transparent [&_pre_code]:px-0 [&_pre_code]:py-0",
-  "[&_h1]:mb-2 [&_h1]:mt-5 [&_h1]:text-lg [&_h1]:font-semibold",
-  "[&_h2]:mb-2 [&_h2]:mt-5 [&_h2]:font-semibold",
-  "[&_h3]:mb-1 [&_h3]:mt-3 [&_h3]:font-semibold",
+  "[&_h1]:mb-2 [&_h1]:mt-5 [&_h1]:text-lg [&_h1]:font-semibold [&_h1]:scroll-mt-24",
+  "[&_h2]:mb-2 [&_h2]:mt-5 [&_h2]:font-semibold [&_h2]:scroll-mt-24",
+  "[&_h3]:mb-1 [&_h3]:mt-3 [&_h3]:font-semibold [&_h3]:scroll-mt-24",
   "[&_hr]:my-3 [&_hr]:border-border",
   "[&_img]:max-w-full [&_img]:rounded-md",
   "[&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-5",
@@ -57,6 +57,62 @@ type InlineToken =
   | { kind: "link"; children: string; url: string }
   | { kind: "image"; alt: string; url: string }
   | { kind: "url"; url: string }
+
+/**
+ * Slugifies a heading text for anchor ids: lowercase, accents stripped,
+ * non-alphanumerics collapsed to dashes. Shared by the renderer and the
+ * "On this page" TOC so anchors match between both.
+ */
+export function slugifyHeading(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+}
+
+/**
+ * Assigns a slug id to every heading block, deduplicating repeats with a
+ * numeric suffix. Returns a map of block index → id, usable by both the
+ * renderer and extractHeadings() so anchors stay stable.
+ */
+export function assignHeadingIds(blocks: Block[]): Map<number, string> {
+  const counts = new Map<string, number>()
+  const ids = new Map<number, string>()
+  blocks.forEach((block, index) => {
+    if (block.kind !== 'heading') {
+      return
+    }
+    const base = slugifyHeading(block.text) || 'section'
+    const seen = counts.get(base) ?? 0
+    counts.set(base, seen + 1)
+    ids.set(index, seen === 0 ? base : `${base}-${seen}`)
+  })
+  return ids
+}
+
+export interface MarkdownHeading {
+  id: string
+  level: 1 | 2 | 3
+  text: string
+}
+
+/**
+ * Extracts the headings of a markdown document with their anchor ids —
+ * the exact ids the renderer emits — for building a "On this page" TOC.
+ */
+export function extractHeadings(value: string): MarkdownHeading[] {
+  const blocks = parseBlocks(value.split('\n'))
+  const ids = assignHeadingIds(blocks)
+  return blocks
+    .map((block, index) =>
+      block.kind === 'heading'
+        ? { id: ids.get(index)!, level: block.level, text: block.text }
+        : null,
+    )
+    .filter((heading): heading is MarkdownHeading => heading !== null)
+}
 
 const INLINE_RE =
   /(`[^`\n]+`)|!\[([^\]]*)\]\(([^)\s]+)\)|\[([^\]]*)\]\(([^)\s]+)\)|(\*\*(?:(?!\*\*).)+\*\*)|(__(?:(?!__).)+__)|(~~(?:(?!~~).)+~~)|(\*(?:(?!\*).)+\*)|(_(?:(?!_).)+_)|(https?:\/\/[^\s)<]+)/g
@@ -372,7 +428,11 @@ function continueNested(lines: string[], start: number, indent: number): [ListIt
   return parseListItems(lines.slice(start), indent + 1)
 }
 
-function renderBlocks(blocks: Block[], keyPrefix: string): React.ReactNode[] {
+function renderBlocks(
+  blocks: Block[],
+  keyPrefix: string,
+  headingIds: Map<number, string>,
+): React.ReactNode[] {
   return blocks.map((block, index) => {
     const key = `${keyPrefix}-${index}`
     switch (block.kind) {
@@ -389,7 +449,8 @@ function renderBlocks(blocks: Block[], keyPrefix: string): React.ReactNode[] {
         )
       case "heading": {
         const Tag = (["h1", "h2", "h3"] as const)[block.level - 1]
-        return <Tag key={key}>{renderInline(block.text, key)}</Tag>
+        const id = headingIds.get(index)
+        return <Tag key={key} id={id}>{renderInline(block.text, key)}</Tag>
       }
       case "code":
         return (
@@ -398,7 +459,7 @@ function renderBlocks(blocks: Block[], keyPrefix: string): React.ReactNode[] {
           </pre>
         )
       case "quote":
-        return <blockquote key={key}>{renderBlocks(block.blocks, key)}</blockquote>
+        return <blockquote key={key}>{renderBlocks(block.blocks, key, headingIds)}</blockquote>
       case "hr":
         return <hr key={key} />
       case "table":
@@ -491,6 +552,11 @@ function renderListItem(item: ListItem, key: string): React.ReactNode {
  */
 export function MarkdownView({ value, className }: { value: string; className?: string }) {
   const blocks = React.useMemo(() => parseBlocks(value.split("\n")), [value])
+  const headingIds = React.useMemo(() => assignHeadingIds(blocks), [blocks])
 
-  return <div className={cn("text-sm", markdownProse, className)}>{renderBlocks(blocks, "md")}</div>
+  return (
+    <div className={cn("text-sm", markdownProse, className)}>
+      {renderBlocks(blocks, "md", headingIds)}
+    </div>
+  )
 }

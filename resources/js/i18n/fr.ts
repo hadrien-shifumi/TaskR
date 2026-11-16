@@ -1013,6 +1013,12 @@ const fr: typeof en = {
         body: "Corps",
         parentPage: "Page parente",
         parentFallback: "Parente",
+        onThisPage: "Sur cette page",
+        childPages: "Sous-pages",
+        newSubPage: "Nouvelle sous-page",
+        newPageInProject: "Nouvelle page dans ce projet",
+        collapse: "Replier",
+        expand: "Déplier",
         trash: {
             title: "Corbeille",
             nav: "Corbeille",

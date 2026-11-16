@@ -31,11 +31,14 @@ import {
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import {
     BookOpen,
+    ChevronDown,
     ChevronRight,
     Clock,
+    FileText,
     Folder,
     Globe,
     History,
+    ListTree,
     Pencil,
     Plus,
     Search,
@@ -44,11 +47,16 @@ import {
     User,
     X,
 } from 'lucide-react';
-import { lazy, Suspense, useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { PageSharedProps } from '@/types';
 import { formatDate, formatRelativeDate } from '@/lib/format-date';
 import { KnowledgeSidebar, type PageRef, type ProjectOption } from './components/knowledge-sidebar';
+import {
+    extractHeadings,
+    slugifyHeading,
+    type MarkdownHeading,
+} from '@/components/ui/markdown-view';
 
 interface SelectedPage {
     id: string;
@@ -57,6 +65,7 @@ interface SelectedPage {
     parentId: string | null;
     projectId: string | null;
     parentChain: { id: string; title: string }[];
+    children: PageRef[];
     lastEditor: string | null;
     updatedAt: string | null;
 }
@@ -67,6 +76,7 @@ interface SearchResult {
     excerpt: string;
     score: number;
     projectId: string | null;
+    parentChain: { id: string; title: string }[];
 }
 
 interface ConflictInfo {
@@ -90,6 +100,198 @@ const NO_PARENT = '__none__';
 
 const emptyForm = { title: '', body: '', project_id: '', parent_id: '' };
 
+/**
+ * Splits an excerpt into literal-match parts: tokens of the query are
+ * kept as highlight markers, the rest as plain text. Returns React nodes —
+ * never HTML — so nothing is injected raw into the DOM.
+ */
+function highlightExcerpt(excerpt: string, query: string): React.ReactNode[] {
+    const tokens = query
+        .trim()
+        .split(/\s+/)
+        .filter((token) => token.length >= 2)
+        .map((token) => token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+
+    if (tokens.length === 0 || excerpt.trim() === '') {
+        return [excerpt];
+    }
+
+    const pattern = new RegExp(`(${tokens.join('|')})`, 'gi');
+    return excerpt.split(pattern).map((part, index) =>
+        index % 2 === 1 ? (
+            <mark key={index} className="rounded bg-primary/20 px-0.5 text-foreground">
+                {part}
+            </mark>
+        ) : (
+            <span key={index}>{part}</span>
+        ),
+    );
+}
+
+/** Breadcrumb path of a result: project (or transverse) then ancestors. */
+function ResultPath({ result }: { result: SearchResult }) {
+    const { t } = useTranslation();
+    const chain = result.parentChain ?? [];
+
+    if (result.projectId === null && chain.length === 0) {
+        return null;
+    }
+
+    return (
+        <p className="mt-1 flex min-w-0 flex-wrap items-center gap-1 text-xs text-muted-foreground">
+            {result.projectId === null ? (
+                <span className="flex items-center gap-1">
+                    <Globe className="size-3 shrink-0" aria-hidden />
+                    {t('knowledge.crossWorkspace')}
+                </span>
+            ) : null}
+            {chain.map((ancestor, index) => (
+                <span
+                    key={ancestor.id}
+                    className={result.projectId === null || index > 0 ? 'flex items-center gap-1' : undefined}
+                >
+                    {result.projectId === null || index > 0 ? (
+                        <ChevronRight className="size-3 shrink-0" aria-hidden />
+                    ) : null}
+                    <span className="max-w-40 truncate">{ancestor.title}</span>
+                </span>
+            ))}
+        </p>
+    );
+}
+
+/** "On this page" TOC: a sticky right rail on xl+, a collapsible block above the article below. */
+function OnThisPage({
+    headings,
+    variant,
+}: {
+    headings: MarkdownHeading[];
+    variant: 'mobile' | 'desktop';
+}) {
+    const { t } = useTranslation();
+    const [open, setOpen] = useState(false);
+    const reactId = useId();
+    const listId = `knowledge-toc-list-${variant}-${reactId.replace(/[^a-zA-Z0-9-]/g, '')}`;
+
+    if (headings.length === 0) {
+        return null;
+    }
+
+    if (variant === 'desktop') {
+        return (
+            <nav
+                aria-label={t('knowledge.onThisPage')}
+                className="hidden xl:block xl:sticky xl:top-[calc(80px+env(safe-area-inset-top))]"
+            >
+                <p className="mb-2 flex items-center gap-2 font-mono text-[12px] tracking-[0.08em] text-muted-foreground uppercase">
+                    <ListTree className="size-3.5 shrink-0" aria-hidden />
+                    {t('knowledge.onThisPage')}
+                </p>
+                <ul className="space-y-1 border-l pl-4">
+                    {headings.map((heading) => (
+                        <li key={heading.id}>
+                            <a
+                                href={`#${heading.id}`}
+                                onClick={(event) => {
+                                    event.preventDefault();
+                                    document
+                                        .getElementById(heading.id)
+                                        ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                }}
+                                className={`block truncate py-1 text-sm text-muted-foreground transition-colors hover:text-foreground ${
+                                    heading.level === 1 ? '' : heading.level === 2 ? 'pl-3' : 'pl-6'
+                                }`}
+                            >
+                                {heading.text}
+                            </a>
+                        </li>
+                    ))}
+                </ul>
+            </nav>
+        );
+    }
+
+    return (
+        <nav aria-label={t('knowledge.onThisPage')} className="mb-4 xl:hidden">
+            <button
+                type="button"
+                onClick={() => setOpen((previous) => !previous)}
+                aria-expanded={open}
+                aria-controls={open ? listId : undefined}
+                className="flex w-full items-center justify-between rounded-xl border bg-card px-4 py-3 text-sm font-medium"
+            >
+                <span className="flex items-center gap-2">
+                    <ListTree className="size-4 text-muted-foreground" aria-hidden />
+                    {t('knowledge.onThisPage')}
+                </span>
+                <ChevronDown
+                    className={`size-4 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`}
+                    aria-hidden
+                />
+            </button>
+            {open ? (
+                <ul id={listId} className="mt-2 space-y-1 border-l pl-4">
+                    {headings.map((heading) => (
+                        <li key={heading.id}>
+                            <a
+                                href={`#${heading.id}`}
+                                onClick={(event) => {
+                                    event.preventDefault();
+                                    document
+                                        .getElementById(heading.id)
+                                        ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                }}
+                                className={`block truncate py-1 text-sm text-muted-foreground transition-colors hover:text-foreground ${
+                                    heading.level === 1 ? '' : heading.level === 2 ? 'pl-3' : 'pl-6'
+                                }`}
+                            >
+                                {heading.text}
+                            </a>
+                        </li>
+                    ))}
+                </ul>
+            ) : null}
+        </nav>
+    );
+}
+
+/** Child pages of the article, as clickable cards — empty section hides. */
+function ChildPages({ children: childPages }: { children: PageRef[] }) {
+    const { t } = useTranslation();
+
+    if (childPages.length === 0) {
+        return null;
+    }
+
+    return (
+        <section aria-label={t('knowledge.childPages')} className="mt-6 border-t pt-5">
+            <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold">
+                <FileText className="size-4 text-muted-foreground" aria-hidden />
+                {t('knowledge.childPages')}
+            </h3>
+            <ul className="grid gap-3 sm:grid-cols-2">
+                {childPages.map((child) => (
+                    <li key={child.id}>
+                        <Link
+                            href={
+                                child.projectId
+                                    ? route('knowledge.show', { page: child.id, project: child.projectId })
+                                    : route('knowledge.show', child.id)
+                            }
+                            className="block rounded-xl border bg-card p-4 transition-colors hover:border-primary/45"
+                        >
+                            <span className="block truncate font-medium">{child.title}</span>
+                            <span className="mt-1 block text-xs text-muted-foreground">
+                                {formatRelativeDate(child.updatedAt)}
+                            </span>
+                        </Link>
+                    </li>
+                ))}
+            </ul>
+        </section>
+    );
+}
+
 export default function KnowledgeIndex() {
     const { pages, projects, selected, projectFilter, query, results, searchUnavailable } = usePage<PageProps>().props;
     const { workspace } = usePage<PageSharedProps>().props;
@@ -105,17 +307,26 @@ export default function KnowledgeIndex() {
     const createForm = useForm({ ...emptyForm });
     const editForm = useForm({ ...emptyForm });
 
+    const searchInputRef = useRef<HTMLInputElement>(null);
+
+    // Headings of the selected page — anchors for the "On this page" TOC.
+    const headings = useMemo(
+        () => (selected ? extractHeadings(selected.body) : []),
+        [selected],
+    );
+
     const selectedId = selected?.id ?? null;
     const projectName = (projectId: string | null): string | null =>
         projectId ? (projects.find((project) => project.id === projectId)?.name ?? null) : null;
 
-    /** Opens the create dialog, optionally pre-filling title/project from the empty-state CTAs. */
-    const openCreating = (init?: { title?: string; projectId?: string }) => {
+    /** Opens the create dialog, optionally pre-filling title/project/parent. */
+    const openCreating = (init?: { title?: string; projectId?: string; parentId?: string }) => {
         if (init) {
             createForm.setData({
                 ...emptyForm,
                 title: init.title ?? '',
                 project_id: init.projectId ?? '',
+                parent_id: init.parentId ?? '',
             });
         }
         setCreating(true);
@@ -175,6 +386,43 @@ export default function KnowledgeIndex() {
     useEffect(() => {
         setSearch(query ?? '');
     }, [query]);
+
+    // Keyboard shortcuts: "/" focuses the search (unless typing in a field
+    // or a dialog is open), Escape clears it and gives focus back. The
+    // editor and dialogs catch their own keys first.
+    useEffect(() => {
+        const onKeyDown = (event: KeyboardEvent) => {
+            const target = event.target as HTMLElement | null;
+            const isTypingTarget =
+                target !== null &&
+                (target.tagName === 'INPUT' ||
+                    target.tagName === 'TEXTAREA' ||
+                    target.isContentEditable);
+
+            if (event.key === '/' && !isTypingTarget) {
+                if (document.querySelector('[role="dialog"]')) {
+                    return;
+                }
+                event.preventDefault();
+                searchInputRef.current?.focus();
+                searchInputRef.current?.select();
+                return;
+            }
+
+            if (
+                event.key === 'Escape' &&
+                target === searchInputRef.current &&
+                search !== ''
+            ) {
+                event.preventDefault();
+                setSearch('');
+                searchInputRef.current?.blur();
+            }
+        };
+
+        window.addEventListener('keydown', onKeyDown);
+        return () => window.removeEventListener('keydown', onKeyDown);
+    }, [search]);
 
     const submitCreate = (e: React.FormEvent) => {
         e.preventDefault();
@@ -297,6 +545,7 @@ export default function KnowledgeIndex() {
                 searchPlaceholder={t('knowledge.searchPlaceholder')}
                 searchAriaLabel={t('knowledge.searchAria')}
                 searchClassName="w-full sm:w-72"
+                searchInputRef={searchInputRef}
                 visible={results !== undefined ? results.length : pages.length}
                 total={pages.length}
             />
@@ -322,6 +571,7 @@ export default function KnowledgeIndex() {
                                     : '',
                         })
                     }
+                    onCreatePageInProject={(projectId) => openCreating({ projectId: projectId ?? '' })}
                 />
 
                 <div className="min-w-0">
@@ -396,8 +646,9 @@ export default function KnowledgeIndex() {
                                                         {Math.round(result.score * 100)}%
                                                     </Badge>
                                                 </div>
+                                                <ResultPath result={result} />
                                                 <p className="mt-1.5 text-sm text-muted-foreground">
-                                                    {result.excerpt}
+                                                    {highlightExcerpt(result.excerpt, query ?? '')}
                                                 </p>
                                             </Link>
                                         </li>
@@ -457,118 +708,129 @@ export default function KnowledgeIndex() {
                                     </button>
                                 </div>
                             ) : null}
-                            <article className="overflow-hidden rounded-xl border bg-card">
-                            <header className="flex flex-wrap items-center gap-x-2.5 gap-y-2 border-b px-5 py-3.5">
-                                <nav
-                                    aria-label={t('knowledge.breadcrumbAria')}
-                                    className="flex w-full flex-wrap items-center gap-1.5 text-[13px] text-muted-foreground"
-                                >
-                                    {selected.projectId ? (
-                                        <span className="flex items-center gap-1">
-                                            <Folder className="size-3.5 shrink-0" aria-hidden />
-                                            {projectName(selected.projectId)}
-                                        </span>
-                                    ) : (
-                                        <span className="flex items-center gap-1">
-                                            <Globe className="size-3.5 shrink-0" aria-hidden />
-                                            {t('knowledge.crossWorkspace')}
-                                        </span>
-                                    )}
-                                    {selected.parentChain.map((ancestor) => (
-                                        <span key={ancestor.id} className="flex min-w-0 items-center gap-1.5">
-                                            <ChevronRight className="size-3 shrink-0" aria-hidden />
-                                            <Link
-                                                href={
-                                                    projectFilter
-                                                        ? route('knowledge.show', { page: ancestor.id, project: projectFilter })
-                                                        : route('knowledge.show', ancestor.id)
-                                                }
-                                                className="truncate transition-colors hover:text-foreground"
-                                            >
-                                                {ancestor.title}
-                                            </Link>
-                                        </span>
-                                    ))}
-                                    <span className="flex min-w-0 items-center gap-1.5">
-                                        <ChevronRight className="size-3 shrink-0" aria-hidden />
-                                        <span className="truncate font-medium text-foreground">
-                                            {selected.title}
-                                        </span>
-                                    </span>
-                                </nav>
-                                <h2 className="text-base font-semibold tracking-tight">{selected.title}</h2>
-                                {selected.projectId ? (
-                                    <Badge variant="secondary" className="gap-1">
-                                        <Folder className="size-3" aria-hidden />
-                                        {projectName(selected.projectId)}
-                                    </Badge>
-                                ) : (
-                                    <Badge variant="outline" className="gap-1">
-                                        <Globe className="size-3" aria-hidden />
-                                        {t('knowledge.crossWorkspace')}
-                                    </Badge>
-                                )}
-                                <div className="ml-auto flex items-center gap-1">
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() =>
-                                            router.get(route('knowledge.versions', selected.id))
-                                        }
-                                    >
-                                        <History aria-hidden />
-                                        {t('knowledge.versions.button')}
-                                    </Button>
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => {
-                                            setBaseUpdatedAt(selected.updatedAt);
-                                            setConflict(null);
-                                            setEditing(true);
-                                            editForm.setData({
-                                                title: selected.title,
-                                                body: selected.body,
-                                                project_id: selected.projectId ?? '',
-                                                parent_id: selected.parentId ?? '',
-                                            });
-                                        }}
-                                    >
-                                        <Pencil aria-hidden />
-                                        {t('issueShow.edit')}
-                                    </Button>
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                                        onClick={() => setDeleting(true)}
-                                    >
-                                        <Trash2 aria-hidden />
-                                        {t('common.delete')}
-                                    </Button>
+                            {headings.length > 0 ? (
+                                <div className="mb-4 xl:hidden">
+                                    <OnThisPage headings={headings} variant="mobile" />
                                 </div>
-                                <p className="flex w-full flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-muted-foreground">
-                                    {selected.lastEditor ? (
-                                        <span className="flex items-center gap-1.5">
-                                            <User className="size-3.5 shrink-0" aria-hidden />
-                                            {t('knowledge.editedBy', { name: selected.lastEditor })}
-                                        </span>
-                                    ) : null}
-                                    {selected.updatedAt ? (
-                                        <span
-                                            className="flex items-center gap-1.5"
-                                            title={formatDate(selected.updatedAt)}
+                            ) : null}
+                            <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_15rem]">
+                                <article className="min-w-0 overflow-hidden rounded-xl border bg-card">
+                                {/* Breadcrumb: project + ancestors only — the
+                                    h2 below carries the title, no repeat. */}
+                                <header className="flex flex-wrap items-center gap-x-2.5 gap-y-2 border-b px-5 py-3.5">
+                                    <nav
+                                        aria-label={t('knowledge.breadcrumbAria')}
+                                        className="flex w-full flex-wrap items-center gap-1.5 text-[13px] text-muted-foreground"
+                                    >
+                                        {selected.projectId ? (
+                                            <span className="flex items-center gap-1">
+                                                <Folder className="size-3.5 shrink-0" aria-hidden />
+                                                {projectName(selected.projectId)}
+                                            </span>
+                                        ) : (
+                                            <span className="flex items-center gap-1">
+                                                <Globe className="size-3.5 shrink-0" aria-hidden />
+                                                {t('knowledge.crossWorkspace')}
+                                            </span>
+                                        )}
+                                        {selected.parentChain.map((ancestor) => (
+                                            <span key={ancestor.id} className="flex min-w-0 items-center gap-1.5">
+                                                <ChevronRight className="size-3 shrink-0" aria-hidden />
+                                                <Link
+                                                    href={
+                                                        projectFilter
+                                                            ? route('knowledge.show', { page: ancestor.id, project: projectFilter })
+                                                            : route('knowledge.show', ancestor.id)
+                                                    }
+                                                    className="truncate transition-colors hover:text-foreground"
+                                                >
+                                                    {ancestor.title}
+                                                </Link>
+                                            </span>
+                                        ))}
+                                    </nav>
+                                    <div className="ml-auto flex items-center gap-1">
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            data-test="new-sub-page"
+                                            onClick={() =>
+                                                openCreating({ parentId: selected.id, projectId: selected.projectId ?? '' })
+                                            }
                                         >
-                                            <Clock className="size-3.5 shrink-0" aria-hidden />
-                                            {formatRelativeDate(selected.updatedAt)}
-                                        </span>
-                                    ) : null}
-                                </p>
-                            </header>
-                            <div className="px-5 py-5">
-                                <MarkdownView value={selected.body} />
+                                            <Plus aria-hidden />
+                                            {t('knowledge.newSubPage')}
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() =>
+                                                router.get(route('knowledge.versions', selected.id))
+                                            }
+                                        >
+                                            <History aria-hidden />
+                                            {t('knowledge.versions.button')}
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => {
+                                                setBaseUpdatedAt(selected.updatedAt);
+                                                setConflict(null);
+                                                setEditing(true);
+                                                editForm.setData({
+                                                    title: selected.title,
+                                                    body: selected.body,
+                                                    project_id: selected.projectId ?? '',
+                                                    parent_id: selected.parentId ?? '',
+                                                });
+                                            }}
+                                        >
+                                            <Pencil aria-hidden />
+                                            {t('issueShow.edit')}
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                            onClick={() => setDeleting(true)}
+                                        >
+                                            <Trash2 aria-hidden />
+                                            {t('common.delete')}
+                                        </Button>
+                                    </div>
+                                    <p className="flex w-full flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-muted-foreground">
+                                        {selected.lastEditor ? (
+                                            <span className="flex items-center gap-1.5">
+                                                <User className="size-3.5 shrink-0" aria-hidden />
+                                                {t('knowledge.editedBy', { name: selected.lastEditor })}
+                                            </span>
+                                        ) : null}
+                                        {selected.updatedAt ? (
+                                            <span
+                                                className="flex items-center gap-1.5"
+                                                title={formatDate(selected.updatedAt)}
+                                            >
+                                                <Clock className="size-3.5 shrink-0" aria-hidden />
+                                                {formatRelativeDate(selected.updatedAt)}
+                                            </span>
+                                        ) : null}
+                                    </p>
+                                </header>
+                                <div className="mx-auto max-w-3xl px-5 py-5">
+                                    <h2 className="text-base font-semibold tracking-tight">
+                                        {selected.title}
+                                    </h2>
+                                    <MarkdownView value={selected.body} />
+                                </div>
+                                <ChildPages>{selected.children ?? []}</ChildPages>
+                                </article>
+                                {headings.length > 0 ? (
+                                    <div className="hidden xl:block">
+                                        <OnThisPage headings={headings} variant="desktop" />
+                                    </div>
+                                ) : null}
                             </div>
-                            </article>
                         </div>
                     ) : results === undefined ? (
                         <div className="rounded-xl border border-dashed px-4 py-12 text-center">

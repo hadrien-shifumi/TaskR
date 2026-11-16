@@ -1,6 +1,6 @@
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
-import type { ReactNode } from 'react';
+import type { ReactNode, RefObject } from 'react';
 
 type FilterBarProps = {
     /** Current title search, mirrored into the `q` URL param by the page. */
@@ -10,6 +10,8 @@ type FilterBarProps = {
     searchAriaLabel: string;
     /** Width class for the search input; defaults to the compact w-50. */
     searchClassName?: string;
+    /** Optional ref to the search input — lets pages focus it (e.g. the "/" shortcut). */
+    searchInputRef?: RefObject<HTMLInputElement | null>;
     /** Rows currently displayed… */
     visible: number;
     /** …out of the workspace total (unfiltered). */
@@ -29,6 +31,7 @@ export function FilterBar({
     searchPlaceholder,
     searchAriaLabel,
     searchClassName = 'w-50',
+    searchInputRef,
     visible,
     total,
     children,
@@ -41,6 +44,7 @@ export function FilterBar({
                     aria-hidden
                 />
                 <Input
+                    ref={searchInputRef}
                     type="search"
                     value={search}
                     onChange={(event) => onSearchChange(event.target.value)}
