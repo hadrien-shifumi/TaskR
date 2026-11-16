@@ -32,26 +32,20 @@ class CreateIssue
         return $this->currentUserCanUseWorkspace();
     }
 
-    public function rules(): array
+    /**
+     * The project id can be injected by object callers (MCP tools) —
+     * the HTTP fallback reads the request input.
+     */
+    public function rules(?string $projectId = null): array
     {
         $workspace = $this->currentWorkspace();
+        $projectId ??= request()->input('project_id');
 
-        // Base rule: any workspace member. The workspace owner keeps it
-        // (god mode, no roster line); a roster-driven actor — member or
-        // guest of the workspace — may only assign the people of the
-        // target project's roster, the same rule as the post-creation
-        // assign action: an out-of-team assignee could not even see the
+        // Assignable = a roster line on the target project, for every
+        // actor and every channel (web, agents): the workspace owner
+        // included. An out-of-team assignee could not even see the
         // ticket (D2), and assignable means a team line (D6).
-        $assigneeRule = Rule::exists('memberships', 'user_id')->where('workspace_id', $workspace?->id);
-
-        $projectId = request()->input('project_id');
-        $user = request()->user();
-
-        if ($projectId !== null
-            && $user !== null
-            && app(WorkspaceContext::class)->accessibleProjectIds($user) !== null) {
-            $assigneeRule = Rule::exists('project_members', 'user_id')->where('project_id', $projectId);
-        }
+        $assigneeRule = Rule::exists('project_members', 'user_id')->where('project_id', $projectId);
 
         return [
             'project_id' => ['required', 'ulid', Rule::exists('projects', 'id')->where('workspace_id', $workspace?->id)],

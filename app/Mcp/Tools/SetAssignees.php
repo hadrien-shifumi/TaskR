@@ -13,7 +13,7 @@ use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Attributes\Name;
 
 #[Name('set_assignees')]
-#[Description('Replace the assignees of an issue. Pass an empty array to unassign everyone. Assignee ids must belong to workspace members.')]
+#[Description('Replace the assignees of an issue. Pass an empty array to unassign everyone. Assignee ids must belong to the roster of the issue\'s project.')]
 class SetAssignees extends AgentTool
 {
     /**
@@ -35,7 +35,10 @@ class SetAssignees extends AgentTool
         $issue = Issue::query()->findOrFail($request->get('issue_id'));
 
         $action = app(SetAssigneesAction::class);
-        $assignees = $request->validate($action->rules())['assignees'];
+        // The action's rules must target the issue's project roster: the
+        // tool injects the resolved issue because the HTTP request of the
+        // MCP endpoint carries no route binding.
+        $assignees = $request->validate($action->rules($issue))['assignees'];
 
         return Response::structured([
             'issue' => $this->presentIssue($action->handle($issue, $assignees, $this->currentUser($request))),

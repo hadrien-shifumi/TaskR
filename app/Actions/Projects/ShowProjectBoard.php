@@ -100,7 +100,10 @@ class ShowProjectBoard
             'currentUserId' => $user?->id,
             // Creation options for the board's full issue dialog (mirrors ShowIssuesPage).
             'labels' => $workspace->labels()->orderBy('name')->get()->map(fn ($label) => LabelPresenter::present($label))->all(),
-            'members' => $workspace->members()->orderBy('name')->get()->map(fn ($member) => ProjectMemberPresenter::person($member))->all(),
+            // Assignee candidates = the project roster only: creation
+            // rejects anyone else, so the dialog never offers a name the
+            // server would refuse.
+            'members' => $project->members()->orderBy('name')->get()->map(fn ($member) => ProjectMemberPresenter::person($member))->all(),
             'milestones' => $project->milestones()
                 ->orderBy('title')
                 ->get()

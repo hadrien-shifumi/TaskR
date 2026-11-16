@@ -39,7 +39,11 @@ class CreateIssue extends AgentTool
         $workspace = $this->resolveWorkspace($request);
 
         $action = app(CreateIssueAction::class);
-        $data = $request->validate($action->rules());
+        // The assignee rule targets the target project's roster: the tool
+        // injects the project id because the HTTP request of the MCP
+        // endpoint carries no form input.
+        $projectId = $request->get('project_id');
+        $data = $request->validate($action->rules(is_string($projectId) ? $projectId : null));
         $data['created_by'] ??= $request->user()?->getKey();
 
         return Response::structured([

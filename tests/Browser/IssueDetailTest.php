@@ -6,6 +6,7 @@ use App\Actions\Issues\SetIssueParent;
 use App\Actions\TimeTracking\CreateTimeEntry;
 use App\Actions\TimeTracking\SetIssueEstimate;
 use App\Models\Membership;
+use App\Models\ProjectMember;
 use App\Models\User;
 use App\Support\WorkspaceContext;
 
@@ -284,14 +285,26 @@ it('adds and removes assignees independently from the sidebar', function () {
         'workspace_id' => $workspace->id,
         'role' => 'member',
     ]);
+    // Assignable = the project roster: the sidebar only offers the team.
+    ProjectMember::create(['project_id' => $project->id, 'user_id' => $member->id, 'role' => 'member']);
+    $outsider = User::factory()->create();
+    Membership::create([
+        'user_id' => $outsider->id,
+        'workspace_id' => $workspace->id,
+        'role' => 'member',
+    ]);
     app(WorkspaceContext::class)->set($workspace);
     $issue = CreateIssue::run($workspace, ['project_id' => $project->id, 'title' => 'Page de profil']);
     $this->actingAs($owner);
 
     $page = visit('/issues/'.$issue->id);
 
-    // Add the member through the ＋ menu of the Assignees prop.
+    // Add the member through the ＋ menu of the Assignees prop. The menu
+    // offers the project roster only: the out-of-roster workspace member
+    // never appears.
     $page->click('@assignee-add');
+    $page->assertSee($member->name);
+    $page->assertDontSee($outsider->name);
     $page->click($member->name);
     $page->waitForEvent('networkidle');
 
