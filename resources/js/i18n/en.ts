@@ -478,6 +478,8 @@ const en = {
         filterByAssignee: "Filter by assignee",
         allAssignees: "All assignees",
         me: "Me",
+        searchPlaceholder: "Type a title or an identifier…",
+        searchAria: "Search issues by title or identifier",
     },
 
     projectHealth: {
@@ -650,10 +652,15 @@ const en = {
         views: {
             health: "Health",
             board: "Kanban",
+            issues: "Issues",
             milestones: "Milestones",
             activity: "Activity",
             aria: "Project views",
         },
+    },
+
+    projectIssues: {
+        headTitle: "Issues — {{name}}",
     },
 
     issues: {

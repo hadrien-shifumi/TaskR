@@ -17,6 +17,8 @@ use App\Presenters\Projects\ProjectMemberPresenter;
 use App\Presenters\Projects\ProjectPresenter;
 use App\Presenters\Templates\TemplatePresenter;
 use App\Responders\Projects\ProjectBoardResponder;
+use App\Support\IssueFilterSanitizer;
+use App\Support\IssueSearch;
 use App\Support\WorkspaceContext;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -39,10 +41,12 @@ class ShowProjectBoard
      * Present the kanban board of a project: one column per workspace status
      * (in workspace order, even when empty), each carrying its issues.
      * With $parentsOnly, subtasks are hidden for a macro view of the project.
-     * With $assigneeId, only issues assigned to that user are shown.
+     * With $assigneeId, only issues assigned to that user are shown. With
+     * $search, only issues whose title or identifier match are shown. The
+     * unfiltered project total rides along for the "visible / total" counter.
      *
-     * @param  array{assignee?: string|null}  $filters
-     * @return array{project: array<string, mixed>, health: array<string, mixed>, columns: array<int, array<string, mixed>>, parentsOnly: bool, filters: array<string, string>, projectPeople: array<int, array<string, mixed>>, currentUserId: int|null, labels: array<int, mixed>, members: array<int, mixed>, milestones: array<int, array{id: string, title: string}>, templates: array<int, mixed>}
+     * @param  array{assignee?: string|null, q?: string|null}  $filters
+     * @return array{project: array<string, mixed>, health: array<string, mixed>, columns: array<int, array<string, mixed>>, parentsOnly: bool, filters: array<string, string>, totalUnfiltered: int, projectPeople: array<int, array<string, mixed>>, currentUserId: int|null, labels: array<int, mixed>, members: array<int, mixed>, milestones: array<int, array{id: string, title: string}>, templates: array<int, mixed>}
      */
     public function handle(Project $project, bool $parentsOnly = false, array $filters = [], ?User $user = null): array
     {
@@ -54,8 +58,9 @@ class ShowProjectBoard
         $workspace = app(WorkspaceContext::class)->getOrFail();
 
         $assigneeId = ! empty($filters['assignee']) ? (int) $filters['assignee'] : null;
+        $search = isset($filters['q']) && is_string($filters['q']) && $filters['q'] !== '' ? $filters['q'] : null;
 
-        $issues = $project->issues()
+        $baseQuery = $project->issues()
             ->unarchived()
             ->with(['assignees', 'blockedBy.status'])
             ->with(['knowledgePages' => LoadIssueKnowledgePages::cardConstraint($user)])
@@ -68,9 +73,16 @@ class ShowProjectBoard
                         StatusCategory::Done,
                         StatusCategory::Cancelled,
                     ])),
-            ])
+            ]);
+
+        // Scope-wide count, before any filter: the board shows it next to
+        // the filtered counter ("visible / total").
+        $totalUnfiltered = (clone $baseQuery)->toBase()->count();
+
+        $issues = $baseQuery
             ->when($parentsOnly, fn ($query) => $query->whereNull('parent_id'))
             ->when($assigneeId !== null, fn (Builder $query) => $query->whereHas('assignees', fn (Builder $q) => $q->where('users.id', $assigneeId)))
+            ->when($search !== null, fn (Builder $query) => IssueSearch::apply($query, $search))
             ->orderBy('created_at')
             ->orderBy('id')
             ->get();
@@ -96,6 +108,7 @@ class ShowProjectBoard
             'canContribute' => $user !== null && $project->isContributor($user),
             'parentsOnly' => $parentsOnly,
             'filters' => array_filter($filters, fn ($value) => $value !== null && $value !== ''),
+            'totalUnfiltered' => $totalUnfiltered,
             'projectPeople' => $projectPeople,
             'currentUserId' => $user?->id,
             // Creation options for the board's full issue dialog (mirrors ShowIssuesPage).
@@ -138,6 +151,7 @@ class ShowProjectBoard
             $request->boolean('parents'),
             [
                 'assignee' => $request->query('assignee'),
+                'q' => IssueFilterSanitizer::search($request->query('q')),
             ],
             $request->user(),
         );

@@ -2,6 +2,7 @@ import { ProjectMenu } from '@/components/project-menu';
 import { ProjectViewSwitcher } from '@/components/project-view-switcher';
 import { Avatar, AvatarStack, BlockedBadge, HealthBadge, KnowledgeBadge, OpenChildBadge, PriorityBadge, StatusBadge } from '@/components/issue-badges';
 import { Banner } from '@/components/banner';
+import { FilterBar } from '@/components/filter-bar';
 import { FlashBanner } from '@/components/flash-banner';
 import { TimerProposalDialogs, useTimerControl, useTimerProposals } from '@/components/timer-widget';
 import { StartTimerConflictDialog } from '@/components/start-timer-conflict-dialog';
@@ -26,7 +27,7 @@ import {
 import AppLayout from '@/layouts/app-layout';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { Archive, ArrowLeft, MoveRight, Play, Plus, Square, User } from 'lucide-react';
-import { memo, useCallback, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CascadeMoveDialog, pendingDescendantsCount } from '@/components/cascade-move-dialog';
 import type { DescendantsSummary, HealthData, LabelRef, MilestoneOption, TimerState, UserRef } from '@/types';
@@ -204,6 +205,8 @@ type PageProps = {
     columns: BoardColumn[];
     parentsOnly: boolean;
     filters: Record<string, string>;
+    /** Project total before any filter — the "visible / total" counter. */
+    totalUnfiltered: number;
     projectPeople: ProjectPerson[];
     currentUserId: number | null;
     /**
@@ -232,6 +235,7 @@ export default function Board() {
         columns,
         parentsOnly,
         filters,
+        totalUnfiltered,
         projectPeople,
         currentUserId,
         labels,
@@ -275,26 +279,48 @@ export default function Board() {
     const completedTotal = completedCounts.done + completedCounts.cancelled;
     const canArchiveCompleted = workspace?.role === 'owner' && completedTotal > 0;
 
-    /** Sets the assignee filter via URL query param (preserveState). The
-     *  partial reload keeps every other prop (project, members, labels…)
-     *  behind: only the columns and the URL-derived filters refetch. */
-    const setAssigneeFilter = (value: string) => {
+    /** Issues currently visible — the columns carry the filtered cards. */
+    const visibleCount = useMemo(
+        () => columns.reduce((sum, column) => sum + column.issuesCount, 0),
+        [columns],
+    );
+
+    /** The partial reload keeps every other prop (project, members,
+     *  labels…) behind: only the columns, the counter and the URL-derived
+     *  filters refetch. */
+    const boardOnly = ['columns', 'filters', 'health', 'totalUnfiltered'];
+
+    /** Sets one URL filter (assignee, search); an empty value removes the
+     *  param so filtered URLs stay clean and shareable. The parentsOnly
+     *  flag rides along so the filters always compose. */
+    const setBoardFilter = (key: string, value: string) => {
         const params: Record<string, string> = { ...filters };
         if (value === '' || value === 'all') {
-            delete params.assignee;
+            delete params[key];
         } else {
-            params.assignee = value;
+            params[key] = value;
         }
         if (parentsOnly) {
             params.parents = '1';
         }
         router.get(route('projects.board', project.id), params, {
             preserveState: true,
-            only: ['columns', 'filters', 'health'],
+            only: boardOnly,
         });
     };
 
     const currentAssignee = filters.assignee ?? '';
+    const [search, setSearch] = useState(filters.q ?? '');
+
+    // Debounced search: the query param follows the input with a beat.
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (search !== (filters.q ?? '')) {
+                setBoardFilter('q', search);
+            }
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [search]);
 
     /**
      * The drop is never optimistic: it calls the existing `issues.move`
@@ -441,10 +467,18 @@ export default function Board() {
 
             <FlashBanner />
 
-            <div className="mb-3.5 flex flex-wrap items-center gap-2" data-test="board-toolbar">
+            <FilterBar
+                search={search}
+                onSearchChange={setSearch}
+                searchPlaceholder={t('projectBoard.searchPlaceholder')}
+                searchAriaLabel={t('projectBoard.searchAria')}
+                searchClassName="w-full sm:w-56"
+                visible={visibleCount}
+                total={totalUnfiltered}
+            >
                 <Select
                     value={currentAssignee || 'all'}
-                    onValueChange={(value) => setAssigneeFilter(value ?? '')}
+                    onValueChange={(value) => setBoardFilter('assignee', value ?? '')}
                 >
                     <SelectTrigger
                         className="h-7.5 w-40 text-[13px]"
@@ -476,13 +510,18 @@ export default function Board() {
                 <Button
                     variant={parentsOnly ? 'default' : 'outline'}
                     size="sm"
-                    onClick={() =>
-                        router.get(
-                            route('projects.board', project.id),
-                            parentsOnly ? {} : { parents: '1' },
-                            { preserveState: true },
-                        )
-                    }
+                    onClick={() => {
+                        const params: Record<string, string> = { ...filters };
+                        if (parentsOnly) {
+                            delete params.parents;
+                        } else {
+                            params.parents = '1';
+                        }
+                        router.get(route('projects.board', project.id), params, {
+                            preserveState: true,
+                            only: boardOnly,
+                        });
+                    }}
                 >
                     {t('projectBoard.parentsOnly')}
                 </Button>
@@ -497,7 +536,7 @@ export default function Board() {
                         {t('projectBoard.archiveCompleted')}
                     </Button>
                 ) : null}
-            </div>
+            </FilterBar>
 
             {moveError ? (
                 <Banner variant="danger" role="alert" icon={null} className="mb-4 px-4 py-2.5">

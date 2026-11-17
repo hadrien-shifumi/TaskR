@@ -71,6 +71,7 @@ use App\Actions\Projects\RemoveProjectMember;
 use App\Actions\Projects\ShowProjectActivity;
 use App\Actions\Projects\ShowProjectArchives;
 use App\Actions\Projects\ShowProjectBoard;
+use App\Actions\Projects\ShowProjectIssues;
 use App\Actions\Projects\ShowProjectMemberActivity;
 use App\Actions\Projects\ShowProjectMembers;
 use App\Actions\Projects\ShowProjectsPage;
@@ -181,6 +182,7 @@ Route::middleware(['auth', 'workspace'])->group(function (): void {
     Route::get('/projects/{project}/activity', ShowProjectActivity::class)->name('projects.activity');
     Route::get('/projects/{project}/members/{member}/activity', ShowProjectMemberActivity::class)->name('projects.memberActivity');
     Route::get('/projects/{project}/board', ShowProjectBoard::class)->name('projects.board');
+    Route::get('/projects/{project}/issues', ShowProjectIssues::class)->name('projects.issues');
     Route::get('/projects/{project}/archives', ShowProjectArchives::class)->name('projects.archives');
     Route::get('/projects/{project}/members', ShowProjectMembers::class)->name('projects.members.index');
     Route::post('/projects/{project}/members', AddProjectMember::class)->name('projects.members.store');

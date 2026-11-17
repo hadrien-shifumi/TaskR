@@ -480,6 +480,8 @@ const fr: typeof en = {
         filterByAssignee: "Filtrer par assigné",
         allAssignees: "Tous les assignés",
         me: "Moi",
+        searchPlaceholder: "Tapez un titre ou un identifiant…",
+        searchAria: "Rechercher des tickets par titre ou identifiant",
     },
 
     projectHealth: {
@@ -654,10 +656,15 @@ const fr: typeof en = {
         views: {
             health: "Santé",
             board: "Kanban",
+            issues: "Tickets",
             milestones: "Échéances",
             activity: "Activité",
             aria: "Vues du projet",
         },
+    },
+
+    projectIssues: {
+        headTitle: "Tickets — {{name}}",
     },
 
     issues: {

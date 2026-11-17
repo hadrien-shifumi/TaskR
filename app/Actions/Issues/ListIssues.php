@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Presenters\Issues\IssuePresenter;
 use App\Support\IssueFilterSanitizer;
+use App\Support\IssueSearch;
 use App\Support\WorkspaceContext;
 use Illuminate\Database\Eloquent\Builder;
 use Lorisleiva\Actions\Concerns\AsObject;
@@ -16,15 +17,6 @@ use Lorisleiva\Actions\Concerns\AsObject;
 class ListIssues
 {
     use AsObject;
-
-    /**
-     * Crockford base32 alphabet of a ULID, without the ambiguous I, L, O and U.
-     * A search text made only of these characters may be an identifier.
-     */
-    private const ULID_ALPHABET = '0-9A-HJKMNP-TV-Z';
-
-    /** Shortest identifier prefix the search resolves to a ticket. */
-    private const ULID_PREFIX_MIN_LENGTH = 7;
 
     /**
      * Filterable list across every project of the workspace the user may
@@ -185,57 +177,12 @@ class ListIssues
     }
 
     /**
-     * Free-text search. The title search always applies, raw (historical
-     * behavior). When the text looks like a ULID — complete or a prefix of at
-     * least seven characters from the Crockford alphabet — the identifier is
-     * matched too, so the value of the "copy identifier" button can be pasted
-     * back. LIKE wildcards of the prefix branch are escaped.
-     */
-    private function applySearch(Builder $query, string $search): void
-    {
-        $query->where(function (Builder $matches) use ($search): void {
-            $matches->where('issues.title', 'like', '%'.$search.'%');
-
-            $identifier = strtoupper($search);
-
-            if (! $this->looksLikeUlid($identifier)) {
-                return;
-            }
-
-            $matches->orWhere('issues.id', 'like', $this->escapeLike($identifier).'%');
-        });
-    }
-
-    /**
-     * A complete ULID (26 characters) or a prefix of at least seven
-     * characters, made only of Crockford base32 characters.
-     */
-    private function looksLikeUlid(string $identifier): bool
-    {
-        $length = strlen($identifier);
-
-        if ($length < self::ULID_PREFIX_MIN_LENGTH || $length > 26) {
-            return false;
-        }
-
-        return preg_match('/^['.self::ULID_ALPHABET.']+$/', $identifier) === 1;
-    }
-
-    /**
-     * Escape the LIKE wildcards so a pasted identifier matches literally.
-     */
-    private function escapeLike(string $value): string
-    {
-        return str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $value);
-    }
-
-    /**
      * @param  array<string, string|array<int, string>|null>  $filters
      */
     private function applyFilters(Builder $query, array $filters): void
     {
         if (! empty($filters['q'])) {
-            $this->applySearch($query, (string) $filters['q']);
+            IssueSearch::apply($query, (string) $filters['q']);
         }
 
         if (! empty($filters['project'])) {

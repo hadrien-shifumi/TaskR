@@ -152,6 +152,135 @@ class ProjectBoardFilterTest extends TestCase
                 ->where('filters', []));
     }
 
+    // ── Search filter (title / identifier) ────────────────────────────
+
+    public function test_board_filter_by_search_matches_the_title(): void
+    {
+        [$owner, $workspace, $project, $statuses] = $this->setupWorkspaceWithProject();
+
+        $this->createIssue($project, $statuses, 'backlog', 'Rapport annuel');
+        $this->createIssue($project, $statuses, 'backlog', 'Compte client');
+
+        $this->actingAs($owner)
+            ->get(route('projects.board', [$project->id, 'q' => 'ANNUEL']))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->has('columns.0.issues', 1)
+                ->where('columns.0.issues.0.title', 'Rapport annuel')
+                ->where('filters.q', 'ANNUEL'));
+    }
+
+    public function test_board_filter_by_search_matches_a_complete_identifier(): void
+    {
+        [$owner, $workspace, $project, $statuses] = $this->setupWorkspaceWithProject();
+
+        $this->createIssue($project, $statuses, 'backlog', 'Premier');
+        $target = CreateIssue::run(app(WorkspaceContext::class)->getOrFail(), [
+            'project_id' => $project->id,
+            'title' => 'Deuxieme',
+            'status_id' => $statuses['backlog']->id,
+        ]);
+
+        $this->actingAs($owner)
+            ->get(route('projects.board', [$project->id, 'q' => $target->id]))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->has('columns.0.issues', 1)
+                ->where('columns.0.issues.0.id', $target->id));
+    }
+
+    public function test_board_filter_by_search_matches_an_identifier_prefix(): void
+    {
+        [$owner, $workspace, $project, $statuses] = $this->setupWorkspaceWithProject();
+
+        $this->createIssue($project, $statuses, 'backlog', 'Premier');
+        $target = CreateIssue::run(app(WorkspaceContext::class)->getOrFail(), [
+            'project_id' => $project->id,
+            'title' => 'Deuxieme',
+            'status_id' => $statuses['backlog']->id,
+        ]);
+
+        $prefix = substr(strtoupper($target->id), 0, 7);
+
+        $this->actingAs($owner)
+            ->get(route('projects.board', [$project->id, 'q' => $prefix]))
+            ->assertOk()
+            ->assertInertia(function (AssertableInertia $page) use ($target, $prefix) {
+                // Issues created in the same millisecond share the
+                // timestamp head of their ULID: the contract is that
+                // every match starts with the prefix, target included.
+                $ids = collect($page->toArray()['props']['columns'])
+                    ->flatMap(fn ($column) => $column['issues'])
+                    ->pluck('id');
+
+                expect($ids)->toContain($target->id);
+                $ids->each(fn ($id) => expect(str_starts_with(strtoupper($id), $prefix))->toBeTrue());
+            });
+    }
+
+    public function test_board_filter_search_composes_with_assignee_and_parents_only(): void
+    {
+        [$owner, $workspace, $project, $statuses] = $this->setupWorkspaceWithProject();
+        $alice = $this->addWorkspaceMember($workspace);
+
+        $parent = CreateIssue::run(app(WorkspaceContext::class)->getOrFail(), [
+            'project_id' => $project->id,
+            'title' => 'Portail',
+            'status_id' => $statuses['backlog']->id,
+        ]);
+        SetAssignees::run($parent, [$alice->id]);
+
+        $child = CreateIssue::run(app(WorkspaceContext::class)->getOrFail(), [
+            'project_id' => $project->id,
+            'title' => 'Sous-traitance',
+            'status_id' => $statuses['backlog']->id,
+        ]);
+        SetAssignees::run($child, [$alice->id]);
+        SetIssueParent::run($child, $parent->id);
+
+        // The search only matches the child: with the parents filter it is
+        // hidden, so the board shows nothing.
+        $this->actingAs($owner)
+            ->get(route('projects.board', [$project->id, 'q' => 'sous', 'assignee' => $alice->id, 'parents' => '1']))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('parentsOnly', true)
+                ->has('columns.0.issues', 0));
+
+        // Without the parents filter the same search shows the child.
+        $this->actingAs($owner)
+            ->get(route('projects.board', [$project->id, 'q' => 'sous', 'assignee' => $alice->id]))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->has('columns.0.issues', 1)
+                ->where('columns.0.issues.0.title', 'Sous-traitance'));
+    }
+
+    public function test_board_search_keeps_the_unfiltered_total_for_the_counter(): void
+    {
+        [$owner, $workspace, $project, $statuses] = $this->setupWorkspaceWithProject();
+        $alice = $this->addWorkspaceMember($workspace);
+
+        $this->createIssue($project, $statuses, 'backlog', 'Alpha', $alice);
+        $this->createIssue($project, $statuses, 'backlog', 'Beta');
+
+        // Only "Alpha" matches, but the total stays the project's full count.
+        $this->actingAs($owner)
+            ->get(route('projects.board', [$project->id, 'q' => 'alpha']))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->has('columns.0.issues', 1)
+                ->where('totalUnfiltered', 2));
+
+        // The assignee filter does not change the unfiltered total either.
+        $this->actingAs($owner)
+            ->get(route('projects.board', [$project->id, 'assignee' => $alice->id]))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->has('columns.0.issues', 1)
+                ->where('totalUnfiltered', 2));
+    }
+
     // ── People list (roster ∪ assignees) ──────────────────────────────
 
     public function test_board_exposes_project_people_roster_union_assignees(): void
