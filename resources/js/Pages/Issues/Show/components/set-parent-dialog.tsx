@@ -89,6 +89,7 @@ function SetParentForm({ issue, onClose }: { issue: IssueDetail; onClose: () => 
                     currentTitle={issue.parent?.title ?? null}
                     search={searchIssues}
                     excludeIds={[issue.id]}
+                    autoFocus
                     labelKey="issueShow.parentIssue"
                     placeholderKey="issueShow.parentSearchPlaceholder"
                     emptyKey="issueShow.parentSearchEmpty"

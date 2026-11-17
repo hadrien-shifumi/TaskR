@@ -1,6 +1,6 @@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Search } from 'lucide-react';
+import { ChevronRight, Search } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -8,6 +8,8 @@ import { useTranslation } from 'react-i18next';
 export type ParentSearchResult = {
     id: string;
     title: string;
+    /** Ancestor chain of the page, root first — drives the hierarchy indent. */
+    path?: { id: string; title: string }[];
 };
 
 type ParentAutocompleteProps = {
@@ -20,6 +22,13 @@ type ParentAutocompleteProps = {
     search: (query: string) => Promise<ParentSearchResult[]>;
     /** Candidate ids already in use (the dialog's own issue / milestone). */
     excludeIds?: string[];
+    /**
+     * Rows offered while the query is empty (e.g. the tree roots), below
+     * the "no parent" option. Without it the empty state shows the
+     * "no parent" row only.
+     */
+    emptyQueryResults?: ParentSearchResult[];
+    autoFocus?: boolean;
     /** i18n key of the field label. */
     labelKey: string;
     /** i18n key of the input placeholder (the "no parent" wording when unset). */
@@ -45,6 +54,47 @@ type ParentAutocompleteProps = {
 };
 
 /**
+ * One pickable row: indented by the depth of the result's ancestor path,
+ * with the path itself as a muted breadcrumb — a deep page reads as
+ * "Root › Parent › Title" and visually sinks under its ancestors.
+ */
+function AutocompleteRow({
+    result,
+    resultTestId,
+    onPick,
+}: {
+    result: ParentSearchResult;
+    resultTestId: string;
+    onPick: () => void;
+}) {
+    const path = result.path ?? [];
+
+    return (
+        <li>
+            <button
+                type="button"
+                data-test={resultTestId}
+                onClick={onPick}
+                className="flex w-full items-center gap-1.5 py-2.5 pr-3 text-left text-[13px] transition-colors hover:bg-secondary/60"
+                style={path.length > 0 ? { paddingLeft: `${0.75 + path.length * 0.9}rem` } : undefined}
+            >
+                <Search aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
+                {path.map((ancestor) => (
+                    <span
+                        key={ancestor.id}
+                        className="hidden min-w-0 items-center gap-1 text-muted-foreground sm:flex"
+                    >
+                        <span className="max-w-32 truncate">{ancestor.title}</span>
+                        <ChevronRight className="size-3 shrink-0 text-muted-foreground/70" aria-hidden />
+                    </span>
+                ))}
+                <span className="min-w-0 flex-1 truncate">{result.title}</span>
+            </button>
+        </li>
+    );
+}
+
+/**
  * Live parent autocomplete: debounced LIKE search, results picked from a
  * list, "no parent" option reachable while the query is empty. The cycle
  * rule lives in the mutation action — the dialogs surface its 422 refusal
@@ -56,6 +106,8 @@ export function ParentAutocomplete({
     currentTitle,
     search,
     excludeIds = [],
+    emptyQueryResults = [],
+    autoFocus = false,
     labelKey,
     placeholderKey,
     emptyKey,
@@ -119,7 +171,7 @@ export function ParentAutocomplete({
                 id={inputId}
                 data-test={inputTestId}
                 autoComplete="off"
-                autoFocus
+                autoFocus={autoFocus}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder={value === 'none' ? t(noParentKey) : t(placeholderKey)}
@@ -136,22 +188,34 @@ export function ParentAutocomplete({
                         </button>
                     </li>
                 ) : null}
-                {available.map((result) => (
-                    <li key={result.id}>
-                        <button
-                            type="button"
-                            data-test={resultTestId}
-                            onClick={() => {
-                                onChange(result.id);
-                                setQuery(result.title);
-                            }}
-                            className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-[13px] transition-colors hover:bg-secondary/60"
-                        >
-                            <Search aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
-                            <span className="min-w-0 flex-1 truncate">{result.title}</span>
-                        </button>
-                    </li>
-                ))}
+                {trimmed === ''
+                    ? emptyQueryResults
+                          .filter((result) => !excludeIds.includes(result.id))
+                          .map((result) => (
+                              <AutocompleteRow
+                                  key={result.id}
+                                  result={result}
+                                  resultTestId={resultTestId}
+                                  onPick={() => {
+                                      onChange(result.id);
+                                      setQuery(result.title);
+                                  }}
+                              />
+                          ))
+                    : null}
+                {trimmed !== ''
+                    ? available.map((result) => (
+                          <AutocompleteRow
+                              key={result.id}
+                              result={result}
+                              resultTestId={resultTestId}
+                              onPick={() => {
+                                  onChange(result.id);
+                                  setQuery(result.title);
+                              }}
+                          />
+                      ))
+                    : null}
                 {trimmed !== '' && available.length === 0 && !searching ? (
                     <li className="px-3 py-4 text-center text-sm text-muted-foreground" data-test={emptyTestId}>
                         {t(emptyKey)}

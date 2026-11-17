@@ -99,9 +99,13 @@ it('creates then edits a knowledge page from the UI', function () {
     $page->assertSee('Onboarding')
         ->assertSee('Bienvenue dans le workspace.');
 
+    // The editor is full-page now: no dialog, the form replaces the
+    // article in place.
     $page->click('button:has-text("Edit")');
+    $page->assertPresent('@knowledge-edit-form')
+        ->assertMissing('[role="dialog"]');
     $page->fill('edit-knowledge-title', 'Onboarding v2');
-    $page->click('button:has-text("Save")');
+    $page->click('@edit-knowledge-save');
 
     $page->assertSee('Onboarding v2');
 
@@ -109,6 +113,88 @@ it('creates then edits a knowledge page from the UI', function () {
     expect(KnowledgePage::query()->where('title', 'Onboarding v2')->exists())->toBeTrue();
 
     $page->assertNoSmoke();
+});
+
+it('picks a parent with the searchable hierarchy and never offers a cycle', function () {
+    Queue::fake();
+    [$owner, $workspace] = setupBrowserWorkspace();
+    app(WorkspaceContext::class)->set($workspace);
+
+    $root = CreateKnowledgePage::run($workspace, $owner, ['title' => 'Manuel produit', 'body' => 'Corps du manuel.']);
+    $child = CreateKnowledgePage::run($workspace, $owner, ['title' => 'Installation', 'body' => 'Corps installation.', 'parent_id' => $root->id]);
+    CreateKnowledgePage::run($workspace, $owner, ['title' => 'Prérequis', 'body' => 'Corps prérequis.', 'parent_id' => $child->id]);
+    $other = CreateKnowledgePage::run($workspace, $owner, ['title' => 'Notes réunions', 'body' => 'Corps des notes.']);
+    // A second root, untouched by the scenario: it must stay offered
+    // when the first root is being edited (empty-query browsing).
+    CreateKnowledgePage::run($workspace, $owner, ['title' => 'FAQ générale', 'body' => 'Corps FAQ.']);
+
+    $this->actingAs($owner);
+
+    // Attach "Notes réunions" under "Installation" through the combobox.
+    $page = visit('/knowledge/'.$other->id);
+    $page->click('button:has-text("Edit")');
+    $page->click('@knowledge-edit-options-toggle');
+    $page->fill('edit-knowledge-parent', 'Installation');
+    $page->wait(1);
+    // The result carries its path in the tree — the hierarchy is visible.
+    $page->assertSeeIn('@knowledge-parent-results', 'Manuel produit');
+    $page->click('[data-test="knowledge-parent-result"]:has-text("Installation")');
+    $page->click('@edit-knowledge-save');
+
+    $page->assertSee('Notes réunions')
+        ->assertSee('Manuel produit');
+
+    app(WorkspaceContext::class)->set($workspace);
+    $fresh = KnowledgePage::query()->where('title', 'Notes réunions')->firstOrFail();
+    expect($fresh->parent_id)->toBe($child->id);
+
+    // Editing the root: its whole subtree is removed upstream — the
+    // cycle can no longer be selected, not merely refused at save time.
+    $page->navigate('/knowledge/'.$root->id);
+    $page->click('button:has-text("Edit")');
+    $page->click('@knowledge-edit-options-toggle');
+    $page->wait(1); // roots fetch on picker mount
+    // Nothing typed yet: the roots are offered — but the edited root
+    // itself never is (a cycle must not be proposed, even untyped).
+    $page->assertDontSeeIn('@knowledge-parent-results', 'Manuel produit');
+    $page->assertSeeIn('@knowledge-parent-results', 'FAQ générale');
+    $page->fill('edit-knowledge-parent', 'Prérequis');
+    $page->wait(1);
+    $page->assertDontSeeIn('@knowledge-parent-results', 'Prérequis');
+    $page->assertSeeIn('@knowledge-parent-results', 'No matching page.');
+
+    $page->assertNoSmoke();
+});
+
+it('proposes restoring an unsaved draft after an accidental close', function () {
+    Queue::fake();
+    [$owner, $workspace] = setupBrowserWorkspace();
+    app(WorkspaceContext::class)->set($workspace);
+
+    $page = CreateKnowledgePage::run($workspace, $owner, ['title' => 'Page brouillon', 'body' => 'Corps initial.']);
+
+    $this->actingAs($owner);
+
+    $browser = visit('/knowledge/'.$page->id);
+    $browser->click('button:has-text("Edit")');
+    $browser->fill('edit-knowledge-title', 'Titre jamais enregistré');
+    $browser->wait(1); // the draft auto-save lands before the close
+    $browser->click('button:has-text("Cancel")');
+    $browser->assertSee('Page brouillon');
+
+    // Reopening proposes the lost work instead of forgetting it.
+    $browser->click('button:has-text("Edit")');
+    $browser->assertSee('An unsaved draft was found.');
+    $browser->click('@knowledge-draft-restore');
+    $browser->assertValue('edit-knowledge-title', 'Titre jamais enregistré');
+
+    // Saving purges the draft: no proposal on the next open.
+    $browser->click('@edit-knowledge-save');
+    $browser->assertSee('Titre jamais enregistré');
+    $browser->click('button:has-text("Edit")');
+    $browser->assertDontSee('An unsaved draft was found.');
+
+    $browser->assertNoSmoke();
 });
 
 it('returns the relevant page from semantic search', function () {

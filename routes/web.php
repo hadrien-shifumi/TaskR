@@ -44,6 +44,7 @@ use App\Actions\Knowledge\GetKnowledgePageVersion;
 use App\Actions\Knowledge\RestoreKnowledgePage;
 use App\Actions\Knowledge\RestoreKnowledgePageVersion;
 use App\Actions\Knowledge\SearchKnowledge;
+use App\Actions\Knowledge\SearchKnowledgeParents;
 use App\Actions\Knowledge\ShowKnowledgePage;
 use App\Actions\Knowledge\ShowKnowledgeTrash;
 use App\Actions\Knowledge\ShowKnowledgeVersions;
@@ -278,6 +279,11 @@ Route::middleware(['auth', 'workspace'])->group(function (): void {
 
     Route::get('/knowledge', ShowKnowledgePage::class)->name('knowledge.index');
     Route::get('/knowledge/search', SearchKnowledge::class)->name('knowledge.search');
+    // Live parent autocomplete for the page editor: LIKE title search
+    // within the reader's perimeter, with the ancestor path for the
+    // hierarchy indent. Declared before /knowledge/{page} so "parents"
+    // is never captured as a page id.
+    Route::get('/knowledge/parents', SearchKnowledgeParents::class)->name('knowledge.parents');
     Route::post('/knowledge', CreateKnowledgePage::class)->name('knowledge.store');
 
     // Trash — declared before /knowledge/{page} so "trash" is not captured

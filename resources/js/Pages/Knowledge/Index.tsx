@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { KnowledgeParentPicker } from '@/components/knowledge-parent-picker';
 import { MarkdownView } from '@/components/ui/markdown-view';
 // TipTap (the markdown editor's engine) is a heavy dependency: it rides a
 // lazy chunk loaded on first editor open, not with the page bundle.
@@ -51,6 +52,7 @@ import { lazy, Suspense, useEffect, useId, useMemo, useRef, useState } from 'rea
 import { useTranslation } from 'react-i18next';
 import type { PageSharedProps } from '@/types';
 import { formatDate, formatRelativeDate } from '@/lib/format-date';
+import { cn } from '@/lib/utils';
 import { KnowledgeSidebar, type PageRef, type ProjectOption } from './components/knowledge-sidebar';
 import {
     extractHeadings,
@@ -96,9 +98,52 @@ type PageProps = {
 };
 
 const NO_PROJECT = '__none__';
-const NO_PARENT = '__none__';
 
 const emptyForm = { title: '', body: '', project_id: '', parent_id: '' };
+
+/** Local draft of an in-progress edit — survives an accidental close. */
+type KnowledgeDraft = { title: string; body: string; savedAt: string };
+
+const draftKey = (pageId: string): string => `knowledge-draft:${pageId}`;
+
+function readDraft(pageId: string): KnowledgeDraft | null {
+    try {
+        const raw = localStorage.getItem(draftKey(pageId));
+        if (raw === null) {
+            return null;
+        }
+        const parsed = JSON.parse(raw) as Partial<KnowledgeDraft>;
+        if (
+            typeof parsed.title !== 'string' ||
+            typeof parsed.body !== 'string' ||
+            typeof parsed.savedAt !== 'string'
+        ) {
+            return null;
+        }
+        return { title: parsed.title, body: parsed.body, savedAt: parsed.savedAt };
+    } catch {
+        return null;
+    }
+}
+
+function writeDraft(pageId: string, title: string, body: string): void {
+    try {
+        localStorage.setItem(
+            draftKey(pageId),
+            JSON.stringify({ title, body, savedAt: new Date().toISOString() }),
+        );
+    } catch {
+        // Storage unavailable or full: the draft is best-effort.
+    }
+}
+
+function discardDraft(pageId: string): void {
+    try {
+        localStorage.removeItem(draftKey(pageId));
+    } catch {
+        // Ignore.
+    }
+}
 
 /**
  * Splits an excerpt into literal-match parts: tokens of the query are
@@ -303,6 +348,11 @@ export default function KnowledgeIndex() {
     const [conflict, setConflict] = useState<ConflictInfo | null>(null);
     const [baseUpdatedAt, setBaseUpdatedAt] = useState<string | null>(null);
     const [search, setSearch] = useState(query ?? '');
+    // Full-page editor: write / split / preview view, and the folded
+    // "Options" section (project + parent).
+    const [editMode, setEditMode] = useState<'write' | 'split' | 'preview'>('write');
+    const [optionsOpen, setOptionsOpen] = useState(false);
+    const [draftProposal, setDraftProposal] = useState<KnowledgeDraft | null>(null);
 
     const createForm = useForm({ ...emptyForm });
     const editForm = useForm({ ...emptyForm });
@@ -424,6 +474,45 @@ export default function KnowledgeIndex() {
         return () => window.removeEventListener('keydown', onKeyDown);
     }, [search]);
 
+    /** Opens the full-page editor; a differing local draft is proposed, never forced. */
+    const openEdit = () => {
+        if (!selected) return;
+
+        // The conflict reference is always the page as it stands now —
+        // never the draft's, which carries title and body only.
+        setBaseUpdatedAt(selected.updatedAt);
+        setConflict(null);
+        setEditMode('write');
+        setOptionsOpen(false);
+        editForm.setData({
+            title: selected.title,
+            body: selected.body,
+            project_id: selected.projectId ?? '',
+            parent_id: selected.parentId ?? '',
+        });
+
+        const stored = readDraft(selected.id);
+        setDraftProposal(
+            stored && (stored.title !== selected.title || stored.body !== selected.body)
+                ? stored
+                : null,
+        );
+        setEditing(true);
+    };
+
+    // Draft auto-save: 500 ms after the last change, the title and body
+    // land in the browser storage so an accidental close loses nothing.
+    // The draft is purged on a successful save (see submitEdit).
+    useEffect(() => {
+        if (!editing || !selected) {
+            return;
+        }
+        const timer = setTimeout(() => {
+            writeDraft(selected.id, editForm.data.title, editForm.data.body);
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [editing, selected, editForm.data.title, editForm.data.body]);
+
     const submitCreate = (e: React.FormEvent) => {
         e.preventDefault();
         createForm.post(route('knowledge.store'), {
@@ -448,6 +537,9 @@ export default function KnowledgeIndex() {
 
         editForm.patch(route('knowledge.update', selected.id), {
             onSuccess: () => {
+                // The save succeeded: the safety draft has done its job.
+                discardDraft(selected.id);
+                setDraftProposal(null);
                 setEditing(false);
                 setConflict(null);
                 setBaseUpdatedAt(null);
@@ -472,8 +564,24 @@ export default function KnowledgeIndex() {
         });
     };
 
-    const parentOptions = (excludeId?: string): PageRef[] =>
-        pages.filter((page) => page.id !== excludeId);
+    /**
+     * Title of a parent candidate for the picker's input. The sidebar
+     * list is project-filtered: when the parent sits outside the active
+     * filter, the open page's own breadcrumb chain still names it.
+     */
+    const parentTitle = (parentId: string | null): string | null => {
+        if (!parentId) {
+            return null;
+        }
+        const fromList = pages.find((page) => page.id === parentId)?.title;
+        if (fromList) {
+            return fromList;
+        }
+        if (selected && parentId === selected.parentId) {
+            return selected.parentChain.at(-1)?.title ?? null;
+        }
+        return null;
+    };
 
     const projectSelect = (
         form: typeof createForm,
@@ -493,31 +601,6 @@ export default function KnowledgeIndex() {
                 {projects.map((project) => (
                     <SelectItem key={project.id} value={project.id}>
                         {project.name}
-                    </SelectItem>
-                ))}
-            </SelectContent>
-        </Select>
-    );
-
-    const parentSelect = (
-        form: typeof createForm,
-        idPrefix: string,
-        excludeId?: string,
-    ) => (
-        <Select
-            value={form.data.parent_id || NO_PARENT}
-            onValueChange={(v) => {
-                if (v !== null) form.setData('parent_id', v === NO_PARENT ? '' : v);
-            }}
-        >
-            <SelectTrigger id={`${idPrefix}-parent`} className="w-full">
-                <SelectValue>{form.data.parent_id ? (pages.find((page) => page.id === form.data.parent_id)?.title ?? t('knowledge.parentFallback')) : t('issueShow.noParent')}</SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-                <SelectItem value={NO_PARENT}>{t('issueShow.noParent')}</SelectItem>
-                {parentOptions(excludeId).map((page) => (
-                    <SelectItem key={page.id} value={page.id}>
-                        {page.title}
                     </SelectItem>
                 ))}
             </SelectContent>
@@ -708,6 +791,256 @@ export default function KnowledgeIndex() {
                                     </button>
                                 </div>
                             ) : null}
+                            {editing ? (
+                                <form
+                                    onSubmit={(e) => {
+                                        e.preventDefault();
+                                        submitEdit(false);
+                                    }}
+                                    className="flex flex-col rounded-xl border bg-card"
+                                    data-test="knowledge-edit-form"
+                                >
+                                    <header className="flex flex-wrap items-center gap-x-2.5 gap-y-2 border-b px-5 py-3.5">
+                                        <nav
+                                            aria-label={t('knowledge.breadcrumbAria')}
+                                            className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5 text-[13px] text-muted-foreground"
+                                        >
+                                            {selected.projectId ? (
+                                                <span className="flex items-center gap-1">
+                                                    <Folder className="size-3.5 shrink-0" aria-hidden />
+                                                    {projectName(selected.projectId)}
+                                                </span>
+                                            ) : (
+                                                <span className="flex items-center gap-1">
+                                                    <Globe className="size-3.5 shrink-0" aria-hidden />
+                                                    {t('knowledge.crossWorkspace')}
+                                                </span>
+                                            )}
+                                            {selected.parentChain.map((ancestor) => (
+                                                <span key={ancestor.id} className="flex min-w-0 items-center gap-1.5">
+                                                    <ChevronRight className="size-3 shrink-0" aria-hidden />
+                                                    <span className="truncate">{ancestor.title}</span>
+                                                </span>
+                                            ))}
+                                        </nav>
+                                        <div className="ml-auto flex items-center gap-2">
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                onClick={() => setEditing(false)}
+                                            >
+                                                {t('common.cancel')}
+                                            </Button>
+                                            <Button
+                                                type="submit"
+                                                disabled={editForm.processing}
+                                                data-test="edit-knowledge-save"
+                                            >
+                                                {t('common.save')}
+                                            </Button>
+                                        </div>
+                                        <p className="flex w-full flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-muted-foreground">
+                                            {selected.lastEditor ? (
+                                                <span className="flex items-center gap-1.5">
+                                                    <User className="size-3.5 shrink-0" aria-hidden />
+                                                    {t('knowledge.editedBy', { name: selected.lastEditor })}
+                                                </span>
+                                            ) : null}
+                                            {selected.updatedAt ? (
+                                                <span
+                                                    className="flex items-center gap-1.5"
+                                                    title={formatDate(selected.updatedAt)}
+                                                >
+                                                    <Clock className="size-3.5 shrink-0" aria-hidden />
+                                                    {formatRelativeDate(selected.updatedAt)}
+                                                </span>
+                                            ) : null}
+                                        </p>
+                                    </header>
+                                    {draftProposal ? (
+                                        <div
+                                            role="status"
+                                            data-test="knowledge-draft-banner"
+                                            className="m-5 mb-0 flex items-start gap-2.5 rounded-lg border border-warning/35 bg-warning/10 px-3.5 py-3 text-sm"
+                                        >
+                                            <History
+                                                className="mt-0.5 size-4 shrink-0 text-warning"
+                                                aria-hidden
+                                            />
+                                            <div className="min-w-0 flex-1">
+                                                <p className="font-medium">
+                                                    {t('knowledge.editing.draftFound')}
+                                                </p>
+                                                <p className="mt-0.5 text-muted-foreground">
+                                                    {formatRelativeDate(draftProposal.savedAt)}
+                                                </p>
+                                                <div className="mt-2.5 flex gap-2">
+                                                    <Button
+                                                        type="button"
+                                                        size="sm"
+                                                        data-test="knowledge-draft-restore"
+                                                        onClick={() => {
+                                                            editForm.setData({
+                                                                ...editForm.data,
+                                                                title: draftProposal.title,
+                                                                body: draftProposal.body,
+                                                            });
+                                                            setDraftProposal(null);
+                                                        }}
+                                                    >
+                                                        {t('knowledge.editing.draftRestore')}
+                                                    </Button>
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        data-test="knowledge-draft-discard"
+                                                        onClick={() => {
+                                                            discardDraft(selected.id);
+                                                            setDraftProposal(null);
+                                                        }}
+                                                    >
+                                                        {t('knowledge.editing.draftDismiss')}
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => setDraftProposal(null)}
+                                                className="text-muted-foreground transition-colors hover:text-foreground"
+                                                aria-label={t('knowledge.conflict.dismiss')}
+                                            >
+                                                <X className="size-4" aria-hidden />
+                                            </button>
+                                        </div>
+                                    ) : null}
+                                    <div className="px-5 pt-5">
+                                        <label htmlFor="edit-knowledge-title" className="sr-only">
+                                            {t('issues.fields.title')}
+                                        </label>
+                                        <Input
+                                            id="edit-knowledge-title"
+                                            value={editForm.data.title}
+                                            onChange={(e) => editForm.setData('title', e.target.value)}
+                                            required
+                                            placeholder={t('issues.fields.title')}
+                                            aria-invalid={editForm.errors.title ? true : undefined}
+                                            className="h-auto border-0 bg-transparent px-0 text-xl font-semibold shadow-none focus-visible:ring-0 md:text-2xl"
+                                        />
+                                        {editForm.errors.title ? (
+                                            <p className="text-sm text-destructive">{editForm.errors.title}</p>
+                                        ) : null}
+                                    </div>
+                                    <div className="flex flex-wrap items-center gap-2 px-5 pt-3">
+                                        <div
+                                            className="inline-flex rounded-lg border bg-muted/40 p-0.5"
+                                            role="group"
+                                            aria-label={t('knowledge.editing.viewLabel')}
+                                        >
+                                            {(['write', 'split', 'preview'] as const).map((mode) => (
+                                                <button
+                                                    key={mode}
+                                                    type="button"
+                                                    onClick={() => setEditMode(mode)}
+                                                    aria-pressed={editMode === mode}
+                                                    data-test={`knowledge-edit-view-${mode}`}
+                                                    className={cn(
+                                                        'rounded-md px-3 py-1 text-sm transition-colors',
+                                                        mode === 'split' && 'hidden sm:block',
+                                                        editMode === mode
+                                                            ? 'bg-background font-medium text-foreground shadow-sm'
+                                                            : 'text-muted-foreground hover:text-foreground',
+                                                    )}
+                                                >
+                                                    {t(`knowledge.editing.mode.${mode}`)}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div className="min-h-0 px-5 pt-3">
+                                        {editMode === 'write' ? (
+                                            <div className="flex h-[60vh] min-h-[18rem] flex-col">
+                                                <Suspense
+                                                    fallback={
+                                                        <div className="min-h-48 flex-1 animate-pulse rounded-lg border bg-muted/40" aria-hidden="true" />
+                                                    }
+                                                >
+                                                    <MarkdownEditor
+                                                        value={editForm.data.body}
+                                                        onChange={(markdown) => editForm.setData('body', markdown)}
+                                                        fill
+                                                    />
+                                                </Suspense>
+                                            </div>
+                                        ) : editMode === 'split' ? (
+                                            <div className="grid h-[60vh] min-h-[18rem] gap-4 md:grid-cols-2">
+                                                <div className="flex min-h-0 flex-col max-md:min-h-[14rem]">
+                                                    <Suspense
+                                                        fallback={
+                                                            <div className="min-h-48 flex-1 animate-pulse rounded-lg border bg-muted/40" aria-hidden="true" />
+                                                        }
+                                                    >
+                                                        <MarkdownEditor
+                                                            value={editForm.data.body}
+                                                            onChange={(markdown) => editForm.setData('body', markdown)}
+                                                            fill
+                                                        />
+                                                    </Suspense>
+                                                </div>
+                                                <div className="min-h-0 overflow-y-auto rounded-lg border px-4 py-3 max-md:min-h-[14rem]">
+                                                    <MarkdownView value={editForm.data.body} />
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="h-[60vh] min-h-[18rem] overflow-y-auto rounded-lg border px-4 py-3">
+                                                <MarkdownView value={editForm.data.body} />
+                                            </div>
+                                        )}
+                                        {editForm.errors.body ? (
+                                            <p className="mt-2 text-sm text-destructive">{editForm.errors.body}</p>
+                                        ) : null}
+                                    </div>
+                                    <div className="px-5 py-4">
+                                        <button
+                                            type="button"
+                                            onClick={() => setOptionsOpen((open) => !open)}
+                                            aria-expanded={optionsOpen}
+                                            data-test="knowledge-edit-options-toggle"
+                                            className="flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+                                        >
+                                            <ChevronRight
+                                                className={cn('size-3.5 transition-transform', optionsOpen && 'rotate-90')}
+                                                aria-hidden
+                                            />
+                                            {t('knowledge.editing.options')}
+                                        </button>
+                                        {optionsOpen ? (
+                                            <div className="mt-3 grid gap-4 rounded-lg border bg-muted/20 p-4 sm:grid-cols-2">
+                                                <div className="grid gap-2">
+                                                    <Label htmlFor="edit-knowledge-project">
+                                                        {t('issues.fields.project')}
+                                                    </Label>
+                                                    {projectSelect(editForm, 'edit-knowledge')}
+                                                </div>
+                                                <KnowledgeParentPicker
+                                                    value={editForm.data.parent_id}
+                                                    onChange={(id) => editForm.setData('parent_id', id)}
+                                                    currentTitle={parentTitle(editForm.data.parent_id)}
+                                                    excludeId={selected.id}
+                                                    inputId="edit-knowledge-parent"
+                                                />
+                                                {editForm.errors.project_id ? (
+                                                    <p className="text-sm text-destructive">{editForm.errors.project_id}</p>
+                                                ) : null}
+                                                {editForm.errors.parent_id ? (
+                                                    <p className="text-sm text-destructive">{editForm.errors.parent_id}</p>
+                                                ) : null}
+                                            </div>
+                                        ) : null}
+                                    </div>
+                                </form>
+                            ) : (
+                            <>
                             {headings.length > 0 ? (
                                 <div className="mb-4 xl:hidden">
                                     <OnThisPage headings={headings} variant="mobile" />
@@ -774,17 +1107,7 @@ export default function KnowledgeIndex() {
                                         <Button
                                             variant="ghost"
                                             size="sm"
-                                            onClick={() => {
-                                                setBaseUpdatedAt(selected.updatedAt);
-                                                setConflict(null);
-                                                setEditing(true);
-                                                editForm.setData({
-                                                    title: selected.title,
-                                                    body: selected.body,
-                                                    project_id: selected.projectId ?? '',
-                                                    parent_id: selected.parentId ?? '',
-                                                });
-                                            }}
+                                            onClick={openEdit}
                                         >
                                             <Pencil aria-hidden />
                                             {t('issueShow.edit')}
@@ -831,6 +1154,8 @@ export default function KnowledgeIndex() {
                                     </div>
                                 ) : null}
                             </div>
+                            </>
+                            )}
                         </div>
                     ) : results === undefined ? (
                         <div className="rounded-xl border border-dashed px-4 py-12 text-center">
@@ -920,65 +1245,12 @@ export default function KnowledgeIndex() {
                         <Label htmlFor="new-knowledge-project">{t('issues.fields.project')}</Label>
                         {projectSelect(createForm, 'new-knowledge')}
                     </div>
-                    <div className="grid gap-2">
-                        <Label htmlFor="new-knowledge-parent">{t('knowledge.parentPage')}</Label>
-                        {parentSelect(createForm, 'new-knowledge')}
-                    </div>
-                </div>
-            </FormDialog>
-
-            <FormDialog
-                open={editing}
-                onOpenChange={setEditing}
-                title={t('knowledge.editPageTitle')}
-                description={t('knowledge.editPageDescription')}
-                submitLabel={t('common.save')}
-                processing={editForm.processing}
-                contentClassName="max-h-[90vh] overflow-y-auto sm:max-w-2xl"
-                onSubmit={(e) => {
-                    e.preventDefault();
-                    submitEdit(false);
-                }}
-            >
-                <div className="grid gap-2">
-                    <Label htmlFor="edit-knowledge-title">{t('issues.fields.title')}</Label>
-                    <Input
-                        id="edit-knowledge-title"
-                        value={editForm.data.title}
-                        onChange={(e) => editForm.setData('title', e.target.value)}
-                        required
-                        autoFocus
-                        aria-invalid={editForm.errors.title ? true : undefined}
+                    <KnowledgeParentPicker
+                        value={createForm.data.parent_id}
+                        onChange={(id) => createForm.setData('parent_id', id)}
+                        currentTitle={parentTitle(createForm.data.parent_id)}
+                        inputId="new-knowledge-parent"
                     />
-                    {editForm.errors.title ? (
-                        <p className="text-sm text-destructive">{editForm.errors.title}</p>
-                    ) : null}
-                </div>
-                <div className="grid gap-2">
-                    <Label>{t('knowledge.body')}</Label>
-                    <Suspense
-                        fallback={
-                            <div className="min-h-48 animate-pulse rounded-lg border bg-muted/40" aria-hidden="true" />
-                        }
-                    >
-                        <MarkdownEditor
-                            value={editForm.data.body}
-                            onChange={(markdown) => editForm.setData('body', markdown)}
-                        />
-                    </Suspense>
-                    {editForm.errors.body ? (
-                        <p className="text-sm text-destructive">{editForm.errors.body}</p>
-                    ) : null}
-                </div>
-                <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="grid gap-2">
-                        <Label htmlFor="edit-knowledge-project">{t('issues.fields.project')}</Label>
-                        {projectSelect(editForm, 'edit-knowledge')}
-                    </div>
-                    <div className="grid gap-2">
-                        <Label htmlFor="edit-knowledge-parent">{t('knowledge.parentPage')}</Label>
-                        {parentSelect(editForm, 'edit-knowledge', selected?.id)}
-                    </div>
                 </div>
             </FormDialog>
         </AppLayout>

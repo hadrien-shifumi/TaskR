@@ -35,6 +35,36 @@ trait HasAncestorChain
     }
 
     /**
+     * Ids of every descendant (children, grandchildren, …), breadth-first;
+     * used to exclude a whole subtree from parent pickers so a cycle can
+     * never be selected. Depth-guarded to survive pre-existing cycles.
+     *
+     * @return array<int, string>
+     */
+    public function descendantIds(): array
+    {
+        $ids = [];
+        $frontier = [$this->getKey()];
+        $depth = 0;
+
+        while ($frontier !== [] && $depth < 50) {
+            $frontier = $this->newQuery()
+                ->withoutGlobalScope(WorkspaceScope::class)
+                ->whereIn('parent_id', $frontier)
+                ->pluck('id')
+                ->all();
+
+            // A pre-existing cycle would loop forever: only ever visit
+            // ids that have not been seen yet.
+            $frontier = array_values(array_diff($frontier, $ids, [$this->getKey()]));
+            $ids = array_merge($ids, $frontier);
+            $depth++;
+        }
+
+        return $ids;
+    }
+
+    /**
      * Ancestors as id/title pairs, ordered root → direct parent; the model
      * itself is excluded. Requires the model to define a `title` column.
      * Depth-guarded like ancestorIds() to survive pre-existing cycles.

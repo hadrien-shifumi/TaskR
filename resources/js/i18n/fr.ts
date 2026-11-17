@@ -1014,12 +1014,22 @@ const fr: typeof en = {
         newPageTitle: "Nouvelle page de connaissances",
         newPageDescription:
             "Corps Markdown, page parente optionnelle et rattachement à un projet.",
-        editPageTitle: "Modifier la page",
-        editPageDescription:
-            "La page est réindexée pour la recherche sémantique après enregistrement.",
         body: "Corps",
         parentPage: "Page parente",
-        parentFallback: "Parente",
+        parentSearchPlaceholder: "Rechercher une page parente…",
+        parentSearchEmpty: "Aucune page ne correspond.",
+        editing: {
+            viewLabel: "Vue de l'éditeur",
+            mode: {
+                write: "Écriture",
+                split: "Split",
+                preview: "Aperçu",
+            },
+            options: "Options",
+            draftFound: "Un brouillon non enregistré a été retrouvé.",
+            draftRestore: "Restaurer le brouillon",
+            draftDismiss: "Ignorer le brouillon",
+        },
         onThisPage: "Sur cette page",
         childPages: "Sous-pages",
         newSubPage: "Nouvelle sous-page",

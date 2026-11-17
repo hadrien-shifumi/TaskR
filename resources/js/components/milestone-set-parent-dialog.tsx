@@ -96,6 +96,7 @@ function MilestoneSetParentForm({
                     currentTitle={currentTitle}
                     search={searchMilestones}
                     excludeIds={[milestone.id]}
+                    autoFocus
                     labelKey="milestones.parentTitle"
                     placeholderKey="milestones.parentSearchPlaceholder"
                     emptyKey="milestones.parentSearchEmpty"
