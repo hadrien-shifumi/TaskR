@@ -6,10 +6,14 @@ use App\Models\KnowledgePage;
 use App\Models\KnowledgePageVersion;
 use App\Models\User;
 use App\Support\WorkspaceContext;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Lorisleiva\Actions\Concerns\AsController;
 use Lorisleiva\Actions\Concerns\AsObject;
 
 class CompareKnowledgePageVersions
 {
+    use AsController;
     use AsObject;
 
     /**
@@ -47,5 +51,16 @@ class CompareKnowledgePageVersions
                 'createdAt' => $to->created_at?->toISOString(),
             ],
         ];
+    }
+
+    /**
+     * JSON endpoint for the version-compare dialog: both full bodies ride
+     * along so the client-side diff renders without a second round trip.
+     */
+    public function asController(Request $request, KnowledgePage $page, KnowledgePageVersion $from, KnowledgePageVersion $to): JsonResponse
+    {
+        $data = $this->handle($page, $from, $to, $request->user());
+
+        return response()->json($data);
     }
 }

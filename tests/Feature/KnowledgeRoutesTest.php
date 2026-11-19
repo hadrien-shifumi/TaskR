@@ -312,6 +312,61 @@ class KnowledgeRoutesTest extends TestCase
             ->assertNotFound();
     }
 
+    // ── Compare — route ──────────────────────────────────────────────
+
+    public function test_compare_route_returns_both_versions_json(): void
+    {
+        Queue::fake();
+        [$owner, $workspace] = $this->setupWorkspace();
+
+        $page = CreateKnowledgePage::run($workspace, $owner, [
+            'title' => 'V1', 'body' => 'Body V1.',
+        ]);
+        UpdateKnowledgePage::run($page, $owner, [
+            'title' => 'V2', 'body' => 'Body V2.',
+        ]);
+
+        $v1 = $page->versions()->orderBy('created_at')->firstOrFail();
+        $v2 = $page->versions()->orderByDesc('created_at')->firstOrFail();
+
+        $this->actingAs($owner)
+            ->get("/knowledge/{$page->id}/versions/compare/{$v1->id}/{$v2->id}")
+            ->assertOk()
+            ->assertJsonStructure([
+                'from' => ['id', 'title', 'body', 'editor', 'createdAt'],
+                'to' => ['id', 'title', 'body', 'editor', 'createdAt'],
+            ])
+            ->assertJsonPath('from.id', $v1->id)
+            ->assertJsonPath('to.id', $v2->id)
+            ->assertJsonPath('from.body', 'Body V1.')
+            ->assertJsonPath('to.body', 'Body V2.');
+    }
+
+    public function test_compare_route_404_for_version_of_another_page(): void
+    {
+        Queue::fake();
+        [$owner, $workspace] = $this->setupWorkspace();
+
+        $page1 = CreateKnowledgePage::run($workspace, $owner, [
+            'title' => 'Page 1', 'body' => 'Body 1.',
+        ]);
+        $page2 = CreateKnowledgePage::run($workspace, $owner, [
+            'title' => 'Page 2', 'body' => 'Body 2.',
+        ]);
+
+        $versionOfPage2 = $page2->versions()->firstOrFail();
+
+        $this->actingAs($owner)
+            ->get("/knowledge/{$page1->id}/versions/compare/{$versionOfPage2->id}/{$versionOfPage2->id}")
+            ->assertNotFound();
+    }
+
+    public function test_compare_route_requires_auth(): void
+    {
+        $this->get('/knowledge/01h0000000000000000000000000/versions/compare/01h0000000000000000000000000/01h0000000000000000000000000')
+            ->assertRedirect('/login');
+    }
+
     // ── Auth required ────────────────────────────────────────────────
 
     public function test_trash_route_requires_auth(): void

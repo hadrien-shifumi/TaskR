@@ -129,6 +129,7 @@ return [
         'restored' => 'Page ":title" has been restored from the trash.',
         'force_deleted' => 'The page has been permanently deleted.',
         'version_restored' => '« :title » has been restored to a previous version.',
+        'moved' => '« :title » has been moved in the tree.',
     ],
 
     'joined_workspace' => 'You joined :name.',

@@ -1036,6 +1036,12 @@ const fr: typeof en = {
         newPageInProject: "Nouvelle page dans ce projet",
         collapse: "Replier",
         expand: "Déplier",
+        recentlyUpdated: "Modifiées récemment",
+        recentlyUpdatedHint:
+            "Les cinq pages touchées en dernier — choisissez un projet dans le filtre pour arborer l'arborescence complète.",
+        wordCount: "{{count}} mot",
+        wordCountPlural: "{{count}} mots",
+        readingTime: "~{{minutes}} min de lecture",
         trash: {
             title: "Corbeille",
             nav: "Corbeille",
@@ -1047,6 +1053,7 @@ const fr: typeof en = {
             columnProject: "Projet",
             columnDeletedBy: "Supprimée par",
             columnDeletedAt: "Supprimée le",
+            columnPurge: "Purge",
             columnReason: "Raison",
             columnActions: "Actions",
             transverse: "Transverse",
@@ -1060,6 +1067,11 @@ const fr: typeof en = {
             forceDeleteTitle: "Supprimer définitivement cette page ?",
             forceDeleteDescription:
                 "Cette action est irréversible. La page et son historique seront définitivement supprimés.",
+            searchPlaceholder: "Rechercher une page supprimée…",
+            searchNoResults: "Aucune page supprimée ne correspond.",
+            purgeIn: "Purgée dans {{count}} jour",
+            purgeInPlural: "Purgée dans {{count}} jours",
+            purgeImminent: "Purge imminente",
         },
         versions: {
             button: "Historique",
@@ -1074,6 +1086,18 @@ const fr: typeof en = {
             noVersions: "Pas encore de versions.",
             preview: "Voir",
             previewTitle: "Aperçu de la version",
+            compare: "Comparer",
+            compareTitle: "Comparer les versions",
+            compareDescription:
+                "Choisissez deux versions pour voir ce qui a changé entre elles.",
+            fromLabel: "Version de départ",
+            toLabel: "Version d'arrivée",
+            noChanges: "Aucune différence de contenu.",
+            titleChanged: "Titre modifié : « {{from}} » → « {{to}} »",
+            linesAdded: "{{count}} ligne ajoutée",
+            linesAddedPlural: "{{count}} lignes ajoutées",
+            linesRemoved: "{{count}} ligne supprimée",
+            linesRemovedPlural: "{{count}} lignes supprimées",
         },
         conflict: {
             title: "Cette page a été modifiée pendant votre édition",

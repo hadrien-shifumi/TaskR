@@ -52,6 +52,7 @@ import { lazy, Suspense, useEffect, useId, useMemo, useRef, useState } from 'rea
 import { useTranslation } from 'react-i18next';
 import type { PageSharedProps } from '@/types';
 import { formatDate, formatRelativeDate } from '@/lib/format-date';
+import { countMarkdownWords, readingMinutes } from '@/lib/word-count';
 import { cn } from '@/lib/utils';
 import { KnowledgeSidebar, type PageRef, type ProjectOption } from './components/knowledge-sidebar';
 import {
@@ -300,6 +301,72 @@ function OnThisPage({
     );
 }
 
+/**
+ * "Recently updated" — the no-scope landing content: the five pages of
+ * the workspace's perimeter touched last, client-side sorted from the
+ * `updatedAt` the list payload already carries.
+ */
+function RecentlyUpdated({
+    pages,
+    projectName,
+}: {
+    pages: PageRef[];
+    projectName: (projectId: string | null) => string | null;
+}) {
+    const { t } = useTranslation();
+
+    const recent = [...pages]
+        .filter((page) => page.updatedAt !== null)
+        .sort((a, b) => new Date(b.updatedAt!).getTime() - new Date(a.updatedAt!).getTime())
+        .slice(0, 5);
+
+    if (recent.length === 0) {
+        return null;
+    }
+
+    return (
+        <section aria-label={t('knowledge.recentlyUpdated')} data-test="knowledge-recent-pages">
+            <div className="mb-3 flex items-center gap-2">
+                <h2 className="text-base font-semibold">
+                    {t('knowledge.recentlyUpdated')}
+                </h2>
+                <span className="rounded-full bg-secondary px-2 py-0.5 font-mono text-[11px] text-muted-foreground tabular-nums">
+                    {recent.length}
+                </span>
+            </div>
+            <p className="mb-4 text-sm text-muted-foreground">
+                {t('knowledge.recentlyUpdatedHint')}
+            </p>
+            <ul className="grid gap-3 sm:grid-cols-2">
+                {recent.map((page) => (
+                    <li key={page.id}>
+                        <Link
+                            href={route('knowledge.show', page.id)}
+                            className="block rounded-xl border bg-card p-4 transition-colors hover:border-primary/45"
+                        >
+                            <div className="flex flex-wrap items-center gap-2">
+                                <span className="font-medium">{page.title}</span>
+                                {page.projectId ? (
+                                    <Badge variant="secondary">
+                                        {projectName(page.projectId)}
+                                    </Badge>
+                                ) : (
+                                    <Badge variant="outline">
+                                        {t('knowledge.crossWorkspace')}
+                                    </Badge>
+                                )}
+                            </div>
+                            <span className="mt-1 block text-xs text-muted-foreground">
+                                {formatRelativeDate(page.updatedAt)}
+                            </span>
+                        </Link>
+                    </li>
+                ))}
+            </ul>
+        </section>
+    );
+}
+
 /** Child pages of the article, as clickable cards — empty section hides. */
 function ChildPages({ children: childPages }: { children: PageRef[] }) {
     const { t } = useTranslation();
@@ -362,6 +429,13 @@ export default function KnowledgeIndex() {
     // Headings of the selected page — anchors for the "On this page" TOC.
     const headings = useMemo(
         () => (selected ? extractHeadings(selected.body) : []),
+        [selected],
+    );
+
+    // Reading metadata of the article footer: prose words of the markdown
+    // body (syntax stripped) drive the estimated reading time.
+    const wordCount = useMemo(
+        () => (selected ? countMarkdownWords(selected.body) : 0),
         [selected],
     );
 
@@ -565,6 +639,17 @@ export default function KnowledgeIndex() {
     };
 
     /**
+     * Sidebar drag & drop: re-parent only, never re-project — the move
+     * endpoint refuses a parent of another project, the client already
+     * blocked self/descendant/cross-project drops.
+     */
+    const movePage = (pageId: string, parentId: string | null) => {
+        router.patch(route('knowledge.move', pageId), { parent_id: parentId }, {
+            preserveScroll: true,
+        });
+    };
+
+    /**
      * Title of a parent candidate for the picker's input. The sidebar
      * list is project-filtered: when the parent sits outside the active
      * filter, the open page's own breadcrumb chain still names it.
@@ -655,6 +740,7 @@ export default function KnowledgeIndex() {
                         })
                     }
                     onCreatePageInProject={(projectId) => openCreating({ projectId: projectId ?? '' })}
+                    onMovePage={movePage}
                 />
 
                 <div className="min-w-0">
@@ -1146,6 +1232,24 @@ export default function KnowledgeIndex() {
                                     </h2>
                                     <MarkdownView value={selected.body} />
                                 </div>
+                                {/* Reading metadata: prose words and estimated
+                                    reading time, computed client-side from the
+                                    raw markdown. */}
+                                <footer
+                                    data-test="knowledge-reading-meta"
+                                    className="flex flex-wrap items-center gap-x-2 gap-y-1 border-t px-5 py-3 text-xs text-muted-foreground"
+                                >
+                                    <FileText className="size-3.5 shrink-0" aria-hidden />
+                                    <span data-test="knowledge-word-count">
+                                        {wordCount > 1
+                                            ? t('knowledge.wordCountPlural', { count: wordCount })
+                                            : t('knowledge.wordCount', { count: wordCount })}
+                                    </span>
+                                    <span aria-hidden>·</span>
+                                    <span data-test="knowledge-reading-time">
+                                        {t('knowledge.readingTime', { minutes: readingMinutes(wordCount) })}
+                                    </span>
+                                </footer>
                                 <ChildPages>{selected.children ?? []}</ChildPages>
                                 </article>
                                 {headings.length > 0 ? (
@@ -1158,20 +1262,47 @@ export default function KnowledgeIndex() {
                             )}
                         </div>
                     ) : results === undefined ? (
-                        <div className="rounded-xl border border-dashed px-4 py-12 text-center">
-                            <BookOpen
-                                className="mx-auto size-10 text-muted-foreground/50"
-                                aria-hidden
-                            />
-                            <p className="mt-3 font-medium">{t('knowledge.noPageSelected')}</p>
-                            <p className="mt-1 text-sm text-muted-foreground">
-                                {t('knowledge.noPageSelectedHint')}
-                            </p>
-                            <Button size="sm" className="mt-4" onClick={() => openCreating()}>
-                                <Plus aria-hidden />
-                                {t('knowledge.newPage')}
-                            </Button>
-                        </div>
+                        projectFilter ? (
+                            <div className="rounded-xl border border-dashed px-4 py-12 text-center">
+                                <BookOpen
+                                    className="mx-auto size-10 text-muted-foreground/50"
+                                    aria-hidden
+                                />
+                                <p className="mt-3 font-medium">{t('knowledge.noPageSelected')}</p>
+                                <p className="mt-1 text-sm text-muted-foreground">
+                                    {t('knowledge.noPageSelectedHint')}
+                                </p>
+                                <Button size="sm" className="mt-4" onClick={() => openCreating()}>
+                                    <Plus aria-hidden />
+                                    {t('knowledge.newPage')}
+                                </Button>
+                            </div>
+                        ) : pages.length > 0 ? (
+                            // No scope chosen: real content instead of a passive
+                            // empty state — the five most recently touched pages.
+                            <div>
+                                <RecentlyUpdated pages={pages} projectName={projectName} />
+                                <Button size="sm" className="mt-6" onClick={() => openCreating()}>
+                                    <Plus aria-hidden />
+                                    {t('knowledge.newPage')}
+                                </Button>
+                            </div>
+                        ) : (
+                            <div className="rounded-xl border border-dashed px-4 py-12 text-center">
+                                <BookOpen
+                                    className="mx-auto size-10 text-muted-foreground/50"
+                                    aria-hidden
+                                />
+                                <p className="mt-3 font-medium">{t('knowledge.noPages')}</p>
+                                <p className="mt-1 text-sm text-muted-foreground">
+                                    {t('knowledge.noPagesHint')}
+                                </p>
+                                <Button size="sm" className="mt-4" onClick={() => openCreating()}>
+                                    <Plus aria-hidden />
+                                    {t('knowledge.newPage')}
+                                </Button>
+                            </div>
+                        )
                     ) : null}
                 </div>
             </div>

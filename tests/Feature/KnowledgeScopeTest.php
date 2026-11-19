@@ -79,17 +79,18 @@ class KnowledgeScopeTest extends TestCase
 
     // ── Arborescence ─────────────────────────────────────────────────
 
-    public function test_guest_index_ships_empty_tree_with_scoped_project_list()
+    public function test_guest_bare_index_ships_only_perimeter_pages()
     {
         [$owner, $workspace, $inScopePage, $outOfScopePage, $transversePage, $guest] = $this->setupScopedGuest();
 
-        // No scope chosen yet: empty tree, but the select only offers the
-        // guest's perimeter projects.
+        // No scope chosen yet: the landing shows the recently updated
+        // pages — but only the perimeter's, never out-of-scope ones.
         $this->actingAs($guest)
             ->get(route('knowledge.index'))
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
-                ->has('pages', 0)
+                ->has('pages', 1)
+                ->where('pages.0.id', $inScopePage->id)
                 ->has('projects', 1));
 
         // An explicit in-scope filter still lists only the perimeter's pages.
@@ -101,7 +102,7 @@ class KnowledgeScopeTest extends TestCase
                 ->where('pages.0.id', $inScopePage->id));
     }
 
-    public function test_member_bare_index_ships_an_empty_tree(): void
+    public function test_member_bare_index_ships_perimeter_and_transverse_pages(): void
     {
         [$owner, $workspace, $inScopePage, $outOfScopePage, $transversePage, $guest] = $this->setupScopedGuest();
         $member = User::factory()->create();
@@ -111,11 +112,14 @@ class KnowledgeScopeTest extends TestCase
             'role' => 'member',
         ]);
 
+        // A roster member with no project team sees the transverse pages
+        // only — the landing's recent list respects that perimeter.
         $this->actingAs($member)
             ->get(route('knowledge.index'))
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
-                ->has('pages', 0));
+                ->has('pages', 1)
+                ->where('pages.0.id', $transversePage->id));
     }
 
     public function test_guest_sees_pages_of_archived_scope_projects(): void

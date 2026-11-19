@@ -18,8 +18,9 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { Input } from '@/components/ui/input';
 import { Head, router, usePage } from '@inertiajs/react';
-import { AlertTriangle, RotateCcw, Trash2 } from 'lucide-react';
+import { AlertTriangle, RotateCcw, Search, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatDate } from '@/lib/format-date';
@@ -53,12 +54,37 @@ type PageProps = {
     projects: ProjectOption[];
 };
 
+/**
+ * Mirror of PurgeKnowledgeTrash::RETENTION_DAYS (30 days): the purge date
+ * shown per row is deletedAt plus this retention. Keep both in sync —
+ * the command purges what this column promises.
+ */
+const TRASH_RETENTION_DAYS = 30;
+
+const DAY_MS = 86_400_000;
+
+/** Days left before the automatic purge, floored at 0. */
+function daysBeforePurge(deletedAt: string | null): number {
+    if (!deletedAt) {
+        return 0;
+    }
+    const purgeAt = new Date(deletedAt).getTime() + TRASH_RETENTION_DAYS * DAY_MS;
+
+    return Math.max(0, Math.ceil((purgeAt - Date.now()) / DAY_MS));
+}
+
 export default function KnowledgeTrash() {
     const { trashedPages } = usePage<PageProps>().props;
     const { t } = useTranslation();
 
+    const [search, setSearch] = useState('');
     const [pageToRestore, setPageToRestore] = useState<TrashedPage | null>(null);
     const [pageToDelete, setPageToDelete] = useState<TrashedPage | null>(null);
+
+    // Client-side title filter: the retention is 30 days, the list stays short.
+    const visiblePages = search.trim() === ''
+        ? trashedPages
+        : trashedPages.filter((page) => page.title.toLowerCase().includes(search.trim().toLowerCase()));
 
     const restore = (page: TrashedPage) => {
         router.post(route('knowledge.restore', page.id), {}, {
@@ -108,61 +134,105 @@ export default function KnowledgeTrash() {
                     </p>
                 </div>
             ) : (
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>{t('knowledge.trash.columnTitle')}</TableHead>
-                            <TableHead>{t('knowledge.trash.columnProject')}</TableHead>
-                            <TableHead>{t('knowledge.trash.columnDeletedBy')}</TableHead>
-                            <TableHead>{t('knowledge.trash.columnDeletedAt')}</TableHead>
-                            <TableHead>{t('knowledge.trash.columnReason')}</TableHead>
-                            <TableHead className="w-0 text-right">
-                                {t('knowledge.trash.columnActions')}
-                            </TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {trashedPages.map((page) => (
-                            <TableRow key={page.id}>
-                                <TableCell className="font-medium">{page.title}</TableCell>
-                                <TableCell>
-                                    {page.projectName ?? (
-                                        <span className="text-muted-foreground">
-                                            {t('knowledge.trash.transverse')}
-                                        </span>
-                                    )}
-                                </TableCell>
-                                <TableCell>{page.deletedBy ?? '—'}</TableCell>
-                                <TableCell className="tabular-nums">
-                                    {formatDate(page.deletedAt)}
-                                </TableCell>
-                                <TableCell>{reasonBadge(page.deletedReason)}</TableCell>
-                                <TableCell>
-                                    <div className="flex justify-end gap-2">
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            data-test={`trash-restore-${page.id}`}
-                                            onClick={() => setPageToRestore(page)}
-                                        >
-                                            <RotateCcw aria-hidden />
-                                            {t('knowledge.trash.restore')}
-                                        </Button>
-                                        <Button
-                                            variant="destructive"
-                                            size="sm"
-                                            data-test={`trash-force-delete-${page.id}`}
-                                            onClick={() => setPageToDelete(page)}
-                                        >
-                                            <Trash2 aria-hidden />
-                                            {t('knowledge.trash.forceDelete')}
-                                        </Button>
-                                    </div>
-                                </TableCell>
+                <>
+                    <div className="relative mb-3">
+                        <Search
+                            className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+                            aria-hidden
+                        />
+                        <Input
+                            value={search}
+                            onChange={(event) => setSearch(event.target.value)}
+                            placeholder={t('knowledge.trash.searchPlaceholder')}
+                            aria-label={t('knowledge.trash.searchPlaceholder')}
+                            data-test="trash-search"
+                            className="pl-9"
+                        />
+                    </div>
+                    {visiblePages.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed px-4 py-12 text-center">
+                            <Search className="size-8 text-muted-foreground/50" aria-hidden />
+                            <p className="mt-3 font-medium">{t('knowledge.trash.searchNoResults')}</p>
+                        </div>
+                    ) : (
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>{t('knowledge.trash.columnTitle')}</TableHead>
+                                <TableHead>{t('knowledge.trash.columnProject')}</TableHead>
+                                <TableHead>{t('knowledge.trash.columnDeletedBy')}</TableHead>
+                                <TableHead>{t('knowledge.trash.columnDeletedAt')}</TableHead>
+                                <TableHead>{t('knowledge.trash.columnPurge')}</TableHead>
+                                <TableHead>{t('knowledge.trash.columnReason')}</TableHead>
+                                <TableHead className="w-0 text-right">
+                                    {t('knowledge.trash.columnActions')}
+                                </TableHead>
                             </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
+                        </TableHeader>
+                        <TableBody>
+                            {visiblePages.map((page) => {
+                                const days = daysBeforePurge(page.deletedAt);
+
+                                return (
+                                <TableRow key={page.id}>
+                                    <TableCell className="font-medium">{page.title}</TableCell>
+                                    <TableCell>
+                                        {page.projectName ?? (
+                                            <span className="text-muted-foreground">
+                                                {t('knowledge.trash.transverse')}
+                                            </span>
+                                        )}
+                                    </TableCell>
+                                    <TableCell>{page.deletedBy ?? '—'}</TableCell>
+                                    <TableCell className="tabular-nums">
+                                        {formatDate(page.deletedAt)}
+                                    </TableCell>
+                                    <TableCell>
+                                        {days > 0 ? (
+                                            <span
+                                                className="text-sm tabular-nums"
+                                                data-test={`trash-purge-${page.id}`}
+                                            >
+                                                {days > 1
+                                                    ? t('knowledge.trash.purgeInPlural', { count: days })
+                                                    : t('knowledge.trash.purgeIn', { count: days })}
+                                            </span>
+                                        ) : (
+                                            <Badge variant="destructive" data-test={`trash-purge-${page.id}`}>
+                                                {t('knowledge.trash.purgeImminent')}
+                                            </Badge>
+                                        )}
+                                    </TableCell>
+                                    <TableCell>{reasonBadge(page.deletedReason)}</TableCell>
+                                    <TableCell>
+                                        <div className="flex justify-end gap-2">
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                data-test={`trash-restore-${page.id}`}
+                                                onClick={() => setPageToRestore(page)}
+                                            >
+                                                <RotateCcw aria-hidden />
+                                                {t('knowledge.trash.restore')}
+                                            </Button>
+                                            <Button
+                                                variant="destructive"
+                                                size="sm"
+                                                data-test={`trash-force-delete-${page.id}`}
+                                                onClick={() => setPageToDelete(page)}
+                                            >
+                                                <Trash2 aria-hidden />
+                                                {t('knowledge.trash.forceDelete')}
+                                            </Button>
+                                        </div>
+                                    </TableCell>
+                                </TableRow>
+                                );
+                            })}
+                        </TableBody>
+                    </Table>
+                    )}
+                </>
             )}
 
             <Dialog

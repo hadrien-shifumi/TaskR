@@ -97,10 +97,11 @@ class GuestCompatibilityTest extends TestCase
                 ->has('issues', 2)
                 ->where('totalUnfiltered', 2));
 
-        // Knowledge waits for a scope: the bare index ships an empty tree,
-        // and the full transverse content is reachable through the scope.
+        // The bare index ships the full scope-filtered list — the landing's
+        // "recently updated" section reads it; the transverse scope narrows it.
         $this->actingAs($member)->get(route('knowledge.index'))->assertOk()
-            ->assertInertia(fn ($page) => $page->has('pages', 0));
+            ->assertInertia(fn ($page) => $page->has('pages', 1)
+                ->where('pages.0.title', 'Transverse'));
         $this->actingAs($member)->get(route('knowledge.index', ['project' => 'transverse']))
             ->assertOk()
             ->assertInertia(fn ($page) => $page

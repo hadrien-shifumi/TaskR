@@ -341,13 +341,14 @@ class KnowledgePageTest extends TestCase
             'parent_id' => $root->id,
         ]);
 
-        // No scope chosen yet: the bare index ships an empty tree.
+        // No scope chosen yet: the bare index ships the full list — the
+        // landing's "recently updated" section reads it.
         $this->actingAs($owner)
             ->get('/knowledge')
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('Knowledge/Index')
-                ->has('pages', 0)
+                ->has('pages', 2)
                 ->where('projectFilter', null));
 
         // Opening a page directly scopes the sidebar to its project.

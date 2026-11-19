@@ -11,8 +11,16 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { MarkdownView } from '@/components/ui/markdown-view';
+import { VersionDiff, type DiffSide } from '@/components/version-diff';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { Head, router, usePage } from '@inertiajs/react';
-import { ArrowLeft, Eye, History, RotateCcw } from 'lucide-react';
+import { ArrowLeft, Eye, GitCompareArrows, History, RotateCcw } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { PageSharedProps } from '@/types';
@@ -61,6 +69,14 @@ export default function KnowledgeVersions() {
     const [versionContent, setVersionContent] = useState<VersionDetail | null>(null);
     const [loadingVersion, setLoadingVersion] = useState(false);
 
+    // Version comparison: two picks (defaults = the two most recent), the
+    // unified diff renders in the same dialog once both bodies arrived.
+    const [compareOpen, setCompareOpen] = useState(false);
+    const [fromVersionId, setFromVersionId] = useState<string | null>(null);
+    const [toVersionId, setToVersionId] = useState<string | null>(null);
+    const [comparison, setComparison] = useState<{ from: DiffSide; to: DiffSide } | null>(null);
+    const [loadingComparison, setLoadingComparison] = useState(false);
+
     const projectName = (projectId: string | null): string | null =>
         projectId ? (projects.find((project) => project.id === projectId)?.name ?? null) : null;
 
@@ -96,6 +112,58 @@ export default function KnowledgeVersions() {
             })
             .catch(() => setLoadingVersion(false));
     };
+
+    const fetchComparison = (fromId: string, toId: string) => {
+        setComparison(null);
+        setLoadingComparison(true);
+
+        fetch(route('knowledge.versions.compare', { page: page.id, from: fromId, to: toId }), {
+            headers: {
+                Accept: 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+        })
+            .then((res) => {
+                if (!res.ok) throw new Error('Failed to load comparison');
+                return res.json();
+            })
+            .then((data: { from: DiffSide; to: DiffSide }) => {
+                setComparison(data);
+                setLoadingComparison(false);
+            })
+            .catch(() => setLoadingComparison(false));
+    };
+
+    /** Opens the compare dialog: the clicked version against the one just before it. */
+    const openCompare = (version: VersionItem) => {
+        const index = versions.findIndex((candidate) => candidate.id === version.id);
+        const previous = versions[index + 1] ?? version;
+
+        setFromVersionId(previous.id);
+        setToVersionId(version.id);
+        setComparison(null);
+        setCompareOpen(true);
+        fetchComparison(previous.id, version.id);
+    };
+
+    const changeComparison = (side: 'from' | 'to', versionId: string) => {
+        const nextFrom = side === 'from' ? versionId : fromVersionId;
+        const nextTo = side === 'to' ? versionId : toVersionId;
+
+        if (!nextFrom || !nextTo) {
+            return;
+        }
+
+        if (side === 'from') {
+            setFromVersionId(versionId);
+        } else {
+            setToVersionId(versionId);
+        }
+        fetchComparison(nextFrom, nextTo);
+    };
+
+    const versionOptionLabel = (version: VersionItem): string =>
+        version.createdAt ? `${version.title} · ${formatDate(version.createdAt)}` : version.title;
 
     return (
         <AppLayout
@@ -169,6 +237,15 @@ export default function KnowledgeVersions() {
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"
+                                                    disabled={versions.length < 2}
+                                                    onClick={() => openCompare(version)}
+                                                >
+                                                    <GitCompareArrows aria-hidden />
+                                                    {t('knowledge.versions.compare')}
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
                                                     onClick={() => previewVersion(version)}
                                                 >
                                                     <Eye aria-hidden />
@@ -191,6 +268,80 @@ export default function KnowledgeVersions() {
                     </article>
                 </div>
             </div>
+
+            <Dialog
+                open={compareOpen}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setCompareOpen(false);
+                        setComparison(null);
+                    }
+                }}
+            >
+                <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
+                    <DialogHeader>
+                        <DialogTitle>{t('knowledge.versions.compareTitle')}</DialogTitle>
+                        <DialogDescription>
+                            {t('knowledge.versions.compareDescription')}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="grid gap-1.5">
+                            <label className="text-sm font-medium" htmlFor="compare-from-version">
+                                {t('knowledge.versions.fromLabel')}
+                            </label>
+                            <Select value={fromVersionId ?? ''} onValueChange={(value) => {
+                                if (value !== null) changeComparison('from', value);
+                            }}>
+                                <SelectTrigger id="compare-from-version" className="w-full">
+                                    <SelectValue>
+                                        {versions.find((version) => version.id === fromVersionId)
+                                            ? versionOptionLabel(versions.find((version) => version.id === fromVersionId)!)
+                                            : t('common.loading')}
+                                    </SelectValue>
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {versions.map((version) => (
+                                        <SelectItem key={version.id} value={version.id}>
+                                            {versionOptionLabel(version)}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="grid gap-1.5">
+                            <label className="text-sm font-medium" htmlFor="compare-to-version">
+                                {t('knowledge.versions.toLabel')}
+                            </label>
+                            <Select value={toVersionId ?? ''} onValueChange={(value) => {
+                                if (value !== null) changeComparison('to', value);
+                            }}>
+                                <SelectTrigger id="compare-to-version" className="w-full">
+                                    <SelectValue>
+                                        {versions.find((version) => version.id === toVersionId)
+                                            ? versionOptionLabel(versions.find((version) => version.id === toVersionId)!)
+                                            : t('common.loading')}
+                                    </SelectValue>
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {versions.map((version) => (
+                                        <SelectItem key={version.id} value={version.id}>
+                                            {versionOptionLabel(version)}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+                    {loadingComparison ? (
+                        <p className="py-8 text-center text-sm text-muted-foreground">
+                            {t('common.loading')}
+                        </p>
+                    ) : comparison ? (
+                        <VersionDiff from={comparison.from} to={comparison.to} />
+                    ) : null}
+                </DialogContent>
+            </Dialog>
 
             <Dialog
                 open={!!versionToRestore}

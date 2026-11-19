@@ -48,4 +48,11 @@ class KnowledgeRedirectResponder
             ->route('knowledge.show', $page)
             ->with('status', __('flash.page.version_restored', ['title' => $page->title]));
     }
+
+    public function moved(KnowledgePage $page): RedirectResponse
+    {
+        return redirect()
+            ->route('knowledge.show', $page)
+            ->with('status', __('flash.page.moved', ['title' => $page->title]));
+    }
 }

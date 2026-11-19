@@ -37,10 +37,12 @@ use App\Actions\Issues\SetLabels;
 use App\Actions\Issues\ShowIssuePage;
 use App\Actions\Issues\ShowIssuesPage;
 use App\Actions\Issues\UpdateIssue;
+use App\Actions\Knowledge\CompareKnowledgePageVersions;
 use App\Actions\Knowledge\CreateKnowledgePage;
 use App\Actions\Knowledge\DeleteKnowledgePage;
 use App\Actions\Knowledge\ForceDeleteKnowledgePage;
 use App\Actions\Knowledge\GetKnowledgePageVersion;
+use App\Actions\Knowledge\MoveKnowledgePage;
 use App\Actions\Knowledge\RestoreKnowledgePage;
 use App\Actions\Knowledge\RestoreKnowledgePageVersion;
 use App\Actions\Knowledge\SearchKnowledge;
@@ -295,12 +297,19 @@ Route::middleware(['auth', 'workspace'])->group(function (): void {
     Route::delete('/knowledge/{page}/force', ForceDeleteKnowledgePage::class)
         ->withTrashed()->name('knowledge.force-delete');
 
-    // Versioning — history page, single-version preview (JSON) and restore.
+    // Versioning — history page, single-version preview (JSON), compare
+    // (JSON, both full bodies for the client-side diff) and restore.
     Route::get('/knowledge/{page}/versions', ShowKnowledgeVersions::class)->name('knowledge.versions');
+    Route::get('/knowledge/{page}/versions/compare/{from}/{to}', CompareKnowledgePageVersions::class)
+        ->name('knowledge.versions.compare');
     Route::get('/knowledge/{page}/versions/{version}', GetKnowledgePageVersion::class)
         ->scopeBindings()->name('knowledge.versions.show');
     Route::post('/knowledge/{page}/versions/{version}/restore', RestoreKnowledgePageVersion::class)
         ->scopeBindings()->name('knowledge.versions.restore');
+
+    // Sidebar drag & drop: re-parent only, never re-project (the move
+    // action refuses a parent of another project).
+    Route::match(['put', 'patch'], '/knowledge/{page}/move', MoveKnowledgePage::class)->name('knowledge.move');
 
     Route::get('/knowledge/{page}', ShowKnowledgePage::class)->name('knowledge.show');
     Route::match(['put', 'patch'], '/knowledge/{page}', UpdateKnowledgePage::class)->name('knowledge.update');

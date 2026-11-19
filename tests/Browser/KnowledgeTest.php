@@ -27,9 +27,11 @@ it('walks a newcomer through the knowledge tree', function () {
 
     $page = visit('/knowledge');
 
-    // No scope chosen yet: the tree waits for a pick.
+    // No scope chosen yet: the tree waits for a pick, but the landing
+    // shows the recently updated pages instead of a dead end.
     $page->assertSee('Select a project')
-        ->assertDontSee('Glossaire métier');
+        ->assertSee('Recently updated')
+        ->assertSee('Glossaire métier');
 
     // Picking the transverse scope reveals the tree (root only: branches
     // start folded); expanding the root shows its sub-page.
@@ -261,9 +263,10 @@ it('hides out-of-scope and transverse pages from a guest on the knowledge tree',
 
     $page = visit('/knowledge');
 
-    // No scope chosen: the tree ships empty — nothing leaks by default.
+    // No scope chosen: the landing shows the perimeter's recent pages —
+    // nothing out of scope ever leaks, tree or recent list.
     $page->assertSee('Select a project')
-        ->assertDontSee('Page client')
+        ->assertSee('Page client')
         ->assertDontSee('Page interne')
         ->assertDontSee('Page transverse');
 
@@ -278,4 +281,103 @@ it('hides out-of-scope and transverse pages from a guest on the knowledge tree',
         ->assertDontSee('Interne secret');
 
     $page->assertNoSmoke();
+});
+
+it('re-parents a page by dragging it onto another page of the tree', function () {
+    Queue::fake();
+    [$owner, $workspace] = setupBrowserWorkspace();
+    app(WorkspaceContext::class)->set($workspace);
+
+    $alpha = CreateProject::run($workspace, $owner, ['name' => 'Alpha']);
+    $target = CreateKnowledgePage::run($workspace, $owner, [
+        'title' => 'Manuel', 'body' => 'Corps du manuel.', 'project_id' => $alpha->id,
+    ]);
+    $dragged = CreateKnowledgePage::run($workspace, $owner, [
+        'title' => 'Installation', 'body' => 'Corps installation.', 'project_id' => $alpha->id,
+    ]);
+    $child = CreateKnowledgePage::run($workspace, $owner, [
+        'title' => 'Prérequis', 'body' => 'Corps prérequis.',
+        'parent_id' => $dragged->id, 'project_id' => $alpha->id,
+    ]);
+
+    $this->actingAs($owner);
+
+    $page = visit('/knowledge?project='.$alpha->id);
+    $page->assertSee('Installation');
+
+    // Drag "Installation" onto "Manuel": it becomes its sub-page.
+    $page->drag(
+        '[data-test="knowledge-tree-row-'.$dragged->id.'"]',
+        '[data-test="knowledge-tree-row-'.$target->id.'"]',
+    );
+
+    $page->waitForText('has been moved in the tree');
+
+    app(WorkspaceContext::class)->set($workspace);
+    expect($dragged->refresh()->parent_id)->toBe($target->id);
+    // The dragged page's own subtree is untouched.
+    expect($child->refresh()->parent_id)->toBe($dragged->id);
+
+    $page->assertNoSmoke();
+});
+
+it('refuses to drop a page onto its own subtree', function () {
+    Queue::fake();
+    [$owner, $workspace] = setupBrowserWorkspace();
+    app(WorkspaceContext::class)->set($workspace);
+
+    $alpha = CreateProject::run($workspace, $owner, ['name' => 'Alpha']);
+    $target = CreateKnowledgePage::run($workspace, $owner, [
+        'title' => 'Manuel', 'body' => 'Corps du manuel.', 'project_id' => $alpha->id,
+    ]);
+    $child = CreateKnowledgePage::run($workspace, $owner, [
+        'title' => 'Installation', 'body' => 'Corps installation.',
+        'parent_id' => $target->id, 'project_id' => $alpha->id,
+    ]);
+    $grandChild = CreateKnowledgePage::run($workspace, $owner, [
+        'title' => 'Prérequis', 'body' => 'Corps prérequis.',
+        'parent_id' => $child->id, 'project_id' => $alpha->id,
+    ]);
+
+    $this->actingAs($owner);
+
+    $page = visit('/knowledge?project='.$alpha->id);
+
+    // Expand the branch so the grandchild row is rendered before dragging.
+    $page->click("@knowledge-toggle-{$target->id}");
+    $page->click("@knowledge-toggle-{$child->id}");
+
+    // Dropping "Manuel" onto its grandchild would create a cycle: the
+    // client blocks the drop, no request ever leaves the browser.
+    $page->drag(
+        '[data-test="knowledge-tree-row-'.$target->id.'"]',
+        '[data-test="knowledge-tree-row-'.$grandChild->id.'"]',
+    );
+
+    app(WorkspaceContext::class)->set($workspace);
+    expect($target->refresh()->parent_id)->toBeNull();
+    expect($child->refresh()->parent_id)->toBe($target->id);
+    expect($grandChild->refresh()->parent_id)->toBe($child->id);
+
+    $page->assertNoSmoke();
+});
+
+it('shows word count and reading time under the article', function () {
+    Queue::fake();
+    [$owner, $workspace] = setupBrowserWorkspace();
+    app(WorkspaceContext::class)->set($workspace);
+
+    $page = CreateKnowledgePage::run($workspace, $owner, [
+        'title' => 'Long article',
+        'body' => str_repeat('Mot contenu ', 120),
+    ]);
+
+    $this->actingAs($owner);
+
+    $browser = visit('/knowledge/'.$page->id);
+    $browser->assertPresent('[data-test="knowledge-reading-meta"]');
+    $browser->assertSeeIn('[data-test="knowledge-reading-meta"]', '240 words');
+    $browser->assertSeeIn('[data-test="knowledge-reading-meta"]', '1 min read');
+
+    $browser->assertNoSmoke();
 });

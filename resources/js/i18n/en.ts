@@ -1017,6 +1017,12 @@ const en = {
         newPageInProject: "New page in this project",
         collapse: "Collapse",
         expand: "Expand",
+        recentlyUpdated: "Recently updated",
+        recentlyUpdatedHint:
+            "The five pages touched last — pick a project in the filter to browse the full tree.",
+        wordCount: "{{count}} word",
+        wordCountPlural: "{{count}} words",
+        readingTime: "~{{minutes}} min read",
         trash: {
             title: "Trash",
             nav: "Trash",
@@ -1028,6 +1034,7 @@ const en = {
             columnProject: "Project",
             columnDeletedBy: "Deleted by",
             columnDeletedAt: "Deleted on",
+            columnPurge: "Purge",
             columnReason: "Reason",
             columnActions: "Actions",
             transverse: "Cross-workspace",
@@ -1041,6 +1048,11 @@ const en = {
             forceDeleteTitle: "Permanently delete this page?",
             forceDeleteDescription:
                 "This action is irreversible. The page and its history will be permanently deleted.",
+            searchPlaceholder: "Search a deleted page…",
+            searchNoResults: "No deleted page matches.",
+            purgeIn: "Purged in {{count}} day",
+            purgeInPlural: "Purged in {{count}} days",
+            purgeImminent: "Purge imminent",
         },
         versions: {
             button: "History",
@@ -1055,6 +1067,18 @@ const en = {
             noVersions: "No versions yet.",
             preview: "View",
             previewTitle: "Version preview",
+            compare: "Compare",
+            compareTitle: "Compare versions",
+            compareDescription:
+                "Pick two versions to see what changed between them.",
+            fromLabel: "From version",
+            toLabel: "To version",
+            noChanges: "No content changes.",
+            titleChanged: 'Title changed: "{{from}}" → "{{to}}"',
+            linesAdded: "{{count}} line added",
+            linesAddedPlural: "{{count}} lines added",
+            linesRemoved: "{{count}} line removed",
+            linesRemovedPlural: "{{count}} lines removed",
         },
         conflict: {
             title: "This page was modified while you were editing",

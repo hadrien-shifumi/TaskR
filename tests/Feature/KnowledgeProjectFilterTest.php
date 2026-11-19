@@ -76,16 +76,18 @@ class KnowledgeProjectFilterTest extends TestCase
                 ->where('projectFilter', 'transverse'));
     }
 
-    public function test_bare_index_ships_an_empty_tree_until_a_scope_is_chosen(): void
+    public function test_bare_index_ships_the_full_scope_filtered_list_until_a_scope_is_chosen(): void
     {
         [$owner] = $this->setupWorkspaceWithPages();
 
+        // No scope chosen yet: the landing's "recently updated" section
+        // reads the full list — the sidebar still waits for a pick.
         $this->actingAs($owner)
             ->get(route('knowledge.index'))
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Knowledge/Index')
-                ->has('pages', 0)
+                ->has('pages', 3)
                 ->has('projects', 2)
                 ->where('projectFilter', null));
     }
@@ -99,7 +101,7 @@ class KnowledgeProjectFilterTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Knowledge/Index')
-                ->has('pages', 0)
+                ->has('pages', 3)
                 ->where('projectFilter', null));
     }
 

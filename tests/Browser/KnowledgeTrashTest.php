@@ -170,3 +170,44 @@ it('navigates to the trash from the sidebar', function () {
 
     $browser->assertNoSmoke();
 });
+
+it('filters the trash by title and shows the purge date per row', function () {
+    Queue::fake();
+    [$owner, $workspace] = setupBrowserWorkspace();
+    app(WorkspaceContext::class)->set($workspace);
+
+    $old = CreateKnowledgePage::run($workspace, $owner, [
+        'title' => 'Ancienne note', 'body' => 'Corps.',
+    ]);
+    $old->delete();
+    // Backdate the deletion: 28 of the 30 retention days elapsed.
+    $trashedOld = KnowledgePage::withTrashed()->find($old->id);
+    $trashedOld->deleted_at = now()->subDays(28);
+    $trashedOld->save();
+
+    $recent = CreateKnowledgePage::run($workspace, $owner, [
+        'title' => 'Note récente', 'body' => 'Corps.',
+    ]);
+    $recent->delete();
+
+    $this->actingAs($owner);
+
+    $browser = visit('/knowledge/trash');
+    $browser->assertSee('Ancienne note');
+    $browser->assertSee('Note récente');
+
+    // 28 days elapsed of 30: two days left. A fresh deletion: 30.
+    $browser->assertSeeIn('[data-test="trash-purge-'.$old->id.'"]', 'Purged in 2 days');
+    $browser->assertSeeIn('[data-test="trash-purge-'.$recent->id.'"]', 'Purged in 30 days');
+
+    // The title filter narrows the rows client-side.
+    $browser->fill('@trash-search', 'Ancienne');
+    $browser->assertSee('Ancienne note');
+    $browser->assertDontSee('Note récente');
+
+    // A filter matching nothing shows its own empty state.
+    $browser->fill('@trash-search', 'inexistant');
+    $browser->assertSee('No deleted page matches.');
+
+    $browser->assertNoSmoke();
+});

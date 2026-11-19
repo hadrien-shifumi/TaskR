@@ -11,7 +11,7 @@ import {
     Plus,
     type LucideIcon,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 
@@ -29,6 +29,24 @@ export interface ProjectOption {
 }
 
 type TreeNode = PageRef & { children: TreeNode[] };
+
+/**
+ * Drag & drop context threaded down to the tree rows: which page is
+ * being dragged, which drop target is currently hovered, and the
+ * callbacks that make a drop a re-parent. Null when DnD is disabled.
+ */
+type MoveContext = {
+    draggingId: string | null;
+    dropTargetId: string | null;
+    startDrag: (pageId: string) => void;
+    endDrag: () => void;
+    canDropOn: (nodeId: string) => boolean;
+    canDropOnRoot: (projectId: string | null) => boolean;
+    setDropTarget: (targetId: string) => void;
+    clearDropTarget: (targetId: string) => void;
+    dropOn: (nodeId: string) => void;
+    dropOnRoot: (projectId: string | null) => void;
+};
 
 type KnowledgeSidebarProps = {
     pages: PageRef[];
@@ -50,6 +68,13 @@ type KnowledgeSidebarProps = {
      * to the per-section "+" buttons.
      */
     onCreatePageInProject?: (projectId: string | null) => void;
+    /**
+     * Drag & drop re-parenting: when provided, tree rows become draggable
+     * and rows/section headers become drop targets. The drop only changes
+     * the parent, never the project; self and descendant drops are refused
+     * client-side (and re-checked server-side). Omit to disable DnD.
+     */
+    onMovePage?: (pageId: string, parentId: string | null) => void;
 };
 
 function buildTree(pages: PageRef[]): TreeNode[] {
@@ -66,6 +91,34 @@ function buildTree(pages: PageRef[]): TreeNode[] {
     });
 
     return roots;
+}
+
+/**
+ * Client-side descendant ids of a page (children, grandchildren, …) —
+ * the subtree a drag can never be dropped onto, or a hierarchy cycle
+ * would appear before the server even gets a say.
+ */
+function descendantIdsOf(pages: PageRef[], pageId: string): Set<string> {
+    const childrenByParent = new Map<string | null, PageRef[]>();
+    pages.forEach((page) => {
+        const list = childrenByParent.get(page.parentId) ?? [];
+        list.push(page);
+        childrenByParent.set(page.parentId, list);
+    });
+
+    const ids = new Set<string>();
+    const frontier = [pageId];
+    while (frontier.length > 0) {
+        const current = frontier.pop()!;
+        for (const child of childrenByParent.get(current) ?? []) {
+            if (!ids.has(child.id)) {
+                ids.add(child.id);
+                frontier.push(child.id);
+            }
+        }
+    }
+
+    return ids;
 }
 
 /** Recursive page count — roots plus every nested child. */
@@ -88,7 +141,8 @@ function ancestorIds(pages: PageRef[], pageId: string): string[] {
 /**
  * Maquette nav-item pattern applied to a tree row. A node with children
  * gets a chevron toggling its branch; leaves get a spacer so titles stay
- * aligned across depths.
+ * aligned across depths. Draggable when DnD is enabled: dragging the row
+ * (the link itself is not draggable) starts a re-parent drag.
  */
 function TreeRow({
     node,
@@ -97,6 +151,7 @@ function TreeRow({
     projectFilter,
     expanded,
     onToggle,
+    move,
 }: {
     node: TreeNode;
     depth: number;
@@ -104,16 +159,45 @@ function TreeRow({
     projectFilter?: string;
     expanded: Set<string>;
     onToggle: (id: string) => void;
+    move: MoveContext | null;
 }) {
     const { t } = useTranslation();
     const hasChildren = node.children.length > 0;
     const isOpen = expanded.has(node.id);
+    const isDragging = move?.draggingId === node.id;
+    const isDropTarget = move?.dropTargetId === node.id;
 
     return (
         <>
             <div
-                className="flex items-center gap-0.5"
+                className={`flex items-center gap-0.5 rounded-lg ${
+                    isDragging ? 'opacity-35' : ''
+                } ${
+                    isDropTarget
+                        ? 'bg-primary/10 ring-1 ring-primary/40'
+                        : ''
+                }`}
                 style={{ paddingLeft: `${0.75 + depth * 1}rem` }}
+                draggable={move !== null}
+                data-test={`knowledge-tree-row-${node.id}`}
+                onDragStart={(event) => {
+                    if (!move) return;
+                    event.dataTransfer.setData('text/plain', node.id);
+                    event.dataTransfer.effectAllowed = 'move';
+                    move.startDrag(node.id);
+                }}
+                onDragEnd={() => move?.endDrag()}
+                onDragOver={(event) => {
+                    if (!move || !move.canDropOn(node.id)) return;
+                    event.preventDefault();
+                    event.dataTransfer.dropEffect = 'move';
+                    move.setDropTarget(node.id);
+                }}
+                onDragLeave={() => move?.clearDropTarget(node.id)}
+                onDrop={(event) => {
+                    event.preventDefault();
+                    move?.dropOn(node.id);
+                }}
             >
                 {hasChildren ? (
                     <button
@@ -139,6 +223,7 @@ function TreeRow({
                             ? route('knowledge.show', { page: node.id, project: projectFilter })
                             : route('knowledge.show', node.id)
                     }
+                    draggable={false}
                     aria-current={node.id === selectedId ? 'page' : undefined}
                     className="min-w-0 flex-1 truncate rounded-lg px-2 py-1.75 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground aria-[current=page]:bg-secondary aria-[current=page]:font-medium aria-[current=page]:text-foreground"
                 >
@@ -155,6 +240,7 @@ function TreeRow({
                           projectFilter={projectFilter}
                           expanded={expanded}
                           onToggle={onToggle}
+                          move={move}
                       />
                   ))
                 : null}
@@ -174,6 +260,8 @@ type SidebarSectionProps = {
     onCreatePageInProject?: (projectId: string | null) => void;
     /** Project pre-filled by the section "+" (null = transverse). */
     sectionProjectId?: string | null;
+    /** DnD context; null disables dragging. */
+    move: MoveContext | null;
 };
 
 /** Sidebar group: mono heading (icon, label, page count) over its tree. */
@@ -187,8 +275,11 @@ function SidebarSection({
     onToggle,
     onCreatePageInProject,
     sectionProjectId,
+    move,
 }: SidebarSectionProps) {
     const { t } = useTranslation();
+    const rootDropId = `root:${sectionProjectId ?? 'transverse'}`;
+    const isDropTarget = move?.dropTargetId === rootDropId;
 
     if (trees.length === 0) {
         return null;
@@ -196,7 +287,22 @@ function SidebarSection({
 
     return (
         <section>
-            <h3 className="flex items-center gap-1.5 px-2 pb-1 font-mono text-[12px] tracking-[0.08em] text-muted-foreground uppercase">
+            <h3
+                className={`flex items-center gap-1.5 rounded-lg px-2 pb-1 font-mono text-[12px] tracking-[0.08em] text-muted-foreground uppercase ${
+                    isDropTarget ? 'bg-primary/10 ring-1 ring-primary/40' : ''
+                }`}
+                onDragOver={(event) => {
+                    if (!move || !move.canDropOnRoot(sectionProjectId ?? null)) return;
+                    event.preventDefault();
+                    event.dataTransfer.dropEffect = 'move';
+                    move.setDropTarget(rootDropId);
+                }}
+                onDragLeave={() => move?.clearDropTarget(rootDropId)}
+                onDrop={(event) => {
+                    event.preventDefault();
+                    move?.dropOnRoot(sectionProjectId ?? null);
+                }}
+            >
                 <Icon className="size-3.5 shrink-0" aria-hidden />
                 <span className="min-w-0 truncate">{label}</span>
                 <span className="ml-auto shrink-0 rounded-full bg-secondary px-1.5 py-0.5 font-sans text-[10px] tabular-nums text-muted-foreground">
@@ -224,6 +330,7 @@ function SidebarSection({
                     projectFilter={projectFilter}
                     expanded={expanded}
                     onToggle={onToggle}
+                    move={move}
                 />
             ))}
         </section>
@@ -247,10 +354,60 @@ export function KnowledgeSidebar({
     onProjectFilterChange,
     onCreatePage,
     onCreatePageInProject,
+    onMovePage,
 }: KnowledgeSidebarProps) {
     const { t } = useTranslation();
 
     const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
+
+    // Drag & drop state: the dragged page, the hovered drop target and
+    // the pre-computed subtree of the dragged page (a cycle can never be
+    // dropped, client-side before the server ever sees the request).
+    const [draggingId, setDraggingId] = useState<string | null>(null);
+    const [dropTargetId, setDropTargetId] = useState<string | null>(null);
+    const draggedSubtree = useMemo(
+        () => (draggingId !== null ? descendantIdsOf(pages, draggingId) : new Set<string>()),
+        [pages, draggingId],
+    );
+    const draggedPage = draggingId !== null ? pages.find((page) => page.id === draggingId) ?? null : null;
+
+    const move: MoveContext | null = onMovePage
+        ? {
+              draggingId,
+              dropTargetId,
+              startDrag: (pageId) => setDraggingId(pageId),
+              endDrag: () => {
+                  setDraggingId(null);
+                  setDropTargetId(null);
+              },
+              canDropOn: (nodeId) =>
+                  draggingId !== null &&
+                  nodeId !== draggingId &&
+                  !draggedSubtree.has(nodeId) &&
+                  draggedPage !== null &&
+                  (pages.find((page) => page.id === nodeId)?.projectId ?? null) === draggedPage.projectId,
+              canDropOnRoot: (projectId) =>
+                  draggingId !== null && draggedPage !== null && draggedPage.projectId === projectId,
+              setDropTarget: (targetId) => setDropTargetId(targetId),
+              clearDropTarget: (targetId) =>
+                  setDropTargetId((current) => (current === targetId ? null : current)),
+              dropOn: (nodeId) => {
+                  if (draggingId !== null) {
+                      expandPath(nodeId);
+                      onMovePage(draggingId, nodeId);
+                  }
+                  setDraggingId(null);
+                  setDropTargetId(null);
+              },
+              dropOnRoot: (projectId) => {
+                  if (draggingId !== null) {
+                      onMovePage(draggingId, null);
+                  }
+                  setDraggingId(null);
+                  setDropTargetId(null);
+              },
+          }
+        : null;
 
     const trees = buildTree(pages);
     const crossWorkspaceTrees = trees.filter((node) => !node.projectId);
@@ -261,7 +418,12 @@ export function KnowledgeSidebar({
         if (selectedId === null) {
             return;
         }
-        const path = ancestorIds(pages, selectedId);
+        expandPath(selectedId);
+    }, [selectedId, pages]);
+
+    /** Expands the ancestor path of a page (root first), e.g. the new home of a dropped page. */
+    function expandPath(pageId: string): void {
+        const path = ancestorIds(pages, pageId);
         if (path.length === 0) {
             return;
         }
@@ -276,7 +438,7 @@ export function KnowledgeSidebar({
             });
             return changed ? next : previous;
         });
-    }, [selectedId, pages]);
+    }
 
     const toggle = (id: string) => {
         setExpanded((previous) => {
@@ -357,6 +519,7 @@ export function KnowledgeSidebar({
                             onToggle={toggle}
                             onCreatePageInProject={onCreatePageInProject}
                             sectionProjectId={null}
+                            move={move}
                         />
                         {projects.map((project) => (
                             <SidebarSection
@@ -370,6 +533,7 @@ export function KnowledgeSidebar({
                                 onToggle={toggle}
                                 onCreatePageInProject={onCreatePageInProject}
                                 sectionProjectId={project.id}
+                                move={move}
                             />
                         ))}
                         {pages.length === 0 ? (

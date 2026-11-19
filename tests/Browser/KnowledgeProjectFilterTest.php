@@ -27,18 +27,21 @@ it('ships an empty tree by default and shows one scope at a time', function () {
 
     $page = visit('/knowledge');
 
-    // No scope chosen yet: placeholder in the select, empty tree, invite.
+    // No scope chosen yet: placeholder in the select, the tree waits for a
+    // pick — but the landing shows real content, the recently updated pages.
     $page->assertSee('No project selected')
         ->assertSee('Select a project')
-        ->assertDontSee('Page Alpha')
-        ->assertDontSee('Page Beta')
-        ->assertDontSee('Page transverse');
+        ->assertSee('Recently updated')
+        ->assertSee('Page Alpha')
+        ->assertSee('Page Beta')
+        ->assertSee('Page transverse');
 
     // The "All projects" entry is gone from the options.
     $page->click('@filter-select-project');
     $page->assertDontSee('All projects');
 
-    // Pick Alpha — only its page shows, one scope at a time.
+    // Pick Alpha — only its page shows, one scope at a time; the recent
+    // landing gives way to the scoped empty state.
     $page->click('[role="option"]:has-text("Alpha")');
     $page->assertQueryStringHas('project', $alpha->id)
         ->assertSee('Page Alpha')

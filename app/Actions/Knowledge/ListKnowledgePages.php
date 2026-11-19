@@ -14,13 +14,6 @@ class ListKnowledgePages
     use AsObject;
 
     /**
-     * Sidebar scope for "nothing chosen yet": the knowledge index ships an
-     * empty tree until the visitor picks a project — or the transverse
-     * scope — instead of listing every page at once.
-     */
-    public const NO_SCOPE = 'none';
-
-    /**
      * Flat list of the workspace's pages — tree structure stays
      * reconstructable through `parentId`. A scoped visitor (a guest's
      * roster, a scoped member's perimeter) only gets the pages attached
@@ -29,18 +22,15 @@ class ListKnowledgePages
      *
      * The optional project filter narrows the list further:
      * `'transverse'` keeps only workspace-level pages (project_id null),
-     * a project ULID keeps only that project's pages, and `NO_SCOPE`
-     * (nothing chosen yet) ships an empty list. The filter is ANDed
+     * a project ULID keeps only that project's pages, and null ships the
+     * whole scope-filtered list — the bare index landing, whose
+     * "recently updated" section reads from it. The filter is ANDed
      * with the scope — an out-of-scope project yields nothing.
      *
      * @return array<int, array<string, mixed>>
      */
     public function handle(Workspace $workspace, ?User $user = null, ?string $projectFilter = null): array
     {
-        if ($projectFilter === self::NO_SCOPE) {
-            return [];
-        }
-
         $context = app(WorkspaceContext::class);
         $scope = $user instanceof User
             ? $context->accessibleProjectIds($user)

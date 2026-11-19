@@ -128,6 +128,7 @@ return [
         'restored' => '« :title » a été restaurée depuis la corbeille.',
         'force_deleted' => 'La page a été définitivement supprimée.',
         'version_restored' => '« :title » a été restaurée à une version antérieure.',
+        'moved' => '« :title » a été déplacée dans l\'arborescence.',
     ],
 
     'joined_workspace' => 'Vous avez rejoint :name.',

@@ -117,3 +117,35 @@ it('shows the editor name on version entries', function () {
 
     $browser->assertNoSmoke();
 });
+
+it('compares two versions with a visible diff', function () {
+    Queue::fake();
+    [$owner, $workspace] = setupBrowserWorkspace();
+    app(WorkspaceContext::class)->set($workspace);
+
+    $page = CreateKnowledgePage::run($workspace, $owner, [
+        'title' => 'V1',
+        'body' => "Première ligne.\nDeuxième ligne.",
+    ]);
+    UpdateKnowledgePage::run($page, $owner, [
+        'title' => 'V2',
+        'body' => "Première ligne.\nLigne ajoutée en V2.",
+    ]);
+
+    $this->actingAs($owner);
+
+    $browser = visit('/knowledge/'.$page->id.'/versions');
+    $browser->click('div.space-y-2 > div:nth-child(1) button:has-text("Compare")');
+
+    // The compare dialog opens with the two most recent versions picked.
+    $browser->assertPresent('[role="dialog"]');
+    // The renamed title is shown separately from the body diff.
+    $browser->assertSeeIn('[role="dialog"]', 'Title changed');
+    // Added and removed lines both show in the unified diff.
+    $browser->assertSeeIn('[role="dialog"]', 'Ligne ajoutée en V2.');
+    $browser->assertSeeIn('[role="dialog"]', 'Deuxième ligne.');
+    $browser->assertSeeIn('[role="dialog"]', '1 line added');
+    $browser->assertSeeIn('[role="dialog"]', '1 line removed');
+
+    $browser->assertNoSmoke();
+});
