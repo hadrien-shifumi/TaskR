@@ -28,10 +28,17 @@ class WorkspaceEmbeddingSetting extends BaseModel
         'model',
         'dimensions',
         'send_dimensions',
+        // Chat completes with OpenAI-compatible providers on optional
+        // dedicated credentials (see config/broadcasting.php). Empty
+        // values fall back to the stored embeddings pair.
+        'chat_base_url',
+        'chat_api_key',
+        'chat_model',
     ];
 
     protected $casts = [
         'api_key' => 'encrypted',
+        'chat_api_key' => 'encrypted',
         'dimensions' => 'integer',
         'send_dimensions' => 'boolean',
     ];

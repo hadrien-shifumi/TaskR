@@ -53,7 +53,9 @@ use App\Actions\Knowledge\ShowKnowledgeCreatePage;
 use App\Actions\Knowledge\ShowKnowledgePage;
 use App\Actions\Knowledge\ShowKnowledgeTrash;
 use App\Actions\Knowledge\ShowKnowledgeVersions;
+use App\Actions\Knowledge\TestChatSettings;
 use App\Actions\Knowledge\TestEmbeddingsSettings;
+use App\Actions\Knowledge\UpdateChatSettings;
 use App\Actions\Knowledge\UpdateEmbeddingsSettings;
 use App\Actions\Knowledge\UpdateKnowledgePage;
 use App\Actions\Labels\CreateLabel;
@@ -167,7 +169,10 @@ Route::middleware(['auth', 'workspace'])->group(function (): void {
     Route::get('/settings/embeddings', ShowEmbeddingsSettingsPage::class)->name('settings.embeddings');
     Route::match(['put', 'patch'], '/settings/embeddings', UpdateEmbeddingsSettings::class)
         ->name('settings.embeddings.update');
+    Route::match(['put', 'patch'], '/settings/embeddings/chat', UpdateChatSettings::class)
+        ->name('settings.embeddings.update-chat');
     Route::post('/settings/embeddings/test', TestEmbeddingsSettings::class)->name('settings.embeddings.test');
+    Route::post('/settings/embeddings/test-chat', TestChatSettings::class)->name('settings.embeddings.test-chat');
     Route::post('/settings/embeddings/reembed', ReembedWorkspaceKnowledge::class)->name('settings.embeddings.reembed');
 
     Route::get('/settings/notifications', ShowNotificationSettingsPage::class)->name('settings.notifications');

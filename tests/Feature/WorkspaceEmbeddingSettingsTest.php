@@ -10,6 +10,7 @@ use App\Models\KnowledgePage;
 use App\Models\Membership;
 use App\Models\User;
 use App\Models\WorkspaceEmbeddingSetting;
+use App\Support\Chat;
 use App\Support\WorkspaceContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
@@ -28,6 +29,8 @@ class WorkspaceEmbeddingSettingsTest extends TestCase
     use RefreshDatabase;
 
     private const PROBE_HOST = 'https://workspace-provider.test/v1';
+
+    private const CHAT_HOST = 'https://chat-provider.test/v1';
 
     private function configureInstance(int $dimensions = 3): void
     {
@@ -60,6 +63,15 @@ class WorkspaceEmbeddingSettingsTest extends TestCase
             'base_url' => self::PROBE_HOST,
             'api_key' => 'workspace-secret-key',
             'model' => 'mistral-embed',
+        ], $overrides);
+    }
+
+    private function chatSettings(array $overrides = []): array
+    {
+        return array_merge([
+            'chat_base_url' => self::CHAT_HOST,
+            'chat_api_key' => 'chat-secret-key',
+            'chat_model' => 'mistral-large-latest',
         ], $overrides);
     }
 
@@ -388,5 +400,53 @@ class WorkspaceEmbeddingSettingsTest extends TestCase
         $this->actingAs($owner)
             ->put(route('settings.embeddings.update'), $this->settings(['api_key' => '']))
             ->assertSessionHasErrors('api_key');
+    }
+
+    public function test_validation_rejects_a_malformed_chat_base_url(): void
+    {
+        $this->configureInstance();
+        $owner = User::factory()->create();
+        CreateWorkspace::run($owner, ['name' => 'WS']);
+
+        Http::fake();
+
+        $this->actingAs($owner)
+            ->put(route('settings.embeddings.update-chat'), $this->chatSettings(['chat_base_url' => 'not-a-url']))
+            ->assertSessionHasErrors('chat_base_url');
+
+        $this->actingAs($owner)
+            ->put(route('settings.embeddings.update-chat'), $this->chatSettings(['chat_base_url' => '']))
+            ->assertSessionHasErrors('chat_base_url');
+
+        // The pair fallback: both fields left empty but no stored pair
+        // anywhere — the probe refuses the chat instead of the 500.
+        $this->actingAs($owner)
+            ->put(route('settings.embeddings.update-chat'), $this->chatSettings(['chat_base_url' => '', 'chat_api_key' => '']))
+            ->assertSessionHasErrors('chat_base_url');
+        $this->assertSame(0, WorkspaceEmbeddingSetting::withoutWorkspaceScope()->count());
+    }
+
+    public function test_save_keeps_a_single_chat_settings_row(): void
+    {
+        $this->configureInstance();
+        $owner = User::factory()->create();
+        $workspace = CreateWorkspace::run($owner, ['name' => 'WS']);
+        app(WorkspaceContext::class)->set($workspace);
+
+        Http::fake([
+            self::CHAT_HOST.'/chat/completions' => Http::response([
+                'choices' => [['message' => ['content' => 'Un reply test.']]],
+            ]),
+        ]);
+
+        $this->actingAs($owner)
+            ->put(route('settings.embeddings.update-chat'), $this->chatSettings())
+            ->assertRedirect();
+        $this->actingAs($owner)
+            ->put(route('settings.embeddings.update-chat'), $this->chatSettings(['chat_model' => 'mistral-large-latest-2']))
+            ->assertRedirect();
+
+        $this->assertSame(1, WorkspaceEmbeddingSetting::withoutWorkspaceScope()->where('workspace_id', $workspace->id)->count());
+        $this->assertDatabaseHas('workspace_embedding_settings', ['chat_model' => 'mistral-large-latest-2']);
     }
 }

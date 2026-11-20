@@ -808,7 +808,7 @@ const en = {
         sections: {
             account: "Account",
             general: "General",
-            embeddings: "Semantic search",
+            embeddings: "AI",
             statuses: "Statuses",
             members: "Members",
             templates: "Issue templates",
@@ -896,6 +896,37 @@ const en = {
         reembed: "Re-vectorize this workspace",
         reembedHint:
             "Queues one background job per knowledge page of this workspace. Use after changing the provider or the model.",
+    },
+
+    chatPage: {
+        description:
+            "This workspace can plug its own conversational assistant (any OpenAI-compatible endpoint: Mistral, OpenAI, Ollama, vLLM, LM Studio\u2026). Without one here, the chatbot simply stays disabled.",
+        settingsTitle: "AI assistant",
+        settingsDescription:
+            "The workspace's conversational assistant shares the AI settings: the embeddings provider block (semantic search) and the chat block (the assistant) live on the same page, the chat reusing the embeddings endpoint and key unless configured otherwise.",
+        endpointLabel: "Chat endpoint",
+        endpointPlaceholder: "https://api.mistral.ai/v1",
+        apiKeyLabel: "Chat API key",
+        apiKeyHint:
+            "Encrypted at rest, never displayed. Left empty, the embeddings key is reused. Set here, the chat key stays independent from the embeddings one.",
+        modelLabel: "Chat model",
+        modelPlaceholder: "mistral-large-latest",
+        testButton: "Test the chat",
+        testing: "Testing the chat\u2026",
+        testOk: "Chat OK \u2014 \u201c{{content}}\u201d in {{latency}} ms.",
+        testFailed: "The chat did not answer.",
+        // The chat block never exposes the key — its flags only.
+        keyPresent: "a key is registered",
+        keyAbsent: "no key registered",
+        save: "Save the chat",
+        presetLabel: "Chat profile",
+        presetPlaceholder: "Choose a profile\u2026",
+        presetMistral: "Mistral",
+        presetOpenAI: "OpenAI",
+        presetOllama: "Ollama (local)",
+        presetCustom: "Custom endpoint (vLLM, LM Studio\u2026)",
+        endpointInfo:
+            "The chat reuses the embeddings endpoint and key when its own fields are empty (pair fallback): change the shared key and the chat follows.",
     },
 
     membersPage: {
@@ -1213,6 +1244,8 @@ const en = {
             },
             workspace: {
                 embeddings_updated: "Semantic search provider updated",
+                chat_updated: "AI settings updated",
+
             },
         },
     },

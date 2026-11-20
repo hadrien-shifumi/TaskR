@@ -76,6 +76,38 @@ docker compose up -d   # les migrations tournent au démarrage du rôle web
 > reverse proxy faisant la terminaison TLS devant le port 8080 (l'image sert
 > du HTTP).
 
+### Hub Mercure (temps réel)
+
+Le déploiement docker embarque un **hub Mercure** : le serveur FrankenPHP
+d'Octane dérive sa configuration de la connexion de diffusion
+(`config/broadcasting.php`, créée app-level pour figer le contrat) quand
+`BROADCAST_CONNECTION=mercure` — le hub répond alors sur
+`/.well-known/mercure`, même domaine que l'application (aucun port
+supplémentaire n'est ouvert, tout reste dans le conteneur web).
+
+- **Variables d'environnement** : `MERCURE_JWT_SECRET` (générée avec
+  `openssl rand -hex 32` — hexadécimal nu, 64 caractères, placée dans le
+  `.env` avant le premier démarrage) ; `MERCURE_URL` / `MERCURE_PUBLIC_URL`
+  optionnelles quand le hub vit sur un autre domaine ; `MERCURE_ASYNC`
+  (publication asynchrone, défaut : synchronisée).
+- **Persistance** : la base d'abonnements du hub est un fichier BoltDB —
+  configurée sur le volume déjà monté du serveur
+  (`config/octane.php`, transport `bolt`, chemin `/app/storage/mercure.db`),
+  elle survit aux mises à jour d'image.
+- **Pièges connus** : le hub est exclu de la compression Caddy (le stub
+  Caddyfile d'Octane), les logs d'abonnement sont silencieux, et le
+  paramètre `authorization` des requêtes d'abonnement est reDACTé.
+- **Vérification manuelle** (le hub live ne se prouve pas en Pest —
+  FrankenPHP ne tourne pas sous `artisan serve`) :
+
+```bash
+docker compose up -d
+curl -i $APP_URL/.well-known/mercure
+# HTTP/1.1 401 Unauthorized  (refus des abonnements anonymes : le hub répond)
+curl -i -H "Cookie: MERCURE_SUBSCRIBE_TOKEN=<jwt>" $APP_URL/.well-known/mercure
+# HTTP/1.1 200 OK  (text/event-stream — l'abonnement est établi)
+```
+
 ### Base de données externe (managée)
 
 Pour pointer vers un PostgreSQL externe ou managé (Supabase, Neon,

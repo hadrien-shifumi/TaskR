@@ -813,7 +813,7 @@ const fr: typeof en = {
         sections: {
             account: "Compte",
             general: "Général",
-            embeddings: "Recherche sémantique",
+            embeddings: "IA",
             statuses: "Statuts",
             members: "Membres",
             templates: "Gabarits de tickets",
@@ -903,6 +903,37 @@ const fr: typeof en = {
         reembed: "Re-vectoriser cet espace",
         reembedHint:
             "Met en file un traitement en arrière-plan par page de connaissance de cet espace. À utiliser après un changement de fournisseur ou de modèle.",
+    },
+
+    chatPage: {
+        description:
+            "L'espace peut brancher son propre assistant conversationnel (tout endpoint compatible OpenAI : Mistral, OpenAI, Ollama, vLLM, LM Studio…). Sans assistant ici, le chatbot reste simplement désactivé.",
+        settingsTitle: "Assistant IA",
+        settingsDescription:
+            "L'assistant conversationnel de l'espace partage les réglages IA : le bloc fournisseurs d'embeddings (recherche sémantique) et le bloc chat (l'assistant) vivent sur la même page, le chat réutilisant l'endpoint et la clé de l'embeddings sauf configuration propre.",
+        endpointLabel: "Endpoint du chat",
+        endpointPlaceholder: "https://api.mistral.ai/v1",
+        apiKeyLabel: "Clé d'API du chat",
+        apiKeyHint:
+            "Chiffrée en base, jamais affichée. Laissez vide pour réutiliser la clé des embeddings. Éditée ici, la clé du chat reste indépendante de celle des embeddings.",
+        modelLabel: "Modèle conversationnel",
+        modelPlaceholder: "mistral-large-latest",
+        testButton: "Tester le chat",
+        testing: "Test du chat en cours…",
+        testOk: "Chat OK — « {{content}} » en {{latency}} ms.",
+        testFailed: "Le chat n'a pas répondu.",
+        // Le bloc chat n'expose jamais la clé — ses indicateurs seulement.
+        keyPresent: "une clé est enregistrée",
+        keyAbsent: "aucune clé enregistrée",
+        save: "Enregistrer le chat",
+        presetLabel: "Profil de chat",
+        presetPlaceholder: "Choisissez un profil…",
+        presetMistral: "Mistral",
+        presetOpenAI: "OpenAI",
+        presetOllama: "Ollama (local)",
+        presetCustom: "Endpoint personnalisé (vLLM, LM Studio…)",
+        endpointInfo:
+            "Le chat réutilise l'endpoint et la clé des embeddings quand ses propres champs sont vides (fallback en paire) : changez la clé partagée et le chat suit.",
     },
 
     membersPage: {
@@ -1232,6 +1263,8 @@ const fr: typeof en = {
             },
             workspace: {
                 embeddings_updated: "Fournisseur de recherche sémantique modifié",
+                chat_updated: "Réglages IA de l'espace modifiés",
+
             },
         },
     },

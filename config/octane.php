@@ -251,4 +251,26 @@ return [
         'http_middleware' => env('OCTANE_ROADRUNNER_HTTP_MIDDLEWARE', 'static'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Mercure Hub
+    |--------------------------------------------------------------------------
+    |
+    | When the FrankenPHP server starts, Octane derives the embedded Mercure
+    | hub configuration from this key (the framework's own
+    | mercureConfigFromBroadcasting() reads the default broadcasting
+    | connection first, then falls back to this explicit block). The
+    | subscriptions database must survive container image updates: it is
+    | persisted as a BoltDB file on the server's mounted storage volume.
+    |
+    */
+
+    'mercure' => [
+        'transport' => [
+            'bolt' => [
+                'path' => '/app/storage/mercure.db',
+            ],
+        ],
+    ],
+
 ];

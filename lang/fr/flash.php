@@ -96,6 +96,10 @@ return [
         'reembed' => 'Re-vectorisation lancée pour :count page(s).',
     ],
 
+    'chat' => [
+        'updated' => 'Réglages IA enregistrés.',
+    ],
+
     'token' => [
         'created' => "Jeton d'API créé.",
         'revoked' => "Jeton d'API révoqué.",

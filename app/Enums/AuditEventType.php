@@ -63,4 +63,5 @@ enum AuditEventType: string
     case MembershipRoleChanged = 'membership.role_changed';
     case WorkspaceOwnershipTransferred = 'workspace.ownership_transferred';
     case WorkspaceEmbeddingsUpdated = 'workspace.embeddings_updated';
+    case WorkspaceChatUpdated = 'workspace.chat_updated';
 }

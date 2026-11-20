@@ -6,6 +6,7 @@ use App\Actions\Concerns\AuthorizesWorkspaceAccess;
 use App\Models\Workspace;
 use App\Models\WorkspaceEmbeddingSetting;
 use App\Responders\Knowledge\EmbeddingsSettingsPageResponder;
+use App\Support\Chat;
 use App\Support\Embeddings;
 use App\Support\WorkspaceContext;
 use Illuminate\Http\Request;
@@ -25,13 +26,14 @@ class ShowEmbeddingsSettingsPage
     }
 
     /**
-     * Present the workspace's embeddings provider settings: the saved
+     * Present the workspace's AI settings: the saved embeddings
      * configuration (never its API key — a `hasApiKey` boolean instead),
      * the effectively active provider following the fallback chain
-     * (workspace settings > instance-wide env configuration > none) and
-     * the vector dimension this instance's storage expects.
+     * (workspace chat settings > stored embeddings pair > none) and the
+     * chat configuration (endpoint, key, model). The chat is simply
+     * disabled when no chat settings exist — never a 500.
      *
-     * @return array{settings: ?array<string, mixed>, activeProvider: array<string, mixed>, requiredDimensions: int}
+     * @return array{settings: ?array<string, mixed>, activeProvider: array<string, mixed>, chatProvider: array<string, mixed>, requiredDimensions: int}
      */
     public function handle(Workspace $workspace): array
     {
@@ -41,6 +43,8 @@ class ShowEmbeddingsSettingsPage
 
         $active = Embeddings::forWorkspace($workspace)->describe();
 
+        $chat = Chat::forWorkspace($workspace)->describe();
+
         return [
             'settings' => $setting === null ? null : [
                 'baseUrl' => $setting->base_url,
@@ -48,6 +52,11 @@ class ShowEmbeddingsSettingsPage
                 'dimensions' => (int) $setting->dimensions,
                 'sendDimensions' => (bool) $setting->send_dimensions,
                 'hasApiKey' => $setting->api_key !== null && $setting->api_key !== '',
+                // The chat block rides the same saved row (one row per
+                // workspace) — same guarantees, never the key itself.
+                'chatBaseUrl' => $setting->chat_base_url,
+                'chatModel' => $setting->chat_model,
+                'chatHasApiKey' => $setting->chat_api_key !== null && $setting->chat_api_key !== '',
             ],
             'activeProvider' => [
                 'source' => $setting !== null ? 'workspace' : $active['source'],
@@ -55,6 +64,12 @@ class ShowEmbeddingsSettingsPage
                 'model' => $active['model'],
                 'dimensions' => $active['dimensions'],
                 'hasApiKey' => $active['hasApiKey'],
+            ],
+            'chatProvider' => [
+                'source' => $chat['source'],
+                'baseUrl' => $chat['baseUrl'],
+                'model' => $chat['model'],
+                'hasApiKey' => $chat['hasApiKey'],
             ],
             'requiredDimensions' => (int) config('knowledge.embeddings.dimensions'),
         ];

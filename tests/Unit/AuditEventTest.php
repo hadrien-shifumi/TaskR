@@ -161,7 +161,7 @@ class AuditEventTest extends TestCase
             'milestone.closed', 'milestone.parent_set', 'milestone.parent_removed',
             'issue.milestone_set', 'issue.milestone_removed',
             'membership.role_changed', 'workspace.ownership_transferred',
-            'workspace.embeddings_updated',
+            'workspace.embeddings_updated', 'workspace.chat_updated',
         ];
 
         $values = array_map(fn (AuditEventType $case) => $case->value, AuditEventType::cases());

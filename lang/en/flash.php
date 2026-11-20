@@ -96,6 +96,10 @@ return [
         'reembed' => 'Re-vectorization launched for :count page(s).',
     ],
 
+    'chat' => [
+        'updated' => 'AI settings saved.',
+    ],
+
     'token' => [
         'created' => 'API token created.',
         'revoked' => 'API token revoked.',
