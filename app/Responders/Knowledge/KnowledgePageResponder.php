@@ -19,6 +19,14 @@ class KnowledgePageResponder
     /**
      * @param  array<string, mixed>  $data
      */
+    public function create(Request $request, array $data): Response
+    {
+        return Inertia::render('Knowledge/Create', $data)->toResponse($request);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
     public function trash(Request $request, array $data): Response
     {
         return Inertia::render('Knowledge/Trash', $data)->toResponse($request);

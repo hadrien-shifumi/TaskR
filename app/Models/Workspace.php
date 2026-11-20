@@ -6,6 +6,7 @@ use App\Enums\WorkspaceRole;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 
@@ -152,6 +153,21 @@ class Workspace extends BaseModel
     public function savedViews(): HasMany
     {
         return $this->hasMany(SavedView::class)->orderBy('name');
+    }
+
+    /**
+     * The workspace's own embeddings provider (knowledge base semantic
+     * search). Null when the workspace follows the instance's global
+     * configuration. The relation is workspace-scoped like every
+     * scoped query — consumers resolving outside a tenant context read
+     * it through WorkspaceEmbeddingSetting::withoutWorkspaceScope()
+     * keyed by workspace id.
+     *
+     * @return HasOne<WorkspaceEmbeddingSetting, $this>
+     */
+    public function embeddingSettings(): HasOne
+    {
+        return $this->hasOne(WorkspaceEmbeddingSetting::class);
     }
 
     public function hasMember(User $user): bool

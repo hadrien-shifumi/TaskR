@@ -2,7 +2,6 @@ import AppLayout from '@/layouts/app-layout';
 import { Banner } from '@/components/banner';
 import { FilterBar } from '@/components/filter-bar';
 import { FlashBanner } from '@/components/flash-banner';
-import { FormDialog } from '@/components/form-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -409,7 +408,6 @@ export default function KnowledgeIndex() {
     const { workspace } = usePage<PageSharedProps>().props;
     const { t } = useTranslation();
 
-    const [creating, setCreating] = useState(false);
     const [editing, setEditing] = useState(false);
     const [deleting, setDeleting] = useState(false);
     const [conflict, setConflict] = useState<ConflictInfo | null>(null);
@@ -421,7 +419,6 @@ export default function KnowledgeIndex() {
     const [optionsOpen, setOptionsOpen] = useState(false);
     const [draftProposal, setDraftProposal] = useState<KnowledgeDraft | null>(null);
 
-    const createForm = useForm({ ...emptyForm });
     const editForm = useForm({ ...emptyForm });
 
     const searchInputRef = useRef<HTMLInputElement>(null);
@@ -443,17 +440,19 @@ export default function KnowledgeIndex() {
     const projectName = (projectId: string | null): string | null =>
         projectId ? (projects.find((project) => project.id === projectId)?.name ?? null) : null;
 
-    /** Opens the create dialog, optionally pre-filling title/project/parent. */
+    /** Route to the dedicated full-screen creation page, with optional prefills. */
     const openCreating = (init?: { title?: string; projectId?: string; parentId?: string }) => {
-        if (init) {
-            createForm.setData({
-                ...emptyForm,
-                title: init.title ?? '',
-                project_id: init.projectId ?? '',
-                parent_id: init.parentId ?? '',
-            });
+        const params: Record<string, string> = {};
+        if (init?.title) {
+            params.title = init.title;
         }
-        setCreating(true);
+        if (init?.projectId) {
+            params.project = init.projectId;
+        }
+        if (init?.parentId) {
+            params.parent = init.parentId;
+        }
+        router.get(route('knowledge.create', params));
     };
 
     /** Sets the sidebar project filter; an empty value removes the param.
@@ -587,16 +586,6 @@ export default function KnowledgeIndex() {
         return () => clearTimeout(timer);
     }, [editing, selected, editForm.data.title, editForm.data.body]);
 
-    const submitCreate = (e: React.FormEvent) => {
-        e.preventDefault();
-        createForm.post(route('knowledge.store'), {
-            onSuccess: () => {
-                setCreating(false);
-                createForm.reset();
-            },
-        });
-    };
-
     const submitEdit = (forceOverwrite = false) => {
         if (!selected) return;
 
@@ -669,7 +658,7 @@ export default function KnowledgeIndex() {
     };
 
     const projectSelect = (
-        form: typeof createForm,
+        form: typeof editForm,
         idPrefix: string,
     ) => (
         <Select
@@ -697,7 +686,7 @@ export default function KnowledgeIndex() {
             title={t('knowledge.title')}
             subtitle={workspace?.name}
             actions={
-                <Button size="sm" onClick={() => setCreating(true)}>
+                <Button size="sm" onClick={() => router.get(route('knowledge.create'))}>
                     <Plus />
                     {t('knowledge.newPage')}
                 </Button>
@@ -1330,60 +1319,6 @@ export default function KnowledgeIndex() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-
-            <FormDialog
-                open={creating}
-                onOpenChange={setCreating}
-                title={t('knowledge.newPageTitle')}
-                description={t('knowledge.newPageDescription')}
-                submitLabel={t('common.create')}
-                processing={createForm.processing}
-                contentClassName="max-h-[90vh] overflow-y-auto sm:max-w-2xl"
-                onSubmit={submitCreate}
-            >
-                <div className="grid gap-2">
-                    <Label htmlFor="new-knowledge-title">{t('issues.fields.title')}</Label>
-                    <Input
-                        id="new-knowledge-title"
-                        value={createForm.data.title}
-                        onChange={(e) => createForm.setData('title', e.target.value)}
-                        required
-                        autoFocus
-                        aria-invalid={createForm.errors.title ? true : undefined}
-                    />
-                    {createForm.errors.title ? (
-                        <p className="text-sm text-destructive">{createForm.errors.title}</p>
-                    ) : null}
-                </div>
-                <div className="grid gap-2">
-                    <Label>{t('knowledge.body')}</Label>
-                    <Suspense
-                        fallback={
-                            <div className="min-h-48 animate-pulse rounded-lg border bg-muted/40" aria-hidden="true" />
-                        }
-                    >
-                        <MarkdownEditor
-                            value={createForm.data.body}
-                            onChange={(markdown) => createForm.setData('body', markdown)}
-                        />
-                    </Suspense>
-                    {createForm.errors.body ? (
-                        <p className="text-sm text-destructive">{createForm.errors.body}</p>
-                    ) : null}
-                </div>
-                <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="grid gap-2">
-                        <Label htmlFor="new-knowledge-project">{t('issues.fields.project')}</Label>
-                        {projectSelect(createForm, 'new-knowledge')}
-                    </div>
-                    <KnowledgeParentPicker
-                        value={createForm.data.parent_id}
-                        onChange={(id) => createForm.setData('parent_id', id)}
-                        currentTitle={parentTitle(createForm.data.parent_id)}
-                        inputId="new-knowledge-parent"
-                    />
-                </div>
-            </FormDialog>
         </AppLayout>
     );
 }

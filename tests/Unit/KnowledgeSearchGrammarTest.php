@@ -3,7 +3,6 @@
 namespace Tests\Unit;
 
 use App\Actions\Knowledge\SearchKnowledge;
-use App\Support\Embeddings;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Grammars\PostgresGrammar;
 use Illuminate\Support\Facades\DB;
@@ -13,13 +12,8 @@ class KnowledgeSearchGrammarTest extends TestCase
 {
     public function test_pgsql_ranking_uses_cosine_operator_and_similarity_ordering(): void
     {
-        $action = new class(app(Embeddings::class)) extends SearchKnowledge
+        $action = new class extends SearchKnowledge
         {
-            public function __construct(Embeddings $embeddings)
-            {
-                parent::__construct($embeddings);
-            }
-
             /**
              * @param  array<int, float>  $vector
              */

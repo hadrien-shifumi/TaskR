@@ -25,8 +25,6 @@ class SearchKnowledge
     use AsObject;
     use AuthorizesWorkspaceAccess;
 
-    public function __construct(private Embeddings $embeddings) {}
-
     public function authorize(): bool
     {
         return $this->currentUserCanUseWorkspace();
@@ -57,12 +55,13 @@ class SearchKnowledge
      */
     public function handle(Workspace $workspace, string $query, ?string $projectId = null, int $limit = 10, ?User $user = null): array
     {
+        $context = app(WorkspaceContext::class);
+
         // A scoped visitor searches strictly within their perimeter's
         // project pages; a scoped member — a full member — keeps the
         // transverse pages in the ranking, a guest does not. Without an
         // explicit user this is a trusted internal object run: HTTP and
         // MCP callers always pass the actor.
-        $context = app(WorkspaceContext::class);
         $scope = $user instanceof User
             ? $context->accessibleProjectIds($user)
             : null;
@@ -74,11 +73,16 @@ class SearchKnowledge
             ]);
         }
 
-        if (! $this->embeddings->enabled()) {
+        // The workspace's resolved provider: its owner-configured
+        // embeddings endpoint when one exists, the instance-wide one
+        // otherwise — search and ranking always follow this workspace.
+        $embeddings = Embeddings::forWorkspace($workspace);
+
+        if (! $embeddings->enabled()) {
             throw new EmbeddingsNotConfigured;
         }
 
-        $vector = $this->embeddings->embed($query);
+        $vector = $embeddings->embed($query);
 
         if (DB::connection()->getDriverName() === 'pgsql') {
             // The raw select yields stdClass rows: re-fetch the ranked pages

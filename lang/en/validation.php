@@ -31,6 +31,12 @@ return [
         'stop_target_required' => 'Several timers are running: the one to stop must be designated.',
     ],
 
+    'embeddings' => [
+        'api_key_required' => 'An API key is required to configure the provider.',
+        'probe_unreachable' => 'The provider did not answer: :error',
+        'dimension_mismatch' => 'The configured model ":model" produced :returned-dimension vectors while this instance stores :expected-dimension ones. Pick a model matching the storage dimension, or request it explicitly through the advanced dimension option.',
+    ],
+
     'knowledge' => [
         'project_out_of_scope' => 'A knowledge page must stay attached to a project of your scope.',
         'parent_out_of_scope' => 'The parent page is outside your project scope.',

@@ -100,6 +100,12 @@ return [
         'stop_target_required' => 'Plusieurs chronomètres sont en cours : celui à arrêter doit être désigné.',
     ],
 
+    'embeddings' => [
+        'api_key_required' => "Une clé d'API est nécessaire pour configurer le fournisseur.",
+        'probe_unreachable' => "Le fournisseur n'a pas répondu : :error",
+        'dimension_mismatch' => 'Le modèle « :model » produit des vecteurs de dimension :returned alors que cette instance en stocke :expected. Choisissez un modèle dont la dimension correspond, ou demandez-la explicitement via l\'option avancée.',
+    ],
+
     'knowledge' => [
         'project_out_of_scope' => 'Une page de connaissance doit rester rattachée à un projet de votre périmètre.',
         'parent_out_of_scope' => "La page parente est en dehors de votre périmètre d'accès.",

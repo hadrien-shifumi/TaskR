@@ -493,7 +493,7 @@ export default function AppLayout({
                 ) : null}
 
                 <main
-                    className={`mx-auto w-full pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-7 pb-[max(1.75rem,env(safe-area-inset-bottom))] lg:pl-[max(1.75rem,env(safe-area-inset-left))] lg:pr-[max(1.75rem,env(safe-area-inset-right))] lg:pt-[max(1.75rem,env(safe-area-inset-top))] lg:pb-[max(1.75rem,env(safe-area-inset-bottom))] ${narrow ? "max-w-[820px]" : "max-w-[1280px]"}`}
+                    className={`mx-auto w-full pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-7 pb-[max(1.75rem,env(safe-area-inset-bottom))] lg:pl-[max(1.75rem,env(safe-area-inset-left))] lg:pr-[max(1.75rem,env(safe-area-inset-right))] lg:pt-[max(1.75rem,env(safe-area-inset-top))] lg:pb-[max(1.75rem,env(safe-area-inset-bottom))] ${narrow ? "max-w-[1060px]" : "max-w-[1280px]"}`}
                 >
                     {children}
                 </main>

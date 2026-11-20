@@ -88,7 +88,9 @@ instead of the bundled database:
    first start — the migration creating the `embedding vector(N)` column
    (dimension read from `KNOWLEDGE_EMBEDDINGS_DIMENSIONS`, 1024 by default,
    at migration time) runs automatically at the web role's boot and fails
-   without the extension.
+   without the extension. That dimension is the instance-wide storage size:
+   every embeddings provider — the global one or any workspace's own — must
+   produce vectors of exactly this size.
 4. `docker compose up -d`: the app starts without waiting for the bundled
    database, migrations run as usual. Backups are then managed provider-side
    (the compose `pg_dump` only applies to the bundled database).

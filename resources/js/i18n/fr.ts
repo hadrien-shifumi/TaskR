@@ -813,6 +813,7 @@ const fr: typeof en = {
         sections: {
             account: "Compte",
             general: "Général",
+            embeddings: "Recherche sémantique",
             statuses: "Statuts",
             members: "Membres",
             templates: "Gabarits de tickets",
@@ -832,7 +833,7 @@ const fr: typeof en = {
             "Les feuilles de l'arborescence portent la charge estimée, pas les conteneurs. Activée, l'option retire des heures estimées de la page Santé les tickets parents dont au moins un sous-ticket porte une estimation — pour tous les projets de l'espace, y compris ceux déjà existants.",
         statusesTitle: "Statuts de l'espace de travail",
         statusesDescription:
-            "Définis une seule fois pour chaque projet. L'ordre ci-dessous s'applique dans toute l'interface.",
+            "Définis une seule fois pour tous les projets. L'ordre ci-dessous s'applique dans toute l'interface.",
         newStatus: "Nouveau statut",
         statusesNote:
             "Le nom est libre ; la catégorie sémantique — affichée à côté — porte la couleur et le sens (4 catégories fixes : backlog, en cours, terminé, annulé).",
@@ -861,6 +862,47 @@ const fr: typeof en = {
             "Refusé — « {{name}} » a reçu de nouveaux tickets depuis le chargement de la page. Relancez la migration.",
         deletionRefused: "La suppression a été refusée.",
         moveThenDelete: "Déplacer puis supprimer",
+    },
+
+    embeddingsPage: {
+        description:
+            "L'espace peut utiliser son propre fournisseur d'indexation pour la recherche sémantique de la base de connaissance (tout endpoint compatible OpenAI). Sans fournisseur ici, la configuration globale de l'instance s'applique.",
+        activeTitle: "Fournisseur en cours",
+        activeSourceWorkspace: "Le fournisseur propre de cet espace",
+        activeSourceGlobal: "Le fournisseur global de l'instance",
+        activeSourceNone: "Aucun fournisseur — recherche indisponible",
+        activeBaseUrl: "Endpoint",
+        activeModel: "Modèle",
+        activeDimensions: "Dimension des vecteurs",
+        activeKeyPresent: "Clé d'API enregistrée",
+        activeKeyAbsent: "Aucune clé d'API enregistrée",
+        requiredDimensions:
+            "Cette instance stocke des vecteurs de dimension {{dimensions}} : le fournisseur doit produire exactement cette taille.",
+        presetLabel: "Profil de fournisseur",
+        presetPlaceholder: "Choisissez un profil…",
+        presetMistral: "Mistral",
+        presetOpenAI: "OpenAI",
+        presetOllama: "Ollama (local)",
+        presetCustom: "Endpoint personnalisé (vLLM, LM Studio…)",
+        presetDimensionWarning:
+            "Ce modèle produit par défaut des vecteurs de dimension {{dimensions}} alors que cette instance en stocke {{required}}. Indiquez {{required}} dans l'option avancée pour demander la taille réduite, ou choisissez un modèle qui la respecte nativement.",
+        baseUrlLabel: "URL de l'endpoint",
+        baseUrlPlaceholder: "https://api.mistral.ai/v1",
+        apiKeyLabel: "Clé d'API",
+        apiKeyHint:
+            "Chiffrée en base, jamais affichée. Laissez vide pour conserver la clé existante. Les fournisseurs locaux qui ignorent l'authentification attendent malgré tout une valeur de substitution.",
+        modelLabel: "Modèle",
+        dimensionsLabel: "Dimension demandée au fournisseur (avancé)",
+        dimensionsHint:
+            "Optionnel. Envoyée au fournisseur uniquement si renseignée — certains modèles y réduisent leurs vecteurs (ex. OpenAI). Laissée vide, la dimension native du fournisseur doit correspondre à celle de l'instance.",
+        testButton: "Tester la connexion",
+        testing: "Test en cours…",
+        testOk: "Fournisseur OK — vecteurs de dimension {{dimensions}}, {{latency}} ms.",
+        testFailed: "Le fournisseur n'a pas répondu.",
+        save: "Enregistrer le fournisseur",
+        reembed: "Re-vectoriser cet espace",
+        reembedHint:
+            "Met en file un traitement en arrière-plan par page de connaissance de cet espace. À utiliser après un changement de fournisseur ou de modèle.",
     },
 
     membersPage: {
@@ -983,6 +1025,7 @@ const fr: typeof en = {
     knowledge: {
         title: "Base de connaissances",
         newPage: "Nouvelle page",
+        backToList: "Retour à la liste",
         searchPlaceholder: "Rechercher dans la base de connaissances…",
         searchAria: "Recherche sémantique",
         searchButton: "Rechercher",
@@ -1186,6 +1229,9 @@ const fr: typeof en = {
                 updated: "Page modifiée",
                 deleted: "Page supprimée",
                 restored: "Page restaurée",
+            },
+            workspace: {
+                embeddings_updated: "Fournisseur de recherche sémantique modifié",
             },
         },
     },

@@ -91,6 +91,11 @@ return [
         'updated' => 'General settings saved.',
     ],
 
+    'embeddings' => [
+        'updated' => 'Embeddings provider saved for this workspace.',
+        'reembed' => 'Re-vectorization launched for :count page(s).',
+    ],
+
     'token' => [
         'created' => 'API token created.',
         'revoked' => 'API token revoked.',

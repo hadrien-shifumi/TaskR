@@ -43,13 +43,18 @@ use App\Actions\Knowledge\DeleteKnowledgePage;
 use App\Actions\Knowledge\ForceDeleteKnowledgePage;
 use App\Actions\Knowledge\GetKnowledgePageVersion;
 use App\Actions\Knowledge\MoveKnowledgePage;
+use App\Actions\Knowledge\ReembedWorkspaceKnowledge;
 use App\Actions\Knowledge\RestoreKnowledgePage;
 use App\Actions\Knowledge\RestoreKnowledgePageVersion;
 use App\Actions\Knowledge\SearchKnowledge;
 use App\Actions\Knowledge\SearchKnowledgeParents;
+use App\Actions\Knowledge\ShowEmbeddingsSettingsPage;
+use App\Actions\Knowledge\ShowKnowledgeCreatePage;
 use App\Actions\Knowledge\ShowKnowledgePage;
 use App\Actions\Knowledge\ShowKnowledgeTrash;
 use App\Actions\Knowledge\ShowKnowledgeVersions;
+use App\Actions\Knowledge\TestEmbeddingsSettings;
+use App\Actions\Knowledge\UpdateEmbeddingsSettings;
 use App\Actions\Knowledge\UpdateKnowledgePage;
 use App\Actions\Labels\CreateLabel;
 use App\Actions\Mentions\MarkAllMentionsRead;
@@ -158,6 +163,12 @@ Route::middleware(['auth', 'workspace'])->group(function (): void {
     Route::get('/settings/general', ShowGeneralSettingsPage::class)->name('settings.general');
     Route::match(['put', 'patch'], '/settings/general', UpdateGeneralSettings::class)
         ->name('settings.general.update');
+
+    Route::get('/settings/embeddings', ShowEmbeddingsSettingsPage::class)->name('settings.embeddings');
+    Route::match(['put', 'patch'], '/settings/embeddings', UpdateEmbeddingsSettings::class)
+        ->name('settings.embeddings.update');
+    Route::post('/settings/embeddings/test', TestEmbeddingsSettings::class)->name('settings.embeddings.test');
+    Route::post('/settings/embeddings/reembed', ReembedWorkspaceKnowledge::class)->name('settings.embeddings.reembed');
 
     Route::get('/settings/notifications', ShowNotificationSettingsPage::class)->name('settings.notifications');
     Route::match(['put', 'patch'], '/settings/notifications', UpdateNotificationPreferences::class)
@@ -286,6 +297,9 @@ Route::middleware(['auth', 'workspace'])->group(function (): void {
     // hierarchy indent. Declared before /knowledge/{page} so "parents"
     // is never captured as a page id.
     Route::get('/knowledge/parents', SearchKnowledgeParents::class)->name('knowledge.parents');
+    // Dedicated creation screen — declared before /knowledge/{page} so
+    // "create" is never captured as a page id.
+    Route::get('/knowledge/create', ShowKnowledgeCreatePage::class)->name('knowledge.create');
     Route::post('/knowledge', CreateKnowledgePage::class)->name('knowledge.store');
 
     // Trash — declared before /knowledge/{page} so "trash" is not captured

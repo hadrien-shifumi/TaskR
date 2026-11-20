@@ -16,11 +16,18 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-Artisan::command('knowledge:reembed', function (): void {
+Artisan::command('knowledge:reembed {--workspace= : ULID of a single workspace to re-vectorize (defaults to every workspace)}', function (): void {
+    $workspaceId = $this->option('workspace');
+
     KnowledgePage::withoutWorkspaceScope()
+        ->when($workspaceId !== null, fn ($query) => $query->where('workspace_id', $workspaceId))
         ->orderBy('id')
         ->each(fn (KnowledgePage $page) => VectorizeKnowledgePage::dispatch($page));
-})->purpose('Re-run embedding vectorization for every knowledge page (use after changing the embeddings model or dimensions)');
+
+    if ($workspaceId !== null) {
+        $this->info("Re-vectorization queued for workspace {$workspaceId}.");
+    }
+})->purpose('Re-run embedding vectorization for every knowledge page, or one workspace with --workspace (use after changing the embeddings model or dimensions)');
 
 Artisan::command('images:webp {input : Path to the source JPG or PNG} {--sizes=1536,1024,768,480 : Comma-separated target widths} {--quality=82 : WebP quality, 0-100} {--output-dir= : Directory for the generated files, default is next to the input} {--icon : Generate the site icon set instead of the size variants}', function (): int {
     $input = (string) $this->argument('input');

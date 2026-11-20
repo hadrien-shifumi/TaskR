@@ -4,7 +4,7 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Knowledge base embeddings
+    | Knowledge base embeddings (instance-wide default)
     |--------------------------------------------------------------------------
     |
     | Any OpenAI-compatible embeddings endpoint works: point base_url at the
@@ -15,6 +15,11 @@ return [
     | pgvector column (vector(N) + ivfflat cosine index) from it. Changing
     | the model or dimensions on an existing instance requires the resize
     | procedure documented in the README plus `php artisan knowledge:reembed`.
+    |
+    | This is the fallback for every workspace without its own provider:
+    | workspace owners configure theirs from Settings → Semantic search
+    | (workspace_embedding_settings, one row per workspace), under the same
+    | fixed instance dimension.
     |
     */
 

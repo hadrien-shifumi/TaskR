@@ -62,15 +62,14 @@ it('creates a sub-page in one click with the parent pre-filled', function () {
 
     $page = visit('/knowledge/'.$parent->id);
 
-    // The article header offers one-click sub-page creation.
+    // The article header offers one-click sub-page creation: the full
+    // screen creation page opens, with the parent pre-filled and named.
     $page->assertSee('New sub-page');
     $page->click('@new-sub-page');
+    $page->assertValue('create-knowledge-parent', 'Guide racine');
 
-    // The dialog opens with the parent pre-filled.
-    $page->assertSeeIn('[role="dialog"]', 'Guide racine');
-
-    $page->fill('new-knowledge-title', 'Sous-page créée');
-    $page->fill('[role="dialog"] .ProseMirror', 'Corps de la sous-page.');
+    $page->fill('create-knowledge-title', 'Sous-page créée');
+    $page->fill('.ProseMirror', 'Corps de la sous-page.');
     $page->click('button:has-text("Create")');
 
     $page->assertSee('Sous-page créée');
@@ -94,8 +93,8 @@ it('creates then edits a knowledge page from the UI', function () {
     $page->assertSee('Select a project');
 
     $page->click('header button:has-text("New page")');
-    $page->fill('new-knowledge-title', 'Onboarding');
-    $page->fill('[role="dialog"] .ProseMirror', 'Bienvenue dans le workspace.');
+    $page->fill('create-knowledge-title', 'Onboarding');
+    $page->fill('.ProseMirror', 'Bienvenue dans le workspace.');
     $page->click('button:has-text("Create")');
 
     $page->assertSee('Onboarding')

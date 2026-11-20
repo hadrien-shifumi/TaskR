@@ -12,7 +12,7 @@ It's built to be driven **by humans through the web UI and by AI agents through 
 - **Issues your way** — Markdown descriptions, priorities, free-form labels, multiple assignees, parent/child hierarchy, dependencies between issues, and statuses you define yourself (no imposed workflow).
 - **Comments & notifications** — @mentions, a mentions inbox, and an optional email digest.
 - **Time tracking** — estimates and time entries, right on the issue.
-- **Knowledge base** — Markdown pages with history, version comparison and restore, plus semantic search powered by any OpenAI-compatible embeddings endpoint.
+- **Knowledge base** — Markdown pages with history, version comparison and restore, plus semantic search powered by any OpenAI-compatible embeddings endpoint (instance-wide default, overridable per workspace from its settings).
 - **API & MCP** — personal access tokens and a stateless MCP server (~50 tools) so an AI agent can manage your workspace just like a human would.
 - **French & English**, switchable per user.
 

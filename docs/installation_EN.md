@@ -57,6 +57,9 @@ Notable configuration (`.env`):
   `KNOWLEDGE_EMBEDDINGS_API_KEY`, `KNOWLEDGE_EMBEDDINGS_MODEL` and
   `KNOWLEDGE_EMBEDDINGS_DIMENSIONS` (dimension returned by the model, 1024 by
   default) — see “[Bring your own embeddings provider](#bring-your-own-embeddings-provider)” below.
+  These variables are the **instance-wide default**: each workspace owner can
+  override the provider from the workspace settings (→ *Semantic search*),
+  keeping the instance's dimension.
 - `MAIL_*` (optional but recommended before a public deployment): the
   sending transport (`MAIL_MAILER=smtp` plus `MAIL_HOST`/`MAIL_PORT`/
   `MAIL_USERNAME`/`MAIL_PASSWORD`) and the sender identity
@@ -102,6 +105,18 @@ configured one: on mismatch, vectorization and search fail with an explicit
 message (adjust `KNOWLEDGE_EMBEDDINGS_DIMENSIONS`) rather than an obscure
 pgvector error. Without configuration, semantic search disables itself
 cleanly — writing and browsing remain fully usable.
+
+**Per-workspace providers.** The `.env` variables above configure the
+instance-wide default. Each workspace owner can set the workspace's own
+provider (endpoint, model, API key — encrypted at rest) from the workspace
+settings, → *Settings → Semantic search*: web searches, AI agents and page
+vectorization then use it for that workspace only. The save-time probe only
+accepts a provider producing vectors of the instance's dimension
+(`KNOWLEDGE_EMBEDDINGS_DIMENSIONS`); the advanced "requested dimension" option
+covers models that downscale their vectors (e.g. OpenAI's
+`text-embedding-3-small` asked for 1024). After switching a workspace's
+provider, re-vectorize it from the settings page or with
+`php artisan knowledge:reembed --workspace={workspace_ulid}`.
 
 **Changing the model or dimension on an existing instance**
 (PostgreSQL + pgvector):

@@ -15,6 +15,10 @@ use Illuminate\Queue\SerializesModels;
  * the same content always produces the same stored state. Retried with
  * backoff when the embeddings endpoint is down — the page stays readable
  * and simply stays out of semantic search until this succeeds.
+ *
+ * The provider is resolved from the page's own workspace at run time —
+ * not from the config at dispatch time — so a provider change applies to
+ * queued jobs, and each workspace follows its own configuration.
  */
 class VectorizeKnowledgePage implements ShouldQueue
 {
@@ -27,11 +31,11 @@ class VectorizeKnowledgePage implements ShouldQueue
 
     public function __construct(public KnowledgePage $page) {}
 
-    public function handle(Embeddings $embeddings): void
+    public function handle(): void
     {
         $page = $this->page->withoutWorkspaceScope()->findOrFail($this->page->id);
 
-        $vector = $embeddings->embed($page->title."\n\n".$page->body);
+        $vector = Embeddings::forWorkspaceId($page->workspace_id)->embed($page->title."\n\n".$page->body);
 
         $page->forceFill([
             'embedding' => $vector,

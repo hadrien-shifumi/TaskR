@@ -62,6 +62,9 @@ Configuration notable (`.env`) :
   `KNOWLEDGE_EMBEDDINGS_MODEL` et `KNOWLEDGE_EMBEDDINGS_DIMENSIONS`
   (dimension renvoyée par le modèle, 1024 par défaut) — voir
   « [Choisir son propre fournisseur d'embeddings](#choisir-son-propre-fournisseur-dembeddings) » ci-dessous.
+  Ces variables constituent le **défaut global de l'instance** : chaque
+  propriétaire d'espace peut surcharger le fournisseur depuis les réglages
+  de son espace (→ *Recherche sémantique*), à dimension identique.
 - `MAIL_*` (optionnel mais recommandé avant une exposition publique) :
   transport d'envoi (`MAIL_MAILER=smtp` plus `MAIL_HOST`/`MAIL_PORT`/
   `MAIL_USERNAME`/`MAIL_PASSWORD`) et identité d'expéditeur
@@ -110,6 +113,20 @@ avec un message explicite (ajuster `KNOWLEDGE_EMBEDDINGS_DIMENSIONS`) plutôt
 qu'une erreur pgvector obscure. Sans configuration, la recherche sémantique
 se désactive proprement — l'écriture et la navigation restent pleinement
 utilisables.
+
+**Fournisseurs par espace de travail.** Les variables `.env` ci-dessus
+configurent le défaut global de l'instance. Chaque propriétaire d'espace
+peut définir le fournisseur propre à son espace (endpoint, modèle, clé
+d'API — chiffrée en base) depuis les réglages de l'espace, → *Réglages →
+Recherche sémantique* : les recherches web, les agents IA et la
+vectorisation des pages l'utilisent alors pour cet espace uniquement. La
+sonde à l'enregistrement n'accepte qu'un fournisseur produisant des
+vecteurs de la dimension de l'instance (`KNOWLEDGE_EMBEDDINGS_DIMENSIONS`) ;
+l'option avancée « dimension demandée » couvre les modèles capables de
+réduire leurs vecteurs (ex. `text-embedding-3-small` d'OpenAI demandé en
+1024). Après un changement de fournisseur d'un espace, re-vectorisez-le
+depuis la page de réglages ou avec
+`php artisan knowledge:reembed --workspace={ulid_de_l_espace}`.
 
 **Changer de modèle ou de dimension sur une instance existante**
 (PostgreSQL + pgvector) :

@@ -808,6 +808,7 @@ const en = {
         sections: {
             account: "Account",
             general: "General",
+            embeddings: "Semantic search",
             statuses: "Statuses",
             members: "Members",
             templates: "Issue templates",
@@ -854,6 +855,47 @@ const en = {
             'Refused — "{{name}}" received new issues since the page loaded. Retry the migration.',
         deletionRefused: "The deletion was refused.",
         moveThenDelete: "Move then delete",
+    },
+
+    embeddingsPage: {
+        description:
+            "The workspace can use its own embeddings provider for the knowledge base semantic search (any OpenAI-compatible endpoint). Without a provider here, the instance's global configuration applies.",
+        activeTitle: "Provider in use",
+        activeSourceWorkspace: "This workspace's own provider",
+        activeSourceGlobal: "The instance's global provider",
+        activeSourceNone: "No provider — search is unavailable",
+        activeBaseUrl: "Endpoint",
+        activeModel: "Model",
+        activeDimensions: "Vector dimension",
+        activeKeyPresent: "API key stored",
+        activeKeyAbsent: "No API key stored",
+        requiredDimensions:
+            "This instance stores {{dimensions}}-dimension vectors: the provider must produce exactly this size.",
+        presetLabel: "Provider preset",
+        presetPlaceholder: "Choose a preset…",
+        presetMistral: "Mistral",
+        presetOpenAI: "OpenAI",
+        presetOllama: "Ollama (local)",
+        presetCustom: "Custom endpoint (vLLM, LM Studio…)",
+        presetDimensionWarning:
+            "This model produces {{dimensions}}-dimension vectors by default while this instance stores {{required}}. Enter {{required}} in the advanced dimension option to request the reduced size, or pick a model that natively matches it.",
+        baseUrlLabel: "Endpoint URL",
+        baseUrlPlaceholder: "https://api.mistral.ai/v1",
+        apiKeyLabel: "API key",
+        apiKeyHint:
+            "Stored encrypted, never displayed. Leave empty to keep the existing key. Local providers that ignore auth still expect a placeholder value.",
+        modelLabel: "Model",
+        dimensionsLabel: "Dimension requested from the provider (advanced)",
+        dimensionsHint:
+            "Optional. Sent to the provider only when filled — some models downscale their vectors to it (e.g. OpenAI's). Left empty, the provider's native dimension must match the instance's.",
+        testButton: "Test the connection",
+        testing: "Testing…",
+        testOk: "Provider OK — {{dimensions}}-dimension vectors, {{latency}} ms.",
+        testFailed: "The provider did not answer.",
+        save: "Save the provider",
+        reembed: "Re-vectorize this workspace",
+        reembedHint:
+            "Queues one background job per knowledge page of this workspace. Use after changing the provider or the model.",
     },
 
     membersPage: {
@@ -968,6 +1010,7 @@ const en = {
     knowledge: {
         title: "Knowledge",
         newPage: "New page",
+        backToList: "Back to the list",
         searchPlaceholder: "Search the knowledge base…",
         searchAria: "Semantic search",
         searchButton: "Search",
@@ -1167,6 +1210,9 @@ const en = {
                 updated: "Page updated",
                 deleted: "Page deleted",
                 restored: "Page restored",
+            },
+            workspace: {
+                embeddings_updated: "Semantic search provider updated",
             },
         },
     },

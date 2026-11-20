@@ -92,7 +92,10 @@ Scaleway…) plutôt que la base embarquée :
    premier démarrage — la migration créant la colonne `embedding
    vector(N)` (dimension lue depuis `KNOWLEDGE_EMBEDDINGS_DIMENSIONS`, 1024
    par défaut, au moment de la migration) tourne automatiquement au
-   démarrage du rôle web et échoue sans l'extension.
+   démarrage du rôle web et échoue sans l'extension. Cette dimension est la
+   taille de stockage globale de l'instance : tout fournisseur d'embeddings
+   — le global ou celui propre à un espace — doit produire des vecteurs de
+   exactement cette taille.
 4. `docker compose up -d` : l'application démarre sans attendre la base
    embarquée, les migrations tournent comme d'habitude. Les sauvegardes sont
    alors gérées côté fournisseur (le `pg_dump` de compose ne s'applique qu'à

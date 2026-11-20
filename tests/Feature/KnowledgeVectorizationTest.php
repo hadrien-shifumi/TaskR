@@ -126,7 +126,7 @@ class KnowledgeVectorizationTest extends TestCase
         ]);
 
         $this->expectException(\Exception::class);
-        $job->handle(app(Embeddings::class));
+        $job->handle();
 
         $this->assertNull($page->refresh()->embedding);
     }
@@ -147,7 +147,7 @@ class KnowledgeVectorizationTest extends TestCase
         $job = new VectorizeKnowledgePage($page);
 
         try {
-            $job->handle(app(Embeddings::class));
+            $job->handle();
 
             $this->fail('EmbeddingDimensionMismatch was not thrown.');
         } catch (EmbeddingDimensionMismatch $exception) {

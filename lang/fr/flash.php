@@ -91,6 +91,11 @@ return [
         'updated' => 'Réglages généraux enregistrés.',
     ],
 
+    'embeddings' => [
+        'updated' => "Fournisseur d'indexation enregistré pour cet espace.",
+        'reembed' => 'Re-vectorisation lancée pour :count page(s).',
+    ],
+
     'token' => [
         'created' => "Jeton d'API créé.",
         'revoked' => "Jeton d'API révoqué.",
