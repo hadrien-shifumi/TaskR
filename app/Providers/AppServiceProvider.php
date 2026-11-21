@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Chat\BroadcastChatPublisher;
+use App\Chat\ChatPublisher;
 use App\Mcp\Support\MemberRoles;
 use App\Models\Status;
 use App\Observers\StatusObserver;
@@ -17,6 +19,10 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->app->singleton(WorkspaceContext::class);
         $this->app->scoped(MemberRoles::class);
+
+        // The assistant's streaming publications: tests swap a recording
+        // fake, production goes through the Mercure broadcaster.
+        $this->app->singleton(ChatPublisher::class, BroadcastChatPublisher::class);
     }
 
     /**

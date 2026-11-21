@@ -17,6 +17,10 @@ use App\Actions\Auth\ShowResetPasswordPage;
 use App\Actions\Auth\UpdateNotificationPreferences;
 use App\Actions\Auth\UpdatePassword;
 use App\Actions\Auth\UpdateUserLocale;
+use App\Actions\Chat\CreateChatThread;
+use App\Actions\Chat\ListChatThreads;
+use App\Actions\Chat\PostChatMessage;
+use App\Actions\Chat\ShowChatThread;
 use App\Actions\Comments\AddComment;
 use App\Actions\Comments\DeleteComment;
 use App\Actions\Comments\UpdateComment;
@@ -267,6 +271,14 @@ Route::middleware(['auth', 'workspace'])->group(function (): void {
         ->scopeBindings()->name('issues.time-entries.update');
     Route::delete('/issues/{issue}/time-entries/{timeEntry}', DeleteTimeEntry::class)
         ->scopeBindings()->name('issues.time-entries.destroy');
+
+    // Chat (assistant) — author-only conversations, one route per POST
+    // shape (new conversation, next message) and the two reads (sidebar
+    // list, thread transcript).
+    Route::post('/chat/threads', CreateChatThread::class)->name('chat.threads.store');
+    Route::post('/chat/threads/{thread}/messages', PostChatMessage::class)->name('chat.threads.messages.store');
+    Route::get('/chat/threads', ListChatThreads::class)->name('chat.threads.index');
+    Route::get('/chat/threads/{thread}', ShowChatThread::class)->name('chat.threads.show');
 
     // Workspace-wide export of the time entries (billing): transverse to
     // any single issue, so it lives at the workspace level.

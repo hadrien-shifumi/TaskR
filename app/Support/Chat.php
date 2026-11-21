@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Chat\Exceptions\ProviderFailure;
 use App\Models\Workspace;
 use App\Models\WorkspaceEmbeddingSetting;
 use Illuminate\Http\Client\ConnectionException;
@@ -33,6 +34,14 @@ class Chat
     public const SOURCE_FALLBACK = 'fallback';
 
     public const SOURCE_NONE = 'none';
+
+    /**
+     * Seconds of silence from the chat endpoint after which the streamed
+     * read gives up — a stalled stream fails the turn as a provider
+     * failure instead of hanging the worker. Total time stays unbounded:
+     * a healthy stream pauses between chunks, never for this long.
+     */
+    public const READ_TIMEOUT_SECONDS = 60;
 
     /**
      * Explicit chat configuration, when this client was resolved for a
@@ -189,6 +198,60 @@ class Chat
             ->throw();
 
         return $response->json('choices.0.message.content', '');
+    }
+
+    /**
+     * Open a streamed chat completion and return its normalized event
+     * stream: content deltas, merged tool calls, every round's terminal
+     * finish reason and the usage block — the pieces the tool-calling
+     * loop consumes to publish and persist the turn.
+     *
+     * The request never bounds the total time (`timeout` 0): a streamed
+     * generation takes as long as it takes, the read timeout alone guards
+     * a stalled endpoint, and the tool-calling loop bounds its own rounds.
+     * A non-2xx response fails as a ProviderFailure — the raw status and
+     * body stay in the exception detail for the logs.
+     *
+     * @param  array<int, array<string, mixed>>  $messages
+     * @param  list<array<string, mixed>>|null  $tools
+     *
+     * @throws ProviderFailure
+     */
+    public function completeStream(array $messages, ?array $tools = null): ChatCompletionStream
+    {
+        $config = $this->config();
+
+        $body = [
+            'model' => $config['model'],
+            'messages' => $messages,
+            'stream' => true,
+            'stream_options' => ['include_usage' => true],
+        ];
+
+        if ($tools !== null && $tools !== []) {
+            $body['tools'] = $tools;
+            $body['tool_choice'] = 'auto';
+        }
+
+        $response = Http::withToken($config['api_key'] ?? '')
+            ->acceptJson()
+            ->withOptions([
+                'stream' => true,
+                'timeout' => 0,
+                'read_timeout' => self::READ_TIMEOUT_SECONDS,
+                'connect_timeout' => 10,
+            ])
+            ->post(rtrim((string) $config['base_url'], '/').'/chat/completions', $body);
+
+        if ($response->failed()) {
+            throw new ProviderFailure(sprintf(
+                'HTTP %s from the chat endpoint: %s',
+                $response->status(),
+                mb_substr($response->body(), 0, 500),
+            ));
+        }
+
+        return new ChatCompletionStream($response->toPsrResponse()->getBody());
     }
 
     /**
