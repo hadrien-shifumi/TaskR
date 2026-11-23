@@ -72,6 +72,11 @@ docker compose up -d   # migrations run at the web role's startup
 > `APP_URL`, a dedicated `DB_PASSWORD` before the first boot, and a reverse
 > proxy doing TLS termination in front of port 8080 (the image serves HTTP).
 
+> The **Chatbot section (in-app AI assistant) is hidden by default** —
+> `TASKR_FEATURE_CHAT=false`: no navigation entry, the `/chatbot` pages
+> answer 404. Set `TASKR_FEATURE_CHAT=true` in the `.env` to expose it; the
+> AI settings screen stays usable in both cases.
+
 ### Mercure hub (real-time)
 
 The docker deployment embeds a **Mercure hub**: Octane's FrankenPHP server

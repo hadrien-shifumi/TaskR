@@ -378,6 +378,44 @@ class WorkspaceChatSettingsTest extends TestCase
             ->assertSessionHasErrors('chat_api_key');
     }
 
+    public function test_test_chat_probe_falls_back_to_the_stored_chat_key_when_the_field_is_left_empty(): void
+    {
+        $this->configureInstance();
+        [$owner] = $this->setupWorkspace();
+
+        $this->fakeProviders();
+        $this->actingAs($owner)
+            ->put(route('settings.embeddings.update-chat'), $this->chatSettings())
+            ->assertRedirect();
+
+        Http::fake([
+            'https://other-probe.test/v1/chat/completions' => Http::response([
+                'choices' => [['message' => ['content' => 'Le stocké aussi.']]],
+            ]),
+        ]);
+
+        // The probe button always posts the raw form: an empty write-only
+        // key field probes with the stored chat key — like the save flow,
+        // never a 500 and never an empty Authorization header.
+        $response = $this->actingAs($owner)
+            ->post(route('settings.embeddings.test-chat'), $this->chatSettings([
+                'chat_base_url' => 'https://other-probe.test/v1',
+                'chat_api_key' => '',
+                'chat_model' => 'other-chat-model',
+            ]))
+            ->assertOk()
+            ->assertJsonStructure(['content', 'latencyMs']);
+
+        $this->assertSame('Le stocké aussi.', $response->json('content'));
+        $this->assertStringNotContainsString('chat-secret-key', $response->getContent());
+
+        Http::assertSent(function (Request $request): bool {
+            return str_starts_with($request->url(), 'https://other-probe.test/v1/chat/completions')
+                && $request->hasHeader('Authorization', 'Bearer chat-secret-key')
+                && $request['model'] === 'other-chat-model';
+        });
+    }
+
     public function test_unauthenticated_visitors_are_sent_to_login(): void
     {
         $this->get(route('settings.embeddings'))->assertRedirect(route('login'));

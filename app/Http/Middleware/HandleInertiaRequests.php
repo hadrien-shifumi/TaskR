@@ -56,6 +56,12 @@ class HandleInertiaRequests
             // changes the locale (UpdateUserLocale) returns the NEW locale if
             // its response ever renders props directly instead of redirecting.
             'locale' => fn () => app()->getLocale(),
+            // Instance feature flags (config/taskr.php): what this
+            // deployment chose to expose. The nav renders accordingly,
+            // and nothing leaks a hidden section behind a clickable link.
+            'features' => [
+                'chat' => (bool) config('taskr.features.chat'),
+            ],
             'workspace' => $workspace ? [
                 'id' => $workspace->id,
                 'name' => $workspace->name,

@@ -21,6 +21,7 @@ const fr: typeof en = {
 
     nav: {
         home: "Accueil",
+        chatbot: "Chatbot",
         projects: "Projets",
         issues: "Tickets",
         mentions: "Mentions",
@@ -97,6 +98,7 @@ const fr: typeof en = {
             allPriorities: "Toutes les priorités",
             allAssignees: "Tous les assignés",
             allProjects: "Tous les projets",
+            allMilestones: "Tous les jalons",
             overdue: "En retard",
             blocked: "Bloqué",
             status: "Statut",
@@ -105,6 +107,7 @@ const fr: typeof en = {
             priority: "Priorité",
             assignee: "Assigné",
             project: "Projet",
+            milestone: "Jalon",
             allLabels: "Toutes les étiquettes",
             selectedCount: "{{count}} sélectionnés",
             clearSelection: "Effacer la sélection",
@@ -899,6 +902,11 @@ const fr: typeof en = {
         testing: "Test en cours…",
         testOk: "Fournisseur OK — vecteurs de dimension {{dimensions}}, {{latency}} ms.",
         testFailed: "Le fournisseur n'a pas répondu.",
+        loadModels: "Charger les modèles",
+        modelsLoading: "Chargement des modèles…",
+        modelsEmpty: "Le fournisseur n'expose aucun modèle.",
+        modelsLoadFailed: "Impossible de charger les modèles.",
+        modelsChoosePlaceholder: "Choisir dans la liste…",
         save: "Enregistrer le fournisseur",
         reembed: "Re-vectoriser cet espace",
         reembedHint:
@@ -922,6 +930,11 @@ const fr: typeof en = {
         testing: "Test du chat en cours…",
         testOk: "Chat OK — « {{content}} » en {{latency}} ms.",
         testFailed: "Le chat n'a pas répondu.",
+        loadModels: "Charger les modèles",
+        modelsLoading: "Chargement des modèles du chat…",
+        modelsEmpty: "Le fournisseur n'expose aucun modèle.",
+        modelsLoadFailed: "Impossible de charger les modèles du chat.",
+        modelsChoosePlaceholder: "Choisir dans la liste…",
         // Le bloc chat n'expose jamais la clé — ses indicateurs seulement.
         keyPresent: "une clé est enregistrée",
         keyAbsent: "aucune clé enregistrée",
@@ -934,6 +947,27 @@ const fr: typeof en = {
         presetCustom: "Endpoint personnalisé (vLLM, LM Studio…)",
         endpointInfo:
             "Le chat réutilise l'endpoint et la clé des embeddings quand ses propres champs sont vides (fallback en paire) : changez la clé partagée et le chat suit.",
+    },
+
+    chatbotPage: {
+        title: "Chatbot",
+        subtitle: "Vos conversations avec l'assistant de l'espace de travail.",
+        untitledThread: "Nouvelle conversation",
+        threadsListLabel: "Conversations",
+        composerLabel: "Votre message",
+        composerPlaceholder: "Écrivez à l'assistant…",
+        start: "Démarrer la conversation",
+        send: "Envoyer",
+        backToThreads: "Retour aux conversations",
+        thinking: "L'assistant réfléchit…",
+        toolRunning: "Utilisation d'un outil…",
+        errorBannerTitle: "La réponse a échoué",
+        sendFailed: "L'envoi a échoué. Réessayez.",
+        reconnecting: "Reconnexion au flux de la conversation…",
+        disabledTitle: "L'assistant n'est pas configuré",
+        disabledDescription:
+            "Aucun assistant de chat n'est configuré pour cet espace de travail. Le propriétaire peut le configurer depuis les réglages IA.",
+        usage: "≈ {{tokens}} jetons",
     },
 
     membersPage: {

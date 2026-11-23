@@ -9,14 +9,15 @@ use App\Models\Workspace;
  * Builds the human-readable snapshot of a saved view's filters.
  *
  * The summary is generated once, at creation, in the creator's locale —
- * a memory of the saved context. Resolved names (project, status,
- * labels, assignee) are looked up within the workspace; an unknown id
- * contributes nothing. Dates stay in the unambiguous Y-m-d form.
+ * a memory of the saved context. Resolved names (project, milestone,
+ * status, labels, assignee) are looked up within the workspace; an
+ * unknown id contributes nothing. Dates stay in the unambiguous Y-m-d
+ * form.
  *
- * Visibility (D2): the project name is resolved only for a viewer who
- * may see that project. The stored summary keeps the creator's copy;
- * read paths recompute it per reader, so a shared view never names a
- * project outside someone's teams.
+ * Visibility (D2): the project and milestone names are resolved only for
+ * a viewer who may see their project. The stored summary keeps the
+ * creator's copy; read paths recompute it per reader, so a shared view
+ * never names a project outside someone's teams.
  */
 class SavedViewSummary
 {
@@ -40,6 +41,14 @@ class SavedViewSummary
 
             if ($name !== null) {
                 $parts[] = __('saved_view.summary.status', ['value' => $name]);
+            }
+        }
+
+        if (! empty($filters['milestone'])) {
+            $name = self::visibleMilestoneName($workspace, (string) $filters['milestone'], $viewer);
+
+            if ($name !== null) {
+                $parts[] = __('saved_view.summary.milestone', ['value' => $name]);
             }
         }
 
@@ -119,6 +128,32 @@ class SavedViewSummary
         }
 
         return $workspace->projects()->whereKey($projectId)->value('name');
+    }
+
+    /**
+     * The filtered milestone's title, resolved only when its project
+     * belongs to the workspace and the viewer may see that project —
+     * the same D2 rule as the project name. A null viewer (trusted
+     * internal call) keeps the unscoped resolution.
+     */
+    private static function visibleMilestoneName(Workspace $workspace, string $milestoneId, ?User $viewer): ?string
+    {
+        $query = $workspace->projects()
+            ->join('milestones', 'milestones.project_id', '=', 'projects.id')
+            ->where('milestones.id', $milestoneId)
+            ->select('projects.id as project_id', 'milestones.title as milestone_title');
+
+        if ($viewer !== null) {
+            $scope = app(WorkspaceContext::class)->accessibleProjectIds($viewer);
+
+            if ($scope !== null) {
+                $query->whereIn('projects.id', $scope);
+            }
+        }
+
+        $row = $query->first();
+
+        return $row?->milestone_title;
     }
 
     /**

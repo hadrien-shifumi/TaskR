@@ -76,6 +76,11 @@ docker compose up -d   # les migrations tournent au démarrage du rôle web
 > reverse proxy faisant la terminaison TLS devant le port 8080 (l'image sert
 > du HTTP).
 
+> La **section Chatbot (assistant IA in-app) est masquée par défaut** —
+> `TASKR_FEATURE_CHAT=false` : pas d'entrée de navigation, les pages
+> `/chatbot` répondent 404. Posez `TASKR_FEATURE_CHAT=true` dans le `.env`
+> pour l'exposer ; l'écran Réglages IA reste utilisable dans tous les cas.
+
 ### Hub Mercure (temps réel)
 
 Le déploiement docker embarque un **hub Mercure** : le serveur FrankenPHP

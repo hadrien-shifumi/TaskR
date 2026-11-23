@@ -255,6 +255,52 @@ class Chat
     }
 
     /**
+     * The OpenAI-compatible model listing (GET {base_url}/models) both AI
+     * settings blocks consume — one provider standard (Mistral, OpenAI,
+     * Ollama, vLLM…), one shared method. Configuration is explicit: the
+     * callers resolved the candidate pair already, the key travels only
+     * in the Authorization header and never comes back.
+     *
+     * The parse stays defensive: a missing `data` key means an empty list
+     * (a legitimate answer, some endpoints do not expose the listing —
+     * never an error), non-string or blank ids are dropped, duplicates are
+     * fused, and the survivors come back sorted alphabetically.
+     *
+     * @param  string  $baseUrl  The endpoint's base URL, trailing slash tolerated.
+     * @param  ?string  $apiKey  The resolved candidate key (never echoed).
+     * @return list<string>
+     *
+     * @throws RequestException
+     * @throws ConnectionException
+     */
+    public static function listModels(string $baseUrl, ?string $apiKey): array
+    {
+        $data = Http::withToken($apiKey ?? '')
+            ->acceptJson()
+            ->timeout(10)
+            ->get(rtrim($baseUrl, '/').'/models')
+            ->throw()
+            ->json('data');
+
+        if (! is_array($data)) {
+            return [];
+        }
+
+        $ids = [];
+
+        foreach ($data as $item) {
+            if (is_array($item) && is_string($item['id'] ?? null) && $item['id'] !== '') {
+                $ids[] = $item['id'];
+            }
+        }
+
+        $ids = array_values(array_unique($ids));
+        sort($ids, SORT_STRING);
+
+        return $ids;
+    }
+
+    /**
      * One real call to the endpoint with a short user message — the probe
      * the "test" button runs without persisting anything. The API key
      * travels only in the request to the configured endpoint; it never

@@ -26,7 +26,7 @@ import { ChevronLeft, ChevronRight, Download } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { downloadExport } from '@/lib/download-export';
-import type { LabelRef, UserRef } from '@/types';
+import type { LabelRef, MilestoneOption, UserRef } from '@/types';
 import { CreateLabelDialog } from './Index/components/create-label-dialog';
 import { IssuesViewSwitcher } from './Index/components/issues-view-switcher';
 import { IssueCard } from './Index/components/issue-card';
@@ -52,6 +52,8 @@ type PageProps = {
     projects: { id: string; name: string }[];
     /** May the user create an issue anywhere? False when every team line carries the Guest role. */
     canCreateIssue: boolean;
+    /** Jalon filter options: only the milestones of the accessible projects. */
+    milestones: MilestoneOption[];
     statuses: { id: string; name: string; category: string }[];
     labels: LabelRef[];
     members: UserRef[];
@@ -94,6 +96,7 @@ export default function Index() {
         projectBoards,
         filters,
         projects,
+        milestones,
         statuses,
         labels,
         members,
@@ -239,6 +242,11 @@ export default function Index() {
     const projectOptions = projects.map((project) => ({
         value: project.id,
         label: project.name,
+    }));
+
+    const milestoneOptions = milestones.map((milestone) => ({
+        value: milestone.id,
+        label: milestone.title,
     }));
 
     const statusOptions = statuses.map((status) => ({
@@ -395,6 +403,15 @@ export default function Index() {
                     allLabel={t('issuesPage.filters.allProjects')}
                     ariaLabel={t('issuesPage.filters.project')}
                     onChange={(value) => setFilter('project', value)}
+                    className="h-7.5 w-36 text-[13px]"
+                />
+                <FilterSelect
+                    testId="filter-select-milestone"
+                    value={readFilter(filters, 'milestone')}
+                    options={milestoneOptions}
+                    allLabel={t('issuesPage.filters.allMilestones')}
+                    ariaLabel={t('issuesPage.filters.milestone')}
+                    onChange={(value) => setFilter('milestone', value)}
                     className="h-7.5 w-36 text-[13px]"
                 />
                 <FilterSelect

@@ -26,6 +26,7 @@ import {
     ListChecks,
     LogOut,
     Menu,
+    MessageSquare,
     Plus,
     SlidersHorizontal,
     Trash2,
@@ -56,6 +57,8 @@ type NavItem = {
     icon: LucideIcon;
     /** Shared prop rendered as a count pill when positive. */
     badge?: "unreadMentions";
+    /** Instance feature flag; the item renders only when it is on. */
+    feature?: "chat";
 };
 
 type NavSection = {
@@ -69,6 +72,13 @@ const NAV_SECTIONS: NavSection[] = [
     {
         items: [
             { label: "nav.home", route: "home", prefix: "/", icon: Home },
+            {
+                label: "nav.chatbot",
+                route: "chatbot.index",
+                prefix: "/chatbot",
+                icon: MessageSquare,
+                feature: "chat",
+            },
             {
                 label: "nav.myTime",
                 route: "my-time.show",
@@ -244,7 +254,7 @@ function WorkspaceSwitcher() {
 /** Navigation entries grouped by families. `onNavigate` lets the mobile
  *  drawer close itself after a link tap; the desktop sidebar omits it. */
 function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
-    const { unreadMentions } = usePage<PageSharedProps>().props;
+    const { unreadMentions, features } = usePage<PageSharedProps>().props;
     const { url } = usePage();
     const { t } = useTranslation();
 
@@ -261,7 +271,13 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
     return (
         <>
             {NAV_SECTIONS.map((section, sectionIndex) => {
-                const items = section.items.map((item) => {
+                // Feature-gated items render only when their flag is on
+                // (the server 404s the section's pages behind it anyway).
+                const items = section.items
+                    .filter(
+                        (item) => item.feature === undefined || features[item.feature],
+                    )
+                    .map((item) => {
                     const Icon = item.icon;
                     return (
                         <Link

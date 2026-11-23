@@ -1,9 +1,11 @@
 <?php
 
 use App\Actions\Issues\CreateIssue;
+use App\Actions\Milestones\CreateMilestone;
 use App\Actions\Projects\CreateProject;
 use App\Models\Issue;
 use App\Models\Membership;
+use App\Models\Milestone;
 use App\Models\Project;
 use App\Models\ProjectMember;
 use App\Models\Status;
@@ -15,14 +17,14 @@ use App\Support\WorkspaceContext;
  * Seeds the reference filter scenario of the issues list (maquette
  * screens/issues.html): two projects and five issues covering every filter.
  *
- *  - webhook  Payments · In Progress · urgent · due yesterday  · owner
- *             → in progress, overdue, urgent, mine, Payments
+ *  - webhook  Payments · In Progress · urgent · due yesterday  · owner · Launch
+ *             → in progress, overdue, urgent, mine, Payments, Launch
  *  - tokens   Payments · Done        · none   · no due date    · member
  *  - crash    Payments · In Progress · low    · due tomorrow   · member
  *  - migrate  Mobile   · Backlog     · high   · due yesterday  · unassigned
  *  - legacy   Mobile   · Cancelled   · none   · no due date    · unassigned
  *
- * @return array{owner: User, workspace: Workspace, payments: Project, mobile: Project, member: User, issues: array<string, Issue>}
+ * @return array{owner: User, workspace: Workspace, payments: Project, mobile: Project, member: User, launch: Milestone, issues: array<string, Issue>}
  */
 function seedIssuesFiltersWorkspace(): array
 {
@@ -31,6 +33,8 @@ function seedIssuesFiltersWorkspace(): array
 
     $payments = CreateProject::run($workspace, $owner, ['name' => 'Payments']);
     $mobile = CreateProject::run($workspace, $owner, ['name' => 'Mobile']);
+
+    $launch = CreateMilestone::run($payments, ['title' => 'Launch'], $owner);
 
     $member = User::factory()->create();
     Membership::create(['user_id' => $member->id, 'workspace_id' => $workspace->id, 'role' => 'member']);
@@ -53,11 +57,13 @@ function seedIssuesFiltersWorkspace(): array
         'payments' => $payments,
         'mobile' => $mobile,
         'member' => $member,
+        'launch' => $launch,
         'issues' => [
             'webhook' => $issue('Webhook retry with backoff', $payments->id, 'in_progress', [
                 'priority' => 'urgent',
                 'due_date' => now()->subDay()->toDateString(),
                 'assignees' => [$owner->id],
+                'milestone_id' => $launch->id,
             ]),
             'tokens' => $issue('Design color tokens', $payments->id, 'done', [
                 'assignees' => [$member->id],
@@ -237,6 +243,26 @@ it('filters by project with the project select', function () {
 
     selectFilterOption($page, 'filter-select-project', 'All projects');
     $page->assertQueryStringMissing('project');
+    $page->assertCount(ISSUE_ROWS, 5);
+
+    $page->assertNoSmoke();
+});
+
+it('filters by milestone with the milestone select', function () {
+    ['owner' => $owner, 'launch' => $launch, 'issues' => $issues] = seedIssuesFiltersWorkspace();
+    $this->actingAs($owner);
+
+    $page = visit('/issues');
+
+    selectFilterOption($page, 'filter-select-milestone', 'Launch');
+    $page->assertQueryStringHas('milestone', $launch->id);
+    $page->assertCount(ISSUE_ROWS, 1);
+    $page->assertSee('Webhook retry with backoff');
+    $page->assertDontSee('Crash on launch with iOS 17.4');
+
+    // Back to all milestones: the param clears, the full list returns.
+    selectFilterOption($page, 'filter-select-milestone', 'All milestones');
+    $page->assertQueryStringMissing('milestone');
     $page->assertCount(ISSUE_ROWS, 5);
 
     $page->assertNoSmoke();

@@ -8,8 +8,10 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Models\WorkspaceEmbeddingSetting;
 use App\Responders\Knowledge\EmbeddingsSettingsRedirectResponder;
+use App\Support\Chat;
 use App\Support\Embeddings;
 use App\Support\WorkspaceContext;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Http\RedirectResponse;
@@ -157,6 +159,54 @@ class UpdateEmbeddingsSettings
         }
 
         return $result;
+    }
+
+    /**
+     * The candidate provider's model listing for the "load the models"
+     * button: the exact candidate-pair resolution of the save flow (a
+     * blank write-only key field keeps the stored one, refused with the
+     * same actionable message when nothing is stored anywhere), then the
+     * shared OpenAI-standard listing. Never persists anything; the key
+     * never appears in the answer.
+     *
+     * @param  string  $baseUrl  The endpoint the owner typed.
+     * @param  ?string  $apiKey  The write-only field's content, null/'' to reuse the stored key.
+     * @return list<string>
+     *
+     * @throws ValidationException
+     */
+    public function listCandidateModels(Workspace $workspace, string $baseUrl, ?string $apiKey): array
+    {
+        if ($apiKey === null || $apiKey === '') {
+            $apiKey = WorkspaceEmbeddingSetting::withoutWorkspaceScope()
+                ->where('workspace_id', $workspace->id)
+                ->value('api_key');
+        }
+
+        if ($apiKey === null || $apiKey === '') {
+            throw ValidationException::withMessages([
+                'api_key' => [__('validation.embeddings.api_key_required')],
+            ]);
+        }
+
+        try {
+            return Chat::listModels($baseUrl, $apiKey);
+        } catch (ConnectionException $exception) {
+            throw ValidationException::withMessages([
+                'base_url' => [__('validation.embeddings.probe_unreachable', [
+                    'error' => $exception->getMessage(),
+                ])],
+            ]);
+        } catch (RequestException $exception) {
+            /** @var Response $response */
+            $response = $exception->response;
+
+            throw ValidationException::withMessages([
+                'base_url' => [__('validation.embeddings.probe_unreachable', [
+                    'error' => trim($response->body()) !== '' ? $response->body() : $exception->getMessage(),
+                ])],
+            ]);
+        }
     }
 
     public function asController(ActionRequest $request, EmbeddingsSettingsRedirectResponder $responder): RedirectResponse

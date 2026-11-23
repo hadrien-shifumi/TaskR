@@ -71,6 +71,7 @@ class ExportIssues
         return [
             'project' => $request->query('project'),
             'status' => $this->sanitizeIdFilter($request->query('status')),
+            'milestone' => $this->sanitizeIdFilter($request->query('milestone')),
             'category' => $request->query('category'),
             'priority' => $request->query('priority'),
             'label' => $this->sanitizeLabelFilter($request->query('label')),

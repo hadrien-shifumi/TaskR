@@ -100,6 +100,12 @@ return [
         'stop_target_required' => 'Plusieurs chronomètres sont en cours : celui à arrêter doit être désigné.',
     ],
 
+    'chat' => [
+        'base_url_required' => "Indiquez l'endpoint du chat, ou laissez les deux champs vides pour réutiliser la paire des embeddings.",
+        'api_key_required' => "Une clé d'API est nécessaire pour configurer le chat.",
+        'probe_unreachable' => "Le fournisseur de chat n'a pas répondu : :error",
+    ],
+
     'embeddings' => [
         'api_key_required' => "Une clé d'API est nécessaire pour configurer le fournisseur.",
         'probe_unreachable' => "Le fournisseur n'a pas répondu : :error",

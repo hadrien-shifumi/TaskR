@@ -11,6 +11,7 @@ use App\Models\WorkspaceEmbeddingSetting;
 use App\Responders\Knowledge\ChatSettingsRedirectResponder;
 use App\Support\Chat;
 use App\Support\WorkspaceContext;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Http\RedirectResponse;
@@ -141,10 +142,26 @@ class UpdateChatSettings
      * never trusted: an unreachable endpoint refuses the configuration with
      * an actionable message. Shared by the save flow and the "test" button.
      *
+     * A blank write-only key field probes with the stored chat key — the
+     * same fallback the embeddings probe applies to its own key, so the
+     * test button never needs the typed key.
+     *
      * @throws ValidationException
      */
-    public function probeCandidate(Workspace $workspace, string $chatBaseUrl, string $chatApiKey, string $chatModel): array
+    public function probeCandidate(Workspace $workspace, string $chatBaseUrl, ?string $chatApiKey, string $chatModel): array
     {
+        if ($chatApiKey === null || $chatApiKey === '') {
+            $chatApiKey = WorkspaceEmbeddingSetting::withoutWorkspaceScope()
+                ->where('workspace_id', $workspace->id)
+                ->value('chat_api_key');
+        }
+
+        if ($chatApiKey === null || $chatApiKey === '') {
+            throw ValidationException::withMessages([
+                'chat_api_key' => [__('validation.chat.api_key_required')],
+            ]);
+        }
+
         $client = new Chat([
             'base_url' => $chatBaseUrl,
             'api_key' => $chatApiKey,
@@ -165,6 +182,73 @@ class UpdateChatSettings
         }
 
         return $result;
+    }
+
+    /**
+     * The candidate chat pair's model listing for the "load the models"
+     * button: the exact pair resolution of the save flow — the write-only
+     * fields blank per field keep the stored chat value, both blank reuse
+     * the stored embeddings pair — refused with the same actionable
+     * messages when the resolved pair is incomplete. Never persists
+     * anything; the key never appears in the answer.
+     *
+     * @param  ?string  $chatBaseUrl  The write-only endpoint field's content.
+     * @param  ?string  $chatApiKey  The write-only key field's content.
+     * @return list<string>
+     *
+     * @throws ValidationException
+     */
+    public function listChatCandidateModels(Workspace $workspace, ?string $chatBaseUrl, ?string $chatApiKey): array
+    {
+        $existing = WorkspaceEmbeddingSetting::withoutWorkspaceScope()
+            ->where('workspace_id', $workspace->id)
+            ->first();
+
+        $urlBlank = $chatBaseUrl === null || $chatBaseUrl === '';
+        $keyBlank = $chatApiKey === null || $chatApiKey === '';
+
+        if ($urlBlank && $keyBlank) {
+            // The pair fallback: the listing runs against the stored
+            // embeddings pair, exactly what the runtime resolution reuses.
+            $chatBaseUrl = $existing?->base_url;
+            $chatApiKey = $existing?->api_key;
+        } else {
+            // The write-only semantics per field: a blank field keeps the
+            // stored chat one.
+            $chatBaseUrl = $urlBlank ? $existing?->chat_base_url : rtrim((string) $chatBaseUrl, '/');
+            $chatApiKey = $keyBlank ? $existing?->chat_api_key : $chatApiKey;
+        }
+
+        if ($chatBaseUrl === null || $chatBaseUrl === '') {
+            throw ValidationException::withMessages([
+                'chat_base_url' => [__('validation.chat.base_url_required')],
+            ]);
+        }
+
+        if ($chatApiKey === null || $chatApiKey === '') {
+            throw ValidationException::withMessages([
+                'chat_api_key' => [__('validation.chat.api_key_required')],
+            ]);
+        }
+
+        try {
+            return Chat::listModels($chatBaseUrl, $chatApiKey);
+        } catch (ConnectionException $exception) {
+            throw ValidationException::withMessages([
+                'chat_base_url' => [__('validation.chat.probe_unreachable', [
+                    'error' => $exception->getMessage(),
+                ])],
+            ]);
+        } catch (RequestException $exception) {
+            /** @var Response $response */
+            $response = $exception->response;
+
+            throw ValidationException::withMessages([
+                'chat_base_url' => [__('validation.chat.probe_unreachable', [
+                    'error' => trim($response->body()) !== '' ? $response->body() : $exception->getMessage(),
+                ])],
+            ]);
+        }
     }
 
     public function asController(ActionRequest $request, ChatSettingsRedirectResponder $responder): RedirectResponse

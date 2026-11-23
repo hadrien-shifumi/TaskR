@@ -25,7 +25,7 @@ class ListIssues
      * workspace-wide count never leaks: totalUnfiltered counts within the
      * perimeter as well.
      *
-     * @param  array<string, string|array<int, string>|null>  $filters  project|status|category|priority|label|assignee|overdue|blocked|due_before|due_after|q|sort|dir
+     * @param  array<string, string|array<int, string>|null>  $filters  project|status|milestone|category|priority|label|assignee|overdue|blocked|due_before|due_after|q|sort|dir
      * @param  string|null  $sort  created (default)|priority|due_date|status|project — invalid values are ignored
      * @param  string|null  $dir  asc|desc — invalid values are ignored (desc for created, asc otherwise)
      * @return array{issues: array<int, array<string, mixed>>, total: int, totalUnfiltered: int}
@@ -85,7 +85,7 @@ class ListIssues
      * presentation and the exports: an export always matches the filters
      * of the page. Eager loads stay with the consumer.
      *
-     * @param  array<string, string|array<int, string>|null>  $filters  project|status|category|priority|label|assignee|overdue|blocked|due_before|due_after|q|sort|dir
+     * @param  array<string, string|array<int, string>|null>  $filters  project|status|milestone|category|priority|label|assignee|overdue|blocked|due_before|due_after|q|sort|dir
      */
     public function filteredQuery(Workspace $workspace, array $filters = [], ?User $user = null, ?string $sort = null, ?string $dir = null): Builder
     {
@@ -191,6 +191,10 @@ class ListIssues
 
         if (! empty($filters['status'])) {
             $query->where('issues.status_id', $filters['status']);
+        }
+
+        if (! empty($filters['milestone'])) {
+            $query->where('issues.milestone_id', $filters['milestone']);
         }
 
         if (! empty($filters['category'])) {

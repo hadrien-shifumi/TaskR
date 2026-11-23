@@ -20,7 +20,9 @@ use App\Actions\Auth\UpdateUserLocale;
 use App\Actions\Chat\CreateChatThread;
 use App\Actions\Chat\ListChatThreads;
 use App\Actions\Chat\PostChatMessage;
+use App\Actions\Chat\ShowChatbotIndexPage;
 use App\Actions\Chat\ShowChatThread;
+use App\Actions\Chat\ShowChatThreadPage;
 use App\Actions\Comments\AddComment;
 use App\Actions\Comments\DeleteComment;
 use App\Actions\Comments\UpdateComment;
@@ -46,6 +48,8 @@ use App\Actions\Knowledge\CreateKnowledgePage;
 use App\Actions\Knowledge\DeleteKnowledgePage;
 use App\Actions\Knowledge\ForceDeleteKnowledgePage;
 use App\Actions\Knowledge\GetKnowledgePageVersion;
+use App\Actions\Knowledge\ListChatModels;
+use App\Actions\Knowledge\ListEmbeddingsModels;
 use App\Actions\Knowledge\MoveKnowledgePage;
 use App\Actions\Knowledge\ReembedWorkspaceKnowledge;
 use App\Actions\Knowledge\RestoreKnowledgePage;
@@ -177,6 +181,10 @@ Route::middleware(['auth', 'workspace'])->group(function (): void {
         ->name('settings.embeddings.update-chat');
     Route::post('/settings/embeddings/test', TestEmbeddingsSettings::class)->name('settings.embeddings.test');
     Route::post('/settings/embeddings/test-chat', TestChatSettings::class)->name('settings.embeddings.test-chat');
+    // The "load the models" endpoints sit with the probes: owner-only,
+    // JSON answers, no persistence — the key never leaves the server.
+    Route::post('/settings/embeddings/models', ListEmbeddingsModels::class)->name('settings.embeddings.models');
+    Route::post('/settings/embeddings/chat-models', ListChatModels::class)->name('settings.embeddings.chat-models');
     Route::post('/settings/embeddings/reembed', ReembedWorkspaceKnowledge::class)->name('settings.embeddings.reembed');
 
     Route::get('/settings/notifications', ShowNotificationSettingsPage::class)->name('settings.notifications');
@@ -279,6 +287,12 @@ Route::middleware(['auth', 'workspace'])->group(function (): void {
     Route::post('/chat/threads/{thread}/messages', PostChatMessage::class)->name('chat.threads.messages.store');
     Route::get('/chat/threads', ListChatThreads::class)->name('chat.threads.index');
     Route::get('/chat/threads/{thread}', ShowChatThread::class)->name('chat.threads.show');
+
+    // The Chatbot pages (Inertia): the section's landing list and one
+    // conversation's read. The writes stay the JSON endpoints above —
+    // the composers post there and the thread updates in place.
+    Route::get('/chatbot', ShowChatbotIndexPage::class)->name('chatbot.index');
+    Route::get('/chatbot/{thread}', ShowChatThreadPage::class)->name('chatbot.show');
 
     // Workspace-wide export of the time entries (billing): transverse to
     // any single issue, so it lives at the workspace level.

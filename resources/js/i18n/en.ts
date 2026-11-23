@@ -23,6 +23,7 @@ const en = {
 
     nav: {
         home: "Home",
+        chatbot: "Chatbot",
         projects: "Projects",
         issues: "Issues",
         mentions: "Mentions",
@@ -99,6 +100,7 @@ const en = {
             allPriorities: "All priorities",
             allAssignees: "All assignees",
             allProjects: "All projects",
+            allMilestones: "All milestones",
             overdue: "Overdue",
             blocked: "Blocked",
             status: "Status",
@@ -107,6 +109,7 @@ const en = {
             priority: "Priority",
             assignee: "Assignee",
             project: "Project",
+            milestone: "Milestone",
             allLabels: "All labels",
             selectedCount: "{{count}} selected",
             clearSelection: "Clear selection",
@@ -892,6 +895,11 @@ const en = {
         testing: "Testing…",
         testOk: "Provider OK — {{dimensions}}-dimension vectors, {{latency}} ms.",
         testFailed: "The provider did not answer.",
+        loadModels: "Load the models",
+        modelsLoading: "Loading models…",
+        modelsEmpty: "The provider exposes no model.",
+        modelsLoadFailed: "Could not load the models.",
+        modelsChoosePlaceholder: "Pick from the list…",
         save: "Save the provider",
         reembed: "Re-vectorize this workspace",
         reembedHint:
@@ -915,6 +923,11 @@ const en = {
         testing: "Testing the chat\u2026",
         testOk: "Chat OK \u2014 \u201c{{content}}\u201d in {{latency}} ms.",
         testFailed: "The chat did not answer.",
+        loadModels: "Load the models",
+        modelsLoading: "Loading chat models…",
+        modelsEmpty: "The provider exposes no model.",
+        modelsLoadFailed: "Could not load the chat models.",
+        modelsChoosePlaceholder: "Pick from the list…",
         // The chat block never exposes the key — its flags only.
         keyPresent: "a key is registered",
         keyAbsent: "no key registered",
@@ -927,6 +940,27 @@ const en = {
         presetCustom: "Custom endpoint (vLLM, LM Studio\u2026)",
         endpointInfo:
             "The chat reuses the embeddings endpoint and key when its own fields are empty (pair fallback): change the shared key and the chat follows.",
+    },
+
+    chatbotPage: {
+        title: "Chatbot",
+        subtitle: "Your conversations with the workspace's assistant.",
+        untitledThread: "New conversation",
+        threadsListLabel: "Conversations",
+        composerLabel: "Your message",
+        composerPlaceholder: "Write to the assistant…",
+        start: "Start the conversation",
+        send: "Send",
+        backToThreads: "Back to conversations",
+        thinking: "The assistant is thinking…",
+        toolRunning: "Using a tool…",
+        errorBannerTitle: "The response failed",
+        sendFailed: "Sending failed. Try again.",
+        reconnecting: "Reconnecting to the conversation stream…",
+        disabledTitle: "The assistant is not configured",
+        disabledDescription:
+            "No chat provider is set up for this workspace. An owner can configure it in the AI settings.",
+        usage: "≈ {{tokens}} tokens",
     },
 
     membersPage: {

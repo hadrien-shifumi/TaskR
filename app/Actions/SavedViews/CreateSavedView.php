@@ -69,6 +69,7 @@ class CreateSavedView
             'filters' => [
                 'project' => $request->input('project'),
                 'status' => $request->input('status'),
+                'milestone' => $request->input('milestone'),
                 'category' => $request->input('category'),
                 'priority' => $request->input('priority'),
                 'label' => $request->input('label'),
@@ -99,6 +100,7 @@ class CreateSavedView
         $sanitized = [
             'project' => IssueFilterSanitizer::ulid($filters['project'] ?? null),
             'status' => IssueFilterSanitizer::ulid($filters['status'] ?? null),
+            'milestone' => IssueFilterSanitizer::ulid($filters['milestone'] ?? null),
             'category' => IssueFilterSanitizer::category($filters['category'] ?? null),
             'priority' => IssueFilterSanitizer::priority($filters['priority'] ?? null),
             'label' => IssueFilterSanitizer::labels($filters['label'] ?? null),

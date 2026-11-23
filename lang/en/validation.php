@@ -31,6 +31,12 @@ return [
         'stop_target_required' => 'Several timers are running: the one to stop must be designated.',
     ],
 
+    'chat' => [
+        'base_url_required' => 'Enter the chat endpoint, or leave both fields empty to reuse the embeddings pair.',
+        'api_key_required' => 'An API key is required to configure the chat.',
+        'probe_unreachable' => 'The chat provider did not answer: :error',
+    ],
+
     'embeddings' => [
         'api_key_required' => 'An API key is required to configure the provider.',
         'probe_unreachable' => 'The provider did not answer: :error',

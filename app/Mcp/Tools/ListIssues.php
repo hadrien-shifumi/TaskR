@@ -26,6 +26,7 @@ class ListIssues extends AgentTool
             'workspace_id' => $schema->string()->description('ULID of the workspace')->required(),
             'project' => $schema->string()->description('Filter by project ULID'),
             'status' => $schema->string()->description('Filter by status ULID'),
+            'milestone' => $schema->string()->description('Filter by milestone ULID'),
             'category' => $schema->string()->enum(['backlog', 'in_progress', 'done', 'cancelled'])->description('Filter by status category'),
             'priority' => $schema->string()->enum(['none', 'low', 'high', 'urgent'])->description('Filter by priority'),
             'label' => $schema->string()->description('Filter by label ULID'),
@@ -45,6 +46,7 @@ class ListIssues extends AgentTool
         $input = $request->validate([
             'project' => ['nullable', 'ulid'],
             'status' => ['nullable', 'ulid'],
+            'milestone' => ['nullable', 'ulid'],
             'category' => ['nullable', 'in:backlog,in_progress,done,cancelled'],
             'priority' => ['nullable', 'in:none,low,high,urgent'],
             'label' => ['nullable', 'ulid'],
@@ -61,6 +63,7 @@ class ListIssues extends AgentTool
             [
                 'project' => $input['project'] ?? null,
                 'status' => $input['status'] ?? null,
+                'milestone' => $input['milestone'] ?? null,
                 'category' => $input['category'] ?? null,
                 'priority' => $input['priority'] ?? null,
                 'label' => $input['label'] ?? null,

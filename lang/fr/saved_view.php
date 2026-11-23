@@ -4,6 +4,7 @@ return [
 
     'summary' => [
         'project' => 'Projet : :value',
+        'milestone' => 'Jalon : :value',
         'status' => 'Statut : :value',
         'category' => 'Catégorie : :value',
         'priority' => 'Priorité : :value',

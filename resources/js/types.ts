@@ -21,6 +21,12 @@ export interface PageSharedProps {
     /** Unread @mentions of the account in the current workspace. */
     unreadMentions: number;
     /**
+     * Instance feature flags (config/taskr.php): what this deployment
+     * chose to expose. A falsy flag removes the whole section from the
+     * UI — its direct URLs answer 404 server-side, never a dead link.
+     */
+    features: { chat: boolean };
+    /**
      * The current user's running timers in this workspace, oldest first —
      * several may run in parallel, one per issue. Lazy shared prop:
      * rehydrated on every navigation, so closing the browser never stops

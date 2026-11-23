@@ -3,11 +3,14 @@
 namespace App\Actions\Issues;
 
 use App\Enums\ProjectRole;
+use App\Models\Issue;
+use App\Models\Milestone;
 use App\Models\ProjectMember;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Presenters\Issues\IssuePresenter;
 use App\Presenters\Labels\LabelPresenter;
+use App\Presenters\Milestones\MilestonePresenter;
 use App\Presenters\Projects\ProjectMemberPresenter;
 use App\Presenters\Projects\ProjectPresenter;
 use App\Presenters\SavedViews\SavedViewPresenter;
@@ -42,7 +45,7 @@ class ShowIssuesPage
      * projectBoards(), fetched by the client in a parallel partial reload
      * right after the first paint. Sort and page params are ignored.
      *
-     * @param  array<string, string|null>  $filters  view|project|status|category|priority|label|assignee|overdue|blocked|q|sort|dir
+     * @param  array<string, string|null>  $filters  view|project|status|milestone|category|priority|label|assignee|overdue|blocked|q|sort|dir
      * @param  int  $page  Requested list page, 1-based; invalid values fall back to 1
      * @return array<string, mixed>
      */
@@ -156,6 +159,7 @@ class ShowIssuesPage
             'view' => $request->query('view'),
             'project' => $request->query('project'),
             'status' => IssueFilterSanitizer::ulid($request->query('status')),
+            'milestone' => IssueFilterSanitizer::ulid($request->query('milestone')),
             'category' => $request->query('category'),
             'priority' => $request->query('priority'),
             'label' => IssueFilterSanitizer::labels($request->query('label')),
@@ -187,6 +191,21 @@ class ShowIssuesPage
             ->get()
             ->map(fn ($template) => TemplatePresenter::present($template))
             ->all();
+
+        // The jalon filter's options, scoped like the projects: only the
+        // milestones of the reader's accessible projects (owner = all),
+        // completed ones included like every other milestone picker.
+        $milestoneScope = $request->user() instanceof User
+            ? app(WorkspaceContext::class)->accessibleProjectIds($request->user())
+            : null;
+
+        $data['milestones'] = Milestone::query()
+            ->when($milestoneScope !== null, fn ($query) => $query->whereIn('project_id', $milestoneScope))
+            ->orderBy('title')
+            ->get()
+            ->map(fn (Milestone $milestone) => MilestonePresenter::option($milestone))
+            ->all();
+
         $data['savedViews'] = $workspace->savedViews()
             ->get()
             ->map(fn ($view) => SavedViewPresenter::present($view, $request->user()))
