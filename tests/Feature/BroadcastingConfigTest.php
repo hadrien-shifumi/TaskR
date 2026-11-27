@@ -75,4 +75,16 @@ class BroadcastingConfigTest extends TestCase
 
         $this->assertSame('', config('broadcasting.connections.mercure.secret'));
     }
+
+    public function test_the_embedded_hub_stays_derived_from_the_broadcasting_connection(): void
+    {
+        // A non-null block replaces Octane's derivation wholesale (it is never
+        // merged) and is rendered verbatim as the `mercure { ... }` Caddyfile
+        // block: a partial one keeps FrankenPHP from starting at all.
+        $this->assertNull(config('octane.mercure'));
+
+        // The hub's Bolt database follows Caddy's data directory: it has to
+        // sit on the storage volume to survive container updates.
+        $this->assertStringContainsString('ENV XDG_DATA_HOME=/app/storage', file_get_contents(base_path('Dockerfile')));
+    }
 }

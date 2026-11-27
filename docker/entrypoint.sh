@@ -3,8 +3,23 @@ set -e
 
 cd /app
 
-# Storage permissions (mounted volumes may have reset them).
-mkdir -p storage/framework/{cache/data,sessions,testing,views} storage/logs storage/app/private bootstrap/cache
+# Unusable configurations stop here, with a plain message: before anything
+# touches the storage or waits for the database.
+/usr/local/bin/preflight.sh
+
+# Storage skeleton and permissions: a mounted volume may start out empty,
+# or arrive with its ownership reset. POSIX sh (dash here) has no brace
+# expansion, so every directory is spelled out.
+mkdir -p \
+    storage/framework/cache/data \
+    storage/framework/cache/locks \
+    storage/framework/sessions \
+    storage/framework/testing \
+    storage/framework/views \
+    storage/logs \
+    storage/app/private \
+    storage/app/public \
+    bootstrap/cache
 chown -R www-data:www-data storage bootstrap/cache
 
 # Role is inferred from the full container command: Octane serves the app

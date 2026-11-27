@@ -269,12 +269,6 @@ return [
     |
     */
 
-    'mercure' => [
-        'transport' => [
-            'bolt' => [
-                'path' => '/app/storage/mercure.db',
-            ],
-        ],
-    ],
+    'mercure' => null,
 
 ];

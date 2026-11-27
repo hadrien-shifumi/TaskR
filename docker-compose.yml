@@ -57,8 +57,10 @@ services:
         # The web role runs the migrations; the worker starts once the app is up.
         condition: service_healthy
     # The image healthcheck targets Octane, which only runs in the web role.
+    # No `pgrep` (the image ships no procps): the entrypoint execs into the
+    # worker, so PID 1 is the queue:work command itself.
     healthcheck:
-      test: ["CMD-SHELL", "pgrep -f 'queue:work' || exit 1"]
+      test: ["CMD-SHELL", "grep -aq queue:work /proc/1/cmdline || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3

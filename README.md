@@ -20,7 +20,7 @@ It's built to be driven **by humans through the web UI and by AI agents through 
 
 ```bash
 git clone https://github.com/hadrien-shifumi/TaskR.git && cd TaskR
-cp .env.example .env   # set APP_KEY, e.g. `openssl rand -base64 32`
+cp .env.example .env   # set APP_KEY (openssl rand -base64 32) and MERCURE_JWT_SECRET (openssl rand -hex 32)
 docker compose up -d
 ```
 
