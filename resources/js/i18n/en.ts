@@ -555,6 +555,23 @@ const en = {
             submit: "Export",
             failed: "The export failed. Please try again.",
         },
+        milestones: {
+            sectionTitle: "Trajectory per milestone",
+            empty: "No milestone yet.",
+            columnTitle: "Milestone",
+            columnDates: "Dates",
+            columnExpected: "Expected",
+            columnReal: "Real",
+            columnStatus: "Status",
+            expectedHint: "Expected pace from the start to the target",
+            realHint: "Done issues / unarchived issues",
+            latePanel: "Missed milestones",
+            status: {
+                upcoming: "Upcoming",
+                achieved: "Achieved",
+                missed: "Missed",
+            },
+        },
     },
 
     home: {

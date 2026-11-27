@@ -28,7 +28,8 @@ import { ArrowLeft, Download } from 'lucide-react';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { HealthData } from '@/types';
+import { MilestoneHealthSection } from '@/components/milestone-health-section';
+import type { HealthData, MilestoneHealthData } from '@/types';
 import { formatDate } from '@/lib/format-date';
 import { downloadExport } from '@/lib/download-export';
 
@@ -61,6 +62,7 @@ type PageProps = {
     health: HealthData | null;
     canSeeGlobalKpis: boolean;
     trends: TrendsData | null;
+    milestoneHealth: MilestoneHealthData | null;
     myWorkload: PersonWorkload | null;
     teamWorkload: PersonWorkload[] | null;
     lateIssues: LateIssue[];
@@ -85,8 +87,10 @@ function currentMonthBounds(): { after: string; before: string } {
 }
 
 export default function Health() {
-    const { project, health, canSeeGlobalKpis, trends, myWorkload, teamWorkload, lateIssues } = usePage<PageProps>().props;
+    const { project, health, canSeeGlobalKpis, trends, milestoneHealth, myWorkload, teamWorkload, lateIssues } = usePage<PageProps>().props;
     const { t } = useTranslation();
+
+    const lateMilestones = (milestoneHealth?.milestones ?? []).filter((row) => row.inLatePanel);
 
     const targetForm = useForm({
         name: project.name,
@@ -447,6 +451,31 @@ export default function Health() {
                                         ) : null}
                                     </TableBody>
                                 </Table>
+                                {lateMilestones.length > 0 ? (
+                                    <div data-test="late-milestones" className="border-t px-5 py-3.5">
+                                        <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                            {t('projectHealth.milestones.latePanel')}
+                                        </h4>
+                                        <ul className="mt-2 grid gap-1.5">
+                                            {lateMilestones.map((row) => (
+                                                <li key={row.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                                                    <Link
+                                                        href={route('milestones.show', row.id)}
+                                                        className="font-medium hover:text-primary"
+                                                    >
+                                                        {row.title}
+                                                    </Link>
+                                                    <span className="font-mono text-xs text-muted-foreground tabular-nums">
+                                                        {formatDate(row.targetDate)}
+                                                    </span>
+                                                    <span className="ml-auto font-mono text-xs tabular-nums">
+                                                        {row.realPercentage !== null ? `${row.realPercentage}%` : '—'}
+                                                    </span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                ) : null}
                             </div>
                         </div>
 
@@ -538,6 +567,8 @@ export default function Health() {
                             </CardContent>
                         </Card>
                     </div>
+
+                    <MilestoneHealthSection data={milestoneHealth} />
                 </>
             ) : null}
 

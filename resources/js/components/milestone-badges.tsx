@@ -87,3 +87,34 @@ export function milestoneTree(milestones: MilestoneCard[]): { milestone: Milesto
 
     return rows;
 }
+
+/**
+ * Health badge of a milestone row on the Health page: upcoming /
+ * achieved / missed, colored from the theme tokens. Distinct from
+ * MilestoneStateBadge (the Échéances tab's state) — this one mirrors
+ * the Health rules (closed-on-time, all-done, target passed).
+ */
+export function MilestoneHealthBadge({
+    status,
+}: {
+    status: 'upcoming' | 'achieved' | 'missed' | null;
+}) {
+    const { t } = useTranslation();
+
+    if (status === null) {
+        return null;
+    }
+
+    const tone =
+        status === 'achieved'
+            ? 'bg-success/10 text-success-strong'
+            : status === 'missed'
+              ? 'bg-destructive/10 text-destructive-strong'
+              : 'bg-secondary/70 text-muted-foreground-strong';
+
+    return (
+        <Badge variant="secondary" className={`rounded-full ${tone}`} data-test="milestone-health-badge">
+            {t(`projectHealth.milestones.status.${status}`)}
+        </Badge>
+    );
+}

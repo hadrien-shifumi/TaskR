@@ -558,6 +558,23 @@ const fr: typeof en = {
             submit: "Exporter",
             failed: "L'export a échoué. Réessayez.",
         },
+        milestones: {
+            sectionTitle: "Trajectoire par échéance",
+            empty: "Aucune échéance pour l'instant.",
+            columnTitle: "Échéance",
+            columnDates: "Dates",
+            columnExpected: "Attendu",
+            columnReal: "Réel",
+            columnStatus: "Statut",
+            expectedHint: "Rythme attendu depuis le début jusqu'à la cible",
+            realHint: "Tickets terminés / tickets non archivés",
+            latePanel: "Échéances manquées",
+            status: {
+                upcoming: "À venir",
+                achieved: "Atteinte",
+                missed: "Manquée",
+            },
+        },
     },
 
     home: {

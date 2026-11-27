@@ -133,6 +133,31 @@ export interface DescendantsSummary {
     byMilestone: Record<string, number>;
 }
 
+/**
+ * Per-milestone projection of a project (always calculated, never
+ * stored): the expected pace (linear start → target, clamped) and
+ * the real pace (done issues over unarchived attached issues), plus
+ * a status badge and the late-panel flag.
+ */
+export interface MilestoneHealthRow {
+    id: string;
+    title: string;
+    startDate: string | null;
+    targetDate: string | null;
+    completedAt: string | null;
+    totalIssues: number;
+    doneIssues: number;
+    realPercentage: number | null;
+    expectedPercentage: number | null;
+    status: 'upcoming' | 'achieved' | 'missed' | null;
+    inLatePanel: boolean;
+}
+
+/** Per-milestone projection payload of the Health page (manager view only). */
+export interface MilestoneHealthData {
+    milestones: MilestoneHealthRow[];
+}
+
 /** Computed health indicators of a project (always calculated, never stored). */
 export interface HealthData {
     issuesByCategory: { backlog: number; in_progress: number; done: number; cancelled: number };

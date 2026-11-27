@@ -112,11 +112,17 @@ class GetProjectHealth
             ? app(GetProjectTrends::class)->handle($project, $request->validated('period') ?? '30')
             : null;
 
+        // Per-milestone projection: same perimeter as the global KPIs.
+        $milestoneHealth = $canSeeGlobalKpis
+            ? app(GetMilestoneHealth::class)->handle($project)
+            : null;
+
         return $responder->toResponse($request, [
             'project' => ProjectPresenter::summary($project),
             'health' => $health?->toArray(),
             'canSeeGlobalKpis' => $canSeeGlobalKpis,
             'trends' => $trends?->toArray(),
+            'milestoneHealth' => $milestoneHealth?->toArray(),
             'myWorkload' => $myWorkload?->toArray(),
             'teamWorkload' => array_map(fn ($w) => $w->toArray(), $teamWorkload ?? []),
             'lateIssues' => $canSeeGlobalKpis ? $project->issues()
