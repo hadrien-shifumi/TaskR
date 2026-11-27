@@ -1,0 +1,19 @@
+# Smoke test only (see smoke-test-image.sh): merged over docker-compose.yml so
+# that the image under test is the one built locally, never a published one,
+# and the stack never collides with a developer's own TaskR containers —
+# generated container names, ephemeral loopback host ports.
+services:
+  app:
+    image: ${TASKR_SMOKE_IMAGE:?set by smoke-test-image.sh}
+    pull_policy: never
+    container_name: !reset
+    ports: !override
+      - "127.0.0.1::8080"
+  worker:
+    image: ${TASKR_SMOKE_IMAGE:?set by smoke-test-image.sh}
+    pull_policy: never
+    container_name: !reset
+  postgres:
+    container_name: !reset
+    ports: !override
+      - "127.0.0.1::5432"

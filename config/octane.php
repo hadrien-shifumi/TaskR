@@ -256,12 +256,16 @@ return [
     | Mercure Hub
     |--------------------------------------------------------------------------
     |
-    | When the FrankenPHP server starts, Octane derives the embedded Mercure
-    | hub configuration from this key (the framework's own
-    | mercureConfigFromBroadcasting() reads the default broadcasting
-    | connection first, then falls back to this explicit block). The
-    | subscriptions database must survive container image updates: it is
-    | persisted as a BoltDB file on the server's mounted storage volume.
+    | Null on purpose: Octane then derives the embedded Mercure hub from the
+    | default broadcasting connection (config/broadcasting.php) and hands its
+    | JWT keys to FrankenPHP through the environment. A non-null value is
+    | never merged with that derivation: it replaces it wholesale, is
+    | rendered verbatim as the `mercure { ... }` block of the Caddyfile, and
+    | a partial block keeps FrankenPHP from starting at all.
+    |
+    | The hub's subscriptions database needs nothing here: its Bolt transport
+    | follows Caddy's data directory, which the Dockerfile pins to the
+    | storage volume (XDG_DATA_HOME) so it survives container updates.
     |
     */
 

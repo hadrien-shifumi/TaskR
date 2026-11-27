@@ -1,22 +1,40 @@
-# Validates that the production image still builds when anything that goes
-# into it changes. Single-arch (amd64) and no push, to keep PR feedback fast —
-# release.yml is the workflow that builds both platforms and publishes.
+# Validates that the production image still builds — and starts — when anything
+# that goes into it changes. Single-arch (amd64) and no push, to keep PR
+# feedback fast: release.yml is the workflow that builds both platforms and
+# publishes. The image is booted before the job can pass
+# (.github/scripts/smoke-test-image.sh): v0.4.0 shipped an image that could
+# not start, and no workflow had ever run one.
 
 name: Docker
 
 on:
   pull_request:
     paths:
+      # Everything the runtime image is built from. v0.4.0 broke its image
+      # through config/octane.php alone, which did not trigger this workflow.
       - 'Dockerfile'
       - '.dockerignore'
       - 'docker/**'
+      - 'docker-compose.yml'
+      - '.env.example'
+      - 'app/**'
+      - 'bootstrap/**'
+      - 'config/**'
+      - 'database/**'
+      - 'lang/**'
+      - 'resources/**'
+      - 'routes/**'
+      - 'public/**'
       - 'composer.json'
       - 'composer.lock'
       - 'package.json'
       - 'package-lock.json'
       - 'vite.config.js'
-      - 'resources/**'
-      - 'public/**'
+      - 'tsconfig.json'
+      # The checks themselves.
+      - '.github/workflows/docker.yml'
+      - '.github/workflows/release.yml'
+      - '.github/scripts/**'
 
 permissions:
   contents: read
@@ -24,7 +42,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - name: Check out the repo
         uses: actions/checkout@v5
@@ -37,5 +55,14 @@ jobs:
         with:
           context: .
           platforms: linux/amd64
+          # Loaded into the daemon so that the smoke test can run it.
+          load: true
+          tags: taskr:smoke
           push: false
-          cache-from: type=gha
+          # One scope shared with release.yml: a release reuses the layers its
+          # pull request already built.
+          cache-from: type=gha,scope=image
+          cache-to: type=gha,scope=image,mode=max
+
+      - name: Smoke test (the image must start)
+        run: .github/scripts/smoke-test-image.sh taskr:smoke
