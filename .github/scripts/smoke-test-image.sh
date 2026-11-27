@@ -168,7 +168,7 @@ run --rm --entrypoint sh "$image" -ec '
         Dockerfile .dockerignore bootstrap/cache/config.php storage/logs/laravel.log; do
         [ ! -e "$path" ] || { echo "unexpected in the image: /app/$path"; exit 1; }
     done
-    for path in artisan composer.json VERSION public/build/manifest.json vendor/autoload.php; do
+    for path in artisan composer.json VERSION LICENSE public/build/manifest.json vendor/autoload.php; do
         [ -s "$path" ] || { echo "missing from the image: /app/$path"; exit 1; }
     done
 '
