@@ -57,13 +57,13 @@
         ],
         "test": [
             "@php artisan config:clear --ansi @no_additional_args",
-            "@php vendor/bin/pest --testsuite=Unit,Feature"
+            "@php vendor/bin/pest --testsuite=Unit,Feature --parallel"
         ],
         "test:e2e": [
             "Composer\\Config::disableProcessTimeout",
             "npm run build",
             "@php artisan config:clear --ansi @no_additional_args",
-            "@php vendor/bin/pest --testsuite=Browser"
+            "@php vendor/bin/pest --testsuite=Browser --parallel --processes=8"
         ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",

@@ -286,7 +286,8 @@ function SidebarSection({
     }
 
     return (
-        <section>
+        // Rows stack with the nav-list gap (`gap-1.5`), the sidebar rhythm.
+        <section className="flex flex-col gap-1.5">
             <h3
                 className={`flex items-center gap-1.5 rounded-lg px-2 pb-1 font-mono text-[12px] tracking-[0.08em] text-muted-foreground uppercase ${
                     isDropTarget ? 'bg-primary/10 ring-1 ring-primary/40' : ''

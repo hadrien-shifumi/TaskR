@@ -70,10 +70,11 @@ it('creates an issue in a column through its add button', function () {
     // Maquette: each column header carries a contextual "+" (aria-label
     // "Add an issue in <status>") that opens the creation dialog with the
     // column status preselected and the project locked to this board.
-    $page->click('[data-test="board-column-add-in_progress"]')
-        ->assertSee('New issue')
-        ->assertSeeIn('[data-test="board-issue-status"]', 'In Progress')
-        ->fill('board-issue-title', 'Added from column')
+    $page->click('[data-test="board-column-add-in_progress"]');
+    $page->assertSee('New issue');
+    $page->assertSeeIn('[data-test="board-issue-status"]', 'In Progress');
+
+    $page->fill('board-issue-title', 'Added from column')
         ->click('button[type="submit"]');
 
     $page->waitForText('Issue created.');
@@ -106,7 +107,12 @@ it('creates an issue with an estimate from the board dialog', function () {
 
     // The estimate is not part of issue creation: it rides the dedicated
     // route once the issue exists (creation redirects to the issue page).
-    $page->waitForText('Estimate updated.');
+    // Assert the rendered outcome rather than the flash banner: the banner
+    // rides that second round-trip, and an Inertia partial reload processed
+    // meanwhile swallows the one-shot flash. Being statement-level, this
+    // assertion is auto-retried by the plugin until the estimate has
+    // rendered.
+    $page->assertSee('6h30');
 
     app(WorkspaceContext::class)->set($workspace);
     $issue = Issue::withoutWorkspaceScope()

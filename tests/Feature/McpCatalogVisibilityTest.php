@@ -21,6 +21,7 @@ use App\Mcp\Tools\ListKnowledgeTrash;
 use App\Mcp\Tools\ListKnowledgeVersions;
 use App\Mcp\Tools\ListLabels;
 use App\Mcp\Tools\ListMembers;
+use App\Mcp\Tools\ListMilestones;
 use App\Mcp\Tools\ListProjects;
 use App\Mcp\Tools\ListSavedViewIssues;
 use App\Mcp\Tools\ListSavedViews;
@@ -80,6 +81,7 @@ class McpCatalogVisibilityTest extends TestCase
     private const READ_ONLY_TOOLS = [
         ListWorkspaces::class,
         ListMembers::class,
+        ListMilestones::class,
         ListProjects::class,
         GetProjectHealth::class,
         ListIssues::class,
@@ -140,6 +142,7 @@ class McpCatalogVisibilityTest extends TestCase
             'move_issue',
             'set_issue_milestone',
             'set_issue_dependencies',
+            'list_milestones',
             'list_templates',
             'list_statuses',
             'list_labels',
@@ -193,7 +196,7 @@ class McpCatalogVisibilityTest extends TestCase
         // authorization remains the real guard.
         $names = TaskrServer::tools()->namesFor();
 
-        $this->assertCount(58, $names);
+        $this->assertCount(59, $names);
         $this->assertContains('invite_member', $names);
         $this->assertContains('remove_member', $names);
         $this->assertContains('create_label', $names);
@@ -229,7 +232,7 @@ class McpCatalogVisibilityTest extends TestCase
             $readOnlyNames[] = $array['name'];
         }
 
-        $this->assertCount(20, $readOnlyNames);
+        $this->assertCount(21, $readOnlyNames);
 
         // Mutating tools carry no readOnlyHint; a read-only tool with no
         // other annotation drops the annotations object entirely.

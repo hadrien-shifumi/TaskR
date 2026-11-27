@@ -29,9 +29,9 @@ it('shows a freshly created token once in a copy card, then hides it', function 
 
     // "I've copied my token" dismisses the card: the one-shot flash value is
     // consumed on the next render and never shown again.
-    $page->click("I've copied my token")
-        ->assertDontSee('Token created just now')
-        ->assertMissing('[data-test="token-created-card"]');
+    $page->click("I've copied my token");
+    $page->assertMissing('[data-test="token-created-card"]');
+    $page->assertDontSee('Token created just now');
 
     $page->assertNoSmoke();
 });

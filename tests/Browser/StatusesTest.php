@@ -66,7 +66,11 @@ it('refuses to delete a status that issues still use until they are migrated', f
     $page->click('[role="option"]:has-text("Done")');
     $page->click('[data-test="confirm-delete-status"]');
 
-    $page->assertSee('Status deleted');
+    // Deletion is a two-step round-trip (migrate, then destroy). Assert the
+    // durable outcome rather than the confirmation flash: an Inertia partial
+    // reload processed in between swallows the one-shot flash. Statement-level,
+    // the assertion is auto-retried by the plugin until the row is gone.
+    $page->assertNotPresent('[data-test="status-row-In Progress"]');
 
     app(WorkspaceContext::class)->set($workspace);
     expect(

@@ -306,7 +306,9 @@ it('adds and removes assignees independently from the sidebar', function () {
     $page->assertSee($member->name);
     $page->assertDontSee($outsider->name);
     $page->click($member->name);
-    $page->waitForEvent('networkidle');
+    // The avatar carries its own remove control once the assignment has
+    // landed: that presence is what makes the database read below sound.
+    $page->assertPresent('button[aria-label="Remove '.$member->name.'"]');
 
     app(WorkspaceContext::class)->set($workspace);
     expect($issue->assignees()->where('user_id', $member->id)->exists())->toBeTrue();

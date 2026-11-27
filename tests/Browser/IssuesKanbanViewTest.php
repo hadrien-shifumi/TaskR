@@ -29,17 +29,15 @@ it('switches between list and kanban views', function () {
         ->assertMissing('[data-test="issues-kanban-view"]');
 
     // Switch to kanban.
-    $page->click('[data-test="issues-view-kanban"]')
-        ->waitForEvent('networkidle')
-        ->assertPresent('[data-test="project-board-'.$project->id.'"]')
-        ->assertMissing('[data-test^="issue-row-"]')
-        ->assertQueryStringHas('view', 'kanban');
+    $page->click('[data-test="issues-view-kanban"]');
+    $page->assertMissing('[data-test^="issue-row-"]');
+    $page->assertPresent('[data-test="project-board-'.$project->id.'"]');
+    $page->assertQueryStringHas('view', 'kanban');
 
     // Switch back to list.
-    $page->click('[data-test="issues-view-list"]')
-        ->waitForEvent('networkidle')
-        ->assertPresent('[data-test^="issue-row-"]')
-        ->assertQueryStringMissing('view');
+    $page->click('[data-test="issues-view-list"]');
+    $page->assertPresent('[data-test^="issue-row-"]');
+    $page->assertQueryStringMissing('view');
 });
 
 it('shows one board per active project in the kanban view', function () {

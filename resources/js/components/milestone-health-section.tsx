@@ -21,7 +21,7 @@ export function MilestoneHealthSection({ data }: { data: MilestoneHealthData | n
             <CardContent className="grid gap-3.5 px-5">
                 <h2 className="text-base font-semibold">{t('projectHealth.milestones.sectionTitle')}</h2>
                 {milestones.length === 0 ? (
-                    <p className="py-6 text-center text-xs text-muted-foreground">
+                    <p data-test="milestone-health-empty" className="py-6 text-center text-xs text-muted-foreground">
                         {t('projectHealth.milestones.empty')}
                     </p>
                 ) : (
@@ -37,7 +37,7 @@ export function MilestoneHealthSection({ data }: { data: MilestoneHealthData | n
                         </TableHeader>
                         <TableBody>
                             {milestones.map((row) => (
-                                <TableRow key={row.id}>
+                                <TableRow key={row.id} data-test="milestone-health-row" data-milestone-id={row.id}>
                                     <TableCell>
                                         <Link
                                             href={route('milestones.show', row.id)}

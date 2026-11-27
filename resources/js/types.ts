@@ -39,6 +39,18 @@ export interface PageSharedProps {
      * reload lands.
      */
     mentionables?: Mentionable[];
+    /**
+     * Active projects of the workspace within the account's perimeter,
+     * feeding the sidebar sub-list under the "Projects" nav entry.
+     * Lazy shared prop: rehydrated on every navigation.
+     */
+    navProjects: NavProject[];
+}
+
+/** Minimal project reference for the sidebar sub-list. */
+export interface NavProject {
+    id: string;
+    name: string;
 }
 
 /** Live state of one of the user's running timers (shared prop + timer endpoints). */

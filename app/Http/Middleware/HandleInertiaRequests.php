@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Actions\TimeTracking\ShowActiveTimers;
 use App\Models\ActiveTimer;
 use App\Models\CommentMention;
+use App\Models\Project;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Presenters\Mentions\MentionPresenter;
@@ -107,6 +108,34 @@ class HandleInertiaRequests
             'mentionables' => Inertia::defer(fn (): array => $user !== null && $workspace !== null
                 ? MentionPresenter::mentionables($workspace, $user)
                 : []),
+            // Lazy: the workspace's active projects within the account's
+            // perimeter, feeding the sidebar sub-list under the
+            // "Projects" nav entry. Resolved when the response renders,
+            // so every navigation carries the fresh list.
+            'navProjects' => fn (): array => $user !== null && $workspace !== null
+                ? $this->navProjects($workspace, $user)
+                : [],
         ];
+    }
+
+    /**
+     * Sidebar sub-list payload: active projects of the workspace within
+     * the account's perimeter (a guest only sees its roster), ordered
+     * by name like the projects page.
+     *
+     * @return list<array{id: string, name: string}>
+     */
+    private function navProjects(Workspace $workspace, User $user): array
+    {
+        $scope = app(WorkspaceContext::class)->accessibleProjectIds($user);
+
+        return $workspace->projects()
+            ->active()
+            ->when($scope !== null, fn ($query) => $query->whereIn('id', $scope))
+            ->orderBy('name')
+            ->get(['id', 'name'])
+            ->map(fn (Project $project) => ['id' => $project->id, 'name' => $project->name])
+            ->values()
+            ->all();
     }
 }

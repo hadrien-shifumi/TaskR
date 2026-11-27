@@ -2,6 +2,7 @@
 
 namespace App\Mcp\Tools;
 
+use App\Actions\Projects\GetMilestoneHealth;
 use App\Actions\Projects\GetProjectHealth as GetProjectHealthAction;
 use App\Mcp\Support\AgentTool;
 use App\Models\Project;
@@ -16,7 +17,7 @@ use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
 #[IsReadOnly]
 #[Name('get_project_health')]
-#[Description('Get health indicators for a project: completion percentage, weighted completion (estimate-based), leaf completion (issues without sub-issues), overdue issues, time consumption, projection status. When the workspace setting "parents as containers" is enabled, container parents leave the weighted completion. For anyone outside the project team, the project is not found (the workspace owner sees every project). The global KPIs follow the project role: the project owner, its managers and the workspace owner receive them; project members and guests receive only their own workload (myWorkload).')]
+#[Description('Get health indicators for a project: completion percentage, weighted completion (estimate-based), leaf completion (issues without sub-issues), overdue issues, time consumption, projection status. Managers also receive a per-milestone projection (milestones: status, real and expected pace, late-panel flag). When the workspace setting "parents as containers" is enabled, container parents leave the weighted completion. For anyone outside the project team, the project is not found (the workspace owner sees every project). The global KPIs follow the project role: the project owner, its managers and the workspace owner receive them; project members and guests receive only their own workload (myWorkload).')]
 class GetProjectHealth extends AgentTool
 {
     /**
@@ -56,8 +57,11 @@ class GetProjectHealth extends AgentTool
 
         $health = GetProjectHealthAction::run($project, $user);
 
+        $milestoneHealth = GetMilestoneHealth::run($project);
+
         return Response::structured([
             'health' => $health->toArray(),
+            'milestones' => $milestoneHealth->milestones,
         ]);
     }
 }

@@ -58,9 +58,9 @@ it('test_mention_autocomplete_inserts_handle_in_comment_editor', function () {
     $page->click('[data-test="comments-accordion-trigger"]');
 
     // Typing "@" opens the autocomplete of the workspace members.
-    $page->fill('[data-test="comment-body"]', '@')
-        ->assertVisible('[data-test="mention-autocomplete"]')
-        ->assertPresent('[data-test="mention-option"][data-handle="'.$member->handle.'"]');
+    $page->fill('[data-test="comment-body"]', '@');
+    $page->assertVisible('[data-test="mention-autocomplete"]');
+    $page->assertPresent('[data-test="mention-option"][data-handle="'.$member->handle.'"]');
 
     $page->click('[data-test="mention-option"][data-handle="'.$member->handle.'"]');
 
@@ -112,8 +112,11 @@ it('test_mentioned_member_sees_sidebar_badge_and_unread_mentions_page', function
     $page->click('[data-test="comments-accordion-trigger"]');
 
     $page->fill('[data-test="comment-body"]', '@'.$member->handle.' peux-tu relire ?')
-        ->click('[data-test="comment-submit"]')
-        ->waitForEvent('networkidle');
+        ->click('[data-test="comment-submit"]');
+    // The comment shows up in the thread once its round-trip has landed —
+    // `networkidle` resolves instantly on an already-loaded document, so the
+    // retried assertion is what actually waits before leaving the page.
+    $page->assertSee('peux-tu relire ?');
 
     // The badge is computed per Inertia visit: switching account and
     // navigating is enough, no real-time wait involved.
@@ -148,8 +151,10 @@ it('test_mark_mention_read_and_read_all', function () {
     $page->click('[data-test="comments-accordion-trigger"]');
 
     $page->fill('[data-test="comment-body"]', '@'.$member->handle.' premier ping')
-        ->click('[data-test="comment-submit"]')
-        ->waitForEvent('networkidle');
+        ->click('[data-test="comment-submit"]');
+    // Each comment must be stored before the page is left: navigating away
+    // would cancel the pending request.
+    $page->assertSee('premier ping');
 
     $page->navigate('/issues/'.$secondIssue);
 
@@ -157,8 +162,8 @@ it('test_mark_mention_read_and_read_all', function () {
     $page->click('[data-test="comments-accordion-trigger"]');
 
     $page->fill('[data-test="comment-body"]', '@'.$member->handle.' second ping')
-        ->click('[data-test="comment-submit"]')
-        ->waitForEvent('networkidle');
+        ->click('[data-test="comment-submit"]');
+    $page->assertSee('second ping');
 
     $this->actingAs($member);
     $page = visit('/mentions');

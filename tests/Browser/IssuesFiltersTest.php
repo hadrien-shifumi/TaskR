@@ -82,8 +82,6 @@ function seedIssuesFiltersWorkspace(): array
     ];
 }
 
-const ISSUE_ROWS = '[data-test^="issue-row-"]';
-
 /** Opens a filter select and picks the option with the given label. */
 function selectFilterOption($page, string $selectTestId, string $optionLabel): void
 {

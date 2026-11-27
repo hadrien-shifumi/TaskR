@@ -33,6 +33,7 @@ use App\Mcp\Tools\ListKnowledgeTrash;
 use App\Mcp\Tools\ListKnowledgeVersions;
 use App\Mcp\Tools\ListLabels;
 use App\Mcp\Tools\ListMembers;
+use App\Mcp\Tools\ListMilestones;
 use App\Mcp\Tools\ListProjects;
 use App\Mcp\Tools\ListSavedViewIssues;
 use App\Mcp\Tools\ListSavedViews;
@@ -100,6 +101,7 @@ class TaskrServer extends Server
         RemoveMember::class,
         ListMembers::class,
         // Projects
+        ListMilestones::class,
         ListProjects::class,
         CreateProject::class,
         UpdateProject::class,

@@ -38,11 +38,11 @@ it('lets an invited user join the workspace through the acceptance link', functi
         ->assertSee('WS');
 
     // Bob sees the workspace's projects and issues.
-    $page->click('Projects')
-        ->assertSee('Site vitrine');
+    $page->click('Projects');
+    $page->assertSee('Site vitrine');
 
-    $page->click('Issues')
-        ->assertSee('Page de profil');
+    $page->click('Issues');
+    $page->assertSee('Page de profil');
 
     app(WorkspaceContext::class)->set($workspace);
     expect($workspace->hasMember($bob))->toBeTrue()
@@ -72,9 +72,9 @@ it('switches the active workspace and only shows its data', function () {
 
     $page->assertPathIs('/');
 
-    $page->click('Projects')
-        ->assertSee('Projet B')
-        ->assertDontSee('Projet A');
+    $page->click('Projects');
+    $page->assertDontSee('Projet A');
+    $page->assertSee('Projet B');
 
     $page->assertNoSmoke();
 });

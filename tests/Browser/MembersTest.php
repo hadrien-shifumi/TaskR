@@ -27,6 +27,10 @@ it('lets an owner invite a guest with a project scope from the members settings'
         ->click('button:has-text("Projet client")')
         ->click('button[type="submit"]');
 
+    // The pending row appears once the invitation round-trip has landed:
+    // statement-level, the assertion is auto-retried by the plugin.
+    $page->assertPresent('[data-test="invitation-row-client@example.com"]');
+
     app(WorkspaceContext::class)->set($workspace);
     $dbg = Invitation::withoutWorkspaceScope()
         ->where('workspace_id', $workspace->id)
@@ -75,8 +79,8 @@ it('lets an owner resend and cancel a pending invitation from the members settin
     // Scenario "Renvoyer l'invitation": the token is regenerated and the
     // fresh acceptance link is exposed through the flash.
     $page->click('[data-test="invitation-row-bob@example.com"] button[aria-label="Actions for invitation bob@example.com"]')
-        ->click('Resend invitation')
-        ->assertSee('Invitation resent for bob@example.com');
+        ->click('Resend invitation');
+    $page->assertSee('Invitation resent for bob@example.com');
 
     app(WorkspaceContext::class)->set($workspace);
     $fresh = Invitation::withoutWorkspaceScope()->findOrFail($invitation->id);
@@ -87,8 +91,8 @@ it('lets an owner resend and cancel a pending invitation from the members settin
     // so accept them.
     $page->script('window.confirm = () => true');
     $page->click('[data-test="invitation-row-bob@example.com"] button[aria-label="Actions for invitation bob@example.com"]')
-        ->click('Cancel invitation…')
-        ->assertDontSee('Invitation sent');
+        ->click('Cancel invitation…');
+    $page->assertDontSee('Invitation sent');
 
     app(WorkspaceContext::class)->set($workspace);
     expect(Invitation::withoutWorkspaceScope()->where('id', $invitation->id)->exists())->toBeFalse();
@@ -112,6 +116,7 @@ it('lets an owner invite a member with a project perimeter from the members sett
         ->fill('invite-email', 'peer@example.com')
         ->click('button:has-text("Projet client")')
         ->click('button[type="submit"]');
+    $page->assertPresent('[data-test="invitation-row-peer@example.com"]');
 
     app(WorkspaceContext::class)->set($workspace);
     $invitation = Invitation::withoutWorkspaceScope()
@@ -144,10 +149,10 @@ it('offers no perimeter editor on a member row — access is piloted by the proj
 
     // The row menu offers only the removal: the perimeter editor is gone,
     // the team roster is the single source of project access.
-    $page->click('button[aria-label="Actions for Robin"]')
-        ->assertSee('Remove from workspace…')
-        ->assertMissing('button:has-text("Edit perimeter…")')
-        ->assertDontSee('Edit perimeter');
+    $page->click('button[aria-label="Actions for Robin"]');
+    $page->assertSee('Remove from workspace…');
+    $page->assertMissing('button:has-text("Edit perimeter…")');
+    $page->assertDontSee('Edit perimeter');
 
     $page->assertNoSmoke();
 });

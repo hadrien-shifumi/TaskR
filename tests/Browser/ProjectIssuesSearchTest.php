@@ -8,7 +8,6 @@ use App\Models\Workspace;
 use App\Support\WorkspaceContext;
 
 const BOARD_CARDS = '[data-test^="board-card-"]:not([data-test*="timer"])';
-const ISSUE_ROWS = '[data-test^="issue-row-"]';
 
 /**
  * Seeds two backlog issues on the browser project, one of them returned

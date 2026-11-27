@@ -164,7 +164,8 @@ it('flips the blocked badge to Unblockable once the blocker is done', function (
     $page = visit('/issues/'.$blocker->id);
     $page->click('@status-select');
     $page->click('[role="option"]:has-text("Done")');
-    $page->waitForEvent('networkidle');
+    // The select echoes the stored status once the round-trip has landed.
+    $page->assertSeeIn('@status-select', 'Done');
 
     // The dependent keeps the link but turns green: every blocker is done.
     $fiche = visit('/issues/'.$dependent->id);

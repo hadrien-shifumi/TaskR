@@ -51,6 +51,15 @@ uses()->in('Browser')->beforeEach(function (): void {
 });
 
 /**
+ * Shared Browser selector: any row of the issues list (list, table and
+ * saved-view renders alike). Declared once here — two test files used to
+ * declare it locally, and the duplicate global constant aborted parallel
+ * (ParaTest) runs, which load every test file of a worker in one process
+ * after Laravel's error handler is armed.
+ */
+const ISSUE_ROWS = '[data-test^="issue-row-"]';
+
+/**
  * Browser fixture: an owner with a workspace (optionally a project), mirroring
  * the `setupWorkspace()` pattern of the feature suites. Binds the workspace
  * context in the test process so domain actions run as objects and relation

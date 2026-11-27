@@ -136,9 +136,9 @@ it('keeps a long comment out of the timeline and reaches it through its anchor',
     // it instead of duplicating its body in the timeline. The comments
     // accordion is still folded: the jump must open it first so the anchor
     // exists, then scroll and flash the target row.
-    $page->assertNotPresent('[data-test="comments-panel"]')
-        ->click('[data-test="activity-event-row"]:has-text("Comment added") [data-test="activity-comment-toggle"]')
-        ->assertPresent('[data-test="comments-panel"]');
+    $page->assertNotPresent('[data-test="comments-panel"]');
+    $page->click('[data-test="activity-event-row"]:has-text("Comment added") [data-test="activity-comment-toggle"]');
+    $page->assertPresent('[data-test="comments-panel"]');
 
     $flashed = $page->script(<<<JS
         (() => {
@@ -165,17 +165,17 @@ it('reaches a live comment from the modal timeline by opening the comments accor
     $this->actingAs($owner);
 
     $page = visit("/projects/{$project->id}/board");
-    $page->click("[data-test=\"board-card-{$issue->id}\"] a")
-        ->assertSeeIn('[data-test="issue-detail-dialog"] h1', 'Saut en modal');
+    $page->click("[data-test=\"board-card-{$issue->id}\"] a");
+    $page->assertSeeIn('[data-test="issue-detail-dialog"] h1', 'Saut en modal');
 
     // Both sections start folded inside the modal: open the timeline, then
     // jump to the comment. The comments accordion must unfold first so the
     // anchor exists, then the target row is scrolled and flashed.
-    $page->click('[data-test="issue-detail-dialog"] [data-test="activity-accordion-trigger"]')
-        ->assertNotPresent('[data-test="issue-detail-dialog"] [data-test="comments-panel"]')
-        ->click('[data-test="issue-detail-dialog"] [data-test="activity-comment-toggle"]')
-        ->assertPresent('[data-test="issue-detail-dialog"] [data-test="comments-panel"]')
-        ->assertSeeIn('[data-test="issue-detail-dialog"] [data-test="comments-panel"]', 'Vu en revue en modal');
+    $page->click('[data-test="issue-detail-dialog"] [data-test="activity-accordion-trigger"]');
+    $page->assertNotPresent('[data-test="issue-detail-dialog"] [data-test="comments-panel"]');
+    $page->click('[data-test="issue-detail-dialog"] [data-test="activity-comment-toggle"]');
+    $page->assertPresent('[data-test="issue-detail-dialog"] [data-test="comments-panel"]');
+    $page->assertSeeIn('[data-test="issue-detail-dialog"] [data-test="comments-panel"]', 'Vu en revue en modal');
 
     $flashed = $page->script(<<<JS
         (() => {
@@ -213,9 +213,9 @@ it('expands the journal snapshot of a deleted comment', function () {
         ->assertDontSeeIn('[data-test="activity-section"]', 'Ce commentaire va disparaitre');
 
     // The comment is gone: the chevron expands the journal snapshot.
-    $page->click('[data-test="activity-event-row"]:has-text("Comment deleted") [data-test="activity-comment-toggle"]')
-        ->assertPresent('[data-test="activity-comment-snapshot"]')
-        ->assertSeeIn('[data-test="activity-comment-snapshot"]', 'Ce commentaire va disparaitre');
+    $page->click('[data-test="activity-event-row"]:has-text("Comment deleted") [data-test="activity-comment-toggle"]');
+    $page->assertPresent('[data-test="activity-comment-snapshot"]');
+    $page->assertSeeIn('[data-test="activity-comment-snapshot"]', 'Ce commentaire va disparaitre');
 
     $page->assertNoSmoke();
 });

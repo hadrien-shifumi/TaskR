@@ -458,7 +458,7 @@ export default function Health() {
                                         </h4>
                                         <ul className="mt-2 grid gap-1.5">
                                             {lateMilestones.map((row) => (
-                                                <li key={row.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                                                <li key={row.id} data-test="late-milestone-row" data-milestone-id={row.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
                                                     <Link
                                                         href={route('milestones.show', row.id)}
                                                         className="font-medium hover:text-primary"
@@ -477,6 +477,8 @@ export default function Health() {
                                     </div>
                                 ) : null}
                             </div>
+
+                            <MilestoneHealthSection data={milestoneHealth} />
                         </div>
 
                         <Card className="py-5">
@@ -567,8 +569,6 @@ export default function Health() {
                             </CardContent>
                         </Card>
                     </div>
-
-                    <MilestoneHealthSection data={milestoneHealth} />
                 </>
             ) : null}
 

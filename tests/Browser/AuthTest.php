@@ -139,9 +139,9 @@ it('registers through an invitation link and lands in the invited workspace', fu
         ->click('Accept the invitation');
 
     // The signup tab must hand the acceptance URL over to registration.
-    $page->assertPathIs('/login')
-        ->click('Sign up')
-        ->assertPathIs('/register');
+    $page->assertPathIs('/login');
+    $page->click('Sign up');
+    $page->assertPathIs('/register');
 
     // The personal workspace gets a distinct name: landing on the invited
     // workspace afterwards is the very regression this journey protects.

@@ -37,22 +37,22 @@ it('collapses the comments and activity sections by default and toggles them fro
         ->assertDontSee('Issue created');
 
     // Opening the comments accordion reveals the thread and the comment box.
-    $page->click('[data-test="comments-accordion-trigger"]')
-        ->assertPresent('[data-test="comments-panel"]')
-        ->assertSeeIn('[data-test="comments-panel"]', 'Premier commentaire');
+    $page->click('[data-test="comments-accordion-trigger"]');
+    $page->assertPresent('[data-test="comments-panel"]');
+    $page->assertSeeIn('[data-test="comments-panel"]', 'Premier commentaire');
 
     // A second click folds it back.
-    $page->click('[data-test="comments-accordion-trigger"]')
-        ->assertNotPresent('[data-test="comments-panel"]');
+    $page->click('[data-test="comments-accordion-trigger"]');
+    $page->assertNotPresent('[data-test="comments-panel"]');
 
     // Same toggle for the activity timeline.
-    $page->click('[data-test="activity-accordion-trigger"]')
-        ->assertPresent('[data-test="activity-panel"]')
-        ->assertSeeIn('[data-test="activity-panel"]', 'Issue created');
+    $page->click('[data-test="activity-accordion-trigger"]');
+    $page->assertPresent('[data-test="activity-panel"]');
+    $page->assertSeeIn('[data-test="activity-panel"]', 'Issue created');
 
-    $page->click('[data-test="activity-accordion-trigger"]')
-        ->assertNotPresent('[data-test="activity-panel"]')
-        ->assertNoSmoke();
+    $page->click('[data-test="activity-accordion-trigger"]');
+    $page->assertNotPresent('[data-test="activity-panel"]');
+    $page->assertNoSmoke();
 });
 
 it('truncates a long comment with a show more control', function () {
@@ -131,11 +131,11 @@ it('truncates a long comment with a show more control', function () {
     expect($tailHidden['found'])->toBeTrue()
         ->and($tailHidden['hidden'])->toBeTrue();
 
-    $page->assertPresent('[data-test="comment-expand"]')
-        ->click('[data-test="comment-expand"]')
-        ->assertSee($tail)
-        ->assertPresent('[data-test="comment-collapse"]')
-        ->assertNotPresent('[data-test="comment-expand"]');
+    $page->assertPresent('[data-test="comment-expand"]');
+    $page->click('[data-test="comment-expand"]');
+    $page->assertSee($tail);
+    $page->assertPresent('[data-test="comment-collapse"]');
+    $page->assertNotPresent('[data-test="comment-expand"]');
 
     // …and folds back on "show less".
     $page->click('[data-test="comment-collapse"]');
@@ -166,9 +166,9 @@ it('shows no clamp control on a short comment', function () {
     $this->actingAs($owner);
 
     $page = visit('/issues/'.$issue->id);
-    $page->click('[data-test="comments-accordion-trigger"]')
-        ->assertSeeIn('[data-test="comments-panel"]', 'Bref et clair.')
-        ->assertNotPresent('[data-test="comment-expand"]')
-        ->assertNotPresent('[data-test="comment-collapse"]')
-        ->assertNoSmoke();
+    $page->click('[data-test="comments-accordion-trigger"]');
+    $page->assertSeeIn('[data-test="comments-panel"]', 'Bref et clair.');
+    $page->assertNotPresent('[data-test="comment-expand"]');
+    $page->assertNotPresent('[data-test="comment-collapse"]');
+    $page->assertNoSmoke();
 });

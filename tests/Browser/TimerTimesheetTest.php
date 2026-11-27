@@ -23,14 +23,14 @@ it('starts a timer from the issue page and validates the pre-filled proposal', f
     $page = visit('/issues/'.$issue->id);
     $page->assertNotPresent('@timer-widget');
 
-    $page->click('@issue-timer-toggle')
-        ->assertVisible('@timer-widget')
-        ->assertSeeIn('@timer-widget', 'Chrono target');
+    $page->click('@issue-timer-toggle');
+    $page->assertVisible('@timer-widget');
+    $page->assertSeeIn('@timer-widget', 'Chrono target');
 
     // The stop opens the confirmation dialog with the measured time,
     // pre-filled as a duration string floored to the minute ("1h45", "30m"…).
-    $page->click("@timer-widget-stop-{$issue->id}")
-        ->assertVisible('@log-time-hours');
+    $page->click("@timer-widget-stop-{$issue->id}");
+    $page->assertVisible('@log-time-hours');
     expect($page->value('@log-time-hours'))->toMatch('/^\d+h(\d{2})?$|^\d+m$/');
 
     $page->fill('@log-time-note', 'chrono run');
@@ -61,12 +61,15 @@ it('pre-fills the stop proposal as a coherent duration string, seconds dropped',
     $this->actingAs($owner);
     $page = visit('/issues/'.$issue->id);
 
-    $page->click("@timer-widget-stop-{$issue->id}")
-        ->assertVisible('@log-time-hours');
+    $page->click("@timer-widget-stop-{$issue->id}");
+    $page->assertVisible('@log-time-hours');
 
     expect($page->value('@log-time-hours'))->toBe('1h45');
 
     $page->click('@entry-submit');
+    // The dialog closes on success: its disappearance proves the store
+    // round-trip landed before the database is read.
+    $page->assertNotPresent('@log-time-hours');
 
     app(WorkspaceContext::class)->set($workspace);
     $entry = $issue->timeEntries()->first();
@@ -83,26 +86,27 @@ it('asks stop-or-parallel and runs the second timer alongside the first', functi
 
     $this->actingAs($owner);
     $page = visit('/issues/'.$first->id);
-    $page->click('@issue-timer-toggle')
-        ->assertVisible("@timer-widget-row-{$first->id}");
+    $page->click('@issue-timer-toggle');
+    $page->assertVisible("@timer-widget-row-{$first->id}");
 
     // Starting on the second issue asks what to do with the running one.
     $page = visit('/issues/'.$second->id);
-    $page->click('@issue-timer-toggle')
-        ->assertVisible('@timer-conflict-dialog');
+    $page->click('@issue-timer-toggle');
+    $page->assertVisible('@timer-conflict-dialog');
 
     // Parallel: both timers keep running, each with its own stop button.
-    $page->click('@timer-conflict-parallel')
-        ->assertVisible("@timer-widget-row-{$first->id}")
-        ->assertVisible("@timer-widget-row-{$second->id}");
+    $page->click('@timer-conflict-parallel');
+    $page->assertVisible("@timer-widget-row-{$first->id}");
+    $page->assertVisible("@timer-widget-row-{$second->id}");
 
     // Stopping the first one only opens its own proposal.
-    $page->click("@timer-widget-stop-{$first->id}")
-        ->assertVisible('@log-time-hours')
-        ->assertSee('First timed issue');
+    $page->click("@timer-widget-stop-{$first->id}");
+    $page->assertVisible('@log-time-hours');
+    $page->assertSee('First timed issue');
 
     $page->fill('@log-time-note', 'parallel run');
     $page->click('@entry-submit');
+    $page->assertNotPresent('@log-time-hours');
 
     app(WorkspaceContext::class)->set($workspace);
     expect($first->timeEntries()->count())->toBe(1)
@@ -118,20 +122,21 @@ it('offers to stop the running timer instead, proposing its elapsed time', funct
 
     $this->actingAs($owner);
     $page = visit('/issues/'.$first->id);
-    $page->click('@issue-timer-toggle')
-        ->assertVisible("@timer-widget-row-{$first->id}");
+    $page->click('@issue-timer-toggle');
+    $page->assertVisible("@timer-widget-row-{$first->id}");
 
     // The explicit stop answer replaces the old silent substitution: the
     // first timer is stopped and its time proposed, the second one runs.
     $page = visit('/issues/'.$second->id);
-    $page->click('@issue-timer-toggle')
-        ->assertVisible('@timer-conflict-dialog')
-        ->click('@timer-conflict-stop')
-        ->assertVisible('@log-time-hours')
-        ->assertSee('First timed issue');
+    $page->click('@issue-timer-toggle');
+    $page->assertVisible('@timer-conflict-dialog');
+    $page->click('@timer-conflict-stop');
+    $page->assertVisible('@log-time-hours');
+    $page->assertSee('First timed issue');
 
     $page->fill('@log-time-note', 'stopped run');
     $page->click('@entry-submit');
+    $page->assertNotPresent('@log-time-hours');
 
     app(WorkspaceContext::class)->set($workspace);
     expect($first->timeEntries()->count())->toBe(1)
@@ -191,14 +196,16 @@ it('filters the weekly entries list by clicking a grid row of the timesheet', fu
         ->assertSeeIn('@entries-list', 'beta note');
 
     // Clicking the alpha row of the grid filters the entries list to alpha.
-    $page->click("[data-test=\"grid-row-toggle-{$alpha->id}\"]")
-        ->assertSeeIn('@entries-list', 'alpha note')
-        ->assertDontSeeIn('@entries-list', 'beta note');
+    // Statement-level assertions are auto-retried by the plugin; the one
+    // that flips on the stale page comes first.
+    $page->click("[data-test=\"grid-row-toggle-{$alpha->id}\"]");
+    $page->assertDontSeeIn('@entries-list', 'beta note');
+    $page->assertSeeIn('@entries-list', 'alpha note');
 
     // Clicking the same row again clears the filter.
-    $page->click("[data-test=\"grid-row-toggle-{$alpha->id}\"]")
-        ->assertSeeIn('@entries-list', 'alpha note')
-        ->assertSeeIn('@entries-list', 'beta note');
+    $page->click("[data-test=\"grid-row-toggle-{$alpha->id}\"]");
+    $page->assertSeeIn('@entries-list', 'beta note');
+    $page->assertSeeIn('@entries-list', 'alpha note');
 });
 
 it('switches the weekly entries filter when clicking another grid row and clears it', function () {
@@ -212,19 +219,19 @@ it('switches the weekly entries filter when clicking another grid row and clears
     $page = visit('/my-time');
 
     // Filtering on the alpha row…
-    $page->click("[data-test=\"grid-row-toggle-{$alpha->id}\"]")
-        ->assertSeeIn('@entries-list', 'alpha note')
-        ->assertDontSeeIn('@entries-list', 'beta note');
+    $page->click("[data-test=\"grid-row-toggle-{$alpha->id}\"]");
+    $page->assertDontSeeIn('@entries-list', 'beta note');
+    $page->assertSeeIn('@entries-list', 'alpha note');
 
     // …then switching the filter to the beta row re-targets the entries list.
-    $page->click("[data-test=\"grid-row-toggle-{$beta->id}\"]")
-        ->assertSeeIn('@entries-list', 'beta note')
-        ->assertDontSeeIn('@entries-list', 'alpha note');
+    $page->click("[data-test=\"grid-row-toggle-{$beta->id}\"]");
+    $page->assertDontSeeIn('@entries-list', 'alpha note');
+    $page->assertSeeIn('@entries-list', 'beta note');
 
     // A visible clear-filter control comes back to the full list.
-    $page->click('@entries-filter-clear')
-        ->assertSeeIn('@entries-list', 'alpha note')
-        ->assertSeeIn('@entries-list', 'beta note');
+    $page->click('@entries-filter-clear');
+    $page->assertSeeIn('@entries-list', 'alpha note');
+    $page->assertSeeIn('@entries-list', 'beta note');
 });
 
 it('resets the weekly entries filter when navigating to another week', function () {
@@ -237,18 +244,18 @@ it('resets the weekly entries filter when navigating to another week', function 
     $this->actingAs($owner);
     $page = visit('/my-time');
 
-    $page->click("[data-test=\"grid-row-toggle-{$beta->id}\"]")
-        ->assertSeeIn('@entries-list', 'beta note')
-        ->assertDontSeeIn('@entries-list', 'alpha note');
+    $page->click("[data-test=\"grid-row-toggle-{$beta->id}\"]");
+    $page->assertDontSeeIn('@entries-list', 'alpha note');
+    $page->assertSeeIn('@entries-list', 'beta note');
 
     // Moving to another week clears the filter…
-    $page->click('@week-previous')
-        ->assertVisible('@entries-empty');
+    $page->click('@week-previous');
+    $page->assertVisible('@entries-empty');
 
     // …and the full list is back on the way home.
-    $page->click('@week-next')
-        ->assertSeeIn('@entries-list', 'alpha note')
-        ->assertSeeIn('@entries-list', 'beta note');
+    $page->click('@week-next');
+    $page->assertSeeIn('@entries-list', 'alpha note');
+    $page->assertSeeIn('@entries-list', 'beta note');
 });
 
 it('warns and still validates a timer left running for more than 24 hours', function () {
@@ -268,12 +275,13 @@ it('warns and still validates a timer left running for more than 24 hours', func
     $page->assertVisible('@timer-widget')
         ->assertSeeIn("@timer-widget-elapsed-{$issue->id}", '26:');
 
-    $page->click("@timer-widget-stop-{$issue->id}")
-        ->assertVisible('@log-time-hours')
-        ->assertSee('more than 24 hours');
+    $page->click("@timer-widget-stop-{$issue->id}");
+    $page->assertVisible('@log-time-hours');
+    $page->assertSee('more than 24 hours');
 
     $page->fill('@log-time-note', 'forgotten run');
     $page->click('@entry-submit');
+    $page->assertNotPresent('@log-time-hours');
 
     app(WorkspaceContext::class)->set($workspace);
     $entry = $issue->timeEntries()->first();

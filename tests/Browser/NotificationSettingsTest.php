@@ -32,8 +32,8 @@ it('test_user_can_opt_in_and_save_preferences', function () {
 
     $page = visit('/settings/notifications');
 
-    $page->click('[data-test="notification-opt-in"]')
-        ->assertAttributeContains('[data-test="notification-opt-in"]', 'aria-checked', 'true');
+    $page->click('[data-test="notification-opt-in"]');
+    $page->assertAttributeContains('[data-test="notification-opt-in"]', 'aria-checked', 'true');
 
     // Frequency: Base UI select, the option carries the translated label.
     $page->click('[data-test="notification-frequency"]')
@@ -43,12 +43,14 @@ it('test_user_can_opt_in_and_save_preferences', function () {
 
     // Timezone: the list is long, type-ahead narrows it down.
     $page->click('[data-test="notification-timezone"]')
-        ->keys('[data-test="notification-timezone"]', 'A')
-        ->assertPresent('[role="option"]:has-text("America/New_York")')
-        ->click('[role="option"]:has-text("America/New_York")');
+        ->keys('[data-test="notification-timezone"]', 'A');
+    $page->assertPresent('[role="option"]:has-text("America/New_York")');
+    $page->click('[role="option"]:has-text("America/New_York")');
 
-    $page->click('[data-test="notification-save"]')
-        ->waitForEvent('networkidle');
+    // The confirmation flash proves the save round-trip landed before the
+    // database is read.
+    $page->click('[data-test="notification-save"]');
+    $page->assertSee('Notification preferences saved.');
 
     app(WorkspaceContext::class)->set($workspace);
     $preference = NotificationPreference::query()
@@ -82,11 +84,11 @@ it('test_user_can_opt_out', function () {
 
     $page = visit('/settings/notifications');
 
-    $page->assertAttributeContains('[data-test="notification-opt-in"]', 'aria-checked', 'true')
-        ->click('[data-test="notification-opt-in"]')
-        ->assertAttributeContains('[data-test="notification-opt-in"]', 'aria-checked', 'false')
-        ->click('[data-test="notification-save"]')
-        ->waitForEvent('networkidle');
+    $page->assertAttributeContains('[data-test="notification-opt-in"]', 'aria-checked', 'true');
+    $page->click('[data-test="notification-opt-in"]');
+    $page->assertAttributeContains('[data-test="notification-opt-in"]', 'aria-checked', 'false');
+    $page->click('[data-test="notification-save"]');
+    $page->assertSee('Notification preferences saved.');
 
     // Opting out only flips the flag: the other settings stay intact.
     app(WorkspaceContext::class)->set($workspace);

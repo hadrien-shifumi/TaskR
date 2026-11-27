@@ -148,10 +148,11 @@ it('completes the parent through the UI once every child is done, and a reopened
     expect($parent->fresh()->auto_complete_children)->toBeTrue();
 
     // First child done: the parent stays open — the second one is still active.
+    // The select echoes the stored status once the round-trip has landed.
     $page = visit('/issues/'.$childOne->id);
     $page->click('@status-select')
         ->click('[role="option"]:has-text("Done")');
-    $page->waitForEvent('networkidle');
+    $page->assertSeeIn('@status-select', 'Done');
 
     $page = visit('/issues/'.$parent->id);
     $page->assertSeeIn('@status-select', 'Backlog');
@@ -160,7 +161,7 @@ it('completes the parent through the UI once every child is done, and a reopened
     $page = visit('/issues/'.$childTwo->id);
     $page->click('@status-select')
         ->click('[role="option"]:has-text("Done")');
-    $page->waitForEvent('networkidle');
+    $page->assertSeeIn('@status-select', 'Done');
 
     app(WorkspaceContext::class)->set($workspace);
     expect($parent->fresh()->status->name)->toBe('Done');
@@ -179,7 +180,7 @@ it('completes the parent through the UI once every child is done, and a reopened
     $page = visit('/issues/'.$childOne->id);
     $page->click('@status-select')
         ->click('[role="option"]:has-text("Backlog")');
-    $page->waitForEvent('networkidle');
+    $page->assertSeeIn('@status-select', 'Backlog');
 
     app(WorkspaceContext::class)->set($workspace);
     expect($parent->fresh()->status->name)->toBe('Done');

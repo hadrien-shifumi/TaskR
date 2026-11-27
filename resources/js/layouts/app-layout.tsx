@@ -254,7 +254,7 @@ function WorkspaceSwitcher() {
 /** Navigation entries grouped by families. `onNavigate` lets the mobile
  *  drawer close itself after a link tap; the desktop sidebar omits it. */
 function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
-    const { unreadMentions, features } = usePage<PageSharedProps>().props;
+    const { unreadMentions, features, navProjects } = usePage<PageSharedProps>().props;
     const { url } = usePage();
     const { t } = useTranslation();
 
@@ -268,6 +268,11 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
         return url.startsWith(item.prefix);
     };
 
+    // A project entry stays active on every screen of that project
+    // (health, board, issues, milestones, …).
+    const isProjectActive = (projectId: string) =>
+        url === `/projects/${projectId}` || url.startsWith(`/projects/${projectId}/`);
+
     return (
         <>
             {NAV_SECTIONS.map((section, sectionIndex) => {
@@ -279,7 +284,7 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
                     )
                     .map((item) => {
                     const Icon = item.icon;
-                    return (
+                    const link = (
                         <Link
                             key={item.label}
                             href={route(item.route)}
@@ -305,6 +310,39 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
                                 </span>
                             ) : null}
                         </Link>
+                    );
+
+                    // The Projects entry grows a sub-list of the workspace's
+                    // projects (the shared `navProjects` prop): the link
+                    // above stays the index, each entry below jumps straight
+                    // to the project's fiche. Sub-entries indent with `ml-5`
+                    // and stack with the nav-list gap (`gap-1.5`).
+                    if (item.route !== "projects.index" || navProjects.length === 0) {
+                        return link;
+                    }
+
+                    return (
+                        <Fragment key={item.label}>
+                            {link}
+                            <div className="flex flex-col gap-1.5" data-test="nav-projects-sublist">
+                                {navProjects.map((project) => (
+                                    <Link
+                                        key={project.id}
+                                        href={route("projects.health", project.id)}
+                                        onClick={onNavigate}
+                                        prefetch="hover"
+                                        aria-current={
+                                            isProjectActive(project.id)
+                                                ? "page"
+                                                : undefined
+                                        }
+                                        className="ml-5 truncate rounded-md py-1 pr-2.5 pl-2 text-[13px] text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground aria-[current=page]:bg-secondary aria-[current=page]:font-medium aria-[current=page]:text-foreground"
+                                    >
+                                        {project.name}
+                                    </Link>
+                                ))}
+                            </div>
+                        </Fragment>
                     );
                 });
 

@@ -165,3 +165,48 @@ it('has no accessibility issues in the grouped nav, desktop and mobile', functio
     $mobile->assertNoAccessibilityIssues()
         ->assertNoSmoke();
 });
+
+it('shows the workspace projects as a sub-list under the projects entry', function () {
+    [$owner, $workspace, $project] = setupBrowserWorkspace(true);
+    app(WorkspaceContext::class)->set($workspace);
+    $this->actingAs($owner);
+
+    $page = visit('/');
+
+    $section = 'nav[aria-label="Main"] [data-test="nav-section"]:has-text("Project management")';
+    // The main Projects link stays the entry point to the index…
+    $page->assertPresent($section.' > a[href$="/projects"]')
+        // …and the sub-list carries one entry per project.
+        ->assertPresent($section.' [data-test="nav-projects-sublist"]')
+        ->assertSeeIn($section.' [data-test="nav-projects-sublist"]', 'Site vitrine')
+        ->assertPresent($section.' [data-test="nav-projects-sublist"] a[href$="/projects/'.$project->id.'/health"]')
+        ->assertNoSmoke();
+});
+
+it('keeps the sub-list hidden when the workspace has no project', function () {
+    [$owner, $workspace] = setupBrowserWorkspace();
+    app(WorkspaceContext::class)->set($workspace);
+    $this->actingAs($owner);
+
+    $page = visit('/');
+
+    $section = 'nav[aria-label="Main"] [data-test="nav-section"]:has-text("Project management")';
+    $page->assertPresent($section.' > a[href$="/projects"]')
+        ->assertNotPresent('[data-test="nav-projects-sublist"]')
+        ->assertNoSmoke();
+});
+
+it('navigates straight to a project from the nav sub-list', function () {
+    [$owner, $workspace, $project] = setupBrowserWorkspace(true);
+    app(WorkspaceContext::class)->set($workspace);
+    $this->actingAs($owner);
+
+    $page = visit('/');
+    $page->click('nav[aria-label="Main"] [data-test="nav-projects-sublist"] a');
+    $page->assertPathIs('/projects/'.$project->id.'/health');
+
+    // The entry clicked is now the active nav item.
+    $page->assertPresent('nav[aria-label="Main"] [data-test="nav-projects-sublist"] a[aria-current="page"]');
+
+    $page->assertNoSmoke();
+});
