@@ -71,11 +71,15 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          # Stated, not detected: composer.json declares MIT, but the label
-          # is filled from GitHub's own license detection, which lags behind
-          # the push that triggers this workflow.
+          # Stated, not left to detection or inheritance: the licenses label
+          # would wait on GitHub's own license detection, and the vendor label
+          # would be the base image's (FrankenPHP's author).
           labels: |
             org.opencontainers.image.licenses=MIT
+            org.opencontainers.image.vendor=Shifumi
+          annotations: |
+            manifest:org.opencontainers.image.licenses=MIT
+            manifest:org.opencontainers.image.vendor=Shifumi
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
@@ -108,5 +112,6 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          annotations: ${{ steps.meta.outputs.annotations }}
           cache-from: type=gha,scope=image
           cache-to: type=gha,scope=image,mode=max

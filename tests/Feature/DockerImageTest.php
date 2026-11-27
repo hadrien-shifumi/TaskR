@@ -161,6 +161,24 @@ class DockerImageTest extends TestCase
         $this->assertMatchesRegularExpression('/^COMPOSE_PROFILES=bundled-db\b/m', $example);
     }
 
+    public function test_the_sources_carry_the_license_they_declare(): void
+    {
+        // composer.json declares MIT: the license text ships with the sources
+        // and the release workflow states it on the image.
+        $this->assertSame('MIT', json_decode((string) file_get_contents(base_path('composer.json')), true)['license'] ?? null);
+
+        $this->assertFileExists(base_path('LICENSE'));
+        $license = (string) file_get_contents(base_path('LICENSE'));
+        $this->assertStringContainsString('MIT License', $license);
+        $this->assertStringContainsString('Copyright (c) 2026 Shifumi', $license);
+
+        $release = (string) file_get_contents(base_path('.github/workflows/release.yml'));
+        $this->assertStringContainsString('org.opencontainers.image.licenses=MIT', $release);
+        // Left alone, the vendor label is inherited from the base image —
+        // FrankenPHP's author, not TaskR's.
+        $this->assertStringContainsString('org.opencontainers.image.vendor=Shifumi', $release);
+    }
+
     public function test_the_worker_healthcheck_does_not_depend_on_a_tool_missing_from_the_image(): void
     {
         // The FrankenPHP base image ships no procps: `pgrep -f` answered
