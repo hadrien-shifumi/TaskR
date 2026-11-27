@@ -238,10 +238,17 @@ for service in app worker; do
 done
 
 # The hub's database lives on the storage bind mount: it has to outlive the
-# containers, and the app has to boot again on the migrated database.
-[ -f "$stack/storage/caddy/mercure.db" ] || fail "the hub's database is not on the storage bind mount"
+# containers, and the app has to boot again on the migrated database. Looked
+# at from a container: Caddy creates its data directory as 0700 for root, out
+# of reach of the user running this script on a Linux host.
+hub_database_on_the_bind_mount() {
+    run --rm --volume "$stack/storage:/storage:ro" --entrypoint sh "$image" -ec \
+        'test -f /storage/caddy/mercure.db || { echo "on the storage mount:" >&2; ls -la /storage /storage/caddy >&2; exit 1; }'
+}
+
+hub_database_on_the_bind_mount || fail "the hub's database is not on the storage bind mount"
 compose down >/dev/null 2>&1 || true
-[ -f "$stack/storage/caddy/mercure.db" ] || fail "the hub's database did not survive docker compose down"
+hub_database_on_the_bind_mount || fail "the hub's database did not survive docker compose down"
 if ! stack_up; then
     stack_diagnostics
     fail "the compose stack did not come back up on an existing database (see above)"
