@@ -6,12 +6,23 @@ bootstrap/cache
 .zed
 .ai
 .openspec
+# Developer agents' local state and linked worktrees (whole checkouts).
+.claude
+.codex
+.cursor
+.vscode
+.worktrees
+opencode.json
 node_modules
 vendor
+.DS_Store
 storage/logs/*
 storage/framework/cache/*
 storage/framework/sessions/*
 storage/framework/views/*
+storage/framework/locks/*
+storage/framework/testing/*
+storage/inertia-devtools
 storage/app/private/*
 database/database.sqlite
 .env
@@ -32,3 +43,17 @@ docker-compose*.yml
 *.md
 !vendor/bin
 frankenphp
+
+# Frontend tooling: the assets stage builds public/build itself, and none of
+# this is read at runtime. (package-lock.json, tsconfig.json and vite.config.js
+# stay in the context for that stage — the runtime stage leaves them out.)
+public/build
+public/hot
+.storybook
+.mcp.json
+pnpm-lock.yaml
+pnpm-workspace.yaml
+.npmrc
+.editorconfig
+Dockerfile
+.dockerignore

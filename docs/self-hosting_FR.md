@@ -19,6 +19,7 @@ cp .env.example .env
 
 # Éditez le .env :
 #   APP_KEY=base64:…     # openssl rand -base64 32
+#   MERCURE_JWT_SECRET=… # openssl rand -hex 32 (hub temps réel, voir plus bas)
 #   TASKR_VERSION=0.1.2  # épingler une version plutôt que latest
 #   Si exposé publiquement : APP_ENV=production, APP_DEBUG=false,
 #   APP_URL=https://taskr.example.com, DB_PASSWORD dédié (avant le premier démarrage)
@@ -29,7 +30,9 @@ docker compose up -d
 Remarque : générez l'`APP_KEY` avec `openssl rand -base64 32` plutôt qu'avec
 `docker compose run --rm app php artisan key:generate` — cette commande
 écrit la clé à l'intérieur du conteneur éphémère (`.env` n'y est pas monté),
-elle serait donc perdue.
+elle serait donc perdue. Le conteneur refuse de démarrer, avec un message
+explicite, tant que `MERCURE_JWT_SECRET` est vide ou mal formé — le temps réel
+est optionnel : `BROADCAST_CONNECTION=null` démarre sans le hub.
 
 Configurez aussi l'envoi des mails (reset de mot de passe, invitations,
 digests) avant une exposition publique : `MAIL_MAILER=smtp` plus
@@ -92,13 +95,20 @@ supplémentaire n'est ouvert, tout reste dans le conteneur web).
 
 - **Variables d'environnement** : `MERCURE_JWT_SECRET` (générée avec
   `openssl rand -hex 32` — hexadécimal nu, 64 caractères, placée dans le
-  `.env` avant le premier démarrage) ; `MERCURE_URL` / `MERCURE_PUBLIC_URL`
-  optionnelles quand le hub vit sur un autre domaine ; `MERCURE_ASYNC`
-  (publication asynchrone, défaut : synchronisée).
+  `.env` avant le premier démarrage ; le conteneur refuse de démarrer tant
+  qu'elle est vide ou mal formée). Le conteneur `worker` n'est pas une
+  requête web : pour publier vers le hub, il a besoin de son adresse —
+  `MERCURE_URL=http://app:8080/.well-known/mercure` avec
+  `MERCURE_PUBLIC_URL=${APP_URL}/.well-known/mercure` (qui garde le hub
+  embarqué dans le conteneur web). Sur un déploiement en HTTP simple,
+  ajoutez `MERCURE_COOKIE_NAME=mercure_access_token` : le cookie
+  d'autorisation par défaut est `__Secure-`. Un hub vivant sur un autre
+  domaine reçoit les deux URL le désignant à la place. Sinon, optionnelles :
+  `MERCURE_ASYNC` (publication asynchrone, défaut : synchronisée).
 - **Persistance** : la base d'abonnements du hub est un fichier BoltDB —
-  configurée sur le volume déjà monté du serveur
-  (`config/octane.php`, transport `bolt`, chemin `/app/storage/mercure.db`),
-  elle survit aux mises à jour d'image.
+  elle vit dans le répertoire de données de Caddy, que l'image ancre sur le
+  volume déjà monté du serveur (`Dockerfile`, `XDG_DATA_HOME` →
+  `/app/storage/caddy/mercure.db`), elle survit aux mises à jour d'image.
 - **Pièges connus** : le hub est exclu de la compression Caddy (le stub
   Caddyfile d'Octane), les logs d'abonnement sont silencieux, et le
   paramètre `authorization` des requêtes d'abonnement est reDACTé.
@@ -109,9 +119,12 @@ supplémentaire n'est ouvert, tout reste dans le conteneur web).
 docker compose up -d
 curl -i $APP_URL/.well-known/mercure
 # HTTP/1.1 401 Unauthorized  (refus des abonnements anonymes : le hub répond)
-curl -i -H "Cookie: MERCURE_SUBSCRIBE_TOKEN=<jwt>" $APP_URL/.well-known/mercure
-# HTTP/1.1 200 OK  (text/event-stream — l'abonnement est établi)
 ```
+
+Un abonnement autorisé exige un jeton signé par l'application : cette seconde
+partie est laissée à la CI — chaque pull request et chaque release fait
+parvenir à un abonné une mise à jour publiée par le worker à travers le hub
+(`.github/scripts/smoke-test-image.sh`).
 
 ### Base de données externe (managée)
 

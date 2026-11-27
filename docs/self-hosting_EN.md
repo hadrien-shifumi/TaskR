@@ -18,6 +18,7 @@ cp .env.example .env
 
 # Edit .env:
 #   APP_KEY=base64:…     # openssl rand -base64 32
+#   MERCURE_JWT_SECRET=… # openssl rand -hex 32 (real-time hub, see below)
 #   TASKR_VERSION=0.1.2  # pin a version instead of latest
 #   When publicly exposed: APP_ENV=production, APP_DEBUG=false,
 #   APP_URL=https://taskr.example.com, dedicated DB_PASSWORD (before first boot)
@@ -28,7 +29,9 @@ docker compose up -d
 Note: generate `APP_KEY` with `openssl rand -base64 32` rather than
 `docker compose run --rm app php artisan key:generate` — that command writes
 the key inside the ephemeral container (`.env` is not mounted there), so it
-would be lost.
+would be lost. The container refuses to start, with a plain message, while
+`MERCURE_JWT_SECRET` is empty or malformed — real-time is optional:
+`BROADCAST_CONNECTION=null` starts without the hub.
 
 Also configure outgoing mail (password resets, invitations, digests) before
 a public deployment: `MAIL_MAILER=smtp` plus
@@ -88,13 +91,19 @@ everything stays inside the web container).
 
 - **Environment variables**: `MERCURE_JWT_SECRET` (generated with
   `openssl rand -hex 32` — bare hex, 64 characters, set in the `.env`
-  before the first boot); optional `MERCURE_URL` / `MERCURE_PUBLIC_URL`
-  when the hub lives on another domain; `MERCURE_ASYNC` (async publishing,
-  default: synchronous).
+  before the first boot; the container refuses to start while it is empty or
+  malformed). The `worker` container is not a web request: to publish to the
+  hub it needs its address — `MERCURE_URL=http://app:8080/.well-known/mercure`
+  together with `MERCURE_PUBLIC_URL=${APP_URL}/.well-known/mercure` (which
+  keeps the hub embedded in the web container). On a plain-HTTP deployment,
+  add `MERCURE_COOKIE_NAME=mercure_access_token`: the default authorization
+  cookie is `__Secure-`. A hub living on another domain gets both URL
+  variables pointing at it instead. Optional otherwise: `MERCURE_ASYNC`
+  (async publishing, default: synchronous).
 - **Persistence**: the hub's subscriptions database is a BoltDB file —
-  configured on the server's already-mounted storage volume
-  (`config/octane.php`, the `bolt` transport, path `/app/storage/mercure.db`),
-  it survives container image updates.
+  it lives in Caddy's data directory, which the image pins to the
+  already-mounted storage volume (`Dockerfile`, `XDG_DATA_HOME` →
+  `/app/storage/caddy/mercure.db`), so it survives container image updates.
 - **Known traps**: the hub is excluded from Caddy compression (Octane's
   Caddyfile stub), subscription logging stays silent, and the
   `authorization` parameter of subscription requests is reDACTed.
@@ -105,9 +114,12 @@ everything stays inside the web container).
 docker compose up -d
 curl -i $APP_URL/.well-known/mercure
 # HTTP/1.1 401 Unauthorized  (anonymous subscriptions refused: the hub answers)
-curl -i -H "Cookie: MERCURE_SUBSCRIBE_TOKEN=<jwt>" $APP_URL/.well-known/mercure
-# HTTP/1.1 200 OK  (text/event-stream — the subscription is established)
 ```
+
+An authorized subscription needs a token minted by the application, so that
+second half is left to CI: every pull request and release runs an update
+published by the worker through the hub to a subscriber
+(`.github/scripts/smoke-test-image.sh`).
 
 ### External (managed) database
 

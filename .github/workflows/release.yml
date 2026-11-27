@@ -11,9 +11,15 @@
 # the composer create-project archive and `php artisan taskr:update` reads it
 # to detect the installed version. This workflow fails fast if they drift.
 #
-# The image is built for linux/amd64 and linux/arm64 (arm64 runs under QEMU,
-# which makes releases slower but keeps this workflow simple). The docker.yml
-# workflow validates single-arch builds on pull requests.
+# Nothing is pushed before the image has started: the amd64 build is loaded
+# and smoke-tested first (.github/scripts/smoke-test-image.sh), and only then
+# is the multi-arch image built and published. v0.4.0 shipped an image that
+# could not start, because images were only ever pushed.
+#
+# The multi-arch image is built for linux/amd64 and linux/arm64 (arm64 runs
+# under QEMU, which makes releases slower but keeps this workflow simple). The
+# smoke test covers amd64: the arm64 half is not booted here. The docker.yml
+# workflow runs the same checks on pull requests.
 
 name: Release
 
@@ -25,6 +31,7 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
+  SMOKE_IMAGE: taskr:smoke
 
 permissions:
   contents: read
@@ -64,12 +71,34 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          # Stated, not detected: composer.json declares MIT, but the label
+          # is filled from GitHub's own license detection, which lags behind
+          # the push that triggers this workflow.
+          labels: |
+            org.opencontainers.image.licenses=MIT
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
             # `latest` follows stable releases only (pre-release tags contain a dash).
             type=raw,value=latest,enable=${{ !contains(github.ref, '-') }}
+
+      - name: Build the amd64 image for the smoke test
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64
+          # Loaded into the daemon so that the smoke test can run it.
+          load: true
+          tags: ${{ env.SMOKE_IMAGE }}
+          push: false
+          # One scope shared with docker.yml: the release reuses the layers
+          # its pull request already built.
+          cache-from: type=gha,scope=image
+          cache-to: type=gha,scope=image,mode=max
+
+      - name: Smoke test (nothing is pushed before the image has started)
+        run: .github/scripts/smoke-test-image.sh ${{ env.SMOKE_IMAGE }}
 
       - name: Build and push multi-arch image
         uses: docker/build-push-action@v6
@@ -79,5 +108,5 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=image
+          cache-to: type=gha,scope=image,mode=max
